@@ -6,12 +6,20 @@ import { TransferService } from '../../core/services/transfer.service';
 import { AccountService } from '../../core/services/account.service';
 import { CategoryService } from '../../core/services/category.service';
 import { ProfileService } from '../../core/services/profile.service';
+import { ExchangeRateService } from '../../core/services/exchange-rate.service';
 import { Transaction } from '../../core/models/transaction.model';
 import { Transfer } from '../../core/models/transfer.model';
 import { Account } from '../../core/models/account.model';
 import { Category } from '../../core/models/category.model';
 import { MONTHS, getCurrentPeriod } from '../../core/types/period.type';
 import { formatMoney } from '../../core/types/money';
+
+interface ExchangeRateState {
+  loading: boolean;
+  error: string;
+  rate: number | null;
+  date: string;
+}
 
 interface MovementItem {
   type: 'transaction' | 'transfer';
@@ -50,6 +58,7 @@ export class MovementsComponent implements OnInit {
   private accountService = inject(AccountService);
   private categoryService = inject(CategoryService);
   private profileService = inject(ProfileService);
+  private exchangeRateService = inject(ExchangeRateService);
 
   selectedPeriod = signal(getCurrentPeriod());
   months = MONTHS;
@@ -60,6 +69,10 @@ export class MovementsComponent implements OnInit {
 
   showForm = signal<'none' | 'transaction' | 'transfer'>('none');
   editingId = signal<number | null>(null);
+
+  exchangeRateState = signal<ExchangeRateState>({
+    loading: false, error: '', rate: null, date: '',
+  });
 
   txForm = signal<TransactionForm>({
     accountId: 0, categoryId: 0, amount: 0,
@@ -108,6 +121,7 @@ export class MovementsComponent implements OnInit {
     this.showForm.set('transaction');
     this.editingId.set(id ?? null);
     this.errorMessage.set('');
+    this.resetExchangeRate();
     if (id) {
       this.transactionService.getById(id).then(t => {
         if (t) {
@@ -121,6 +135,9 @@ export class MovementsComponent implements OnInit {
             exchangeRate: t.exchangeRate,
             baseCurrencyAmount: t.baseCurrencyAmount,
           });
+          if (t.exchangeRate) {
+            this.exchangeRateState.update(s => ({ ...s, rate: t.exchangeRate, date: 'stored' }));
+          }
         }
       });
     } else {
@@ -134,6 +151,9 @@ export class MovementsComponent implements OnInit {
         exchangeRate: null,
         baseCurrencyAmount: null,
       });
+      if (this.accounts().length > 0) {
+        this.checkExchangeRate(this.accounts()[0].id!);
+      }
     }
   }
 
@@ -170,6 +190,68 @@ export class MovementsComponent implements OnInit {
     this.showForm.set('none');
     this.editingId.set(null);
     this.errorMessage.set('');
+    this.resetExchangeRate();
+  }
+
+  private resetExchangeRate(): void {
+    this.exchangeRateState.set({ loading: false, error: '', rate: null, date: '' });
+  }
+
+  onAccountChange(accountId: number): void {
+    this.txForm.update(f => ({ ...f, accountId }));
+    this.checkExchangeRate(accountId);
+  }
+
+  private async checkExchangeRate(accountId: number): Promise<void> {
+    const account = this.accounts().find(a => a.id === accountId);
+    if (!account || account.currency === this.baseCurrency()) {
+      this.txForm.update(f => ({ ...f, exchangeRate: null, baseCurrencyAmount: null }));
+      this.resetExchangeRate();
+      return;
+    }
+
+    this.exchangeRateState.update(s => ({ ...s, loading: true, error: '' }));
+
+    try {
+      const result = await this.exchangeRateService.getRate(
+        account.currency, this.baseCurrency(),
+      );
+      this.exchangeRateState.update(s => ({ ...s, rate: result.rate, date: result.date }));
+      this.txForm.update(f => ({ ...f, exchangeRate: result.rate }));
+      this.recomputeBaseCurrencyAmount();
+    } catch {
+      this.exchangeRateState.update(s => ({
+        ...s, error: 'Could not fetch rate. Enter it manually below.',
+      }));
+      this.txForm.update(f => ({ ...f, exchangeRate: null, baseCurrencyAmount: null }));
+    } finally {
+      this.exchangeRateState.update(s => ({ ...s, loading: false }));
+    }
+  }
+
+  onAmountOrRateChange(): void {
+    this.recomputeBaseCurrencyAmount();
+  }
+
+  private recomputeBaseCurrencyAmount(): void {
+    const f = this.txForm();
+    if (f.exchangeRate && f.amount > 0) {
+      this.txForm.update(form => ({
+        ...form,
+        baseCurrencyAmount: Math.round(form.amount * form.exchangeRate!),
+      }));
+    } else {
+      this.txForm.update(form => ({ ...form, baseCurrencyAmount: null }));
+    }
+  }
+
+  getAccountCurrency(accountId: number): string {
+    return this.accounts().find(a => a.id === accountId)?.currency ?? '';
+  }
+
+  isForeignCurrency(): boolean {
+    const account = this.accounts().find(a => a.id === this.txForm().accountId);
+    return !!account && account.currency !== this.baseCurrency();
   }
 
   async saveTransaction(): Promise<void> {
