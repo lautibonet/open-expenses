@@ -1,0 +1,141 @@
+<div class="settings">
+  <h1>Settings</h1>
+
+  @if (errorMessage()) {
+    <p class="error">{{ errorMessage() }}</p>
+  }
+  @if (successMessage()) {
+    <p class="success">{{ successMessage() }}</p>
+  }
+
+  <section class="card">
+    <h2>Base Currency</h2>
+    <div class="inline-form">
+      <input
+        type="text"
+        [ngModel]="baseCurrency()"
+        (ngModelChange)="baseCurrency.set($event)"
+        maxlength="3"
+        class="input small"
+      />
+      <button class="btn primary" (click)="updateBaseCurrency()">Update</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Accounts</h2>
+    <div class="inline-form">
+      <input
+        type="text"
+        [ngModel]="newAccountName()"
+        (ngModelChange)="newAccountName.set($event)"
+        placeholder="Name"
+        class="input"
+      />
+      <input
+        type="text"
+        [ngModel]="newAccountCurrency()"
+        (ngModelChange)="newAccountCurrency.set($event)"
+        placeholder="EUR"
+        maxlength="3"
+        class="input small"
+      />
+      <input
+        type="number"
+        [ngModel]="newAccountBalance()"
+        (ngModelChange)="newAccountBalance.set($event)"
+        placeholder="Initial balance"
+        class="input small"
+      />
+      <button class="btn primary" (click)="addAccount()">Add</button>
+    </div>
+    <table>
+      <thead>
+        <tr><th>Name</th><th>Currency</th><th>Balance</th><th>Status</th><th></th></tr>
+      </thead>
+      <tbody>
+        @for (acc of accounts(); track acc.id) {
+          <tr [class.inactive]="!acc.active">
+            <td>{{ acc.name }}</td>
+            <td>{{ acc.currency }}</td>
+            <td>{{ acc.initialBalance }}</td>
+            <td>{{ acc.active ? 'Active' : 'Inactive' }}</td>
+            <td>
+              @if (acc.active) {
+                <button class="btn small" (click)="deactivateAccount(acc.id!)">Deactivate</button>
+              } @else {
+                <button class="btn small" (click)="reactivateAccount(acc.id!)">Reactivate</button>
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </section>
+
+  <section class="card">
+    <h2>Categories</h2>
+    <div class="inline-form">
+      <input
+        type="text"
+        [ngModel]="newCategoryName()"
+        (ngModelChange)="newCategoryName.set($event)"
+        placeholder="Name"
+        class="input"
+      />
+      <select [ngModel]="newCategoryType()" (ngModelChange)="newCategoryType.set($event)" class="input small">
+        <option value="Expense">Expense</option>
+        <option value="Income">Income</option>
+      </select>
+      <button class="btn primary" (click)="addCategory()">Add</button>
+    </div>
+    <table>
+      <thead>
+        <tr><th>Name</th><th>Type</th><th>Status</th><th></th></tr>
+      </thead>
+      <tbody>
+        @for (cat of categories(); track cat.id) {
+          <tr [class.inactive]="!cat.active">
+            <td>{{ cat.name }}</td>
+            <td>{{ cat.type }}</td>
+            <td>{{ cat.active ? 'Active' : 'Inactive' }}</td>
+            <td>
+              @if (cat.active) {
+                <button class="btn small" (click)="deactivateCategory(cat.id!)">Deactivate</button>
+              } @else {
+                <button class="btn small" (click)="reactivateCategory(cat.id!)">Reactivate</button>
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </section>
+
+  <section class="card">
+    <h2>Tags</h2>
+    @if (tags().length === 0) {
+      <p class="empty">No tags yet. Tags are added when you create transactions.</p>
+    } @else {
+      <ul class="tag-list">
+        @for (tag of tags(); track tag) {
+          <li>
+            @if (editingTag()?.old === tag) {
+              <input
+                type="text"
+                [ngModel]="editingTag()!.new"
+                (ngModelChange)="editingTag.set({ old: tag, new: $event })"
+                class="input"
+              />
+              <button class="btn small primary" (click)="saveTagRename()">Save</button>
+              <button class="btn small" (click)="cancelEditTag()">Cancel</button>
+            } @else {
+              <span>{{ tag }}</span>
+              <button class="btn small" (click)="startEditTag(tag)">Rename</button>
+            }
+          </li>
+        }
+      </ul>
+    }
+  </section>
+</div>

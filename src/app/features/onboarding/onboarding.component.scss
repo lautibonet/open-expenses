@@ -1,0 +1,101 @@
+.onboarding {
+  max-width: 600px;
+  margin: 2rem auto;
+  padding: 1.5rem;
+}
+
+h1 {
+  margin-bottom: 0.25rem;
+}
+
+.subtitle {
+  color: #666;
+  margin-bottom: 2rem;
+}
+
+.step {
+  h2 {
+    margin-bottom: 0.5rem;
+  }
+}
+
+.input {
+  display: block;
+  width: 100%;
+  padding: 0.5rem;
+  margin-bottom: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 1rem;
+
+  &.small {
+    width: auto;
+    display: inline-block;
+  }
+}
+
+.btn {
+  padding: 0.5rem 1rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 0.9rem;
+
+  &.primary {
+    background: #2563eb;
+    color: #fff;
+    border-color: #2563eb;
+  }
+
+  &.small {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
+  }
+}
+
+.account-form {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  margin-bottom: 1rem;
+}
+
+.account-list {
+  list-style: none;
+  padding: 0;
+
+  li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #eee;
+  }
+}
+
+.category-list {
+  margin-bottom: 1rem;
+}
+
+.category-item {
+  display: block;
+  padding: 0.5rem 0;
+  cursor: pointer;
+
+  &.inactive {
+    opacity: 0.5;
+  }
+}
+
+.nav-buttons {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.error {
+  color: #dc2626;
+  margin: 0.5rem 0;
+}
