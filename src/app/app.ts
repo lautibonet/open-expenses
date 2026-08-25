@@ -1,11 +1,11 @@
 import { Component, OnInit, inject } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, RouterOutlet } from '@angular/router';
 import { ProfileService } from './core/services/profile.service';
 
 @Component({
   selector: 'app-root',
-  imports: [],
-  template: `<p>Loading...</p>`,
+  imports: [RouterOutlet],
+  templateUrl: './app.html',
 })
 export class App implements OnInit {
   private profileService = inject(ProfileService);
