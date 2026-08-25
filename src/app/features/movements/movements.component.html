@@ -34,6 +34,14 @@
           <input type="number" [ngModel]="txForm().amount" (ngModelChange)="txForm.update(f => ({ ...f, amount: +$event })); onAmountOrRateChange()" />
         </label>
         <label>
+          Tags
+          <app-tag-input
+            [tags]="txForm().tags"
+            [suggestions]="allTags()"
+            (tagsChange)="txForm.update(f => ({ ...f, tags: $event }))"
+          />
+        </label>
+        <label>
           Date
           <input type="date" [ngModel]="txForm().date" (ngModelChange)="txForm.update(f => ({ ...f, date: $event }))" />
         </label>
@@ -44,10 +52,6 @@
               <option [value]="month">{{ month }}</option>
             }
           </select>
-        </label>
-        <label>
-          Tags (comma-separated)
-          <input type="text" [ngModel]="txForm().tags" (ngModelChange)="txForm.update(f => ({ ...f, tags: $event }))" placeholder="e.g. vacation, food" />
         </label>
       </div>
 

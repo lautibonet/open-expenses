@@ -13,6 +13,7 @@ import { Account } from '../../core/models/account.model';
 import { Category } from '../../core/models/category.model';
 import { MONTHS, getCurrentPeriod } from '../../core/types/period.type';
 import { formatMoney } from '../../core/types/money';
+import { TagInputComponent } from '../../shared/components/tag-input/tag-input.component';
 
 interface ExchangeRateState {
   loading: boolean;
@@ -32,7 +33,7 @@ interface TransactionForm {
   amount: number;
   date: string;
   period: string;
-  tags: string;
+  tags: string[];
   exchangeRate: number | null;
   baseCurrencyAmount: number | null;
 }
@@ -48,7 +49,7 @@ interface TransferForm {
 
 @Component({
   selector: 'app-movements',
-  imports: [FormsModule, DatePipe],
+  imports: [FormsModule, DatePipe, TagInputComponent],
   templateUrl: './movements.component.html',
   styleUrl: './movements.component.scss',
 })
@@ -66,6 +67,7 @@ export class MovementsComponent implements OnInit {
   categories = signal<Category[]>([]);
   movements = signal<MovementItem[]>([]);
   baseCurrency = signal('EUR');
+  allTags = signal<string[]>([]);
 
   showForm = signal<'none' | 'transaction' | 'transfer'>('none');
   editingId = signal<number | null>(null);
@@ -77,7 +79,7 @@ export class MovementsComponent implements OnInit {
   txForm = signal<TransactionForm>({
     accountId: 0, categoryId: 0, amount: 0,
     date: new Date().toISOString().split('T')[0],
-    period: getCurrentPeriod(), tags: '',
+    period: getCurrentPeriod(), tags: [],
     exchangeRate: null, baseCurrencyAmount: null,
   });
   trForm = signal<TransferForm>({
@@ -91,6 +93,7 @@ export class MovementsComponent implements OnInit {
     this.baseCurrency.set(await this.profileService.getBaseCurrency());
     this.accounts.set(await this.accountService.getActive());
     this.categories.set(await this.categoryService.getActive());
+    await this.refreshTags();
     if (this.accounts().length > 0) {
       const first = this.accounts()[0].id!;
       const second = this.accounts()[1]?.id;
@@ -117,6 +120,10 @@ export class MovementsComponent implements OnInit {
     this.movements.set(items);
   }
 
+  private async refreshTags(): Promise<void> {
+    this.allTags.set(await this.transactionService.getAllTags());
+  }
+
   openTransactionForm(id?: number): void {
     this.showForm.set('transaction');
     this.editingId.set(id ?? null);
@@ -131,7 +138,7 @@ export class MovementsComponent implements OnInit {
             amount: t.amount,
             date: new Date(t.date).toISOString().split('T')[0],
             period: t.period,
-            tags: t.tags.join(', '),
+            tags: [...t.tags],
             exchangeRate: t.exchangeRate,
             baseCurrencyAmount: t.baseCurrencyAmount,
           });
@@ -147,7 +154,7 @@ export class MovementsComponent implements OnInit {
         amount: 0,
         date: new Date().toISOString().split('T')[0],
         period: this.selectedPeriod(),
-        tags: '',
+        tags: [],
         exchangeRate: null,
         baseCurrencyAmount: null,
       });
@@ -190,6 +197,7 @@ export class MovementsComponent implements OnInit {
     this.showForm.set('none');
     this.editingId.set(null);
     this.errorMessage.set('');
+    this.txForm.update(f => ({ ...f, tags: [] }));
     this.resetExchangeRate();
   }
 
@@ -257,21 +265,21 @@ export class MovementsComponent implements OnInit {
   async saveTransaction(): Promise<void> {
     try {
       const f = this.txForm();
-      const tags = f.tags.split(',').map(t => t.trim()).filter(t => t.length > 0);
       if (this.editingId()) {
         await this.transactionService.update(this.editingId()!, {
           accountId: f.accountId, categoryId: f.categoryId, amount: f.amount,
-          date: new Date(f.date), period: f.period, tags,
+          date: new Date(f.date), period: f.period, tags: f.tags,
           exchangeRate: f.exchangeRate, baseCurrencyAmount: f.baseCurrencyAmount,
         });
       } else {
         await this.transactionService.create(
           f.accountId, f.categoryId, f.amount, new Date(f.date),
-          f.period, tags, f.exchangeRate, f.baseCurrencyAmount,
+          f.period, f.tags, f.exchangeRate, f.baseCurrencyAmount,
         );
       }
       this.cancelForm();
       await this.refresh();
+      await this.refreshTags();
     } catch (e: unknown) {
       this.errorMessage.set(e instanceof Error ? e.message : 'Failed to save');
     }
