@@ -1,0 +1,98 @@
+<div class="onboarding">
+  <h1>Welcome to Open Expenses</h1>
+  <p class="subtitle">Set up your expense tracker in a few steps</p>
+
+  @if (step() === 1) {
+    <section class="step">
+      <h2>1. Base Currency</h2>
+      <p>This is the currency your Dashboard totals will be reported in.</p>
+      <input
+        type="text"
+        [ngModel]="baseCurrency()"
+        (ngModelChange)="baseCurrency.set($event)"
+        placeholder="EUR"
+        maxlength="3"
+        class="input"
+      />
+      <button class="btn primary" (click)="step.set(2)">Next</button>
+    </section>
+  }
+
+  @if (step() === 2) {
+    <section class="step">
+      <h2>2. Accounts</h2>
+      <p>Add where your money is. You can always add more later in Settings.</p>
+
+      <div class="account-form">
+        <input
+          type="text"
+          [ngModel]="accountName()"
+          (ngModelChange)="accountName.set($event)"
+          placeholder="Account name"
+          class="input"
+        />
+        <input
+          type="text"
+          [ngModel]="accountCurrency()"
+          (ngModelChange)="accountCurrency.set($event)"
+          placeholder="Currency (e.g. EUR)"
+          maxlength="3"
+          class="input small"
+        />
+        <input
+          type="number"
+          [ngModel]="accountBalance()"
+          (ngModelChange)="accountBalance.set($event)"
+          placeholder="Initial balance (cents)"
+          class="input small"
+        />
+        <button class="btn" (click)="addAccount()">Add</button>
+      </div>
+
+      @if (errorMessage()) {
+        <p class="error">{{ errorMessage() }}</p>
+      }
+
+      @if (accounts().length > 0) {
+        <ul class="account-list">
+          @for (account of accounts(); track $index) {
+            <li>
+              {{ account.name }} ({{ account.currency }}) — {{ account.balance }} cents
+              <button class="btn small" (click)="removeAccount($index)">Remove</button>
+            </li>
+          }
+        </ul>
+      }
+
+      <div class="nav-buttons">
+        <button class="btn" (click)="step.set(1)">Back</button>
+        <button class="btn primary" (click)="step.set(3)">Next</button>
+      </div>
+    </section>
+  }
+
+  @if (step() === 3) {
+    <section class="step">
+      <h2>3. Categories</h2>
+      <p>Review the default categories. Toggle any you don't need.</p>
+
+      <div class="category-list">
+        @for (cat of defaultCategories(); track $index) {
+          <label class="category-item" [class.inactive]="!cat.active">
+            <input
+              type="checkbox"
+              [checked]="cat.active"
+              (change)="toggleCategory($index)"
+            />
+            {{ cat.name }} ({{ cat.type }})
+          </label>
+        }
+      </div>
+
+      <div class="nav-buttons">
+        <button class="btn" (click)="step.set(2)">Back</button>
+        <button class="btn primary" (click)="completeOnboarding()">Start Tracking</button>
+      </div>
+    </section>
+  }
+</div>

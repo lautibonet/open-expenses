@@ -1,0 +1,163 @@
+<div class="movements">
+  <div class="controls">
+    <select [ngModel]="selectedPeriod()" (ngModelChange)="selectedPeriod.set($event); refresh()">
+      @for (month of months; track month) {
+        <option [value]="month">{{ month }}</option>
+      }
+    </select>
+    <button class="btn primary" (click)="openTransactionForm()">+ Transaction</button>
+    <button class="btn" (click)="openTransferForm()">+ Transfer</button>
+  </div>
+
+  @if (showForm() === 'transaction') {
+    <div class="form-card">
+      <h3>{{ editingId() ? 'Edit' : 'New' }} Transaction</h3>
+      <div class="form-grid">
+        <label>
+          Account
+          <select [ngModel]="formAccountId()" (ngModelChange)="formAccountId.set($event)">
+            @for (acc of accounts(); track acc.id) {
+              <option [value]="acc.id">{{ acc.name }}</option>
+            }
+          </select>
+        </label>
+        <label>
+          Category
+          <select [ngModel]="formCategoryId()" (ngModelChange)="formCategoryId.set($event)">
+            @for (cat of categories(); track cat.id) {
+              <option [value]="cat.id">{{ cat.name }} ({{ cat.type }})</option>
+            }
+          </select>
+        </label>
+        <label>
+          Amount (cents)
+          <input type="number" [ngModel]="formAmount()" (ngModelChange)="formAmount.set($event)" />
+        </label>
+        <label>
+          Date
+          <input type="date" [ngModel]="formDate()" (ngModelChange)="formDate.set($event)" />
+        </label>
+        <label>
+          Period
+          <select [ngModel]="formPeriod()" (ngModelChange)="formPeriod.set($event)">
+            @for (month of months; track month) {
+              <option [value]="month">{{ month }}</option>
+            }
+          </select>
+        </label>
+        <label>
+          Tags (comma-separated)
+          <input type="text" [ngModel]="formTags()" (ngModelChange)="formTags.set($event)" placeholder="e.g. vacation, food" />
+        </label>
+      </div>
+      @if (errorMessage()) {
+        <p class="error">{{ errorMessage() }}</p>
+      }
+      <div class="form-actions">
+        <button class="btn" (click)="cancelForm()">Cancel</button>
+        <button class="btn primary" (click)="saveTransaction()">Save</button>
+      </div>
+    </div>
+  }
+
+  @if (showForm() === 'transfer') {
+    <div class="form-card">
+      <h3>{{ editingId() ? 'Edit' : 'New' }} Transfer</h3>
+      <div class="form-grid">
+        <label>
+          From
+          <select [ngModel]="formSourceAccountId()" (ngModelChange)="formSourceAccountId.set($event)">
+            @for (acc of accounts(); track acc.id) {
+              <option [value]="acc.id">{{ acc.name }}</option>
+            }
+          </select>
+        </label>
+        <label>
+          To
+          <select [ngModel]="formDestAccountId()" (ngModelChange)="formDestAccountId.set($event)">
+            @for (acc of accounts(); track acc.id) {
+              <option [value]="acc.id">{{ acc.name }}</option>
+            }
+          </select>
+        </label>
+        <label>
+          Amount (cents)
+          <input type="number" [ngModel]="formAmount()" (ngModelChange)="formAmount.set($event)" />
+        </label>
+        <label>
+          Date
+          <input type="date" [ngModel]="formDate()" (ngModelChange)="formDate.set($event)" />
+        </label>
+        <label>
+          Period
+          <select [ngModel]="formPeriod()" (ngModelChange)="formPeriod.set($event)">
+            @for (month of months; track month) {
+              <option [value]="month">{{ month }}</option>
+            }
+          </select>
+        </label>
+        <label>
+          Note
+          <input type="text" [ngModel]="formNote()" (ngModelChange)="formNote.set($event)" />
+        </label>
+      </div>
+      @if (errorMessage()) {
+        <p class="error">{{ errorMessage() }}</p>
+      }
+      <div class="form-actions">
+        <button class="btn" (click)="cancelForm()">Cancel</button>
+        <button class="btn primary" (click)="saveTransfer()">Save</button>
+      </div>
+    </div>
+  }
+
+  <div class="movement-list">
+    @for (item of movements(); track $index) {
+      @if (isTransaction(item)) {
+        @let txn = getTransactionData(item);
+        <div class="movement-item transaction">
+          <div class="movement-main">
+            <span class="category">{{ getCategoryName(txn.categoryId) }}</span>
+            <span class="amount expense">-{{ formatMoney(txn.amount) }}</span>
+          </div>
+          <div class="movement-meta">
+            <span>{{ getAccountName(txn.accountId) }}</span>
+            <span>{{ txn.date | date:'mediumDate' }}</span>
+            @if (txn.tags.length > 0) {
+              <span class="tags">@for (tag of txn.tags; track tag) {
+                <span class="tag">{{ tag }}</span>
+              }</span>
+            }
+          </div>
+          <div class="movement-actions">
+            <button class="btn small" (click)="openTransactionForm(txn.id!)">Edit</button>
+            <button class="btn small danger" (click)="deleteTransaction(txn.id!)">Delete</button>
+          </div>
+        </div>
+      } @else {
+        @let tr = getTransferData(item);
+        <div class="movement-item transfer">
+          <div class="movement-main">
+            <span class="type-label">Transfer</span>
+            <span class="transfer-detail">
+              {{ getAccountName(tr.sourceAccountId) }} &rarr; {{ getAccountName(tr.destinationAccountId) }}
+            </span>
+            <span class="amount">{{ formatMoney(tr.amount) }}</span>
+          </div>
+          <div class="movement-meta">
+            <span>{{ tr.date | date:'mediumDate' }}</span>
+            @if (tr.note) {
+              <span class="note">{{ tr.note }}</span>
+            }
+          </div>
+          <div class="movement-actions">
+            <button class="btn small" (click)="openTransferForm(tr.id!)">Edit</button>
+            <button class="btn small danger" (click)="deleteTransfer(tr.id!)">Delete</button>
+          </div>
+        </div>
+      }
+    } @empty {
+      <p class="empty">No movements for {{ selectedPeriod() }}.</p>
+    }
+  </div>
+</div>

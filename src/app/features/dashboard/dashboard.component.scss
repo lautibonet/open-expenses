@@ -1,0 +1,74 @@
+.dashboard {
+  padding-bottom: 1rem;
+}
+
+.controls {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+
+  select {
+    padding: 0.5rem;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    font-size: 0.9rem;
+  }
+}
+
+.card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+
+  h2 {
+    font-size: 1.1rem;
+    margin-bottom: 0.75rem;
+  }
+}
+
+.totals {
+  display: flex;
+  gap: 2rem;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+
+  .label {
+    font-size: 0.8rem;
+    color: #6b7280;
+  }
+
+  .value {
+    font-size: 1.25rem;
+    font-weight: 600;
+
+    &.income {
+      color: #16a34a;
+    }
+
+    &.expense {
+      color: #dc2626;
+    }
+  }
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+
+  th, td {
+    padding: 0.5rem;
+    text-align: left;
+    border-bottom: 1px solid #f3f4f6;
+  }
+
+  th {
+    font-size: 0.8rem;
+    color: #6b7280;
+    font-weight: 500;
+  }
+}
