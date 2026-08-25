@@ -52,6 +52,12 @@
     border-color: #2563eb;
   }
 
+  &.danger {
+    background: #dc2626;
+    color: #fff;
+    border-color: #dc2626;
+  }
+
   &.small {
     padding: 0.25rem 0.5rem;
     font-size: 0.8rem;
@@ -89,6 +95,20 @@ table {
     gap: 0.5rem;
     padding: 0.5rem 0;
     border-bottom: 1px solid #f3f4f6;
+  }
+
+  .tag-name {
+    font-weight: 500;
+  }
+
+  .tag-count {
+    color: #6b7280;
+    font-size: 0.85rem;
+  }
+
+  .tag-delete-confirm {
+    color: #dc2626;
+    font-size: 0.9rem;
   }
 }
 
