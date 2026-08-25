@@ -84,15 +84,15 @@ describe('AccountService', () => {
 
   it('should deactivate an account', async () => {
     const account = await service.create('Cash', 'EUR', 0);
-    await service.deactivate(account.id!);
+    await service.setActive(account.id!, false);
     const updated = await service.getById(account.id!);
     expect(updated!.active).toBe(false);
   });
 
   it('should reactivate an account', async () => {
     const account = await service.create('Cash', 'EUR', 0);
-    await service.deactivate(account.id!);
-    await service.reactivate(account.id!);
+    await service.setActive(account.id!, false);
+    await service.setActive(account.id!, true);
     const updated = await service.getById(account.id!);
     expect(updated!.active).toBe(true);
   });
@@ -107,7 +107,7 @@ describe('AccountService', () => {
   it('should get active accounts', async () => {
     const cash = await service.create('Cash', 'EUR', 0);
     await service.create('Savings', 'USD', 1000);
-    await service.deactivate(cash.id!);
+    await service.setActive(cash.id!, false);
     const active = await service.getActive();
     expect(active.length).toBe(1);
     expect(active[0].name).toBe('Savings');

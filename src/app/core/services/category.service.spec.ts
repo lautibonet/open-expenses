@@ -66,15 +66,15 @@ describe('CategoryService', () => {
 
   it('should deactivate a category', async () => {
     const category = await service.create('Food', 'Expense');
-    await service.deactivate(category.id!);
+    await service.setActive(category.id!, false);
     const updated = await service.getById(category.id!);
     expect(updated!.active).toBe(false);
   });
 
   it('should reactivate a category', async () => {
     const category = await service.create('Food', 'Expense');
-    await service.deactivate(category.id!);
-    await service.reactivate(category.id!);
+    await service.setActive(category.id!, false);
+    await service.setActive(category.id!, true);
     const updated = await service.getById(category.id!);
     expect(updated!.active).toBe(true);
   });
@@ -95,7 +95,7 @@ describe('CategoryService', () => {
   it('should get active categories', async () => {
     const food = await service.create('Food', 'Expense');
     await service.create('Transport', 'Expense');
-    await service.deactivate(food.id!);
+    await service.setActive(food.id!, false);
     const active = await service.getActive();
     expect(active.length).toBe(1);
     expect(active[0].name).toBe('Transport');
