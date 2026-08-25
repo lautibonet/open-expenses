@@ -15,9 +15,9 @@
       <div class="form-grid">
         <label>
           Account
-          <select [ngModel]="txForm().accountId" (ngModelChange)="txForm.update(f => ({ ...f, accountId: +$event }))">
+          <select [ngModel]="txForm().accountId" (ngModelChange)="onAccountChange(+$event)">
             @for (acc of accounts(); track acc.id) {
-              <option [value]="acc.id">{{ acc.name }}</option>
+              <option [value]="acc.id">{{ acc.name }} ({{ acc.currency }})</option>
             }
           </select>
         </label>
@@ -31,7 +31,7 @@
         </label>
         <label>
           Amount (cents)
-          <input type="number" [ngModel]="txForm().amount" (ngModelChange)="txForm.update(f => ({ ...f, amount: +$event }))" />
+          <input type="number" [ngModel]="txForm().amount" (ngModelChange)="txForm.update(f => ({ ...f, amount: +$event })); onAmountOrRateChange()" />
         </label>
         <label>
           Date
@@ -50,6 +50,33 @@
           <input type="text" [ngModel]="txForm().tags" (ngModelChange)="txForm.update(f => ({ ...f, tags: $event }))" placeholder="e.g. vacation, food" />
         </label>
       </div>
+
+      @if (isForeignCurrency()) {
+        <div class="exchange-rate-section">
+          <h4>Exchange Rate</h4>
+          @if (exchangeRateState().loading) {
+            <p class="rate-status">Fetching rate...</p>
+          }
+          @if (exchangeRateState().error) {
+            <p class="rate-error">{{ exchangeRateState().error }}</p>
+          }
+          <div class="exchange-rate-grid">
+            <label>
+              Exchange Rate ({{ getAccountCurrency(txForm().accountId) }} &rarr; {{ baseCurrency() }})
+              <input type="number" step="0.0001"
+                [ngModel]="txForm().exchangeRate"
+                (ngModelChange)="txForm.update(f => ({ ...f, exchangeRate: +$event })); onAmountOrRateChange()" />
+            </label>
+            <label>
+              {{ baseCurrency() }} Equivalent
+              <input type="number" [ngModel]="txForm().baseCurrencyAmount" readonly class="readonly" />
+            </label>
+          </div>
+          @if (exchangeRateState().rate !== null) {
+            <p class="rate-source">Suggested rate: 1 {{ getAccountCurrency(txForm().accountId) }} = {{ exchangeRateState().rate }} {{ baseCurrency() }} ({{ exchangeRateState().date }})</p>
+          }
+        </div>
+      }
       @if (errorMessage()) {
         <p class="error">{{ errorMessage() }}</p>
       }
