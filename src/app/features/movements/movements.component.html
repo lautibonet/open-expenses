@@ -142,8 +142,42 @@
     </div>
   }
 
+  <div class="filter-bar">
+    <label>
+      Category
+      <select [ngModel]="filterCategory()" (ngModelChange)="filterCategory.set(+$event || null)">
+        <option [value]="0">All categories</option>
+        @for (cat of categories(); track cat.id) {
+          <option [value]="cat.id">{{ cat.name }}</option>
+        }
+      </select>
+    </label>
+    <label>
+      Account
+      <select [ngModel]="filterAccount()" (ngModelChange)="filterAccount.set(+$event || null)">
+        <option [value]="0">All accounts</option>
+        @for (acc of accounts(); track acc.id) {
+          <option [value]="acc.id">{{ acc.name }}</option>
+        }
+      </select>
+    </label>
+    <label>
+      Tag
+      <select [ngModel]="filterTag()" (ngModelChange)="filterTag.set($event || null)">
+        <option [value]="">All tags</option>
+        @for (tag of allTags(); track tag) {
+          <option [value]="tag">{{ tag }}</option>
+        }
+      </select>
+    </label>
+    @if (activeFilterCount() > 0) {
+      <span class="filter-badge">{{ activeFilterCount() }}</span>
+      <button class="btn small" (click)="clearFilters()">Clear filters</button>
+    }
+  </div>
+
   <div class="movement-list">
-    @for (item of movements(); track $index) {
+    @for (item of filteredMovements(); track $index) {
       @if (isTransaction(item)) {
         @let txn = getTransactionData(item);
         <div class="movement-item transaction">

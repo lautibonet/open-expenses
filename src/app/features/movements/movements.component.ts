@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DatePipe } from '@angular/common';
 import { TransactionService } from '../../core/services/transaction.service';
@@ -88,6 +88,55 @@ export class MovementsComponent implements OnInit {
     period: getCurrentPeriod(), note: '',
   });
   errorMessage = signal('');
+
+  filterCategory = signal<number | null>(null);
+  filterAccount = signal<number | null>(null);
+  filterTag = signal<string | null>(null);
+
+  filteredMovements = computed(() => {
+    const cat = this.filterCategory();
+    const acc = this.filterAccount();
+    const tag = this.filterTag();
+    const items = this.movements();
+
+    if (cat === null && acc === null && tag === null) {
+      return items;
+    }
+
+    return items.filter(item => {
+      if (cat !== null) {
+        if (item.type === 'transaction') {
+          if ((item.data as Transaction).categoryId !== cat) return false;
+        } else {
+          return false;
+        }
+      }
+      if (acc !== null) {
+        if (item.type === 'transaction') {
+          if ((item.data as Transaction).accountId !== acc) return false;
+        } else {
+          const tr = item.data as Transfer;
+          if (tr.sourceAccountId !== acc && tr.destinationAccountId !== acc) return false;
+        }
+      }
+      if (tag !== null) {
+        if (item.type === 'transaction') {
+          if (!(item.data as Transaction).tags.includes(tag)) return false;
+        } else {
+          return false;
+        }
+      }
+      return true;
+    });
+  });
+
+  activeFilterCount = computed(() => {
+    let count = 0;
+    if (this.filterCategory() !== null) count++;
+    if (this.filterAccount() !== null) count++;
+    if (this.filterTag() !== null) count++;
+    return count;
+  });
 
   async ngOnInit(): Promise<void> {
     this.baseCurrency.set(await this.profileService.getBaseCurrency());
@@ -199,6 +248,12 @@ export class MovementsComponent implements OnInit {
     this.errorMessage.set('');
     this.txForm.update(f => ({ ...f, tags: [] }));
     this.resetExchangeRate();
+  }
+
+  clearFilters(): void {
+    this.filterCategory.set(null);
+    this.filterAccount.set(null);
+    this.filterTag.set(null);
   }
 
   private resetExchangeRate(): void {
