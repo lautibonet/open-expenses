@@ -21,7 +21,7 @@ export class SettingsComponent implements OnInit {
 
   accounts = signal<Account[]>([]);
   categories = signal<Category[]>([]);
-  tags = signal<string[]>([]);
+  tagCounts = signal<{ tag: string; count: number }[]>([]);
   baseCurrency = signal('EUR');
 
   newAccountName = signal('');
@@ -30,6 +30,7 @@ export class SettingsComponent implements OnInit {
   newCategoryName = signal('');
   newCategoryType = signal<'Income' | 'Expense'>('Expense');
   editingTag = signal<{ old: string; new: string } | null>(null);
+  tagToDelete = signal<string | null>(null);
   errorMessage = signal('');
   successMessage = signal('');
 
@@ -41,7 +42,7 @@ export class SettingsComponent implements OnInit {
   async refresh(): Promise<void> {
     this.accounts.set(await this.accountService.getAll());
     this.categories.set(await this.categoryService.getAll());
-    this.tags.set(await this.transactionService.getAllTags());
+    this.tagCounts.set(await this.transactionService.getTagCounts());
   }
 
   async addAccount(): Promise<void> {
@@ -107,6 +108,28 @@ export class SettingsComponent implements OnInit {
 
   cancelEditTag(): void {
     this.editingTag.set(null);
+  }
+
+  confirmDeleteTag(tag: string): void {
+    this.tagToDelete.set(tag);
+  }
+
+  cancelDeleteTag(): void {
+    this.tagToDelete.set(null);
+  }
+
+  async deleteTag(): Promise<void> {
+    const tag = this.tagToDelete();
+    if (!tag) return;
+    try {
+      await this.transactionService.deleteTag(tag);
+      this.tagToDelete.set(null);
+      this.successMessage.set(`Tag "${tag}" deleted from all transactions`);
+      setTimeout(() => this.successMessage.set(''), 3000);
+      await this.refresh();
+    } catch (e: unknown) {
+      this.errorMessage.set(e instanceof Error ? e.message : 'Failed to delete tag');
+    }
   }
 
   async updateBaseCurrency(): Promise<void> {

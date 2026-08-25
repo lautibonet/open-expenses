@@ -142,6 +142,43 @@ describe('TransactionService', () => {
     expect(tags).toEqual(['groceries', 'weekly']);
   });
 
+  it('should return tag counts across transactions', async () => {
+    await transactionService.create(accountId, categoryId, 100, new Date(), 'January', ['food', 'weekly']);
+    await transactionService.create(accountId, categoryId, 200, new Date(), 'February', ['food', 'monthly']);
+    await transactionService.create(accountId, categoryId, 300, new Date(), 'March', ['weekly']);
+    const counts = await transactionService.getTagCounts();
+    expect(counts).toEqual([
+      { tag: 'food', count: 2 },
+      { tag: 'monthly', count: 1 },
+      { tag: 'weekly', count: 2 },
+    ]);
+  });
+
+  it('should return empty array when no tags exist', async () => {
+    await transactionService.create(accountId, categoryId, 100, new Date(), 'January');
+    const counts = await transactionService.getTagCounts();
+    expect(counts).toEqual([]);
+  });
+
+  it('should delete a tag from all transactions', async () => {
+    await transactionService.create(accountId, categoryId, 100, new Date(), 'January', ['food', 'weekly']);
+    await transactionService.create(accountId, categoryId, 200, new Date(), 'February', ['food', 'monthly']);
+    await transactionService.deleteTag('food');
+    const tags = await transactionService.getAllTags();
+    expect(tags).toEqual(['monthly', 'weekly']);
+  });
+
+  it('should leave transactions with no other tags intact after tag deletion', async () => {
+    await transactionService.create(accountId, categoryId, 100, new Date(), 'January', ['food']);
+    await transactionService.deleteTag('food');
+    const all = await transactionService.getAll();
+    expect(all[0].tags).toEqual([]);
+  });
+
+  it('should throw when deleting empty tag name', async () => {
+    await expect(transactionService.deleteTag('')).rejects.toThrow('Tag name cannot be empty');
+  });
+
   it('should store exchange rate and base currency amount', async () => {
     const t = await transactionService.create(
       accountId, categoryId, 1500, new Date(), 'January', [], 1.08, 1620,
