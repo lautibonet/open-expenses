@@ -146,4 +146,42 @@
       </ul>
     }
   </section>
+
+  <section class="card">
+    <h2>Google Drive Backup</h2>
+    <p class="backup-description">Back up your data to Google Drive for off-device access. The app can only access files it created.</p>
+
+    @if (isDriveConnected()) {
+      <div class="backup-status">
+        <span class="status-connected">Connected</span>
+        <span class="backup-timestamp">Last backup: {{ lastBackupDisplay() }}</span>
+      </div>
+      <div class="backup-actions">
+        <button
+          class="btn primary"
+          (click)="backupNow()"
+          [disabled]="isDriveBackingUp()"
+        >
+          {{ isDriveBackingUp() ? 'Backing up...' : 'Back up now' }}
+        </button>
+        <button
+          class="btn"
+          (click)="restoreFromBackup()"
+          [disabled]="isDriveBackingUp()"
+        >
+          Restore from backup
+        </button>
+        <button class="btn danger" (click)="disconnectGoogle()">Disconnect Google</button>
+      </div>
+    } @else {
+      <div class="backup-status">
+        <span class="status-disconnected">Not connected</span>
+      </div>
+      <button class="btn primary" (click)="connectGoogle()">Connect Google</button>
+    }
+
+    @if (driveError()) {
+      <p class="error">{{ driveError() }}</p>
+    }
+  </section>
 </div>

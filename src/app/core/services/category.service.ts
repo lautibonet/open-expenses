@@ -1,6 +1,7 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { db } from '../db/database';
 import { Category, CategoryType } from '../models/category.model';
+import { DriveBackupService } from './drive-backup.service';
 
 const DEFAULT_CATEGORIES: { name: string; type: CategoryType }[] = [
   { name: 'Food', type: 'Expense' },
@@ -17,6 +18,7 @@ const DEFAULT_CATEGORIES: { name: string; type: CategoryType }[] = [
 @Injectable({ providedIn: 'root' })
 export class CategoryService {
   static readonly DEFAULT_CATEGORIES = DEFAULT_CATEGORIES;
+  private backupService = inject(DriveBackupService);
 
   async create(name: string, type: CategoryType): Promise<Category> {
     const trimmedName = name.trim();
@@ -37,6 +39,7 @@ export class CategoryService {
     };
 
     const id = await db.categories.add(category);
+    this.backupService.scheduleAutoBackup();
     return { ...category, id };
   }
 
@@ -62,6 +65,7 @@ export class CategoryService {
       await db.categories.update(id, { type: changes.type });
     }
 
+    this.backupService.scheduleAutoBackup();
     return (await db.categories.get(id))!;
   }
 
@@ -71,6 +75,7 @@ export class CategoryService {
       throw new Error('Category not found');
     }
     await db.categories.update(id, { active });
+    this.backupService.scheduleAutoBackup();
   }
 
   async getAll(): Promise<Category[]> {
