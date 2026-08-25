@@ -15,7 +15,7 @@
       <div class="form-grid">
         <label>
           Account
-          <select [ngModel]="formAccountId()" (ngModelChange)="formAccountId.set($event)">
+          <select [ngModel]="txForm().accountId" (ngModelChange)="txForm.update(f => ({ ...f, accountId: +$event }))">
             @for (acc of accounts(); track acc.id) {
               <option [value]="acc.id">{{ acc.name }}</option>
             }
@@ -23,7 +23,7 @@
         </label>
         <label>
           Category
-          <select [ngModel]="formCategoryId()" (ngModelChange)="formCategoryId.set($event)">
+          <select [ngModel]="txForm().categoryId" (ngModelChange)="txForm.update(f => ({ ...f, categoryId: +$event }))">
             @for (cat of categories(); track cat.id) {
               <option [value]="cat.id">{{ cat.name }} ({{ cat.type }})</option>
             }
@@ -31,15 +31,15 @@
         </label>
         <label>
           Amount (cents)
-          <input type="number" [ngModel]="formAmount()" (ngModelChange)="formAmount.set($event)" />
+          <input type="number" [ngModel]="txForm().amount" (ngModelChange)="txForm.update(f => ({ ...f, amount: +$event }))" />
         </label>
         <label>
           Date
-          <input type="date" [ngModel]="formDate()" (ngModelChange)="formDate.set($event)" />
+          <input type="date" [ngModel]="txForm().date" (ngModelChange)="txForm.update(f => ({ ...f, date: $event }))" />
         </label>
         <label>
           Period
-          <select [ngModel]="formPeriod()" (ngModelChange)="formPeriod.set($event)">
+          <select [ngModel]="txForm().period" (ngModelChange)="txForm.update(f => ({ ...f, period: $event }))">
             @for (month of months; track month) {
               <option [value]="month">{{ month }}</option>
             }
@@ -47,7 +47,7 @@
         </label>
         <label>
           Tags (comma-separated)
-          <input type="text" [ngModel]="formTags()" (ngModelChange)="formTags.set($event)" placeholder="e.g. vacation, food" />
+          <input type="text" [ngModel]="txForm().tags" (ngModelChange)="txForm.update(f => ({ ...f, tags: $event }))" placeholder="e.g. vacation, food" />
         </label>
       </div>
       @if (errorMessage()) {
@@ -66,7 +66,7 @@
       <div class="form-grid">
         <label>
           From
-          <select [ngModel]="formSourceAccountId()" (ngModelChange)="formSourceAccountId.set($event)">
+          <select [ngModel]="trForm().sourceAccountId" (ngModelChange)="trForm.update(f => ({ ...f, sourceAccountId: +$event }))">
             @for (acc of accounts(); track acc.id) {
               <option [value]="acc.id">{{ acc.name }}</option>
             }
@@ -74,7 +74,7 @@
         </label>
         <label>
           To
-          <select [ngModel]="formDestAccountId()" (ngModelChange)="formDestAccountId.set($event)">
+          <select [ngModel]="trForm().destAccountId" (ngModelChange)="trForm.update(f => ({ ...f, destAccountId: +$event }))">
             @for (acc of accounts(); track acc.id) {
               <option [value]="acc.id">{{ acc.name }}</option>
             }
@@ -82,15 +82,15 @@
         </label>
         <label>
           Amount (cents)
-          <input type="number" [ngModel]="formAmount()" (ngModelChange)="formAmount.set($event)" />
+          <input type="number" [ngModel]="trForm().amount" (ngModelChange)="trForm.update(f => ({ ...f, amount: +$event }))" />
         </label>
         <label>
           Date
-          <input type="date" [ngModel]="formDate()" (ngModelChange)="formDate.set($event)" />
+          <input type="date" [ngModel]="trForm().date" (ngModelChange)="trForm.update(f => ({ ...f, date: $event }))" />
         </label>
         <label>
           Period
-          <select [ngModel]="formPeriod()" (ngModelChange)="formPeriod.set($event)">
+          <select [ngModel]="trForm().period" (ngModelChange)="trForm.update(f => ({ ...f, period: $event }))">
             @for (month of months; track month) {
               <option [value]="month">{{ month }}</option>
             }
@@ -98,7 +98,7 @@
         </label>
         <label>
           Note
-          <input type="text" [ngModel]="formNote()" (ngModelChange)="formNote.set($event)" />
+          <input type="text" [ngModel]="trForm().note" (ngModelChange)="trForm.update(f => ({ ...f, note: $event }))" />
         </label>
       </div>
       @if (errorMessage()) {

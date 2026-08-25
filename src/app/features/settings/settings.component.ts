@@ -57,12 +57,12 @@ export class SettingsComponent implements OnInit {
   }
 
   async deactivateAccount(id: number): Promise<void> {
-    await this.accountService.deactivate(id);
+    await this.accountService.setActive(id, false);
     await this.refresh();
   }
 
   async reactivateAccount(id: number): Promise<void> {
-    await this.accountService.reactivate(id);
+    await this.accountService.setActive(id, true);
     await this.refresh();
   }
 
@@ -78,12 +78,12 @@ export class SettingsComponent implements OnInit {
   }
 
   async deactivateCategory(id: number): Promise<void> {
-    await this.categoryService.deactivate(id);
+    await this.categoryService.setActive(id, false);
     await this.refresh();
   }
 
   async reactivateCategory(id: number): Promise<void> {
-    await this.categoryService.reactivate(id);
+    await this.categoryService.setActive(id, true);
     await this.refresh();
   }
 

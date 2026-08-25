@@ -58,20 +58,12 @@ export class AccountService {
     return (await db.accounts.get(id))!;
   }
 
-  async deactivate(id: number): Promise<void> {
+  async setActive(id: number, active: boolean): Promise<void> {
     const account = await db.accounts.get(id);
     if (!account) {
       throw new Error('Account not found');
     }
-    await db.accounts.update(id, { active: false });
-  }
-
-  async reactivate(id: number): Promise<void> {
-    const account = await db.accounts.get(id);
-    if (!account) {
-      throw new Error('Account not found');
-    }
-    await db.accounts.update(id, { active: true });
+    await db.accounts.update(id, { active });
   }
 
   async getAll(): Promise<Account[]> {

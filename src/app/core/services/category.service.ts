@@ -1,10 +1,23 @@
 import { Injectable } from '@angular/core';
 import { db } from '../db/database';
 import { Category, CategoryType } from '../models/category.model';
-import { DEFAULT_CATEGORIES } from '../types/period.type';
+
+const DEFAULT_CATEGORIES: { name: string; type: CategoryType }[] = [
+  { name: 'Food', type: 'Expense' },
+  { name: 'Transport', type: 'Expense' },
+  { name: 'Housing', type: 'Expense' },
+  { name: 'Subscriptions', type: 'Expense' },
+  { name: 'Leisure', type: 'Expense' },
+  { name: 'Misc', type: 'Expense' },
+  { name: 'Payroll', type: 'Income' },
+  { name: 'Second-hand Sale', type: 'Income' },
+  { name: 'Refund', type: 'Income' },
+];
 
 @Injectable({ providedIn: 'root' })
 export class CategoryService {
+  static readonly DEFAULT_CATEGORIES = DEFAULT_CATEGORIES;
+
   async create(name: string, type: CategoryType): Promise<Category> {
     const trimmedName = name.trim();
     if (!trimmedName) {
@@ -52,20 +65,12 @@ export class CategoryService {
     return (await db.categories.get(id))!;
   }
 
-  async deactivate(id: number): Promise<void> {
+  async setActive(id: number, active: boolean): Promise<void> {
     const category = await db.categories.get(id);
     if (!category) {
       throw new Error('Category not found');
     }
-    await db.categories.update(id, { active: false });
-  }
-
-  async reactivate(id: number): Promise<void> {
-    const category = await db.categories.get(id);
-    if (!category) {
-      throw new Error('Category not found');
-    }
-    await db.categories.update(id, { active: true });
+    await db.categories.update(id, { active });
   }
 
   async getAll(): Promise<Category[]> {

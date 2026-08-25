@@ -23,17 +23,9 @@ export class OnboardingComponent {
   accountCurrency = signal('EUR');
   accountBalance = signal(0);
   accounts = signal<{ name: string; currency: string; balance: number }[]>([]);
-  defaultCategories = signal<{ name: string; type: 'Income' | 'Expense'; active: boolean }[]>([
-    { name: 'Food', type: 'Expense', active: true },
-    { name: 'Transport', type: 'Expense', active: true },
-    { name: 'Housing', type: 'Expense', active: true },
-    { name: 'Subscriptions', type: 'Expense', active: true },
-    { name: 'Leisure', type: 'Expense', active: true },
-    { name: 'Misc', type: 'Expense', active: true },
-    { name: 'Payroll', type: 'Income', active: true },
-    { name: 'Second-hand Sale', type: 'Income', active: true },
-    { name: 'Refund', type: 'Income', active: true },
-  ]);
+  defaultCategories = signal(
+    CategoryService.DEFAULT_CATEGORIES.map(c => ({ ...c, active: true })),
+  );
   errorMessage = signal('');
 
   addAccount(): void {

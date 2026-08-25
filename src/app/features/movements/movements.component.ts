@@ -18,6 +18,26 @@ interface MovementItem {
   data: Transaction | Transfer;
 }
 
+interface TransactionForm {
+  accountId: number;
+  categoryId: number;
+  amount: number;
+  date: string;
+  period: string;
+  tags: string;
+  exchangeRate: number | null;
+  baseCurrencyAmount: number | null;
+}
+
+interface TransferForm {
+  sourceAccountId: number;
+  destAccountId: number;
+  amount: number;
+  date: string;
+  period: string;
+  note: string;
+}
+
 @Component({
   selector: 'app-movements',
   imports: [FormsModule, DatePipe],
@@ -41,17 +61,17 @@ export class MovementsComponent implements OnInit {
   showForm = signal<'none' | 'transaction' | 'transfer'>('none');
   editingId = signal<number | null>(null);
 
-  formAccountId = signal<number>(0);
-  formCategoryId = signal<number>(0);
-  formAmount = signal<number>(0);
-  formDate = signal(new Date().toISOString().split('T')[0]);
-  formPeriod = signal<string>(getCurrentPeriod());
-  formTags = signal('');
-  formSourceAccountId = signal<number>(0);
-  formDestAccountId = signal<number>(0);
-  formNote = signal('');
-  formExchangeRate = signal<number | null>(null);
-  formBaseAmount = signal<number | null>(null);
+  txForm = signal<TransactionForm>({
+    accountId: 0, categoryId: 0, amount: 0,
+    date: new Date().toISOString().split('T')[0],
+    period: getCurrentPeriod(), tags: '',
+    exchangeRate: null, baseCurrencyAmount: null,
+  });
+  trForm = signal<TransferForm>({
+    sourceAccountId: 0, destAccountId: 0, amount: 0,
+    date: new Date().toISOString().split('T')[0],
+    period: getCurrentPeriod(), note: '',
+  });
   errorMessage = signal('');
 
   async ngOnInit(): Promise<void> {
@@ -59,12 +79,10 @@ export class MovementsComponent implements OnInit {
     this.accounts.set(await this.accountService.getActive());
     this.categories.set(await this.categoryService.getActive());
     if (this.accounts().length > 0) {
-      this.formAccountId.set(this.accounts()[0].id!);
-      this.formSourceAccountId.set(this.accounts()[0].id!);
-      if (this.accounts().length > 1) {
-        this.formDestAccountId.set(this.accounts()[1].id!);
-      }
-      this.formCategoryId.set(this.categories()[0]?.id ?? 0);
+      const first = this.accounts()[0].id!;
+      const second = this.accounts()[1]?.id;
+      this.txForm.update(f => ({ ...f, accountId: first, categoryId: this.categories()[0]?.id ?? 0 }));
+      this.trForm.update(f => ({ ...f, sourceAccountId: first, destAccountId: second ?? first }));
     }
     await this.refresh();
   }
@@ -93,23 +111,29 @@ export class MovementsComponent implements OnInit {
     if (id) {
       this.transactionService.getById(id).then(t => {
         if (t) {
-          this.formAccountId.set(t.accountId);
-          this.formCategoryId.set(t.categoryId);
-          this.formAmount.set(t.amount);
-          this.formDate.set(new Date(t.date).toISOString().split('T')[0]);
-          this.formPeriod.set(t.period);
-          this.formTags.set(t.tags.join(', '));
-          this.formExchangeRate.set(t.exchangeRate);
-          this.formBaseAmount.set(t.baseCurrencyAmount);
+          this.txForm.set({
+            accountId: t.accountId,
+            categoryId: t.categoryId,
+            amount: t.amount,
+            date: new Date(t.date).toISOString().split('T')[0],
+            period: t.period,
+            tags: t.tags.join(', '),
+            exchangeRate: t.exchangeRate,
+            baseCurrencyAmount: t.baseCurrencyAmount,
+          });
         }
       });
     } else {
-      this.formAmount.set(0);
-      this.formDate.set(new Date().toISOString().split('T')[0]);
-      this.formPeriod.set(this.selectedPeriod());
-      this.formTags.set('');
-      this.formExchangeRate.set(null);
-      this.formBaseAmount.set(null);
+      this.txForm.set({
+        accountId: this.accounts()[0]?.id ?? 0,
+        categoryId: this.categories()[0]?.id ?? 0,
+        amount: 0,
+        date: new Date().toISOString().split('T')[0],
+        period: this.selectedPeriod(),
+        tags: '',
+        exchangeRate: null,
+        baseCurrencyAmount: null,
+      });
     }
   }
 
@@ -120,19 +144,25 @@ export class MovementsComponent implements OnInit {
     if (id) {
       this.transferService.getById(id).then(t => {
         if (t) {
-          this.formSourceAccountId.set(t.sourceAccountId);
-          this.formDestAccountId.set(t.destinationAccountId);
-          this.formAmount.set(t.amount);
-          this.formDate.set(new Date(t.date).toISOString().split('T')[0]);
-          this.formPeriod.set(t.period);
-          this.formNote.set(t.note);
+          this.trForm.set({
+            sourceAccountId: t.sourceAccountId,
+            destAccountId: t.destinationAccountId,
+            amount: t.amount,
+            date: new Date(t.date).toISOString().split('T')[0],
+            period: t.period,
+            note: t.note,
+          });
         }
       });
     } else {
-      this.formAmount.set(0);
-      this.formDate.set(new Date().toISOString().split('T')[0]);
-      this.formPeriod.set(this.selectedPeriod());
-      this.formNote.set('');
+      this.trForm.set({
+        sourceAccountId: this.accounts()[0]?.id ?? 0,
+        destAccountId: this.accounts()[1]?.id ?? this.accounts()[0]?.id ?? 0,
+        amount: 0,
+        date: new Date().toISOString().split('T')[0],
+        period: this.selectedPeriod(),
+        note: '',
+      });
     }
   }
 
@@ -144,28 +174,18 @@ export class MovementsComponent implements OnInit {
 
   async saveTransaction(): Promise<void> {
     try {
-      const tags = this.formTags().split(',').map(t => t.trim()).filter(t => t.length > 0);
+      const f = this.txForm();
+      const tags = f.tags.split(',').map(t => t.trim()).filter(t => t.length > 0);
       if (this.editingId()) {
         await this.transactionService.update(this.editingId()!, {
-          accountId: this.formAccountId(),
-          categoryId: this.formCategoryId(),
-          amount: this.formAmount(),
-          date: new Date(this.formDate()),
-          period: this.formPeriod(),
-          tags,
-          exchangeRate: this.formExchangeRate(),
-          baseCurrencyAmount: this.formBaseAmount(),
+          accountId: f.accountId, categoryId: f.categoryId, amount: f.amount,
+          date: new Date(f.date), period: f.period, tags,
+          exchangeRate: f.exchangeRate, baseCurrencyAmount: f.baseCurrencyAmount,
         });
       } else {
         await this.transactionService.create(
-          this.formAccountId(),
-          this.formCategoryId(),
-          this.formAmount(),
-          new Date(this.formDate()),
-          this.formPeriod(),
-          tags,
-          this.formExchangeRate(),
-          this.formBaseAmount(),
+          f.accountId, f.categoryId, f.amount, new Date(f.date),
+          f.period, tags, f.exchangeRate, f.baseCurrencyAmount,
         );
       }
       this.cancelForm();
@@ -177,23 +197,16 @@ export class MovementsComponent implements OnInit {
 
   async saveTransfer(): Promise<void> {
     try {
+      const f = this.trForm();
       if (this.editingId()) {
         await this.transferService.update(this.editingId()!, {
-          sourceAccountId: this.formSourceAccountId(),
-          destinationAccountId: this.formDestAccountId(),
-          amount: this.formAmount(),
-          date: new Date(this.formDate()),
-          period: this.formPeriod(),
-          note: this.formNote(),
+          sourceAccountId: f.sourceAccountId, destinationAccountId: f.destAccountId,
+          amount: f.amount, date: new Date(f.date), period: f.period, note: f.note,
         });
       } else {
         await this.transferService.create(
-          this.formSourceAccountId(),
-          this.formDestAccountId(),
-          this.formAmount(),
-          new Date(this.formDate()),
-          this.formPeriod(),
-          this.formNote(),
+          f.sourceAccountId, f.destAccountId, f.amount,
+          new Date(f.date), f.period, f.note,
         );
       }
       this.cancelForm();

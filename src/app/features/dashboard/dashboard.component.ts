@@ -53,7 +53,10 @@ export class DashboardComponent implements OnInit {
     this.periodTransactions.set(txns);
     this.periodTransfers.set(await this.transferService.getByPeriod(period));
     this.accounts.set(await this.accountService.getAll());
-    this.categories.set(await this.categoryService.getAll());
+
+    const allCategories = await this.categoryService.getAll();
+    this.categories.set(allCategories);
+    const catMap = new Map(allCategories.map(c => [c.id!, c]));
 
     let income = 0;
     let expenses = 0;
@@ -61,7 +64,7 @@ export class DashboardComponent implements OnInit {
 
     for (const t of txns) {
       const amount = t.baseCurrencyAmount ?? t.amount;
-      const cat = await this.categoryService.getById(t.categoryId);
+      const cat = catMap.get(t.categoryId);
       if (cat?.type === 'Income') {
         income += amount;
       } else {
@@ -76,7 +79,7 @@ export class DashboardComponent implements OnInit {
 
     const breakdown: { name: string; total: number }[] = [];
     for (const [catId, total] of catTotals) {
-      const cat = await this.categoryService.getById(catId);
+      const cat = catMap.get(catId);
       if (cat) {
         breakdown.push({ name: cat.name, total });
       }
@@ -89,7 +92,7 @@ export class DashboardComponent implements OnInit {
       const transfersAll = await this.transferService.getAll();
       let balance = acc.initialBalance;
       for (const t of txnsAll) {
-        const cat = await this.categoryService.getById(t.categoryId);
+        const cat = catMap.get(t.categoryId);
         balance += cat?.type === 'Income' ? t.amount : -t.amount;
       }
       for (const tr of transfersAll) {
