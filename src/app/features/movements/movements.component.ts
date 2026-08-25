@@ -7,6 +7,7 @@ import { AccountService } from '../../core/services/account.service';
 import { CategoryService } from '../../core/services/category.service';
 import { ProfileService } from '../../core/services/profile.service';
 import { ExchangeRateService } from '../../core/services/exchange-rate.service';
+import { OfflineError } from '../../core/models/offline-error';
 import { Transaction } from '../../core/models/transaction.model';
 import { Transfer } from '../../core/models/transfer.model';
 import { Account } from '../../core/models/account.model';
@@ -282,9 +283,12 @@ export class MovementsComponent implements OnInit {
       this.exchangeRateState.update(s => ({ ...s, rate: result.rate, date: result.date }));
       this.txForm.update(f => ({ ...f, exchangeRate: result.rate }));
       this.recomputeBaseCurrencyAmount();
-    } catch {
+    } catch (e: unknown) {
+      const msg = e instanceof OfflineError
+        ? 'You are offline. Enter the exchange rate manually.'
+        : 'Could not fetch rate. Enter it manually below.';
       this.exchangeRateState.update(s => ({
-        ...s, error: 'Could not fetch rate. Enter it manually below.',
+        ...s, error: msg,
       }));
       this.txForm.update(f => ({ ...f, exchangeRate: null, baseCurrencyAmount: null }));
     } finally {

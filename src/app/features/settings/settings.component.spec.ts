@@ -124,7 +124,11 @@ describe('SettingsComponent - backup', () => {
     const now = new Date();
     await profileService.updateLastBackupAt(now);
 
-    const freshService = new DriveBackupService(profileService);
+    TestBed.resetTestingModule();
+    await TestBed.configureTestingModule({
+      imports: [SettingsComponent],
+    }).compileComponents();
+    const freshService = TestBed.inject(DriveBackupService);
     await new Promise((r) => setTimeout(r, 500));
 
     expect(freshService.lastBackupAt()).not.toBeNull();

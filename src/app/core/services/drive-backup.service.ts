@@ -1,6 +1,7 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { db } from '../db/database';
 import { ProfileService } from './profile.service';
+import { NetworkService } from './network.service';
 
 export interface DriveBackupSnapshot {
   accounts: any[];
@@ -23,6 +24,9 @@ export class DriveBackupService {
   private readonly SCOPES = 'https://www.googleapis.com/auth/drive.file';
   private readonly DEBOUNCE_MS = 5 * 60 * 1000;
 
+  private profileService = inject(ProfileService);
+  private networkService = inject(NetworkService);
+
   isConnected = signal(false);
   isBackingUp = signal(false);
   lastBackupAt = signal<Date | null>(null);
@@ -32,13 +36,19 @@ export class DriveBackupService {
   private accessToken: string | null = null;
   private pendingCodeVerifier: string | null = null;
 
-  constructor(private profileService: ProfileService) {
+  constructor() {
     this.loadStoredState();
     this.setupVisibilityListener();
   }
 
   async connect(): Promise<void> {
     this.error.set(null);
+
+    if (!this.networkService.isOnline()) {
+      const msg = 'Cannot connect while offline';
+      this.error.set(msg);
+      throw new Error(msg);
+    }
 
     await this.loadGoogleIdentityServices();
 
@@ -104,6 +114,10 @@ export class DriveBackupService {
       throw new Error('Not connected');
     }
 
+    if (!this.networkService.isOnline()) {
+      throw new Error('Cannot backup while offline');
+    }
+
     this.isBackingUp.set(true);
     this.error.set(null);
 
@@ -134,6 +148,10 @@ export class DriveBackupService {
       throw new Error('Not connected');
     }
 
+    if (!this.networkService.isOnline()) {
+      throw new Error('Cannot restore while offline');
+    }
+
     this.isBackingUp.set(true);
     this.error.set(null);
 
@@ -156,6 +174,9 @@ export class DriveBackupService {
 
   scheduleAutoBackup(): void {
     this.cancelAutoBackup();
+    if (!this.networkService.isOnline()) {
+      return;
+    }
     this.autoBackupTimer = setTimeout(() => {
       if (this.isConnected()) {
         this.backupNow().catch(() => {});
@@ -376,7 +397,7 @@ export class DriveBackupService {
   private setupVisibilityListener(): void {
     if (typeof document !== 'undefined') {
       document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'hidden' && this.isConnected()) {
+        if (document.visibilityState === 'hidden' && this.isConnected() && this.networkService.isOnline()) {
           this.backupNow().catch(() => {});
         }
       });

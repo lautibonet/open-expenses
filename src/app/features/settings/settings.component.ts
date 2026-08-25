@@ -5,6 +5,7 @@ import { CategoryService } from '../../core/services/category.service';
 import { ProfileService } from '../../core/services/profile.service';
 import { TransactionService } from '../../core/services/transaction.service';
 import { DriveBackupService } from '../../core/services/drive-backup.service';
+import { NetworkService } from '../../core/services/network.service';
 import { Account } from '../../core/models/account.model';
 import { Category } from '../../core/models/category.model';
 
@@ -20,6 +21,7 @@ export class SettingsComponent implements OnInit {
   private profileService = inject(ProfileService);
   private transactionService = inject(TransactionService);
   private driveBackupService = inject(DriveBackupService);
+  private networkService = inject(NetworkService);
 
   accounts = signal<Account[]>([]);
   categories = signal<Category[]>([]);
@@ -45,6 +47,7 @@ export class SettingsComponent implements OnInit {
   isDriveConnected = computed(() => this.driveBackupService.isConnected());
   isDriveBackingUp = computed(() => this.driveBackupService.isBackingUp());
   driveError = computed(() => this.driveBackupService.error());
+  isOnline = computed(() => this.networkService.isOnline());
 
   async ngOnInit(): Promise<void> {
     this.baseCurrency.set(await this.profileService.getBaseCurrency());

@@ -1,4 +1,6 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
+import { NetworkService } from './network.service';
+import { OfflineError } from '../models/offline-error';
 
 const FRANKFURTER_BASE = 'https://api.frankfurter.dev';
 
@@ -11,12 +13,18 @@ export interface ExchangeRateResult {
 
 @Injectable({ providedIn: 'root' })
 export class ExchangeRateService {
+  private networkService = inject(NetworkService);
+
   async getRate(from: string, to: string, date?: string): Promise<ExchangeRateResult> {
     const fromCurrency = from.toUpperCase();
     const toCurrency = to.toUpperCase();
 
     if (fromCurrency === toCurrency) {
       return { rate: 1, from: fromCurrency, to: toCurrency, date: date ?? this.formatDate(new Date()) };
+    }
+
+    if (!this.networkService.isOnline()) {
+      throw new OfflineError();
     }
 
     const dateStr = date ?? 'latest';

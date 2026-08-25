@@ -384,7 +384,9 @@ describe('DriveBackupService', () => {
       const profile = await profileService.get();
       expect(profile?.lastBackupAt).toBeTruthy();
 
-      const freshService = new DriveBackupService(profileService);
+      TestBed.resetTestingModule();
+      await TestBed.configureTestingModule({}).compileComponents();
+      const freshService = TestBed.inject(DriveBackupService);
       await new Promise((r) => setTimeout(r, 500));
 
       expect(freshService.lastBackupAt()).not.toBeNull();
