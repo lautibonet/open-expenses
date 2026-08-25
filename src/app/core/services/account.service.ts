@@ -1,9 +1,11 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { db } from '../db/database';
 import { Account } from '../models/account.model';
+import { DriveBackupService } from './drive-backup.service';
 
 @Injectable({ providedIn: 'root' })
 export class AccountService {
+  private backupService = inject(DriveBackupService);
   async create(name: string, currency: string, initialBalance: number): Promise<Account> {
     const trimmedName = name.trim();
     if (!trimmedName) {
@@ -27,6 +29,7 @@ export class AccountService {
     };
 
     const id = await db.accounts.add(account);
+    this.backupService.scheduleAutoBackup();
     return { ...account, id };
   }
 
@@ -55,6 +58,7 @@ export class AccountService {
       await db.accounts.update(id, { initialBalance: changes.initialBalance });
     }
 
+    this.backupService.scheduleAutoBackup();
     return (await db.accounts.get(id))!;
   }
 
@@ -64,6 +68,7 @@ export class AccountService {
       throw new Error('Account not found');
     }
     await db.accounts.update(id, { active });
+    this.backupService.scheduleAutoBackup();
   }
 
   async getAll(): Promise<Account[]> {
