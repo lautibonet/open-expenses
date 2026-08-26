@@ -165,3 +165,13 @@ table {
   gap: 0.5rem;
   flex-wrap: wrap;
 }
+
+.editable {
+  cursor: pointer;
+  border-bottom: 1px dashed #d1d5db;
+  padding: 0.25rem;
+}
+
+.editable:hover {
+  border-bottom-color: #2563eb;
+}

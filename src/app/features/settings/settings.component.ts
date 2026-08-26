@@ -39,6 +39,8 @@ export class SettingsComponent implements OnInit {
   tagToDelete = signal<string | null>(null);
   errorMessage = signal('');
   successMessage = signal('');
+  editingAccountBalance = signal<{ id: number; value: number } | null>(null);
+  editingCategoryName = signal<{ id: number; value: string } | null>(null);
 
   lastBackupDisplay = computed(() => {
     const date = this.driveBackupService.lastBackupAt();
@@ -74,6 +76,27 @@ export class SettingsComponent implements OnInit {
     }
   }
 
+  startEditAccountBalance(id: number, value: number): void {
+    this.editingAccountBalance.set({ id, value });
+  }
+
+  cancelEditAccountBalance(): void {
+    this.editingAccountBalance.set(null);
+  }
+
+  async saveAccountBalance(): Promise<void> {
+    const editing = this.editingAccountBalance();
+    if (!editing) return;
+    try {
+      await this.accountService.update(editing.id, { initialBalance: editing.value });
+      this.editingAccountBalance.set(null);
+      this.showSuccess('Account balance updated');
+      await this.refresh();
+    } catch (e: unknown) {
+      this.errorMessage.set(e instanceof Error ? e.message : 'Failed to update account balance');
+    }
+  }
+
   async deactivateAccount(id: number): Promise<void> {
     await this.accountService.setActive(id, false);
     await this.refresh();
@@ -92,6 +115,27 @@ export class SettingsComponent implements OnInit {
       await this.refresh();
     } catch (e: unknown) {
       this.errorMessage.set(e instanceof Error ? e.message : 'Failed to add category');
+    }
+  }
+
+  startEditCategoryName(id: number, value: string): void {
+    this.editingCategoryName.set({ id, value });
+  }
+
+  cancelEditCategoryName(): void {
+    this.editingCategoryName.set(null);
+  }
+
+  async saveCategoryName(): Promise<void> {
+    const editing = this.editingCategoryName();
+    if (!editing) return;
+    try {
+      await this.categoryService.update(editing.id, { name: editing.value });
+      this.editingCategoryName.set(null);
+      this.showSuccess('Category name updated');
+      await this.refresh();
+    } catch (e: unknown) {
+      this.errorMessage.set(e instanceof Error ? e.message : 'Failed to update category name');
     }
   }
 

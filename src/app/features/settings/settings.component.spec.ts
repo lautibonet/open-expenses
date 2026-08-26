@@ -169,3 +169,100 @@ describe('SettingsComponent - backup', () => {
     expect(spy).toHaveBeenCalled();
   });
 });
+
+describe('SettingsComponent - inline editing', () => {
+  let fixture: ComponentFixture<SettingsComponent>;
+  let component: SettingsComponent;
+  let accountService: AccountService;
+  let categoryService: CategoryService;
+  let accountId: number;
+  let categoryId: number;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    await TestBed.configureTestingModule({
+      imports: [SettingsComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(SettingsComponent);
+    component = fixture.componentInstance;
+    accountService = TestBed.inject(AccountService);
+    categoryService = TestBed.inject(CategoryService);
+
+    const account = await accountService.create('Cash', 'EUR', 100000);
+    accountId = account.id!;
+    const category = await categoryService.create('Food', 'Expense');
+    categoryId = category.id!;
+    await component.ngOnInit();
+  });
+
+  afterEach(async () => {
+    await db.delete();
+  });
+
+  it('should start editing account initialBalance', () => {
+    component.startEditAccountBalance(accountId, 100000);
+    expect(component.editingAccountBalance()).toEqual({ id: accountId, value: 100000 });
+  });
+
+  it('should cancel editing account initialBalance', () => {
+    component.startEditAccountBalance(accountId, 100000);
+    component.cancelEditAccountBalance();
+    expect(component.editingAccountBalance()).toBeNull();
+  });
+
+  it('should save account initialBalance', async () => {
+    component.startEditAccountBalance(accountId, 100000);
+    component.editingAccountBalance.set({ id: accountId, value: 200000 });
+    await component.saveAccountBalance();
+    expect(component.editingAccountBalance()).toBeNull();
+    const updated = await accountService.getById(accountId);
+    expect(updated?.initialBalance).toBe(200000);
+  });
+
+  it('should validate account initialBalance is not negative', async () => {
+    component.startEditAccountBalance(accountId, 100000);
+    component.editingAccountBalance.set({ id: accountId, value: -100 });
+    await component.saveAccountBalance();
+    expect(component.errorMessage()).toContain('cannot be negative');
+    expect(component.editingAccountBalance()).not.toBeNull();
+  });
+
+  it('should start editing category name', () => {
+    component.startEditCategoryName(categoryId, 'Food');
+    expect(component.editingCategoryName()).toEqual({ id: categoryId, value: 'Food' });
+  });
+
+  it('should cancel editing category name', () => {
+    component.startEditCategoryName(categoryId, 'Food');
+    component.cancelEditCategoryName();
+    expect(component.editingCategoryName()).toBeNull();
+  });
+
+  it('should save category name', async () => {
+    component.startEditCategoryName(categoryId, 'Food');
+    component.editingCategoryName.set({ id: categoryId, value: 'Groceries' });
+    await component.saveCategoryName();
+    expect(component.editingCategoryName()).toBeNull();
+    const updated = await categoryService.getById(categoryId);
+    expect(updated?.name).toBe('Groceries');
+  });
+
+  it('should validate category name is required', async () => {
+    component.startEditCategoryName(categoryId, 'Food');
+    component.editingCategoryName.set({ id: categoryId, value: '' });
+    await component.saveCategoryName();
+    expect(component.errorMessage()).toContain('required');
+    expect(component.editingCategoryName()).not.toBeNull();
+  });
+
+  it('should validate category name is unique', async () => {
+    await categoryService.create('Transport', 'Expense');
+    component.startEditCategoryName(categoryId, 'Food');
+    component.editingCategoryName.set({ id: categoryId, value: 'Transport' });
+    await component.saveCategoryName();
+    expect(component.errorMessage()).toContain('unique');
+    expect(component.editingCategoryName()).not.toBeNull();
+  });
+});

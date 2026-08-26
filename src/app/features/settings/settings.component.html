@@ -53,7 +53,22 @@
           <tr [class.inactive]="!acc.active">
             <td>{{ acc.name }}</td>
             <td>{{ acc.currency }}</td>
-            <td>{{ acc.initialBalance }}</td>
+            <td>
+              @if (editingAccountBalance()?.id === acc.id) {
+                <input
+                  type="number"
+                  [ngModel]="editingAccountBalance()!.value"
+                  (ngModelChange)="editingAccountBalance.set({ id: acc.id!, value: $event })"
+                  class="input small"
+                />
+                <button class="btn small primary" (click)="saveAccountBalance()">Save</button>
+                <button class="btn small" (click)="cancelEditAccountBalance()">Cancel</button>
+              } @else {
+                <span (click)="startEditAccountBalance(acc.id!, acc.initialBalance)" class="editable">
+                  {{ acc.initialBalance }}
+                </span>
+              }
+            </td>
             <td>{{ acc.active ? 'Active' : 'Inactive' }}</td>
             <td>
               @if (acc.active) {
@@ -91,7 +106,22 @@
       <tbody>
         @for (cat of categories(); track cat.id) {
           <tr [class.inactive]="!cat.active">
-            <td>{{ cat.name }}</td>
+            <td>
+              @if (editingCategoryName()?.id === cat.id) {
+                <input
+                  type="text"
+                  [ngModel]="editingCategoryName()!.value"
+                  (ngModelChange)="editingCategoryName.set({ id: cat.id!, value: $event })"
+                  class="input"
+                />
+                <button class="btn small primary" (click)="saveCategoryName()">Save</button>
+                <button class="btn small" (click)="cancelEditCategoryName()">Cancel</button>
+              } @else {
+                <span (click)="startEditCategoryName(cat.id!, cat.name)" class="editable">
+                  {{ cat.name }}
+                </span>
+              }
+            </td>
             <td>{{ cat.type }}</td>
             <td>{{ cat.active ? 'Active' : 'Inactive' }}</td>
             <td>
