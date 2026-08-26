@@ -59,6 +59,11 @@
         <span class="value">{{ formatMoney(totalBalanceBaseCurrency()) }}</span>
       </div>
     </div>
+    @if (conversionFailed()) {
+      <div class="conversion-warning">
+        Foreign currency accounts could not be converted. Total only includes {{ baseCurrency() }} accounts.
+      </div>
+    }
   </section>
 
   <section class="card">

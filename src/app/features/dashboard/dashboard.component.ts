@@ -46,6 +46,7 @@ export class DashboardComponent implements OnInit {
   categoryBreakdown = signal<{ name: string; total: number }[]>([]);
   accountBalances = signal<{ account: Account; balance: number }[]>([]);
   totalBalanceBaseCurrency = signal(0);
+  conversionFailed = signal(false);
 
   averagesYear = signal<string>(String(getCurrentYear()));
   averagesYears: string[] = [...this.years.map(String), 'All time'];
@@ -60,6 +61,7 @@ export class DashboardComponent implements OnInit {
   }
 
   async refresh(): Promise<void> {
+    this.conversionFailed.set(false);
     const period = this.selectedPeriod();
     const txns = await this.transactionService.getByPeriod(period);
     this.periodTransactions.set(txns);
@@ -128,6 +130,7 @@ export class DashboardComponent implements OnInit {
     }
 
     if (!this.networkService.isOnline()) {
+      this.conversionFailed.set(true);
       this.totalBalanceBaseCurrency.set(this.sumBalances(balances, base));
       return;
     }
@@ -137,6 +140,7 @@ export class DashboardComponent implements OnInit {
       const baseAmounts = await this.computeBaseAmounts(balances, catMap, rates, base);
       this.totalBalanceBaseCurrency.set(baseAmounts.reduce((sum, b) => sum + b.amount, 0));
     } catch {
+      this.conversionFailed.set(true);
       this.totalBalanceBaseCurrency.set(this.sumBalances(balances, base));
     }
   }

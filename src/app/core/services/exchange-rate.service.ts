@@ -24,15 +24,10 @@ export interface BatchExchangeRateResult {
   rates: Map<string, number>;
 }
 
-interface FrankfurterBatchResponse {
-  base: string;
-  date: string;
-  rates: Record<string, number>;
-}
-
 @Injectable({ providedIn: 'root' })
 export class ExchangeRateService {
   private networkService = inject(NetworkService);
+  private rateCache = new Map<string, BatchExchangeRateResult>();
 
   async getRate(from: string, to: string, date?: string): Promise<ExchangeRateResult> {
     const fromCurrency = from.toUpperCase();
@@ -82,6 +77,12 @@ export class ExchangeRateService {
       return { base: baseCurrency, date: date ?? this.formatDate(new Date()), rates };
     }
 
+    const cacheKey = `${baseCurrency}-${quoteCurrencies.join(',')}-${date ?? 'latest'}`;
+    const cached = this.rateCache.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     if (!this.networkService.isOnline()) {
       throw new OfflineError();
     }
@@ -96,21 +97,24 @@ export class ExchangeRateService {
       throw new Error(`Exchange rate API failed: ${response.statusText}`);
     }
 
-    const data: FrankfurterBatchResponse = await response.json();
-    if (!data?.rates || Object.keys(data.rates).length === 0) {
+    const data: FrankfurterResponse[] = await response.json();
+    if (!Array.isArray(data) || data.length === 0) {
       throw new Error('No rates returned');
     }
 
-    const rates = new Map<string, number>(Object.entries(data.rates));
-    if (quoteCurrencies.includes(baseCurrency)) {
-      rates.set(baseCurrency, 1);
+    const rates = new Map<string, number>();
+    for (const entry of data) {
+      rates.set(entry.quote, entry.rate);
     }
 
-    return {
+    const result: BatchExchangeRateResult = {
       base: baseCurrency,
-      date: data.date ?? this.formatDate(new Date()),
+      date: data[0].date ?? this.formatDate(new Date()),
       rates,
     };
+
+    this.rateCache.set(cacheKey, result);
+    return result;
   }
 
   private formatDate(d: Date): string {
