@@ -103,8 +103,8 @@ export class DashboardComponent implements OnInit {
         balance += cat?.type === 'Income' ? t.amount : -t.amount;
       }
       for (const tr of transfersAll) {
-        if (tr.sourceAccountId === acc.id) balance -= tr.amount;
-        if (tr.destinationAccountId === acc.id) balance += tr.amount;
+        if (tr.sourceAccountId === acc.id) balance -= tr.sourceAmount;
+        if (tr.destinationAccountId === acc.id) balance += tr.destinationAmount;
       }
       balances.push({ account: acc, balance });
     }

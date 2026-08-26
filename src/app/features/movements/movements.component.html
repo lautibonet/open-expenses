@@ -23,7 +23,10 @@
         </label>
         <label>
           Category
-          <select [ngModel]="txForm().categoryId" (ngModelChange)="txForm.update(f => ({ ...f, categoryId: +$event }))">
+          <select
+            [ngModel]="txForm().categoryId"
+            (ngModelChange)="txForm.update((f) => ({ ...f, categoryId: +$event }))"
+          >
             @for (cat of categories(); track cat.id) {
               <option [value]="cat.id">{{ cat.name }} ({{ cat.type }})</option>
             }
@@ -31,23 +34,36 @@
         </label>
         <label>
           Amount
-          <input type="number" [ngModel]="txForm().amount" (ngModelChange)="txForm.update(f => ({ ...f, amount: +$event })); onAmountOrRateChange()" />
+          <input
+            type="number"
+            [ngModel]="txForm().amount"
+            (ngModelChange)="
+              txForm.update((f) => ({ ...f, amount: +$event })); onAmountOrRateChange()
+            "
+          />
         </label>
         <label>
           Tags
           <app-tag-input
             [tags]="txForm().tags"
             [suggestions]="allTags()"
-            (tagsChange)="txForm.update(f => ({ ...f, tags: $event }))"
+            (tagsChange)="txForm.update((f) => ({ ...f, tags: $event }))"
           />
         </label>
         <label>
           Date
-          <input type="date" [ngModel]="txForm().date" (ngModelChange)="txForm.update(f => ({ ...f, date: $event }))" />
+          <input
+            type="date"
+            [ngModel]="txForm().date"
+            (ngModelChange)="txForm.update((f) => ({ ...f, date: $event }))"
+          />
         </label>
         <label>
           Period
-          <select [ngModel]="txForm().period" (ngModelChange)="txForm.update(f => ({ ...f, period: $event }))">
+          <select
+            [ngModel]="txForm().period"
+            (ngModelChange)="txForm.update((f) => ({ ...f, period: $event }))"
+          >
             @for (month of months; track month) {
               <option [value]="month">{{ month }}</option>
             }
@@ -66,18 +82,32 @@
           }
           <div class="exchange-rate-grid">
             <label>
-              Exchange Rate ({{ getAccountCurrency(txForm().accountId) }} &rarr; {{ baseCurrency() }})
-              <input type="number" step="0.0001"
+              Exchange Rate ({{ getAccountCurrency(txForm().accountId) }} &rarr;
+              {{ baseCurrency() }})
+              <input
+                type="number"
+                step="0.0001"
                 [ngModel]="txForm().exchangeRate"
-                (ngModelChange)="txForm.update(f => ({ ...f, exchangeRate: +$event })); onAmountOrRateChange()" />
+                (ngModelChange)="
+                  txForm.update((f) => ({ ...f, exchangeRate: +$event })); onAmountOrRateChange()
+                "
+              />
             </label>
             <label>
               {{ baseCurrency() }} Equivalent
-              <input type="number" [ngModel]="txForm().baseCurrencyAmount" readonly class="readonly" />
+              <input
+                type="number"
+                [ngModel]="txForm().baseCurrencyAmount"
+                readonly
+                class="readonly"
+              />
             </label>
           </div>
           @if (exchangeRateState().rate !== null) {
-            <p class="rate-source">Suggested rate: 1 {{ getAccountCurrency(txForm().accountId) }} = {{ exchangeRateState().rate }} {{ baseCurrency() }} ({{ exchangeRateState().date }})</p>
+            <p class="rate-source">
+              Suggested rate: 1 {{ getAccountCurrency(txForm().accountId) }} =
+              {{ exchangeRateState().rate }} {{ baseCurrency() }} ({{ exchangeRateState().date }})
+            </p>
           }
         </div>
       }
@@ -97,7 +127,10 @@
       <div class="form-grid">
         <label>
           From
-          <select [ngModel]="trForm().sourceAccountId" (ngModelChange)="onTransferSourceChange(+$event)">
+          <select
+            [ngModel]="trForm().sourceAccountId"
+            (ngModelChange)="onTransferSourceChange(+$event)"
+          >
             @for (acc of accounts(); track acc.id) {
               <option [value]="acc.id">{{ acc.name }}</option>
             }
@@ -105,7 +138,10 @@
         </label>
         <label>
           To
-          <select [ngModel]="trForm().destAccountId" (ngModelChange)="trForm.update(f => ({ ...f, destAccountId: +$event }))">
+          <select
+            [ngModel]="trForm().destAccountId"
+            (ngModelChange)="trForm.update((f) => ({ ...f, destAccountId: +$event }))"
+          >
             @for (acc of filteredDestinationAccounts(); track acc.id) {
               <option [value]="acc.id">{{ acc.name }}</option>
             }
@@ -113,15 +149,35 @@
         </label>
         <label>
           Amount
-          <input type="number" [ngModel]="trForm().amount" (ngModelChange)="trForm.update(f => ({ ...f, amount: +$event }))" />
+          <input
+            type="number"
+            [ngModel]="trForm().sourceAmount"
+            (ngModelChange)="trForm.update((f) => ({ ...f, sourceAmount: +$event }))"
+          />
+        </label>
+        <label>
+          Exchange Rate
+          <input
+            type="number"
+            step="0.0001"
+            [ngModel]="trForm().exchangeRate"
+            (ngModelChange)="trForm.update((f) => ({ ...f, exchangeRate: +$event }))"
+          />
         </label>
         <label>
           Date
-          <input type="date" [ngModel]="trForm().date" (ngModelChange)="trForm.update(f => ({ ...f, date: $event }))" />
+          <input
+            type="date"
+            [ngModel]="trForm().date"
+            (ngModelChange)="trForm.update((f) => ({ ...f, date: $event }))"
+          />
         </label>
         <label>
           Period
-          <select [ngModel]="trForm().period" (ngModelChange)="trForm.update(f => ({ ...f, period: $event }))">
+          <select
+            [ngModel]="trForm().period"
+            (ngModelChange)="trForm.update((f) => ({ ...f, period: $event }))"
+          >
             @for (month of months; track month) {
               <option [value]="month">{{ month }}</option>
             }
@@ -129,7 +185,11 @@
         </label>
         <label>
           Note
-          <input type="text" [ngModel]="trForm().note" (ngModelChange)="trForm.update(f => ({ ...f, note: $event }))" />
+          <input
+            type="text"
+            [ngModel]="trForm().note"
+            (ngModelChange)="trForm.update((f) => ({ ...f, note: $event }))"
+          />
         </label>
       </div>
       @if (errorMessage()) {
@@ -194,9 +254,12 @@
             @if (isTransaction(item)) {
               @let txn = getTransactionData(item);
               <tr>
-                <td>{{ txn.date | date:'mediumDate' }}</td>
+                <td>{{ txn.date | date: 'mediumDate' }}</td>
                 <td>{{ getCategoryName(txn.categoryId) }}</td>
-                <td [class.income]="isIncomeTransaction(txn)" [class.expense]="!isIncomeTransaction(txn)">
+                <td
+                  [class.income]="isIncomeTransaction(txn)"
+                  [class.expense]="!isIncomeTransaction(txn)"
+                >
                   {{ formatTransactionAmount(txn) }}
                 </td>
                 <td>{{ getAccountName(txn.accountId) }}</td>
@@ -209,15 +272,31 @@
                 </td>
                 <td>
                   <button class="btn small" (click)="openTransactionForm(txn.id!)">Edit</button>
-                  <button class="btn small danger" (click)="deleteTransaction(txn.id!)">Delete</button>
+                  <button class="btn small danger" (click)="deleteTransaction(txn.id!)">
+                    Delete
+                  </button>
                 </td>
               </tr>
             } @else {
               @let tr = getTransferData(item);
               <tr class="transfer-row">
-                <td>{{ tr.date | date:'mediumDate' }}</td>
-                <td>{{ getAccountName(tr.sourceAccountId) }} &rarr; {{ getAccountName(tr.destinationAccountId) }}</td>
-                <td>{{ formatMoney(tr.amount) }}</td>
+                <td>{{ tr.date | date: 'mediumDate' }}</td>
+                <td>
+                  {{ getAccountName(tr.sourceAccountId) }} &rarr;
+                  {{ getAccountName(tr.destinationAccountId) }}
+                </td>
+                <td>
+                  {{ formatMoney(tr.sourceAmount)
+                  }}{{
+                    tr.sourceAmount !== tr.destinationAmount
+                      ? ' \u2192 ' +
+                        formatMoneyWithCurrency(
+                          tr.destinationAmount,
+                          getAccountCurrency(tr.destinationAccountId)
+                        )
+                      : ''
+                  }}
+                </td>
                 <td colspan="2">
                   @if (tr.note) {
                     <span class="note">{{ tr.note }}</span>

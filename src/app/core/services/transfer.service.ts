@@ -13,6 +13,7 @@ export class TransferService {
     date: Date,
     period: string,
     note: string = '',
+    exchangeRate: number = 1,
   ): Promise<Transfer> {
     if (sourceAccountId === destinationAccountId) {
       throw new Error('Source and destination accounts must be different');
@@ -22,6 +23,9 @@ export class TransferService {
     }
     if (!period) {
       throw new Error('Period is required');
+    }
+    if (exchangeRate <= 0) {
+      throw new Error('Exchange rate must be positive');
     }
 
     const sourceAccount = await db.accounts.get(sourceAccountId);
@@ -34,10 +38,19 @@ export class TransferService {
       throw new Error('Destination account not found');
     }
 
+    const sourceAmount = amount;
+    const destinationAmount = Math.round(amount * exchangeRate * 100) / 100;
+    const baseCurrencyAmount = sourceAccount.currency !== destAccount.currency
+      ? destinationAmount
+      : sourceAmount;
+
     const transfer: Transfer = {
       sourceAccountId,
       destinationAccountId,
-      amount,
+      sourceAmount,
+      destinationAmount,
+      exchangeRate,
+      baseCurrencyAmount,
       date,
       period,
       note,
@@ -66,11 +79,33 @@ export class TransferService {
       }
     }
 
-    if (changes.amount !== undefined && changes.amount <= 0) {
-      throw new Error('Amount must be positive');
+    const newSourceAmount = changes.sourceAmount ?? existing.sourceAmount;
+    if (changes.sourceAmount !== undefined && changes.sourceAmount <= 0) {
+      throw new Error('Source amount must be positive');
     }
 
-    await db.transfers.update(id, changes);
+    const newExchangeRate = changes.exchangeRate ?? existing.exchangeRate;
+    if (newExchangeRate <= 0) {
+      throw new Error('Exchange rate must be positive');
+    }
+
+    const newDestinationAccountId = changes.destinationAccountId ?? existing.destinationAccountId;
+    const newSourceAccountId = changes.sourceAccountId ?? existing.sourceAccountId;
+    const sourceAccount = await db.accounts.get(newSourceAccountId);
+    const destAccount = await db.accounts.get(newDestinationAccountId);
+    const isCrossCurrency = sourceAccount && destAccount && sourceAccount.currency !== destAccount.currency;
+    const newDestinationAmount = Math.round(newSourceAmount * newExchangeRate * 100) / 100;
+    const newBaseCurrencyAmount = isCrossCurrency ? newDestinationAmount : newSourceAmount;
+
+    const mergedChanges = {
+      ...changes,
+      sourceAmount: newSourceAmount,
+      destinationAmount: newDestinationAmount,
+      exchangeRate: newExchangeRate,
+      baseCurrencyAmount: newBaseCurrencyAmount,
+    };
+
+    await db.transfers.update(id, mergedChanges);
     this.backupService.scheduleAutoBackup();
     return (await db.transfers.get(id))!;
   }

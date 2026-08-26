@@ -85,4 +85,68 @@ describe('ExchangeRateService', () => {
 
     await expect(service.getRate('EUR', 'USD')).rejects.toThrow('Failed to fetch');
   });
+
+  describe('getRates (batch)', () => {
+    it('should fetch multiple rates in one call', async () => {
+      const mockResponse = {
+        ok: true,
+        json: async () => ({ base: 'EUR', date: '2026-01-15', rates: { USD: 1.08, GBP: 0.85 } }),
+      };
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse as Response);
+
+      const result = await service.getRates('EUR', ['USD', 'GBP'], '2026-01-15');
+
+      expect(globalThis.fetch).toHaveBeenCalledWith(
+        'https://api.frankfurter.dev/v2/rates?base=EUR&quotes=USD,GBP&date=2026-01-15',
+      );
+      expect(result.base).toBe('EUR');
+      expect(result.date).toBe('2026-01-15');
+      expect(result.rates.size).toBe(2);
+      expect(result.rates.get('USD')).toBe(1.08);
+      expect(result.rates.get('GBP')).toBe(0.85);
+    });
+
+    it('should use latest when no date provided', async () => {
+      const mockResponse = {
+        ok: true,
+        json: async () => ({ base: 'EUR', date: '2026-01-15', rates: { USD: 1.08 } }),
+      };
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse as Response);
+
+      await service.getRates('EUR', ['USD']);
+
+      expect(globalThis.fetch).toHaveBeenCalledWith(
+        'https://api.frankfurter.dev/v2/rates?base=EUR&quotes=USD',
+      );
+    });
+
+    it('should return rate 1 for same-currency quote', async () => {
+      const mockResponse = {
+        ok: true,
+        json: async () => ({ base: 'EUR', date: '2026-01-15', rates: { EUR: 1 } }),
+      };
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse as Response);
+
+      const result = await service.getRates('EUR', ['EUR']);
+
+      expect(result.rates.get('EUR')).toBe(1);
+    });
+
+    it('should throw on HTTP error', async () => {
+      const mockResponse = { ok: false, statusText: 'Not Found' };
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse as Response);
+
+      await expect(service.getRates('EUR', ['USD'])).rejects.toThrow('Exchange rate API failed: Not Found');
+    });
+
+    it('should throw when no quotes provided', async () => {
+      await expect(service.getRates('EUR', [])).rejects.toThrow('At least one quote currency is required');
+    });
+
+    it('should throw on network error', async () => {
+      vi.spyOn(globalThis, 'fetch').mockRejectedValue(new TypeError('Failed to fetch'));
+
+      await expect(service.getRates('EUR', ['USD'])).rejects.toThrow('Failed to fetch');
+    });
+  });
 });
