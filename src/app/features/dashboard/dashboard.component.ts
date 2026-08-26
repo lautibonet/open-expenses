@@ -5,6 +5,8 @@ import { TransferService } from '../../core/services/transfer.service';
 import { AccountService } from '../../core/services/account.service';
 import { CategoryService } from '../../core/services/category.service';
 import { ProfileService } from '../../core/services/profile.service';
+import { ExchangeRateService } from '../../core/services/exchange-rate.service';
+import { NetworkService } from '../../core/services/network.service';
 import { MONTHS, getCurrentPeriod, getCurrentYear } from '../../core/types/period.type';
 import { formatMoney } from '../../core/types/money';
 import { Transaction } from '../../core/models/transaction.model';
@@ -24,6 +26,8 @@ export class DashboardComponent implements OnInit {
   private accountService = inject(AccountService);
   private categoryService = inject(CategoryService);
   private profileService = inject(ProfileService);
+  private exchangeRateService = inject(ExchangeRateService);
+  private networkService = inject(NetworkService);
 
   selectedPeriod = signal(getCurrentPeriod());
   selectedYear = signal(getCurrentYear());
@@ -41,6 +45,7 @@ export class DashboardComponent implements OnInit {
   netIncome = signal(0);
   categoryBreakdown = signal<{ name: string; total: number }[]>([]);
   accountBalances = signal<{ account: Account; balance: number }[]>([]);
+  totalBalanceBaseCurrency = signal(0);
 
   averagesYear = signal<string>(String(getCurrentYear()));
   averagesYears: string[] = [...this.years.map(String), 'All time'];
@@ -109,6 +114,78 @@ export class DashboardComponent implements OnInit {
       balances.push({ account: acc, balance });
     }
     this.accountBalances.set(balances);
+
+    const base = this.baseCurrency();
+    const nonBaseCurrencies = [...new Set(
+      balances
+        .map(b => b.account.currency)
+        .filter(c => c !== base),
+    )];
+
+    if (nonBaseCurrencies.length === 0) {
+      this.totalBalanceBaseCurrency.set(this.sumBalances(balances));
+      return;
+    }
+
+    if (!this.networkService.isOnline()) {
+      this.totalBalanceBaseCurrency.set(this.sumBalances(balances, base));
+      return;
+    }
+
+    try {
+      const rates = await this.exchangeRateService.getRates(base, nonBaseCurrencies);
+      const baseAmounts = await this.computeBaseAmounts(balances, catMap, rates, base);
+      this.totalBalanceBaseCurrency.set(baseAmounts.reduce((sum, b) => sum + b.amount, 0));
+    } catch {
+      this.totalBalanceBaseCurrency.set(this.sumBalances(balances, base));
+    }
+  }
+
+  private async computeBaseAmounts(
+    balances: { account: Account; balance: number }[],
+    catMap: Map<number, Category>,
+    rates: { rates: Map<string, number> },
+    base: string,
+  ): Promise<{ account: Account; amount: number }[]> {
+    const results: { account: Account; amount: number }[] = [];
+
+    for (const b of balances) {
+      if (b.account.currency === base) {
+        results.push({ account: b.account, amount: b.balance });
+        continue;
+      }
+
+      const rate = rates.rates.get(b.account.currency);
+      if (!rate) continue;
+
+      const txnsAll = await this.transactionService.getByAccount(b.account.id!);
+      const transfersAll = await this.transferService.getAll();
+
+      let baseAmount = Math.round(b.account.initialBalance / rate * 100) / 100;
+
+      for (const t of txnsAll) {
+        const cat = catMap.get(t.categoryId);
+        const sign = cat?.type === 'Income' ? 1 : -1;
+        baseAmount += sign * (t.baseCurrencyAmount ?? Math.round(t.amount / rate * 100) / 100);
+      }
+      for (const tr of transfersAll) {
+        if (tr.sourceAccountId === b.account.id) baseAmount -= tr.baseCurrencyAmount;
+        if (tr.destinationAccountId === b.account.id) baseAmount += tr.baseCurrencyAmount;
+      }
+
+      results.push({ account: b.account, amount: Math.round(baseAmount * 100) / 100 });
+    }
+
+    return results;
+  }
+
+  private sumBalances(
+    balances: { account: Account; balance: number }[],
+    currency?: string,
+  ): number {
+    return balances
+      .filter(b => !currency || b.account.currency === currency)
+      .reduce((sum, b) => sum + b.balance, 0);
   }
 
   async refreshAverages(): Promise<void> {

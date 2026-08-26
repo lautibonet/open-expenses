@@ -5,6 +5,8 @@ import { TransferService } from '../../core/services/transfer.service';
 import { AccountService } from '../../core/services/account.service';
 import { CategoryService } from '../../core/services/category.service';
 import { ProfileService } from '../../core/services/profile.service';
+import { ExchangeRateService } from '../../core/services/exchange-rate.service';
+import { NetworkService } from '../../core/services/network.service';
 import { DriveBackupService } from '../../core/services/drive-backup.service';
 import { db } from '../../core/db/database';
 import { getCurrentPeriod, getCurrentYear } from '../../core/types/period.type';
@@ -144,5 +146,87 @@ describe('DashboardComponent', () => {
     expect(component.avgMonthlyIncome()).toBe(0);
     expect(component.avgMonthlyExpenses()).toBe(0);
     expect(component.avgMonthlySavings()).toBe(0);
+  });
+
+  describe('totalBalanceBaseCurrency', () => {
+    let networkService: NetworkService;
+
+    beforeEach(() => {
+      networkService = TestBed.inject(NetworkService);
+    });
+
+    it('should sum all account balances when all are in base currency', async () => {
+      await accountService.create('Cash', 'EUR', 100000);
+      await accountService.create('Savings', 'EUR', 500000);
+
+      await component.ngOnInit();
+
+      expect(component.totalBalanceBaseCurrency()).toBe(600000);
+    });
+
+    it('should convert non-base currency accounts using latest exchange rate', async () => {
+      await accountService.create('Cash', 'EUR', 100000);
+      await accountService.create('USD Account', 'USD', 50000);
+
+      const mockResponse = {
+        ok: true,
+        json: async () => ({ base: 'EUR', date: '2026-01-15', rates: { USD: 1.08 } }),
+      };
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse as Response);
+
+      await component.ngOnInit();
+
+      // USD 50000 converted to EUR: 50000 / 1.08 = 46296.30
+      const expected = 100000 + Math.round(50000 / 1.08 * 100) / 100;
+      expect(component.totalBalanceBaseCurrency()).toBeCloseTo(expected, 0);
+    });
+
+    it('should format total balance in base currency', async () => {
+      await accountService.create('Cash', 'EUR', 100000);
+
+      await component.ngOnInit();
+
+      expect(component.formatMoney(component.totalBalanceBaseCurrency())).toContain('€');
+    });
+
+    it('should handle initial balance conversion in multi-currency scenario', async () => {
+      const usd = await accountService.create('USD Account', 'USD', 100000);
+
+      const mockResponse = {
+        ok: true,
+        json: async () => ({ base: 'EUR', date: '2026-01-15', rates: { USD: 1.1 } }),
+      };
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse as Response);
+
+      const period = getCurrentPeriod();
+      const incomeCat = await categoryService.create('Payroll', 'Income');
+      await transactionService.create(usd.id!, incomeCat.id!, 5000, new Date(), period);
+
+      await component.ngOnInit();
+
+      // baseAmount = 100000/1.1 + 5000/1.1 = 105000/1.1
+      const expected = Math.round(105000 / 1.1 * 100) / 100;
+      expect(component.totalBalanceBaseCurrency()).toBeCloseTo(expected, 0);
+    });
+
+    it('should return 0 when offline and no base currency accounts exist', async () => {
+      await accountService.create('USD Account', 'USD', 50000);
+      networkService.isOnline.set(false);
+
+      await component.ngOnInit();
+
+      expect(component.totalBalanceBaseCurrency()).toBe(0);
+    });
+
+    it('should still include base currency accounts when offline', async () => {
+      await accountService.create('Cash', 'EUR', 100000);
+      await accountService.create('USD Account', 'USD', 50000);
+      networkService.isOnline.set(false);
+
+      await component.ngOnInit();
+
+      // Only the EUR account contributes when offline
+      expect(component.totalBalanceBaseCurrency()).toBe(100000);
+    });
   });
 });
