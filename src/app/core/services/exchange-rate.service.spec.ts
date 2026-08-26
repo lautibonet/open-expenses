@@ -90,7 +90,10 @@ describe('ExchangeRateService', () => {
     it('should fetch multiple rates in one call', async () => {
       const mockResponse = {
         ok: true,
-        json: async () => ({ base: 'EUR', date: '2026-01-15', rates: { USD: 1.08, GBP: 0.85 } }),
+        json: async () => [
+          { base: 'EUR', quote: 'USD', date: '2026-01-15', rate: 1.08 },
+          { base: 'EUR', quote: 'GBP', date: '2026-01-15', rate: 0.85 },
+        ],
       };
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse as Response);
 
@@ -109,7 +112,9 @@ describe('ExchangeRateService', () => {
     it('should use latest when no date provided', async () => {
       const mockResponse = {
         ok: true,
-        json: async () => ({ base: 'EUR', date: '2026-01-15', rates: { USD: 1.08 } }),
+        json: async () => [
+          { base: 'EUR', quote: 'USD', date: '2026-01-15', rate: 1.08 },
+        ],
       };
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse as Response);
 
@@ -123,7 +128,9 @@ describe('ExchangeRateService', () => {
     it('should return rate 1 for same-currency quote', async () => {
       const mockResponse = {
         ok: true,
-        json: async () => ({ base: 'EUR', date: '2026-01-15', rates: { EUR: 1 } }),
+        json: async () => [
+          { base: 'EUR', quote: 'EUR', date: '2026-01-15', rate: 1 },
+        ],
       };
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse as Response);
 
@@ -147,6 +154,22 @@ describe('ExchangeRateService', () => {
       vi.spyOn(globalThis, 'fetch').mockRejectedValue(new TypeError('Failed to fetch'));
 
       await expect(service.getRates('EUR', ['USD'])).rejects.toThrow('Failed to fetch');
+    });
+
+    it('should cache results and not refetch on repeated calls', async () => {
+      const mockResponse = {
+        ok: true,
+        json: async () => [
+          { base: 'EUR', quote: 'USD', date: '2026-01-15', rate: 1.08 },
+        ],
+      };
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse as Response);
+
+      const first = await service.getRates('EUR', ['USD'], '2026-01-15');
+      const second = await service.getRates('EUR', ['USD'], '2026-01-15');
+
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(second).toBe(first);
     });
   });
 });

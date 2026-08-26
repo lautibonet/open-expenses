@@ -170,7 +170,9 @@ describe('DashboardComponent', () => {
 
       const mockResponse = {
         ok: true,
-        json: async () => ({ base: 'EUR', date: '2026-01-15', rates: { USD: 1.08 } }),
+        json: async () => [
+          { base: 'EUR', quote: 'USD', date: '2026-01-15', rate: 1.08 },
+        ],
       };
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse as Response);
 
@@ -194,7 +196,9 @@ describe('DashboardComponent', () => {
 
       const mockResponse = {
         ok: true,
-        json: async () => ({ base: 'EUR', date: '2026-01-15', rates: { USD: 1.1 } }),
+        json: async () => [
+          { base: 'EUR', quote: 'USD', date: '2026-01-15', rate: 1.1 },
+        ],
       };
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse as Response);
 
@@ -227,6 +231,53 @@ describe('DashboardComponent', () => {
 
       // Only the EUR account contributes when offline
       expect(component.totalBalanceBaseCurrency()).toBe(100000);
+    });
+
+    it('should set conversionFailed when offline with multi-currency accounts', async () => {
+      await accountService.create('Cash', 'EUR', 100000);
+      await accountService.create('USD Account', 'USD', 50000);
+      networkService.isOnline.set(false);
+
+      await component.ngOnInit();
+
+      expect(component.conversionFailed()).toBe(true);
+    });
+
+    it('should set conversionFailed when API call fails', async () => {
+      await accountService.create('Cash', 'EUR', 100000);
+      await accountService.create('USD Account', 'USD', 50000);
+
+      vi.spyOn(globalThis, 'fetch').mockRejectedValue(new TypeError('Failed to fetch'));
+
+      await component.ngOnInit();
+
+      expect(component.conversionFailed()).toBe(true);
+    });
+
+    it('should not set conversionFailed when all accounts are base currency', async () => {
+      await accountService.create('Cash', 'EUR', 100000);
+      await accountService.create('Savings', 'EUR', 50000);
+
+      await component.ngOnInit();
+
+      expect(component.conversionFailed()).toBe(false);
+    });
+
+    it('should not set conversionFailed when conversion succeeds', async () => {
+      await accountService.create('Cash', 'EUR', 100000);
+      await accountService.create('USD Account', 'USD', 50000);
+
+      const mockResponse = {
+        ok: true,
+        json: async () => [
+          { base: 'EUR', quote: 'USD', date: '2026-01-15', rate: 1.08 },
+        ],
+      };
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse as Response);
+
+      await component.ngOnInit();
+
+      expect(component.conversionFailed()).toBe(false);
     });
   });
 });
