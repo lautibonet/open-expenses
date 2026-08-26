@@ -75,17 +75,25 @@ h1 {
   }
 }
 
-.category-list {
+.category-table {
+  width: 100%;
+  border-collapse: collapse;
   margin-bottom: 1rem;
-}
 
-.category-item {
-  display: block;
-  padding: 0.5rem 0;
-  cursor: pointer;
+  th, td {
+    padding: 0.5rem;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+  }
 
-  &.inactive {
-    opacity: 0.5;
+  th {
+    font-weight: 600;
+    color: #666;
+  }
+
+  .input {
+    margin-bottom: 0;
+    width: 100%;
   }
 }
 
