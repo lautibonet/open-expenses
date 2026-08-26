@@ -55,7 +55,7 @@
           <input
             type="date"
             [ngModel]="txForm().date"
-            (ngModelChange)="txForm.update((f) => ({ ...f, date: $event }))"
+            (ngModelChange)="onTxDateChange($event)"
           />
         </label>
         <label>
@@ -140,7 +140,7 @@
           To
           <select
             [ngModel]="trForm().destAccountId"
-            (ngModelChange)="trForm.update((f) => ({ ...f, destAccountId: +$event }))"
+            (ngModelChange)="trForm.update((f) => ({ ...f, destAccountId: +$event })); checkTransferExchangeRate()"
           >
             @for (acc of filteredDestinationAccounts(); track acc.id) {
               <option [value]="acc.id">{{ acc.name }}</option>
@@ -148,20 +148,13 @@
           </select>
         </label>
         <label>
-          Amount
+          Amount ({{ getTransferSourceCurrency() }})
           <input
             type="number"
             [ngModel]="trForm().sourceAmount"
-            (ngModelChange)="trForm.update((f) => ({ ...f, sourceAmount: +$event }))"
-          />
-        </label>
-        <label>
-          Exchange Rate
-          <input
-            type="number"
-            step="0.0001"
-            [ngModel]="trForm().exchangeRate"
-            (ngModelChange)="trForm.update((f) => ({ ...f, exchangeRate: +$event }))"
+            (ngModelChange)="
+              trForm.update((f) => ({ ...f, sourceAmount: +$event })); onTransferAmountOrRateChange()
+            "
           />
         </label>
         <label>
@@ -169,7 +162,7 @@
           <input
             type="date"
             [ngModel]="trForm().date"
-            (ngModelChange)="trForm.update((f) => ({ ...f, date: $event }))"
+            (ngModelChange)="onTransferDateChange($event)"
           />
         </label>
         <label>
@@ -192,6 +185,48 @@
           />
         </label>
       </div>
+
+      @if (isTransferForeignCurrency()) {
+        <div class="exchange-rate-section">
+          <h4>Exchange Rate</h4>
+          @if (transferExchangeRateState().loading) {
+            <p class="rate-status">Fetching rate...</p>
+          }
+          @if (transferExchangeRateState().error) {
+            <p class="rate-error">{{ transferExchangeRateState().error }}</p>
+          }
+          <div class="exchange-rate-grid">
+            <label>
+              Exchange Rate ({{ getTransferSourceCurrency() }} &rarr;
+              {{ getTransferDestCurrency() }})
+              <input
+                type="number"
+                step="0.0001"
+                [ngModel]="trForm().exchangeRate"
+                (ngModelChange)="
+                  trForm.update((f) => ({ ...f, exchangeRate: +$event })); onTransferAmountOrRateChange()
+                "
+              />
+            </label>
+            <label>
+              {{ getTransferDestCurrency() }} Amount
+              <input
+                type="number"
+                [ngModel]="trForm().destinationAmount"
+                (ngModelChange)="trForm.update((f) => ({ ...f, destinationAmount: +$event }))"
+              />
+            </label>
+          </div>
+          @if (transferExchangeRateState().rate !== null) {
+            <p class="rate-source">
+              Suggested rate: 1 {{ getTransferSourceCurrency() }} =
+              {{ transferExchangeRateState().rate }} {{ getTransferDestCurrency() }}
+              ({{ transferExchangeRateState().date }})
+            </p>
+          }
+        </div>
+      }
+
       @if (errorMessage()) {
         <p class="error">{{ errorMessage() }}</p>
       }
