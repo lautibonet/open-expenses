@@ -13,7 +13,7 @@ export class AppDatabase extends Dexie {
   profile!: Table<Profile>;
 
   constructor() {
-    super('open-expenses');
+    super('open-expenses-v2');
     this.version(1).stores({
       accounts: '++id, name, currency, active',
       categories: '++id, name, type, active',

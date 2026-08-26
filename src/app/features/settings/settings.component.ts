@@ -6,6 +6,7 @@ import { ProfileService } from '../../core/services/profile.service';
 import { TransactionService } from '../../core/services/transaction.service';
 import { DriveBackupService } from '../../core/services/drive-backup.service';
 import { NetworkService } from '../../core/services/network.service';
+import { SUPPORTED_CURRENCIES } from '../../core/constants/currencies';
 import { Account } from '../../core/models/account.model';
 import { Category } from '../../core/models/category.model';
 
@@ -23,6 +24,7 @@ export class SettingsComponent implements OnInit {
   private driveBackupService = inject(DriveBackupService);
   private networkService = inject(NetworkService);
 
+  supportedCurrencies = SUPPORTED_CURRENCIES;
   accounts = signal<Account[]>([]);
   categories = signal<Category[]>([]);
   tagCounts = signal<{ tag: string; count: number }[]>([]);

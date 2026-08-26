@@ -29,6 +29,14 @@ export class TagInputComponent {
   });
 
   onInput(value: string): void {
+    const trimmed = value.trim();
+    if (trimmed.endsWith(',') || trimmed.endsWith(';')) {
+      const tagText = trimmed.slice(0, -1).trim();
+      if (tagText) {
+        this.addTag(tagText);
+      }
+      return;
+    }
     this.inputValue.set(value);
     this.highlightedIndex.set(-1);
     this.showDropdown.set(value.length > 0 && this.filteredSuggestions().length > 0);

@@ -6,14 +6,11 @@
     <section class="step">
       <h2>1. Base Currency</h2>
       <p>This is the currency your Dashboard totals will be reported in.</p>
-      <input
-        type="text"
-        [ngModel]="baseCurrency()"
-        (ngModelChange)="baseCurrency.set($event)"
-        placeholder="EUR"
-        maxlength="3"
-        class="input"
-      />
+      <select [ngModel]="baseCurrency()" (ngModelChange)="baseCurrency.set($event)" class="input">
+        @for (currency of supportedCurrencies; track currency) {
+          <option [value]="currency">{{ currency }}</option>
+        }
+      </select>
       <button class="btn primary" (click)="step.set(2)">Next</button>
     </section>
   }
@@ -31,19 +28,16 @@
           placeholder="Account name"
           class="input"
         />
-        <input
-          type="text"
-          [ngModel]="accountCurrency()"
-          (ngModelChange)="accountCurrency.set($event)"
-          placeholder="Currency (e.g. EUR)"
-          maxlength="3"
-          class="input small"
-        />
+        <select [ngModel]="accountCurrency()" (ngModelChange)="accountCurrency.set($event)" class="input small">
+          @for (currency of supportedCurrencies; track currency) {
+            <option [value]="currency">{{ currency }}</option>
+          }
+        </select>
         <input
           type="number"
           [ngModel]="accountBalance()"
           (ngModelChange)="accountBalance.set($event)"
-          placeholder="Initial balance (cents)"
+          placeholder="Initial balance"
           class="input small"
         />
         <button class="btn" (click)="addAccount()">Add</button>
@@ -57,7 +51,7 @@
         <ul class="account-list">
           @for (account of accounts(); track $index) {
             <li>
-              {{ account.name }} ({{ account.currency }}) — {{ account.balance }} cents
+              {{ account.name }} ({{ account.currency }}) — {{ account.balance }}
               <button class="btn small" (click)="removeAccount($index)">Remove</button>
             </li>
           }

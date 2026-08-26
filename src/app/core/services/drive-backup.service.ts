@@ -62,6 +62,8 @@ export class DriveBackupService {
         client_id: this.getClientId(),
         scope: this.SCOPES,
         ux_mode: 'popup',
+        code_challenge: codeChallenge,
+        code_challenge_method: 'S256',
         callback: async (response: any) => {
           if (response.error) {
             this.error.set(response.error);

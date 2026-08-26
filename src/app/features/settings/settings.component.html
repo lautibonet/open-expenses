@@ -11,13 +11,11 @@
   <section class="card">
     <h2>Base Currency</h2>
     <div class="inline-form">
-      <input
-        type="text"
-        [ngModel]="baseCurrency()"
-        (ngModelChange)="baseCurrency.set($event)"
-        maxlength="3"
-        class="input small"
-      />
+      <select [ngModel]="baseCurrency()" (ngModelChange)="baseCurrency.set($event)" class="input small">
+        @for (currency of supportedCurrencies; track currency) {
+          <option [value]="currency">{{ currency }}</option>
+        }
+      </select>
       <button class="btn primary" (click)="updateBaseCurrency()">Update</button>
     </div>
   </section>
@@ -32,14 +30,11 @@
         placeholder="Name"
         class="input"
       />
-      <input
-        type="text"
-        [ngModel]="newAccountCurrency()"
-        (ngModelChange)="newAccountCurrency.set($event)"
-        placeholder="EUR"
-        maxlength="3"
-        class="input small"
-      />
+      <select [ngModel]="newAccountCurrency()" (ngModelChange)="newAccountCurrency.set($event)" class="input small">
+        @for (currency of supportedCurrencies; track currency) {
+          <option [value]="currency">{{ currency }}</option>
+        }
+      </select>
       <input
         type="number"
         [ngModel]="newAccountBalance()"
