@@ -5,6 +5,17 @@ import { Transaction } from '../models/transaction.model';
 import { Transfer } from '../models/transfer.model';
 import { Profile } from '../models/profile.model';
 
+interface LegacyTransfer {
+  id?: number;
+  sourceAccountId: number;
+  destinationAccountId: number;
+  amount: number;
+  date: Date;
+  period: string;
+  note: string;
+  createdAt: Date;
+}
+
 export class AppDatabase extends Dexie {
   accounts!: Table<Account>;
   categories!: Table<Category>;
@@ -20,6 +31,24 @@ export class AppDatabase extends Dexie {
       transactions: '++id, accountId, categoryId, date, period, *tags',
       transfers: '++id, sourceAccountId, destinationAccountId, date, period',
       profile: 'id',
+    });
+    this.version(2).stores({
+      accounts: '++id, name, currency, active',
+      categories: '++id, name, type, active',
+      transactions: '++id, accountId, categoryId, date, period, *tags',
+      transfers: '++id, sourceAccountId, destinationAccountId, date, period',
+      profile: 'id',
+    }).upgrade(async tx => {
+      const transfers = await tx.table('transfers').toArray();
+      for (const t of transfers) {
+        const legacy = t as unknown as LegacyTransfer;
+        await tx.table('transfers').update(legacy.id!, {
+          sourceAmount: legacy.amount,
+          destinationAmount: legacy.amount,
+          exchangeRate: 1,
+          baseCurrencyAmount: legacy.amount,
+        });
+      }
     });
   }
 }

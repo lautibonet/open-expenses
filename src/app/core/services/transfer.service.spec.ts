@@ -31,7 +31,10 @@ describe('TransferService', () => {
     expect(t.id).toBeDefined();
     expect(t.sourceAccountId).toBe(cashId);
     expect(t.destinationAccountId).toBe(savingsId);
-    expect(t.amount).toBe(50000);
+    expect(t.sourceAmount).toBe(50000);
+    expect(t.destinationAmount).toBe(50000);
+    expect(t.exchangeRate).toBe(1);
+    expect(t.baseCurrencyAmount).toBe(50000);
   });
 
   it('should create transfer with note', async () => {
@@ -79,9 +82,33 @@ describe('TransferService', () => {
 
   it('should update a transfer', async () => {
     const t = await transferService.create(cashId, savingsId, 50000, new Date('2026-01-15'), 'January');
-    const updated = await transferService.update(t.id!, { amount: 60000, note: 'Updated' });
-    expect(updated.amount).toBe(60000);
+    const updated = await transferService.update(t.id!, { sourceAmount: 60000, destinationAmount: 60000, note: 'Updated' });
+    expect(updated.sourceAmount).toBe(60000);
+    expect(updated.destinationAmount).toBe(60000);
     expect(updated.note).toBe('Updated');
+  });
+
+  it('should create a cross-currency transfer with explicit rate', async () => {
+    const usd = await accountService.create('USD Account', 'USD', 100000);
+    const t = await transferService.create(
+      cashId, usd.id!, 1000, new Date('2026-01-15'), 'January', '', 1.08,
+    );
+    expect(t.sourceAmount).toBe(1000);
+    expect(t.destinationAmount).toBe(1080);
+    expect(t.exchangeRate).toBe(1.08);
+    expect(t.baseCurrencyAmount).toBe(1080);
+  });
+
+  it('should update a cross-currency transfer and recalculate amounts', async () => {
+    const usd = await accountService.create('USD Account', 'USD', 100000);
+    const t = await transferService.create(
+      cashId, usd.id!, 1000, new Date('2026-01-15'), 'January', '', 1.08,
+    );
+    const updated = await transferService.update(t.id!, { sourceAmount: 2000, exchangeRate: 1.1 });
+    expect(updated.sourceAmount).toBe(2000);
+    expect(updated.destinationAmount).toBe(2200);
+    expect(updated.exchangeRate).toBe(1.1);
+    expect(updated.baseCurrencyAmount).toBe(2200);
   });
 
   it('should reject self-transfer on update (both fields)', async () => {

@@ -42,7 +42,8 @@ interface TransactionForm {
 interface TransferForm {
   sourceAccountId: number;
   destAccountId: number;
-  amount: number;
+  sourceAmount: number;
+  exchangeRate: number;
   date: string;
   period: string;
   note: string;
@@ -85,7 +86,8 @@ export class MovementsComponent implements OnInit {
     exchangeRate: null, baseCurrencyAmount: null,
   });
   trForm = signal<TransferForm>({
-    sourceAccountId: 0, destAccountId: 0, amount: 0,
+    sourceAccountId: 0, destAccountId: 0, sourceAmount: 0,
+    exchangeRate: 1,
     date: new Date().toISOString().split('T')[0],
     period: getCurrentPeriod(), note: '',
   });
@@ -232,7 +234,8 @@ export class MovementsComponent implements OnInit {
           this.trForm.set({
             sourceAccountId: t.sourceAccountId,
             destAccountId: t.destinationAccountId,
-            amount: t.amount,
+            sourceAmount: t.sourceAmount,
+            exchangeRate: t.exchangeRate,
             date: new Date(t.date).toISOString().split('T')[0],
             period: t.period,
             note: t.note,
@@ -243,7 +246,8 @@ export class MovementsComponent implements OnInit {
       this.trForm.set({
         sourceAccountId: this.accounts()[0]?.id ?? 0,
         destAccountId: this.accounts()[1]?.id ?? this.accounts()[0]?.id ?? 0,
-        amount: 0,
+        sourceAmount: 0,
+        exchangeRate: 1,
         date: new Date().toISOString().split('T')[0],
         period: this.selectedPeriod(),
         note: '',
@@ -365,12 +369,13 @@ export class MovementsComponent implements OnInit {
       if (this.editingId()) {
         await this.transferService.update(this.editingId()!, {
           sourceAccountId: f.sourceAccountId, destinationAccountId: f.destAccountId,
-          amount: f.amount, date: new Date(f.date), period: f.period, note: f.note,
+          sourceAmount: f.sourceAmount, exchangeRate: f.exchangeRate,
+          date: new Date(f.date), period: f.period, note: f.note,
         });
       } else {
         await this.transferService.create(
-          f.sourceAccountId, f.destAccountId, f.amount,
-          new Date(f.date), f.period, f.note,
+          f.sourceAccountId, f.destAccountId, f.sourceAmount,
+          new Date(f.date), f.period, f.note, f.exchangeRate,
         );
       }
       this.cancelForm();
@@ -413,6 +418,10 @@ export class MovementsComponent implements OnInit {
 
   formatMoney(amount: number): string {
     return formatMoney(amount, this.baseCurrency());
+  }
+
+  formatMoneyWithCurrency(amount: number, currency: string): string {
+    return formatMoney(amount, currency);
   }
 
   isTransaction(item: MovementItem): boolean {
