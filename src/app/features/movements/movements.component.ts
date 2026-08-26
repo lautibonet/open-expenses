@@ -43,6 +43,7 @@ interface TransferForm {
   sourceAccountId: number;
   destAccountId: number;
   sourceAmount: number;
+  destinationAmount: number;
   exchangeRate: number;
   date: string;
   period: string;
@@ -79,6 +80,10 @@ export class MovementsComponent implements OnInit {
     loading: false, error: '', rate: null, date: '',
   });
 
+  transferExchangeRateState = signal<ExchangeRateState>({
+    loading: false, error: '', rate: null, date: '',
+  });
+
   txForm = signal<TransactionForm>({
     accountId: 0, categoryId: 0, amount: 0,
     date: new Date().toISOString().split('T')[0],
@@ -86,7 +91,7 @@ export class MovementsComponent implements OnInit {
     exchangeRate: null, baseCurrencyAmount: null,
   });
   trForm = signal<TransferForm>({
-    sourceAccountId: 0, destAccountId: 0, sourceAmount: 0,
+    sourceAccountId: 0, destAccountId: 0, sourceAmount: 0, destinationAmount: 0,
     exchangeRate: 1,
     date: new Date().toISOString().split('T')[0],
     period: getCurrentPeriod(), note: '',
@@ -219,7 +224,7 @@ export class MovementsComponent implements OnInit {
         baseCurrencyAmount: null,
       });
       if (this.accounts().length > 0) {
-        this.checkExchangeRate(this.accounts()[0].id!);
+        this.checkExchangeRate(this.accounts()[0].id!, this.txForm().date);
       }
     }
   }
@@ -228,6 +233,7 @@ export class MovementsComponent implements OnInit {
     this.showForm.set('transfer');
     this.editingId.set(id ?? null);
     this.errorMessage.set('');
+    this.transferExchangeRateState.set({ loading: false, error: '', rate: null, date: '' });
     if (id) {
       this.transferService.getById(id).then(t => {
         if (t) {
@@ -235,23 +241,39 @@ export class MovementsComponent implements OnInit {
             sourceAccountId: t.sourceAccountId,
             destAccountId: t.destinationAccountId,
             sourceAmount: t.sourceAmount,
+            destinationAmount: t.destinationAmount,
             exchangeRate: t.exchangeRate,
             date: new Date(t.date).toISOString().split('T')[0],
             period: t.period,
             note: t.note,
           });
+          if (t.sourceAccountId !== t.destinationAccountId) {
+            const src = this.accounts().find(a => a.id === t.sourceAccountId);
+            const dst = this.accounts().find(a => a.id === t.destinationAccountId);
+            if (src && dst && src.currency !== dst.currency) {
+              this.transferExchangeRateState.update(s => ({
+                ...s, rate: t.exchangeRate, date: 'stored',
+              }));
+            }
+          }
         }
       });
     } else {
+      const srcId = this.accounts()[0]?.id ?? 0;
+      const dstId = this.accounts()[1]?.id ?? this.accounts()[0]?.id ?? 0;
       this.trForm.set({
-        sourceAccountId: this.accounts()[0]?.id ?? 0,
-        destAccountId: this.accounts()[1]?.id ?? this.accounts()[0]?.id ?? 0,
+        sourceAccountId: srcId,
+        destAccountId: dstId,
         sourceAmount: 0,
+        destinationAmount: 0,
         exchangeRate: 1,
         date: new Date().toISOString().split('T')[0],
         period: this.selectedPeriod(),
         note: '',
       });
+      if (srcId && dstId && srcId !== dstId) {
+        this.checkTransferExchangeRate();
+      }
     }
   }
 
@@ -261,6 +283,7 @@ export class MovementsComponent implements OnInit {
     this.errorMessage.set('');
     this.txForm.update(f => ({ ...f, tags: [] }));
     this.resetExchangeRate();
+    this.transferExchangeRateState.set({ loading: false, error: '', rate: null, date: '' });
   }
 
   clearFilters(): void {
@@ -275,7 +298,12 @@ export class MovementsComponent implements OnInit {
 
   onAccountChange(accountId: number): void {
     this.txForm.update(f => ({ ...f, accountId }));
-    this.checkExchangeRate(accountId);
+    this.checkExchangeRate(accountId, this.txForm().date);
+  }
+
+  onTxDateChange(date: string): void {
+    this.txForm.update(f => ({ ...f, date }));
+    this.checkExchangeRate(this.txForm().accountId, date);
   }
 
   onTransferSourceChange(sourceId: number): void {
@@ -283,9 +311,75 @@ export class MovementsComponent implements OnInit {
       const destAccountId = f.destAccountId === sourceId ? 0 : f.destAccountId;
       return { ...f, sourceAccountId: sourceId, destAccountId };
     });
+    this.checkTransferExchangeRate();
   }
 
-  private async checkExchangeRate(accountId: number): Promise<void> {
+  onTransferDateChange(date: string): void {
+    this.trForm.update(f => ({ ...f, date }));
+    this.checkTransferExchangeRate();
+  }
+
+  isTransferForeignCurrency(): boolean {
+    const { src, dst } = this.getTransferAccounts();
+    return !!src && !!dst && src.currency !== dst.currency;
+  }
+
+  getTransferSourceCurrency(): string {
+    return this.getTransferAccounts().src?.currency ?? '';
+  }
+
+  getTransferDestCurrency(): string {
+    return this.getTransferAccounts().dst?.currency ?? '';
+  }
+
+  private getTransferAccounts(): { src: Account | undefined; dst: Account | undefined } {
+    const f = this.trForm();
+    return {
+      src: this.accounts().find(a => a.id === f.sourceAccountId),
+      dst: this.accounts().find(a => a.id === f.destAccountId),
+    };
+  }
+
+  onTransferAmountOrRateChange(): void {
+    this.computeTransferDestinationAmount();
+  }
+
+  async checkTransferExchangeRate(): Promise<void> {
+    const { src, dst } = this.getTransferAccounts();
+    const f = this.trForm();
+
+    if (!src || !dst || src.currency === dst.currency) {
+      this.transferExchangeRateState.set({ loading: false, error: '', rate: null, date: '' });
+      this.computeTransferDestinationAmount();
+      return;
+    }
+
+    this.transferExchangeRateState.update(s => ({ ...s, loading: true, error: '' }));
+
+    try {
+      const result = await this.exchangeRateService.getRate(
+        src.currency, dst.currency, f.date,
+      );
+      this.transferExchangeRateState.update(s => ({ ...s, rate: result.rate, date: result.date }));
+      this.trForm.update(form => ({ ...f, exchangeRate: result.rate }));
+      this.computeTransferDestinationAmount();
+    } catch (e: unknown) {
+      const msg = e instanceof OfflineError
+        ? 'You are offline. Enter the exchange rate manually.'
+        : 'Could not fetch rate. Enter it manually below.';
+      this.transferExchangeRateState.update(s => ({ ...s, error: msg }));
+    } finally {
+      this.transferExchangeRateState.update(s => ({ ...s, loading: false }));
+    }
+  }
+
+  private computeTransferDestinationAmount(): void {
+    const f = this.trForm();
+    const destAmount = Math.round(f.sourceAmount * f.exchangeRate * 100) / 100;
+    this.trForm.update(form => ({ ...form, destinationAmount: destAmount }));
+  }
+
+  private async checkExchangeRate(accountId: number, date?: string): Promise<void> {
     const account = this.accounts().find(a => a.id === accountId);
     if (!account || account.currency === this.baseCurrency()) {
       this.txForm.update(f => ({ ...f, exchangeRate: null, baseCurrencyAmount: null }));
@@ -297,7 +391,7 @@ export class MovementsComponent implements OnInit {
 
     try {
       const result = await this.exchangeRateService.getRate(
-        account.currency, this.baseCurrency(),
+        account.currency, this.baseCurrency(), date,
       );
       this.exchangeRateState.update(s => ({ ...s, rate: result.rate, date: result.date }));
       this.txForm.update(f => ({ ...f, exchangeRate: result.rate }));
@@ -369,7 +463,8 @@ export class MovementsComponent implements OnInit {
       if (this.editingId()) {
         await this.transferService.update(this.editingId()!, {
           sourceAccountId: f.sourceAccountId, destinationAccountId: f.destAccountId,
-          sourceAmount: f.sourceAmount, exchangeRate: f.exchangeRate,
+          sourceAmount: f.sourceAmount, destinationAmount: f.destinationAmount,
+          exchangeRate: f.exchangeRate,
           date: new Date(f.date), period: f.period, note: f.note,
         });
       } else {

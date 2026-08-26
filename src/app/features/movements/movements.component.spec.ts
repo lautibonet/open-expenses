@@ -5,6 +5,7 @@ import { TransferService } from '../../core/services/transfer.service';
 import { AccountService } from '../../core/services/account.service';
 import { CategoryService } from '../../core/services/category.service';
 import { ProfileService } from '../../core/services/profile.service';
+import { ExchangeRateService, ExchangeRateResult } from '../../core/services/exchange-rate.service';
 import { db } from '../../core/db/database';
 import { getCurrentPeriod } from '../../core/types/period.type';
 
@@ -399,5 +400,237 @@ describe('MovementsComponent - category deactivation and income sign', () => {
     const txn = component.movements()[0].data as any;
     expect(component.isIncomeTransaction(txn)).toBe(false);
     expect(component.formatTransactionAmount(txn)).toContain('-');
+  });
+});
+
+describe('MovementsComponent - transaction exchange rate re-fetch', () => {
+  let fixture: ComponentFixture<MovementsComponent>;
+  let component: MovementsComponent;
+  let accountService: AccountService;
+  let categoryService: CategoryService;
+  let exchangeRateService: ExchangeRateService;
+  let eurAccountId: number;
+  let usdAccountId: number;
+  let categoryId: number;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+
+    const mockExchangeRateService = {
+      getRate: vi.fn().mockResolvedValue({ rate: 1.08, from: 'USD', to: 'EUR', date: '2026-08-15' }),
+    };
+
+    await TestBed.configureTestingModule({
+      imports: [MovementsComponent],
+      providers: [
+        { provide: ExchangeRateService, useValue: mockExchangeRateService },
+      ],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(MovementsComponent);
+    component = fixture.componentInstance;
+    accountService = TestBed.inject(AccountService);
+    categoryService = TestBed.inject(CategoryService);
+    exchangeRateService = TestBed.inject(ExchangeRateService);
+
+    const eurAcc = await accountService.create('Cash EUR', 'EUR', 100000);
+    eurAccountId = eurAcc.id!;
+    const usdAcc = await accountService.create('Cash USD', 'USD', 50000);
+    usdAccountId = usdAcc.id!;
+    const cat = await categoryService.create('Food', 'Expense');
+    categoryId = cat.id!;
+  });
+
+  afterEach(async () => {
+    await db.delete();
+    vi.restoreAllMocks();
+  });
+
+  it('should fetch rate using transaction date when account changes to foreign currency', async () => {
+    await component.ngOnInit();
+    component.txForm.update(f => ({ ...f, accountId: usdAccountId, date: '2026-03-10' }));
+
+    await component.onAccountChange(usdAccountId);
+
+    expect(exchangeRateService.getRate).toHaveBeenCalledWith('USD', 'EUR', '2026-03-10');
+    expect(component.exchangeRateState().rate).toBe(1.08);
+    expect(component.txForm().exchangeRate).toBe(1.08);
+  });
+
+  it('should re-fetch rate when date changes', async () => {
+    await component.ngOnInit();
+    component.txForm.update(f => ({ ...f, accountId: usdAccountId, date: '2026-01-15' }));
+    await component.onAccountChange(usdAccountId);
+
+    vi.mocked(exchangeRateService.getRate).mockResolvedValueOnce({
+      rate: 1.12, from: 'USD', to: 'EUR', date: '2026-01-15',
+    });
+
+    await component.onTxDateChange('2026-01-15');
+
+    expect(exchangeRateService.getRate).toHaveBeenCalledWith('USD', 'EUR', '2026-01-15');
+    expect(component.txForm().exchangeRate).toBe(1.12);
+  });
+
+  it('should reset exchange rate when account changes to base currency', async () => {
+    await component.ngOnInit();
+    component.txForm.update(f => ({ ...f, accountId: usdAccountId, date: '2026-03-10' }));
+    await component.onAccountChange(usdAccountId);
+    expect(component.txForm().exchangeRate).toBe(1.08);
+
+    await component.onAccountChange(eurAccountId);
+
+    expect(component.txForm().exchangeRate).toBeNull();
+    expect(component.txForm().baseCurrencyAmount).toBeNull();
+    expect(component.exchangeRateState().rate).toBeNull();
+  });
+
+  it('should compute baseCurrencyAmount after rate is fetched', async () => {
+    await component.ngOnInit();
+    component.txForm.update(f => ({ ...f, accountId: usdAccountId, amount: 100, date: '2026-03-10' }));
+
+    await component.onAccountChange(usdAccountId);
+
+    expect(component.txForm().baseCurrencyAmount).toBe(108);
+  });
+
+  it('should show loading state while fetching rate', async () => {
+    let resolveGetRate: (value: ExchangeRateResult) => void;
+    vi.mocked(exchangeRateService.getRate).mockImplementationOnce(
+      () => new Promise(resolve => { resolveGetRate = resolve; }),
+    );
+
+    await component.ngOnInit();
+    component.txForm.update(f => ({ ...f, accountId: usdAccountId, date: '2026-03-10' }));
+
+    const changePromise = component.onAccountChange(usdAccountId);
+    expect(component.exchangeRateState().loading).toBe(true);
+
+    resolveGetRate!({ rate: 1.08, from: 'USD', to: 'EUR', date: '2026-03-10' });
+    await changePromise;
+
+    expect(component.exchangeRateState().loading).toBe(false);
+  });
+});
+
+describe('MovementsComponent - transfer exchange rate', () => {
+  let fixture: ComponentFixture<MovementsComponent>;
+  let component: MovementsComponent;
+  let accountService: AccountService;
+  let exchangeRateService: ExchangeRateService;
+  let eurAccountId: number;
+  let usdAccountId: number;
+  let gbpAccountId: number;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+
+    const mockExchangeRateService = {
+      getRate: vi.fn().mockResolvedValue({ rate: 1.08, from: 'USD', to: 'EUR', date: '2026-08-26' }),
+    };
+
+    await TestBed.configureTestingModule({
+      imports: [MovementsComponent],
+      providers: [
+        { provide: ExchangeRateService, useValue: mockExchangeRateService },
+      ],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(MovementsComponent);
+    component = fixture.componentInstance;
+    accountService = TestBed.inject(AccountService);
+    exchangeRateService = TestBed.inject(ExchangeRateService);
+
+    const eurAcc = await accountService.create('Cash EUR', 'EUR', 100000);
+    eurAccountId = eurAcc.id!;
+    const usdAcc = await accountService.create('Cash USD', 'USD', 50000);
+    usdAccountId = usdAcc.id!;
+    const gbpAcc = await accountService.create('Cash GBP', 'GBP', 30000);
+    gbpAccountId = gbpAcc.id!;
+  });
+
+  afterEach(async () => {
+    await db.delete();
+    vi.restoreAllMocks();
+  });
+
+  it('should fetch exchange rate when source account changes to foreign currency', async () => {
+    await component.ngOnInit();
+    component.trForm.update(f => ({ ...f, sourceAccountId: usdAccountId, destAccountId: eurAccountId, date: '2026-08-20' }));
+
+    await component.onTransferSourceChange(usdAccountId);
+
+    expect(exchangeRateService.getRate).toHaveBeenCalledWith('USD', 'EUR', '2026-08-20');
+    expect(component.trForm().exchangeRate).toBe(1.08);
+  });
+
+  it('should re-fetch exchange rate when transfer date changes', async () => {
+    await component.ngOnInit();
+    component.trForm.update(f => ({ ...f, sourceAccountId: usdAccountId, destAccountId: eurAccountId, date: '2026-08-20' }));
+    await component.onTransferSourceChange(usdAccountId);
+
+    vi.mocked(exchangeRateService.getRate).mockResolvedValueOnce({
+      rate: 1.12, from: 'USD', to: 'EUR', date: '2026-01-15',
+    });
+
+    await component.onTransferDateChange('2026-01-15');
+
+    expect(exchangeRateService.getRate).toHaveBeenCalledWith('USD', 'EUR', '2026-01-15');
+    expect(component.trForm().exchangeRate).toBe(1.12);
+  });
+
+  it('should auto-calculate destination amount from source amount and rate', async () => {
+    await component.ngOnInit();
+    component.trForm.update(f => ({
+      ...f, sourceAccountId: usdAccountId, destAccountId: eurAccountId,
+      sourceAmount: 500, date: '2026-08-20',
+    }));
+    await component.onTransferSourceChange(usdAccountId);
+
+    expect(component.trForm().exchangeRate).toBe(1.08);
+  });
+
+  it('should show suggested rate text in transfer form', async () => {
+    await component.ngOnInit();
+    component.openTransferForm();
+    component.trForm.update(f => ({
+      ...f, sourceAccountId: usdAccountId, destAccountId: eurAccountId,
+      sourceAmount: 500, date: '2026-08-20',
+    }));
+    await component.onTransferSourceChange(usdAccountId);
+    fixture.detectChanges();
+
+    const rateText = fixture.nativeElement.querySelector('.rate-source');
+    expect(rateText).toBeTruthy();
+    expect(rateText.textContent).toContain('1 USD');
+    expect(rateText.textContent).toContain('1.08');
+    expect(rateText.textContent).toContain('EUR');
+  });
+
+  it('should not fetch rate when source and destination are same currency', async () => {
+    await component.ngOnInit();
+    component.trForm.update(f => ({
+      ...f, sourceAccountId: eurAccountId, destAccountId: eurAccountId,
+      sourceAmount: 500, date: '2026-08-20',
+    }));
+
+    await component.onTransferSourceChange(eurAccountId);
+
+    expect(component.trForm().exchangeRate).toBe(1);
+  });
+
+  it('should allow manual override of exchange rate', async () => {
+    await component.ngOnInit();
+    component.trForm.update(f => ({
+      ...f, sourceAccountId: usdAccountId, destAccountId: eurAccountId,
+      sourceAmount: 500, date: '2026-08-20',
+    }));
+    await component.onTransferSourceChange(usdAccountId);
+    expect(component.trForm().exchangeRate).toBe(1.08);
+
+    component.trForm.update(f => ({ ...f, exchangeRate: 1.15 }));
+    expect(component.trForm().exchangeRate).toBe(1.15);
   });
 });
