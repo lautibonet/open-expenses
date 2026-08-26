@@ -34,7 +34,6 @@ export class DriveBackupService {
 
   private autoBackupTimer: ReturnType<typeof setTimeout> | null = null;
   private accessToken: string | null = null;
-  private pendingCodeVerifier: string | null = null;
 
   constructor() {
     this.loadStoredState();
@@ -52,43 +51,24 @@ export class DriveBackupService {
 
     await this.loadGoogleIdentityServices();
 
-    const codeVerifier = this.generateCodeVerifier();
-    this.pendingCodeVerifier = codeVerifier;
-    const codeChallenge = await this.generateCodeChallenge(codeVerifier);
-
     const g = (globalThis as any).google;
     return new Promise<void>((resolve, reject) => {
-      const client = g.accounts.oauth2.initCodeClient({
+      const client = g.accounts.oauth2.initTokenClient({
         client_id: this.getClientId(),
         scope: this.SCOPES,
-        ux_mode: 'popup',
-        code_challenge: codeChallenge,
-        code_challenge_method: 'S256',
-        callback: async (response: any) => {
+        callback: (response: any) => {
           if (response.error) {
             this.error.set(response.error);
-            this.pendingCodeVerifier = null;
             reject(new Error(response.error));
             return;
           }
-          try {
-            const tokens = await this.exchangeCodeForTokens(
-              response.code,
-              codeVerifier,
-            );
-            this.accessToken = tokens.access_token;
-            this.storeToken(tokens.access_token, tokens.expires_in);
-            this.isConnected.set(true);
-            resolve();
-          } catch (e: unknown) {
-            const message = e instanceof Error ? e.message : 'Token exchange failed';
-            this.error.set(message);
-            this.pendingCodeVerifier = null;
-            reject(new Error(message));
-          }
+          this.accessToken = response.access_token;
+          this.storeToken(response.access_token, response.expires_in);
+          this.isConnected.set(true);
+          resolve();
         },
       });
-      client.requestCode();
+      client.requestAccessToken();
     });
   }
 
@@ -293,50 +273,6 @@ export class DriveBackupService {
     if (!response.ok) {
       throw new Error(method === 'POST' ? 'Failed to create backup file' : 'Failed to update backup file');
     }
-  }
-
-  private async exchangeCodeForTokens(
-    code: string,
-    codeVerifier: string,
-  ): Promise<{ access_token: string; expires_in: number }> {
-    const response = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        code,
-        client_id: this.getClientId(),
-        redirect_uri: window.location.origin,
-        grant_type: 'authorization_code',
-        code_verifier: codeVerifier,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error('Token exchange failed');
-    }
-
-    return response.json();
-  }
-
-  private generateCodeVerifier(): string {
-    const array = new Uint8Array(32);
-    crypto.getRandomValues(array);
-    return this.base64UrlEncode(array);
-  }
-
-  private async generateCodeChallenge(verifier: string): Promise<string> {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(verifier);
-    const digest = await crypto.subtle.digest('SHA-256', data);
-    return this.base64UrlEncode(new Uint8Array(digest));
-  }
-
-  private base64UrlEncode(buffer: Uint8Array): string {
-    let binary = '';
-    for (const byte of buffer) {
-      binary += String.fromCharCode(byte);
-    }
-    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   }
 
   private loadStoredState(): void {
