@@ -1,6 +1,6 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { DatePipe } from '@angular/common';
+import { DatePipe, NgClass } from '@angular/common';
 import { TransactionService } from '../../core/services/transaction.service';
 import { TransferService } from '../../core/services/transfer.service';
 import { AccountService } from '../../core/services/account.service';
@@ -52,7 +52,7 @@ interface TransferForm {
 
 @Component({
   selector: 'app-movements',
-  imports: [FormsModule, DatePipe, TagInputComponent],
+  imports: [FormsModule, DatePipe, NgClass, TagInputComponent],
   templateUrl: './movements.component.html',
   styleUrl: './movements.component.scss',
 })
@@ -502,21 +502,56 @@ export class MovementsComponent implements OnInit {
     return this.allCategoriesForNameResolution().find(c => c.id === id)?.name ?? 'Unknown';
   }
 
-  isIncomeTransaction(txn: Transaction): boolean {
-    return this.allCategoriesForNameResolution().find(c => c.id === txn.categoryId)?.type === 'Income';
-  }
-
-  formatTransactionAmount(txn: Transaction): string {
-    const prefix = this.isIncomeTransaction(txn) ? '' : '-';
-    return `${prefix}${this.formatMoney(txn.amount)}`;
-  }
-
   formatMoney(amount: number): string {
     return formatMoney(amount, this.baseCurrency());
   }
 
-  formatMoneyWithCurrency(amount: number, currency: string): string {
-    return formatMoney(amount, currency);
+  getDirectionArrow(item: Transaction | Transfer, type: 'transaction' | 'transfer'): string {
+    if (type === 'transfer') return '=';
+    return this.isIncomeTransaction(item as Transaction) ? '→' : '←';
+  }
+
+  isIncomeTransaction(txn: Transaction): boolean {
+    return this.allCategoriesForNameResolution().find(c => c.id === txn.categoryId)?.type === 'Income';
+  }
+
+  isForeignCurrencyTransaction(txn: Transaction): boolean {
+    const account = this.accounts().find(a => a.id === txn.accountId);
+    return !!account && account.currency !== this.baseCurrency();
+  }
+
+  getTransactionSourceCurrency(txn: Transaction): string {
+    return this.getAccountCurrency(txn.accountId);
+  }
+
+  formatTransactionDisplayAmount(txn: Transaction): string {
+    if (this.isForeignCurrencyTransaction(txn) && txn.baseCurrencyAmount !== null) {
+      const sourceCurrency = this.getTransactionSourceCurrency(txn);
+      const sourceFormatted = formatMoney(txn.amount, sourceCurrency);
+      const baseFormatted = formatMoney(txn.baseCurrencyAmount, this.baseCurrency());
+      return `${sourceFormatted} → ${baseFormatted}`;
+    }
+    if (this.isForeignCurrencyTransaction(txn)) {
+      return formatMoney(txn.amount, this.getTransactionSourceCurrency(txn));
+    }
+    return this.formatMoney(txn.amount);
+  }
+
+  formatTransferDisplayAmount(tr: Transfer): string {
+    const sourceCurrency = this.getAccountCurrency(tr.sourceAccountId);
+    const destCurrency = this.getAccountCurrency(tr.destinationAccountId);
+    const isCrossCurrency = sourceCurrency !== destCurrency;
+    if (isCrossCurrency) {
+      const sourceFormatted = formatMoney(tr.sourceAmount, sourceCurrency);
+      const destFormatted = formatMoney(tr.destinationAmount, destCurrency);
+      return `${sourceFormatted} → ${destFormatted}`;
+    }
+    return this.formatMoney(tr.sourceAmount);
+  }
+
+  getDirectionArrowClass(item: MovementItem): string {
+    if (item.type === 'transfer') return 'arrow-transfer';
+    return this.isIncomeTransaction(item.data as Transaction) ? 'arrow-income' : 'arrow-expense';
   }
 
   isTransaction(item: MovementItem): boolean {

@@ -389,17 +389,17 @@ describe('MovementsComponent - category deactivation and income sign', () => {
 
     const txn = component.movements()[0].data as any;
     expect(component.isIncomeTransaction(txn)).toBe(true);
-    expect(component.formatTransactionAmount(txn)).not.toContain('-');
+    expect(component.formatTransactionDisplayAmount(txn)).not.toContain('-');
   });
 
-  it('should show expense amount with minus prefix', async () => {
+  it('should show expense amount as positive without minus prefix', async () => {
     const period = getCurrentPeriod();
     await transactionService.create(accountId, expenseCategoryId, 500, new Date(), period);
     await component.ngOnInit();
 
     const txn = component.movements()[0].data as any;
     expect(component.isIncomeTransaction(txn)).toBe(false);
-    expect(component.formatTransactionAmount(txn)).toContain('-');
+    expect(component.formatTransactionDisplayAmount(txn)).not.toContain('-');
   });
 });
 
@@ -632,5 +632,207 @@ describe('MovementsComponent - transfer exchange rate', () => {
 
     component.trForm.update(f => ({ ...f, exchangeRate: 1.15 }));
     expect(component.trForm().exchangeRate).toBe(1.15);
+  });
+});
+
+describe('MovementsComponent - direction arrows and display amounts', () => {
+  let fixture: ComponentFixture<MovementsComponent>;
+  let component: MovementsComponent;
+  let transactionService: TransactionService;
+  let transferService: TransferService;
+  let accountService: AccountService;
+  let categoryService: CategoryService;
+  let profileService: ProfileService;
+  let eurAccountId: number;
+  let usdAccountId: number;
+  let expenseCategoryId: number;
+  let incomeCategoryId: number;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+
+    const mockExchangeRateService = {
+      getRate: vi.fn().mockResolvedValue({ rate: 1.08, from: 'USD', to: 'EUR', date: '2026-08-26' }),
+    };
+
+    await TestBed.configureTestingModule({
+      imports: [MovementsComponent],
+      providers: [
+        { provide: ExchangeRateService, useValue: mockExchangeRateService },
+      ],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(MovementsComponent);
+    component = fixture.componentInstance;
+    transactionService = TestBed.inject(TransactionService);
+    transferService = TestBed.inject(TransferService);
+    accountService = TestBed.inject(AccountService);
+    categoryService = TestBed.inject(CategoryService);
+    profileService = TestBed.inject(ProfileService);
+
+    const eurAcc = await accountService.create('Cash EUR', 'EUR', 100000);
+    eurAccountId = eurAcc.id!;
+    const usdAcc = await accountService.create('Cash USD', 'USD', 50000);
+    usdAccountId = usdAcc.id!;
+    const expenseCat = await categoryService.create('Food', 'Expense');
+    expenseCategoryId = expenseCat.id!;
+    const incomeCat = await categoryService.create('Payroll', 'Income');
+    incomeCategoryId = incomeCat.id!;
+  });
+
+  afterEach(async () => {
+    await db.delete();
+    vi.restoreAllMocks();
+  });
+
+  it('should return → arrow for income transactions', async () => {
+    await component.ngOnInit();
+    const txn = { categoryId: incomeCategoryId } as any;
+    expect(component.getDirectionArrow(txn, 'transaction')).toBe('→');
+  });
+
+  it('should return ← arrow for expense transactions', async () => {
+    await component.ngOnInit();
+    const txn = { categoryId: expenseCategoryId } as any;
+    expect(component.getDirectionArrow(txn, 'transaction')).toBe('←');
+  });
+
+  it('should return = arrow for transfers', async () => {
+    const tr = {} as any;
+    expect(component.getDirectionArrow(tr, 'transfer')).toBe('=');
+  });
+
+  it('should show positive amount for expenses (no minus prefix)', async () => {
+    const period = getCurrentPeriod();
+    await transactionService.create(eurAccountId, expenseCategoryId, 500, new Date(), period);
+    await component.ngOnInit();
+
+    const txn = component.movements()[0].data as any;
+    expect(component.formatTransactionDisplayAmount(txn)).not.toContain('-');
+    expect(component.formatTransactionDisplayAmount(txn)).toContain('500');
+  });
+
+  it('should show positive amount for income', async () => {
+    const period = getCurrentPeriod();
+    await transactionService.create(eurAccountId, incomeCategoryId, 3000, new Date(), period);
+    await component.ngOnInit();
+
+    const txn = component.movements()[0].data as any;
+    expect(component.formatTransactionDisplayAmount(txn)).not.toContain('-');
+    expect(component.formatTransactionDisplayAmount(txn)).toContain('3,000');
+  });
+
+  it('should show just base currency amount for same-currency transactions', async () => {
+    const period = getCurrentPeriod();
+    await transactionService.create(eurAccountId, expenseCategoryId, 50, new Date(), period);
+    await component.ngOnInit();
+
+    const txn = component.movements()[0].data as any;
+    const display = component.formatTransactionDisplayAmount(txn);
+    expect(display).not.toContain('→');
+    expect(display).toContain('50');
+  });
+
+  it('should show both currencies for cross-currency transactions', async () => {
+    const period = getCurrentPeriod();
+    await transactionService.create(usdAccountId, expenseCategoryId, 10, new Date('2026-08-20'), period, [], 1.08, 10.80);
+    await component.ngOnInit();
+
+    const txn = component.movements()[0].data as any;
+    const display = component.formatTransactionDisplayAmount(txn);
+    expect(display).toContain('→');
+    expect(display).toContain('$');
+    expect(display).toContain('€');
+  });
+
+  it('should return true for foreign currency transactions', async () => {
+    const period = getCurrentPeriod();
+    await transactionService.create(usdAccountId, expenseCategoryId, 10, new Date(), period);
+    await component.ngOnInit();
+
+    const txn = component.movements()[0].data as any;
+    expect(component.isForeignCurrencyTransaction(txn)).toBe(true);
+  });
+
+  it('should fall back to source-only display when baseCurrencyAmount is null', async () => {
+    const period = getCurrentPeriod();
+    await transactionService.create(usdAccountId, expenseCategoryId, 10, new Date('2026-08-20'), period, [], null, null);
+    await component.ngOnInit();
+
+    const txn = component.movements()[0].data as any;
+    const display = component.formatTransactionDisplayAmount(txn);
+    expect(display).toContain('$');
+    expect(display).not.toContain('→');
+  });
+
+  it('should return false for same-currency transactions', async () => {
+    const period = getCurrentPeriod();
+    await transactionService.create(eurAccountId, expenseCategoryId, 50, new Date(), period);
+    await component.ngOnInit();
+
+    const txn = component.movements()[0].data as any;
+    expect(component.isForeignCurrencyTransaction(txn)).toBe(false);
+  });
+
+  it('should return source currency for cross-currency transfers', async () => {
+    const period = getCurrentPeriod();
+    await transferService.create(usdAccountId, eurAccountId, 100, new Date(), period, 'test', 1.08);
+    await component.ngOnInit();
+
+    const tr = component.movements()[0].data as any;
+    expect(component.getAccountCurrency(tr.sourceAccountId)).toBe('USD');
+  });
+
+  it('should show source → dest amounts for cross-currency transfers', async () => {
+    const period = getCurrentPeriod();
+    await transferService.create(usdAccountId, eurAccountId, 100, new Date(), period, 'test', 1.08);
+    await component.ngOnInit();
+
+    const tr = component.movements()[0].data as any;
+    const display = component.formatTransferDisplayAmount(tr);
+    expect(display).toContain('→');
+    expect(display).toContain('$');
+    expect(display).toContain('€');
+  });
+
+  it('should show just amount for same-currency transfers', async () => {
+    const period = getCurrentPeriod();
+    const acc2 = await accountService.create('Cash EUR 2', 'EUR', 50000);
+    await transferService.create(eurAccountId, acc2.id!, 500, new Date(), period, 'savings');
+    await component.ngOnInit();
+
+    const tr = component.movements()[0].data as any;
+    const display = component.formatTransferDisplayAmount(tr);
+    expect(display).not.toContain('→');
+    expect(display).toContain('500');
+  });
+
+  it('should render direction arrow column in table header', async () => {
+    const period = getCurrentPeriod();
+    await transactionService.create(eurAccountId, expenseCategoryId, 100, new Date(), period);
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const headers = fixture.nativeElement.querySelectorAll('th');
+    expect(headers[0].textContent).toContain('Type');
+    expect(headers[1].textContent).toContain('Date');
+  });
+
+  it('should render direction arrow cell for each row', async () => {
+    const period = getCurrentPeriod();
+    const acc2 = await accountService.create('Cash EUR 2', 'EUR', 50000);
+    await transactionService.create(eurAccountId, expenseCategoryId, 100, new Date(), period);
+    await transferService.create(eurAccountId, acc2.id!, 200, new Date(), period, 'move');
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const rows = fixture.nativeElement.querySelectorAll('tbody tr');
+    expect(rows.length).toBe(2);
+
+    const arrowCells = fixture.nativeElement.querySelectorAll('tbody tr td:first-child');
+    const arrows = Array.from(arrowCells).map((el: any) => el.textContent.trim());
+    expect(arrows).toContain('←');
+    expect(arrows).toContain('=');
   });
 });
