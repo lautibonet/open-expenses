@@ -97,7 +97,7 @@
       <div class="form-grid">
         <label>
           From
-          <select [ngModel]="trForm().sourceAccountId" (ngModelChange)="trForm.update(f => ({ ...f, sourceAccountId: +$event }))">
+          <select [ngModel]="trForm().sourceAccountId" (ngModelChange)="onTransferSourceChange(+$event)">
             @for (acc of accounts(); track acc.id) {
               <option [value]="acc.id">{{ acc.name }}</option>
             }
@@ -106,7 +106,7 @@
         <label>
           To
           <select [ngModel]="trForm().destAccountId" (ngModelChange)="trForm.update(f => ({ ...f, destAccountId: +$event }))">
-            @for (acc of accounts(); track acc.id) {
+            @for (acc of filteredDestinationAccounts(); track acc.id) {
               <option [value]="acc.id">{{ acc.name }}</option>
             }
           </select>
@@ -176,52 +176,63 @@
     }
   </div>
 
-  <div class="movement-list">
-    @for (item of filteredMovements(); track $index) {
-      @if (isTransaction(item)) {
-        @let txn = getTransactionData(item);
-        <div class="movement-item transaction">
-          <div class="movement-main">
-            <span class="category">{{ getCategoryName(txn.categoryId) }}</span>
-            <span class="amount expense">-{{ formatMoney(txn.amount) }}</span>
-          </div>
-          <div class="movement-meta">
-            <span>{{ getAccountName(txn.accountId) }}</span>
-            <span>{{ txn.date | date:'mediumDate' }}</span>
-            @if (txn.tags.length > 0) {
-              <span class="tags">@for (tag of txn.tags; track tag) {
-                <span class="tag">{{ tag }}</span>
-              }</span>
+  <div class="movement-table">
+    @if (filteredMovements().length > 0) {
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Category / Transfer</th>
+            <th>Amount</th>
+            <th>Account</th>
+            <th>Tags</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of filteredMovements(); track $index) {
+            @if (isTransaction(item)) {
+              @let txn = getTransactionData(item);
+              <tr>
+                <td>{{ txn.date | date:'mediumDate' }}</td>
+                <td>{{ getCategoryName(txn.categoryId) }}</td>
+                <td [class.income]="isIncomeTransaction(txn)" [class.expense]="!isIncomeTransaction(txn)">
+                  {{ formatTransactionAmount(txn) }}
+                </td>
+                <td>{{ getAccountName(txn.accountId) }}</td>
+                <td>
+                  @if (txn.tags.length > 0) {
+                    @for (tag of txn.tags; track tag) {
+                      <span class="tag">{{ tag }}</span>
+                    }
+                  }
+                </td>
+                <td>
+                  <button class="btn small" (click)="openTransactionForm(txn.id!)">Edit</button>
+                  <button class="btn small danger" (click)="deleteTransaction(txn.id!)">Delete</button>
+                </td>
+              </tr>
+            } @else {
+              @let tr = getTransferData(item);
+              <tr class="transfer-row">
+                <td>{{ tr.date | date:'mediumDate' }}</td>
+                <td>{{ getAccountName(tr.sourceAccountId) }} &rarr; {{ getAccountName(tr.destinationAccountId) }}</td>
+                <td>{{ formatMoney(tr.amount) }}</td>
+                <td colspan="2">
+                  @if (tr.note) {
+                    <span class="note">{{ tr.note }}</span>
+                  }
+                </td>
+                <td>
+                  <button class="btn small" (click)="openTransferForm(tr.id!)">Edit</button>
+                  <button class="btn small danger" (click)="deleteTransfer(tr.id!)">Delete</button>
+                </td>
+              </tr>
             }
-          </div>
-          <div class="movement-actions">
-            <button class="btn small" (click)="openTransactionForm(txn.id!)">Edit</button>
-            <button class="btn small danger" (click)="deleteTransaction(txn.id!)">Delete</button>
-          </div>
-        </div>
-      } @else {
-        @let tr = getTransferData(item);
-        <div class="movement-item transfer">
-          <div class="movement-main">
-            <span class="type-label">Transfer</span>
-            <span class="transfer-detail">
-              {{ getAccountName(tr.sourceAccountId) }} &rarr; {{ getAccountName(tr.destinationAccountId) }}
-            </span>
-            <span class="amount">{{ formatMoney(tr.amount) }}</span>
-          </div>
-          <div class="movement-meta">
-            <span>{{ tr.date | date:'mediumDate' }}</span>
-            @if (tr.note) {
-              <span class="note">{{ tr.note }}</span>
-            }
-          </div>
-          <div class="movement-actions">
-            <button class="btn small" (click)="openTransferForm(tr.id!)">Edit</button>
-            <button class="btn small danger" (click)="deleteTransfer(tr.id!)">Delete</button>
-          </div>
-        </div>
-      }
-    } @empty {
+          }
+        </tbody>
+      </table>
+    } @else {
       <p class="empty">No movements for {{ selectedPeriod() }}.</p>
     }
   </div>

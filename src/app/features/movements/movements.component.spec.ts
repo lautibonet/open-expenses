@@ -4,6 +4,7 @@ import { TransactionService } from '../../core/services/transaction.service';
 import { TransferService } from '../../core/services/transfer.service';
 import { AccountService } from '../../core/services/account.service';
 import { CategoryService } from '../../core/services/category.service';
+import { ProfileService } from '../../core/services/profile.service';
 import { db } from '../../core/db/database';
 import { getCurrentPeriod } from '../../core/types/period.type';
 
@@ -224,5 +225,179 @@ describe('MovementsComponent - filtering', () => {
     expect(component.activeFilterCount()).toBe(2);
     component.filterTag.set('groceries');
     expect(component.activeFilterCount()).toBe(3);
+  });
+});
+
+describe('MovementsComponent - self-transfer guard', () => {
+  let fixture: ComponentFixture<MovementsComponent>;
+  let component: MovementsComponent;
+  let accountService: AccountService;
+  let accountId1: number;
+  let accountId2: number;
+  let accountId3: number;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    await TestBed.configureTestingModule({
+      imports: [MovementsComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(MovementsComponent);
+    component = fixture.componentInstance;
+    accountService = TestBed.inject(AccountService);
+
+    const acc1 = await accountService.create('Cash', 'EUR', 100000);
+    accountId1 = acc1.id!;
+    const acc2 = await accountService.create('Card', 'EUR', 50000);
+    accountId2 = acc2.id!;
+    const acc3 = await accountService.create('Savings', 'EUR', 200000);
+    accountId3 = acc3.id!;
+  });
+
+  afterEach(async () => {
+    await db.delete();
+  });
+
+  it('should exclude source account from destination accounts', async () => {
+    await component.ngOnInit();
+    component.trForm.update(f => ({ ...f, sourceAccountId: accountId1 }));
+
+    const filtered = component.filteredDestinationAccounts();
+    expect(filtered.find(a => a.id === accountId1)).toBeUndefined();
+    expect(filtered.length).toBe(2);
+  });
+
+  it('should show all accounts when no source is selected', async () => {
+    await component.ngOnInit();
+    component.trForm.update(f => ({ ...f, sourceAccountId: 0 }));
+
+    const filtered = component.filteredDestinationAccounts();
+    expect(filtered.length).toBe(3);
+  });
+
+  it('should reset destination when source changes to match it', async () => {
+    await component.ngOnInit();
+    component.trForm.update(f => ({ ...f, sourceAccountId: accountId1, destAccountId: accountId2 }));
+
+    component.onTransferSourceChange(accountId2);
+
+    expect(component.trForm().sourceAccountId).toBe(accountId2);
+    expect(component.trForm().destAccountId).not.toBe(accountId2);
+  });
+
+  it('should not reset destination when source changes to a different account', async () => {
+    await component.ngOnInit();
+    component.trForm.update(f => ({ ...f, sourceAccountId: accountId1, destAccountId: accountId2 }));
+
+    component.onTransferSourceChange(accountId3);
+
+    expect(component.trForm().sourceAccountId).toBe(accountId3);
+    expect(component.trForm().destAccountId).toBe(accountId2);
+  });
+
+  it('should update destination dropdown when source changes', async () => {
+    await component.ngOnInit();
+    component.trForm.update(f => ({ ...f, sourceAccountId: accountId1 }));
+
+    let filtered = component.filteredDestinationAccounts();
+    expect(filtered.find(a => a.id === accountId1)).toBeUndefined();
+    expect(filtered.find(a => a.id === accountId2)).toBeDefined();
+
+    component.onTransferSourceChange(accountId2);
+    filtered = component.filteredDestinationAccounts();
+    expect(filtered.find(a => a.id === accountId2)).toBeUndefined();
+    expect(filtered.find(a => a.id === accountId1)).toBeDefined();
+  });
+});
+
+describe('MovementsComponent - category deactivation and income sign', () => {
+  let fixture: ComponentFixture<MovementsComponent>;
+  let component: MovementsComponent;
+  let transactionService: TransactionService;
+  let accountService: AccountService;
+  let categoryService: CategoryService;
+  let profileService: ProfileService;
+  let accountId: number;
+  let expenseCategoryId: number;
+  let incomeCategoryId: number;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    await TestBed.configureTestingModule({
+      imports: [MovementsComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(MovementsComponent);
+    component = fixture.componentInstance;
+    transactionService = TestBed.inject(TransactionService);
+    accountService = TestBed.inject(AccountService);
+    categoryService = TestBed.inject(CategoryService);
+    profileService = TestBed.inject(ProfileService);
+
+    const account = await accountService.create('Cash', 'EUR', 100000);
+    accountId = account.id!;
+    const expenseCat = await categoryService.create('Food', 'Expense');
+    expenseCategoryId = expenseCat.id!;
+    const incomeCat = await categoryService.create('Payroll', 'Income');
+    incomeCategoryId = incomeCat.id!;
+  });
+
+  afterEach(async () => {
+    await db.delete();
+  });
+
+  it('should resolve name of deactivated category on existing transactions', async () => {
+    const period = getCurrentPeriod();
+    await transactionService.create(accountId, expenseCategoryId, 500, new Date(), period);
+    await categoryService.setActive(expenseCategoryId, false);
+
+    await component.ngOnInit();
+
+    const txn = component.movements()[0].data as any;
+    expect(component.getCategoryName(txn.categoryId)).toBe('Food');
+  });
+
+  it('should use all categories for name resolution but active-only for form', async () => {
+    await component.ngOnInit();
+
+    expect(component.allCategoriesForNameResolution().length).toBe(2);
+    expect(component.categories().length).toBe(2);
+
+    await categoryService.setActive(expenseCategoryId, false);
+    await component.ngOnInit();
+
+    expect(component.allCategoriesForNameResolution().length).toBe(2);
+    expect(component.categories().length).toBe(1);
+  });
+
+  it('should use all categories for filter dropdown name resolution', async () => {
+    const period = getCurrentPeriod();
+    await transactionService.create(accountId, expenseCategoryId, 500, new Date(), period);
+    await categoryService.setActive(expenseCategoryId, false);
+    await component.ngOnInit();
+
+    expect(component.allCategoriesForNameResolution().find(c => c.id === expenseCategoryId)).toBeDefined();
+  });
+
+  it('should show income amount as positive without minus prefix', async () => {
+    const period = getCurrentPeriod();
+    await transactionService.create(accountId, incomeCategoryId, 3000, new Date(), period);
+    await component.ngOnInit();
+
+    const txn = component.movements()[0].data as any;
+    expect(component.isIncomeTransaction(txn)).toBe(true);
+    expect(component.formatTransactionAmount(txn)).not.toContain('-');
+  });
+
+  it('should show expense amount with minus prefix', async () => {
+    const period = getCurrentPeriod();
+    await transactionService.create(accountId, expenseCategoryId, 500, new Date(), period);
+    await component.ngOnInit();
+
+    const txn = component.movements()[0].data as any;
+    expect(component.isIncomeTransaction(txn)).toBe(false);
+    expect(component.formatTransactionAmount(txn)).toContain('-');
   });
 });

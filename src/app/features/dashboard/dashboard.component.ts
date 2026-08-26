@@ -42,9 +42,16 @@ export class DashboardComponent implements OnInit {
   categoryBreakdown = signal<{ name: string; total: number }[]>([]);
   accountBalances = signal<{ account: Account; balance: number }[]>([]);
 
+  averagesYear = signal<string>(String(getCurrentYear()));
+  averagesYears: string[] = [...this.years.map(String), 'All time'];
+  avgMonthlyIncome = signal(0);
+  avgMonthlyExpenses = signal(0);
+  avgMonthlySavings = signal(0);
+
   async ngOnInit(): Promise<void> {
     this.baseCurrency.set(await this.profileService.getBaseCurrency());
     await this.refresh();
+    await this.refreshAverages();
   }
 
   async refresh(): Promise<void> {
@@ -104,7 +111,60 @@ export class DashboardComponent implements OnInit {
     this.accountBalances.set(balances);
   }
 
+  async refreshAverages(): Promise<void> {
+    const allTxns = await this.transactionService.getAll();
+    const allCategories = await this.categoryService.getAll();
+    const catMap = new Map(allCategories.map(c => [c.id!, c]));
+
+    const selectedYear = this.averagesYear();
+
+    const filteredTxns = selectedYear === 'All time'
+      ? allTxns
+      : allTxns.filter(t => {
+          const d = new Date(t.date);
+          return String(d.getFullYear()) === selectedYear;
+        });
+
+    const isAllTime = selectedYear === 'All time';
+
+    const monthsWithData = new Set(
+      filteredTxns.map(t => isAllTime
+        ? `${new Date(t.date).getFullYear()}-${t.period}`
+        : t.period
+      )
+    );
+
+    if (monthsWithData.size === 0) {
+      this.avgMonthlyIncome.set(0);
+      this.avgMonthlyExpenses.set(0);
+      this.avgMonthlySavings.set(0);
+      return;
+    }
+
+    let totalIncome = 0;
+    let totalExpenses = 0;
+
+    for (const t of filteredTxns) {
+      const amount = t.baseCurrencyAmount ?? t.amount;
+      const cat = catMap.get(t.categoryId);
+      if (cat?.type === 'Income') {
+        totalIncome += amount;
+      } else {
+        totalExpenses += amount;
+      }
+    }
+
+    const months = monthsWithData.size;
+    this.avgMonthlyIncome.set(Math.round(totalIncome / months * 100) / 100);
+    this.avgMonthlyExpenses.set(Math.round(totalExpenses / months * 100) / 100);
+    this.avgMonthlySavings.set(Math.round((totalIncome - totalExpenses) / months * 100) / 100);
+  }
+
   formatMoney(amount: number): string {
     return formatMoney(amount, this.baseCurrency());
+  }
+
+  formatAccountBalance(amount: number, currency: string): string {
+    return formatMoney(amount, currency);
   }
 }
