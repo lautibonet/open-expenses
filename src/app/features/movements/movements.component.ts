@@ -305,7 +305,7 @@ export class MovementsComponent implements OnInit {
     if (f.exchangeRate && f.amount > 0) {
       this.txForm.update(form => ({
         ...form,
-        baseCurrencyAmount: Math.round(form.amount * form.exchangeRate!),
+        baseCurrencyAmount: Math.round(form.amount * form.exchangeRate! * 100) / 100,
       }));
     } else {
       this.txForm.update(form => ({ ...form, baseCurrencyAmount: null }));
@@ -387,8 +387,8 @@ export class MovementsComponent implements OnInit {
     return this.categories().find(c => c.id === id)?.name ?? 'Unknown';
   }
 
-  formatMoney(cents: number): string {
-    return formatMoney(cents, this.baseCurrency());
+  formatMoney(amount: number): string {
+    return formatMoney(amount, this.baseCurrency());
   }
 
   isTransaction(item: MovementItem): boolean {

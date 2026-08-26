@@ -41,7 +41,7 @@ describe('ExchangeRateService', () => {
     expect(result.to).toBe('USD');
     expect(result.date).toBe('2026-01-15');
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'https://api.frankfurter.dev/2026-01-15?from=EUR&to=USD',
+      'https://api.frankfurter.dev/rate/EUR/USD?date=2026-01-15',
     );
   });
 
@@ -55,7 +55,7 @@ describe('ExchangeRateService', () => {
     const result = await service.getRate('EUR', 'GBP');
 
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'https://api.frankfurter.dev/latest?from=EUR&to=GBP',
+      'https://api.frankfurter.dev/rate/EUR/GBP',
     );
     expect(result.rate).toBe(0.85);
   });

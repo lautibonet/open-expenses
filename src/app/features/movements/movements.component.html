@@ -30,7 +30,7 @@
           </select>
         </label>
         <label>
-          Amount (cents)
+          Amount
           <input type="number" [ngModel]="txForm().amount" (ngModelChange)="txForm.update(f => ({ ...f, amount: +$event })); onAmountOrRateChange()" />
         </label>
         <label>
@@ -112,7 +112,7 @@
           </select>
         </label>
         <label>
-          Amount (cents)
+          Amount
           <input type="number" [ngModel]="trForm().amount" (ngModelChange)="trForm.update(f => ({ ...f, amount: +$event }))" />
         </label>
         <label>

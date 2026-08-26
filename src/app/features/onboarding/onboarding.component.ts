@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ProfileService } from '../../core/services/profile.service';
 import { AccountService } from '../../core/services/account.service';
 import { CategoryService } from '../../core/services/category.service';
+import { SUPPORTED_CURRENCIES } from '../../core/constants/currencies';
 
 @Component({
   selector: 'app-onboarding',
@@ -17,6 +18,7 @@ export class OnboardingComponent {
   private categoryService = inject(CategoryService);
   private router = inject(Router);
 
+  supportedCurrencies = SUPPORTED_CURRENCIES;
   step = signal(1);
   baseCurrency = signal('EUR');
   accountName = signal('');

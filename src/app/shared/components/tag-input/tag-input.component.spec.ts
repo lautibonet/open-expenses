@@ -173,4 +173,51 @@ describe('TagInputComponent', () => {
 
     expect(component.showDropdown()).toBe(false);
   });
+
+  it('should add tag when input ends with comma', () => {
+    const emitSpy = vi.spyOn(component.tagsChange, 'emit');
+    setInputs([], []);
+
+    component.onInput('groceries,');
+
+    expect(emitSpy).toHaveBeenCalledWith(['groceries']);
+    expect(component.inputValue()).toBe('');
+  });
+
+  it('should add tag when input ends with semicolon', () => {
+    const emitSpy = vi.spyOn(component.tagsChange, 'emit');
+    setInputs([], []);
+
+    component.onInput('groceries;');
+
+    expect(emitSpy).toHaveBeenCalledWith(['groceries']);
+    expect(component.inputValue()).toBe('');
+  });
+
+  it('should trim whitespace when adding tag via delimiter', () => {
+    const emitSpy = vi.spyOn(component.tagsChange, 'emit');
+    setInputs([], []);
+
+    component.onInput('  groceries  ,');
+
+    expect(emitSpy).toHaveBeenCalledWith(['groceries']);
+  });
+
+  it('should not add empty tag when just delimiter is typed', () => {
+    const emitSpy = vi.spyOn(component.tagsChange, 'emit');
+    setInputs([], []);
+
+    component.onInput(',');
+
+    expect(emitSpy).not.toHaveBeenCalled();
+  });
+
+  it('should not add duplicate tag via delimiter', () => {
+    const emitSpy = vi.spyOn(component.tagsChange, 'emit');
+    setInputs(['groceries'], []);
+
+    component.onInput('groceries,');
+
+    expect(emitSpy).not.toHaveBeenCalled();
+  });
 });

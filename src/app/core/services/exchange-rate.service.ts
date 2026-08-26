@@ -27,8 +27,10 @@ export class ExchangeRateService {
       throw new OfflineError();
     }
 
-    const dateStr = date ?? 'latest';
-    const url = `${FRANKFURTER_BASE}/${dateStr}?from=${fromCurrency}&to=${toCurrency}`;
+    let url = `${FRANKFURTER_BASE}/rate/${fromCurrency}/${toCurrency}`;
+    if (date) {
+      url += `?date=${date}`;
+    }
 
     const response = await fetch(url);
     if (!response.ok) {

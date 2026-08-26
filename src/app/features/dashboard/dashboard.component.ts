@@ -104,7 +104,7 @@ export class DashboardComponent implements OnInit {
     this.accountBalances.set(balances);
   }
 
-  formatMoney(cents: number): string {
-    return formatMoney(cents, this.baseCurrency());
+  formatMoney(amount: number): string {
+    return formatMoney(amount, this.baseCurrency());
   }
 }
