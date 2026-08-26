@@ -52,6 +52,16 @@
   }
 
   <section class="card">
+    <h2>Total Balance</h2>
+    <div class="totals">
+      <div class="stat">
+        <span class="label">All accounts ({{ baseCurrency() }})</span>
+        <span class="value">{{ formatMoney(totalBalanceBaseCurrency()) }}</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
     <h2>Account Balances</h2>
     <table>
       <thead>
