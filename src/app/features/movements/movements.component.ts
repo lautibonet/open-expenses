@@ -66,6 +66,7 @@ export class MovementsComponent implements OnInit {
   months = MONTHS;
   accounts = signal<Account[]>([]);
   categories = signal<Category[]>([]);
+  allCategoriesForNameResolution = signal<Category[]>([]);
   movements = signal<MovementItem[]>([]);
   baseCurrency = signal('EUR');
   allTags = signal<string[]>([]);
@@ -89,6 +90,12 @@ export class MovementsComponent implements OnInit {
     period: getCurrentPeriod(), note: '',
   });
   errorMessage = signal('');
+
+  filteredDestinationAccounts = computed(() => {
+    const sourceId = this.trForm().sourceAccountId;
+    if (!sourceId) return this.accounts();
+    return this.accounts().filter(a => a.id !== sourceId);
+  });
 
   filterCategory = signal<number | null>(null);
   filterAccount = signal<number | null>(null);
@@ -143,6 +150,7 @@ export class MovementsComponent implements OnInit {
     this.baseCurrency.set(await this.profileService.getBaseCurrency());
     this.accounts.set(await this.accountService.getActive());
     this.categories.set(await this.categoryService.getActive());
+    this.allCategoriesForNameResolution.set(await this.categoryService.getAll());
     await this.refreshTags();
     if (this.accounts().length > 0) {
       const first = this.accounts()[0].id!;
@@ -266,6 +274,13 @@ export class MovementsComponent implements OnInit {
     this.checkExchangeRate(accountId);
   }
 
+  onTransferSourceChange(sourceId: number): void {
+    this.trForm.update(f => {
+      const destAccountId = f.destAccountId === sourceId ? 0 : f.destAccountId;
+      return { ...f, sourceAccountId: sourceId, destAccountId };
+    });
+  }
+
   private async checkExchangeRate(accountId: number): Promise<void> {
     const account = this.accounts().find(a => a.id === accountId);
     if (!account || account.currency === this.baseCurrency()) {
@@ -384,7 +399,16 @@ export class MovementsComponent implements OnInit {
   }
 
   getCategoryName(id: number): string {
-    return this.categories().find(c => c.id === id)?.name ?? 'Unknown';
+    return this.allCategoriesForNameResolution().find(c => c.id === id)?.name ?? 'Unknown';
+  }
+
+  isIncomeTransaction(txn: Transaction): boolean {
+    return this.allCategoriesForNameResolution().find(c => c.id === txn.categoryId)?.type === 'Income';
+  }
+
+  formatTransactionAmount(txn: Transaction): string {
+    const prefix = this.isIncomeTransaction(txn) ? '' : '-';
+    return `${prefix}${this.formatMoney(txn.amount)}`;
   }
 
   formatMoney(amount: number): string {
