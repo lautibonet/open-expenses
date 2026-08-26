@@ -5,6 +5,12 @@ import { ProfileService } from '../../core/services/profile.service';
 import { AccountService } from '../../core/services/account.service';
 import { CategoryService } from '../../core/services/category.service';
 import { SUPPORTED_CURRENCIES } from '../../core/constants/currencies';
+import { CategoryType } from '../../core/models/category.model';
+
+interface EditableCategory {
+  name: string;
+  type: CategoryType;
+}
 
 @Component({
   selector: 'app-onboarding',
@@ -25,8 +31,8 @@ export class OnboardingComponent {
   accountCurrency = signal('EUR');
   accountBalance = signal(0);
   accounts = signal<{ name: string; currency: string; balance: number }[]>([]);
-  defaultCategories = signal(
-    CategoryService.DEFAULT_CATEGORIES.map(c => ({ ...c, active: true })),
+  categories = signal<EditableCategory[]>(
+    CategoryService.DEFAULT_CATEGORIES.map(c => ({ name: c.name, type: c.type })),
   );
   errorMessage = signal('');
 
@@ -59,22 +65,44 @@ export class OnboardingComponent {
     this.accounts.update(accs => accs.filter((_, i) => i !== index));
   }
 
-  toggleCategory(index: number): void {
-    this.defaultCategories.update(cats =>
-      cats.map((c, i) => (i === index ? { ...c, active: !c.active } : c)),
+  updateCategoryField<K extends keyof EditableCategory>(index: number, field: K, value: EditableCategory[K]): void {
+    this.categories.update(cats =>
+      cats.map((c, i) => (i === index ? { ...c, [field]: value } : c)),
     );
   }
 
+  addCategory(): void {
+    this.categories.update(cats => [...cats, { name: '', type: 'Expense' }]);
+  }
+
+  removeCategory(index: number): void {
+    this.categories.update(cats => cats.filter((_, i) => i !== index));
+  }
+
+  canProceedFromCategories(): boolean {
+    return this.categories().length > 0;
+  }
+
   async completeOnboarding(): Promise<void> {
+    if (!this.canProceedFromCategories()) {
+      this.errorMessage.set('At least one category is required');
+      return;
+    }
+
+    const emptyCategory = this.categories().find(c => !c.name.trim());
+    if (emptyCategory) {
+      this.errorMessage.set('All categories must have a name');
+      return;
+    }
+
     try {
+      this.errorMessage.set('');
       await this.profileService.completeOnboarding(this.baseCurrency());
       for (const acc of this.accounts()) {
         await this.accountService.create(acc.name, acc.currency, acc.balance);
       }
-      for (const cat of this.defaultCategories()) {
-        if (cat.active) {
-          await this.categoryService.create(cat.name, cat.type);
-        }
+      for (const cat of this.categories()) {
+        await this.categoryService.create(cat.name, cat.type);
       }
       this.router.navigate(['/dashboard']);
     } catch (e: unknown) {
