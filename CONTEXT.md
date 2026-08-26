@@ -9,7 +9,7 @@ A recorded movement of money classified as Income or Expense, linked to an accou
 _Avoid_: Entry, record, line item
 
 **Transfer**:
-A movement of money between two of the user's own accounts. Structurally separate from Transactions; never counts as Income or Expense.
+A movement of money between two of the user's own accounts. Structurally separate from Transactions; never counts as Income or Expense. Stores `sourceAmount`, `destinationAmount`, `exchangeRate`, and `baseCurrencyAmount`. For same-currency transfers, `sourceAmount` equals `destinationAmount`.
 _Avoid_: Movement, internal transfer
 
 **Account (CashAccount)**:
@@ -18,7 +18,7 @@ _Avoid_: Wallet, bank account, source
 
 **Category**:
 A mandatory classification label applied to every Transaction, marked as either Income or Expense. Flat list, no hierarchy. Pre-populated with defaults during onboarding.
-_Aavoid_: Type, group, classification
+_Avoid_: Type, group, classification
 
 **Tag**:
 A freeform, reusable text label applied optionally to Transactions for extra grouping. Multiple tags per transaction. Extracted from existing transactions (no separate table).
@@ -29,19 +29,23 @@ A month name (January through December) assigned to a Transaction or Transfer to
 _Avoid_: Cycle, fiscal period, date range
 
 **Base Currency**:
-The single currency in which all Dashboard totals and averages are reported. Set during onboarding. Accounts may hold different currencies; amounts are converted using confirmed exchange rates.
-_Aavoid_: Report currency, display currency
+The single currency in which the Dashboard total balance and all period totals/averages are reported. Set during onboarding. Accounts may hold different currencies; amounts are converted using exchange rates recorded at transaction/transfer time.
+_Avoid_: Report currency, display currency
 
 **Exchange Rate**:
-The conversion factor between a Transaction's account currency and the base currency. Fetched from Frankfurter (ECB rates), user-confirmed or manually overridden per Transaction.
+The conversion factor between two currencies. Fetched from Frankfurter v2 (ECB rates) via `/rate/{FROM}/{TO}` for single pairs or `/rates?base={FROM}&quotes={TO1,TO2}` for batches. User-confirmed or manually overridden per Transaction or Transfer.
 _Avoid_: Conversion rate, FX rate
 
 **Movement**:
-The unified display of Transactions and Transfers in a single chronological list. The Movements tab shows both types interleaved by date.
-_Aavoid_: Feed, timeline, history
+The unified display of Transactions and Transfers in a single chronological list. Each row starts with a direction arrow: → for Income, ← for Expense, = for Transfer. Amounts are always positive; cross-currency items show both original and converted amounts (e.g. `$10.00 → €8.57`).
+_Avoid_: Feed, timeline, history
+
+**Direction Arrow**:
+A visual indicator at the start of each Movement row. → (right arrow) for Income, ← (left arrow) for Expense, = (equals) for Transfer. Uses green/red color coding for Income/Expense respectively.
+_Avoid_: Sign, prefix, indicator
 
 **Dashboard**:
-A read-only summary screen showing period totals, per-category expense breakdown, yearly averages, and per-account balances (current and period-end).
+A read-only summary screen showing a total balance in base currency (sum of all account balances, non-base converted using latest rate), period totals, per-category expense breakdown, yearly averages, and per-account balances (current and period-end).
 _Avoid_: Stats, overview, summary page
 
 **Onboarding**:
