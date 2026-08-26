@@ -276,6 +276,7 @@
       <table>
         <thead>
           <tr>
+            <th>Type</th>
             <th>Date</th>
             <th>Category / Transfer</th>
             <th>Amount</th>
@@ -289,13 +290,14 @@
             @if (isTransaction(item)) {
               @let txn = getTransactionData(item);
               <tr>
+                <td [ngClass]="['arrow', getDirectionArrowClass(item)]">{{ getDirectionArrow(txn, 'transaction') }}</td>
                 <td>{{ txn.date | date: 'mediumDate' }}</td>
                 <td>{{ getCategoryName(txn.categoryId) }}</td>
                 <td
                   [class.income]="isIncomeTransaction(txn)"
                   [class.expense]="!isIncomeTransaction(txn)"
                 >
-                  {{ formatTransactionAmount(txn) }}
+                  {{ formatTransactionDisplayAmount(txn) }}
                 </td>
                 <td>{{ getAccountName(txn.accountId) }}</td>
                 <td>
@@ -315,22 +317,14 @@
             } @else {
               @let tr = getTransferData(item);
               <tr class="transfer-row">
+                <td [ngClass]="['arrow', getDirectionArrowClass(item)]">{{ getDirectionArrow(tr, 'transfer') }}</td>
                 <td>{{ tr.date | date: 'mediumDate' }}</td>
                 <td>
-                  {{ getAccountName(tr.sourceAccountId) }} &rarr;
+                  {{ getAccountName(tr.sourceAccountId) }} →
                   {{ getAccountName(tr.destinationAccountId) }}
                 </td>
                 <td>
-                  {{ formatMoney(tr.sourceAmount)
-                  }}{{
-                    tr.sourceAmount !== tr.destinationAmount
-                      ? ' \u2192 ' +
-                        formatMoneyWithCurrency(
-                          tr.destinationAmount,
-                          getAccountCurrency(tr.destinationAccountId)
-                        )
-                      : ''
-                  }}
+                  {{ formatTransferDisplayAmount(tr) }}
                 </td>
                 <td colspan="2">
                   @if (tr.note) {

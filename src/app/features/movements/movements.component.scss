@@ -200,6 +200,23 @@
   font-style: italic;
 }
 
+.arrow {
+  font-weight: 600;
+  text-align: center;
+
+  &.arrow-income {
+    color: #16a34a;
+  }
+
+  &.arrow-expense {
+    color: #dc2626;
+  }
+
+  &.arrow-transfer {
+    color: #6b7280;
+  }
+}
+
 .empty {
   text-align: center;
   color: #9ca3af;
