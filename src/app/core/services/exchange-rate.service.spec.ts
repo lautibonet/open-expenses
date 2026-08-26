@@ -30,7 +30,7 @@ describe('ExchangeRateService', () => {
   it('should fetch rate from Frankfurter API', async () => {
     const mockResponse = {
       ok: true,
-      json: async () => ({ rates: { USD: 1.08 }, date: '2026-01-15' }),
+      json: async () => ({ base: 'EUR', quote: 'USD', date: '2026-01-15', rate: 1.08 }),
     };
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse as Response);
 
@@ -41,21 +41,21 @@ describe('ExchangeRateService', () => {
     expect(result.to).toBe('USD');
     expect(result.date).toBe('2026-01-15');
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'https://api.frankfurter.dev/rate/EUR/USD?date=2026-01-15',
+      'https://api.frankfurter.dev/v2/rate/EUR/USD?date=2026-01-15',
     );
   });
 
   it('should use latest when no date provided', async () => {
     const mockResponse = {
       ok: true,
-      json: async () => ({ rates: { GBP: 0.85 }, date: '2026-01-15' }),
+      json: async () => ({ base: 'EUR', quote: 'GBP', date: '2026-01-15', rate: 0.85 }),
     };
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse as Response);
 
     const result = await service.getRate('EUR', 'GBP');
 
     expect(globalThis.fetch).toHaveBeenCalledWith(
-      'https://api.frankfurter.dev/rate/EUR/GBP',
+      'https://api.frankfurter.dev/v2/rate/EUR/GBP',
     );
     expect(result.rate).toBe(0.85);
   });

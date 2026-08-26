@@ -2,13 +2,20 @@ import { Injectable, inject } from '@angular/core';
 import { NetworkService } from './network.service';
 import { OfflineError } from '../models/offline-error';
 
-const FRANKFURTER_BASE = 'https://api.frankfurter.dev';
+const FRANKFURTER_BASE = 'https://api.frankfurter.dev/v2';
 
 export interface ExchangeRateResult {
   rate: number;
   from: string;
   to: string;
   date: string;
+}
+
+interface FrankfurterResponse {
+  base: string;
+  quote: string;
+  date: string;
+  rate: number;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -37,14 +44,13 @@ export class ExchangeRateService {
       throw new Error(`Exchange rate API failed: ${response.statusText}`);
     }
 
-    const data = await response.json();
-    const rate = data.rates?.[toCurrency];
-    if (rate === undefined) {
+    const data: FrankfurterResponse = await response.json();
+    if (!data?.rate) {
       throw new Error(`Rate not available for ${toCurrency}`);
     }
 
     return {
-      rate,
+      rate: data.rate,
       from: fromCurrency,
       to: toCurrency,
       date: data.date ?? this.formatDate(new Date()),
