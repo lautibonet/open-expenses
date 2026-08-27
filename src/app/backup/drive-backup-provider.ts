@@ -6,6 +6,13 @@ const UPLOAD_API = 'https://www.googleapis.com/upload/drive/v3';
 const FOLDER_MIME = 'application/vnd.google-apps.folder';
 const JSON_MIME = 'application/json';
 
+export class NoBackupFoundError extends Error {
+  constructor() {
+    super('No backup found');
+    this.name = 'NoBackupFoundError';
+  }
+}
+
 export class DriveBackupProvider implements BackupProvider {
   readonly method = 'Google Drive';
   readonly backupFolderName = 'Open Expenses';
@@ -30,7 +37,7 @@ export class DriveBackupProvider implements BackupProvider {
     const folderId = await this.ensureFolder();
     const fileId = await this.findBackupFileId(folderId);
     if (!fileId) {
-      throw new Error('No backup found');
+      throw new NoBackupFoundError();
     }
     return this.downloadFile(fileId);
   }

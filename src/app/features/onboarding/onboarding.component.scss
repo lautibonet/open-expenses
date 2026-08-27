@@ -103,6 +103,23 @@ h1 {
   margin-top: 1rem;
 }
 
+.restore-options {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  margin-top: 1rem;
+}
+
+.file-input {
+  display: none;
+}
+
+.info {
+  color: #2563eb;
+  margin: 0.5rem 0;
+}
+
 .error {
   color: #dc2626;
   margin: 0.5rem 0;

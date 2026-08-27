@@ -2,6 +2,63 @@
   <h1>Welcome to Open Expenses</h1>
   <p class="subtitle">Set up your expense tracker in a few steps</p>
 
+  @if (step() === 0) {
+    <section class="step">
+      <h2>Restore a previous backup?</h2>
+      <p>
+        If you've used Open Expenses before, you can pick up where you left off by
+        restoring an existing backup — from the cloud or from a file you saved.
+        Otherwise, start fresh.
+      </p>
+
+      <div class="restore-options">
+        <button
+          type="button"
+          class="btn primary"
+          [disabled]="isRestoring()"
+          (click)="restoreFromCloud()"
+        >
+          Restore from {{ backupMethod }}
+        </button>
+
+        <input
+          #fileInput
+          type="file"
+          accept="application/json,.json"
+          class="file-input"
+          (change)="onFileSelected($event)"
+        />
+        <button
+          type="button"
+          class="btn"
+          [disabled]="isRestoring()"
+          (click)="fileInput.click()"
+        >
+          Upload backup file
+        </button>
+
+        <button
+          type="button"
+          class="btn"
+          [disabled]="isRestoring()"
+          (click)="startFresh()"
+        >
+          Start fresh
+        </button>
+      </div>
+
+      @if (isRestoring()) {
+        <p class="info">Restoring…</p>
+      }
+      @if (noBackupMessage()) {
+        <p class="info">{{ noBackupMessage() }}</p>
+      }
+      @if (errorMessage()) {
+        <p class="error">{{ errorMessage() }}</p>
+      }
+    </section>
+  }
+
   @if (step() === 1) {
     <section class="step">
       <h2>1. Base Currency</h2>
@@ -11,7 +68,10 @@
           <option [value]="currency">{{ currency }}</option>
         }
       </select>
-      <button class="btn primary" (click)="step.set(2)">Next</button>
+      <div class="nav-buttons">
+        <button class="btn" (click)="step.set(0)">Back</button>
+        <button class="btn primary" (click)="step.set(2)">Next</button>
+      </div>
     </section>
   }
 

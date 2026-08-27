@@ -316,6 +316,83 @@ describe('DriveBackupService', () => {
       const accounts = await db.accounts.toArray();
       expect(accounts.length).toBe(1);
       expect(accounts[0].name).toBe('Restored Cash');
+      expect(service.isConnected()).toBe(true);
+    });
+
+    it('should not trigger a new backup when restoring from cloud', async () => {
+      await connectAsTestUser(service);
+
+      mockFetchByUrl({
+        [FOLDER_SEARCH]: () => ({ files: [{ id: 'folder-1' }] }),
+        [FILE_SEARCH]: () => ({ files: [{ id: 'backup-file-id' }] }),
+        [MEDIA_DOWNLOAD]: () => ({
+          accounts: [],
+          categories: [],
+          transactions: [],
+          transfers: [],
+          profile: [],
+          exportedAt: new Date().toISOString(),
+        }),
+      });
+
+      const backupSpy = vi.spyOn(service, 'backupNow');
+
+      await service.restore();
+
+      expect(backupSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('restoreFromFile', () => {
+    it('should overwrite local IndexedDB with backup file data', async () => {
+      await accountService.create('Cash', 'EUR', 100);
+
+      const snapshot: BackupSnapshot = {
+        accounts: [
+          { id: 1, name: 'Restored Savings', currency: 'USD', initialBalance: 20000, active: true, createdAt: new Date().toISOString() },
+        ],
+        categories: [],
+        transactions: [],
+        transfers: [],
+        profile: [{ id: 1, baseCurrency: 'USD', onboardingCompleted: true, lastBackupAt: null }],
+        exportedAt: new Date().toISOString(),
+      };
+      const file = new File([JSON.stringify(snapshot)], 'open-expenses-backup.json', {
+        type: 'application/json',
+      });
+
+      await service.restoreFromFile(file);
+
+      const accounts = await db.accounts.toArray();
+      expect(accounts.length).toBe(1);
+      expect(accounts[0].name).toBe('Restored Savings');
+    });
+
+    it('should throw on invalid JSON', async () => {
+      const file = new File(['not json'], 'backup.json', { type: 'application/json' });
+
+      await expect(service.restoreFromFile(file)).rejects.toThrow();
+    });
+
+    it('should throw when the file is not a backup snapshot', async () => {
+      const file = new File([JSON.stringify({ foo: 'bar' })], 'backup.json', {
+        type: 'application/json',
+      });
+
+      await expect(service.restoreFromFile(file)).rejects.toThrow();
+    });
+
+    it('should not trigger a new backup when restoring from a file', async () => {
+      const backupSpy = vi.spyOn(service, 'backupNow');
+      const file = new File(
+        [JSON.stringify({ accounts: [], categories: [], transactions: [], transfers: [], profile: [], exportedAt: new Date().toISOString() })],
+        'backup.json',
+        { type: 'application/json' },
+      );
+
+      await service.restoreFromFile(file);
+
+      expect(backupSpy).not.toHaveBeenCalled();
     });
   });
 
