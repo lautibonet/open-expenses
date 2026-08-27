@@ -1,24 +1,25 @@
 import { TestBed } from '@angular/core/testing';
-import { DriveBackupService, DriveBackupSnapshot } from './drive-backup.service';
+import { DriveBackupService } from './drive-backup.service';
 import { ProfileService } from './profile.service';
 import { AccountService } from './account.service';
 import { CategoryService } from './category.service';
 import { TransactionService } from './transaction.service';
 import { TransferService } from './transfer.service';
 import { db } from '../db/database';
+import { BackupSnapshot } from '../../backup/backup-snapshot';
 
-function mockGoogleCodeClient() {
+function mockTokenClient(token = 'test-token', autoFire = true) {
   const configStore: any[] = [];
 
   (globalThis as any).google = {
     accounts: {
       oauth2: {
-        initCodeClient: vi.fn((config: any) => {
+        initTokenClient: vi.fn((config: any) => {
           configStore.push(config);
           return {
-            requestCode: vi.fn(() => {
-              if (config.callback) {
-                config.callback({ code: 'auto-code' });
+            requestAccessToken: vi.fn(() => {
+              if (autoFire && config.callback) {
+                config.callback({ access_token: token, expires_in: 3600 });
               }
             }),
           };
@@ -34,42 +35,33 @@ function mockGoogleCodeClient() {
   };
 }
 
-async function connectAsTestUser(
-  service: DriveBackupService,
-  client: ReturnType<typeof mockGoogleCodeClient>,
-  token = 'test-token',
+async function connectAsTestUser(service: DriveBackupService, token = 'test-token') {
+  mockTokenClient(token);
+  await service.connect();
+}
+
+function mockFetchByUrl(
+  handlers: Record<string, (init?: RequestInit) => unknown>,
+  fallback: (init?: RequestInit) => unknown = () => ({}),
 ) {
   vi.stubGlobal(
     'fetch',
-    vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({ access_token: token, expires_in: 3600 }),
-    } as Response),
-  );
-
-  service.connect().catch(() => {});
-  await new Promise((r) => setTimeout(r, 0));
-  await new Promise((r) => setTimeout(r, 0));
-}
-
-function mockFetchSequence(responses: ((url: string, init?: RequestInit) => any)[]) {
-  let callIndex = 0;
-  vi.stubGlobal(
-    'fetch',
     vi.fn().mockImplementation((url: string, init?: RequestInit) => {
-      const handler = responses[Math.min(callIndex, responses.length - 1)];
-      callIndex++;
-      const result = handler(url, init);
+      const matched = Object.entries(handlers).find(([needle]) => url.includes(needle));
+      const result = matched ? matched[1](init) : fallback(init);
       return Promise.resolve({
         ok: true,
+        status: 200,
         json: () => Promise.resolve(result),
         text: () => Promise.resolve(JSON.stringify(result)),
-        status: 200,
-        statusText: 'OK',
       } as Response);
     }),
   );
 }
+
+const FOLDER_SEARCH = 'Expenses';
+const FILE_SEARCH = 'open-expenses-backup.json';
+const MEDIA_DOWNLOAD = 'alt=media';
 
 describe('DriveBackupService', () => {
   let service: DriveBackupService;
@@ -132,50 +124,43 @@ describe('DriveBackupService', () => {
   });
 
   describe('connect', () => {
-    it('should call Google Identity Services initCodeClient', async () => {
-      mockGoogleCodeClient();
+    it('should call Google Identity Services initTokenClient', async () => {
+      mockTokenClient();
       vi.stubGlobal(
         'fetch',
         vi.fn().mockResolvedValue({
           ok: true,
-          json: () => Promise.resolve({ access_token: 'x', expires_in: 3600 }),
+          json: () => Promise.resolve({}),
         } as Response),
       );
-      const p = service.connect();
-      p.catch(() => {});
-      await new Promise((r) => setTimeout(r, 0));
-      await new Promise((r) => setTimeout(r, 0));
-      await p.catch(() => {});
+      await connectAsTestUser(service);
 
-      expect((globalThis as any).google.accounts.oauth2.initCodeClient).toHaveBeenCalled();
+      expect((globalThis as any).google.accounts.oauth2.initTokenClient).toHaveBeenCalled();
     });
 
     it('should set connected to true after successful auth', async () => {
-      const client = mockGoogleCodeClient();
-      await connectAsTestUser(service, client);
+      await connectAsTestUser(service);
 
       expect(service.isConnected()).toBe(true);
     });
 
     it('should store token in localStorage', async () => {
-      const client = mockGoogleCodeClient();
-      await connectAsTestUser(service, client);
+      await connectAsTestUser(service, 'stored-token');
 
       const stored = localStorage.getItem('open-expenses_google_token');
       expect(stored).toBeTruthy();
       const parsed = JSON.parse(stored!);
-      expect(parsed.accessToken).toBe('test-token');
+      expect(parsed.accessToken).toBe('stored-token');
     });
 
     it('should set error if OAuth returns error', async () => {
-      const client = mockGoogleCodeClient();
+      const client = mockTokenClient('test-token', false);
 
       service.connect().catch(() => {});
       await new Promise((r) => setTimeout(r, 0));
       client.fireCallback({ error: 'access_denied' });
 
       await new Promise((r) => setTimeout(r, 0));
-
       expect(service.isConnected()).toBe(false);
       expect(service.error()).toBe('access_denied');
     });
@@ -183,31 +168,28 @@ describe('DriveBackupService', () => {
 
   describe('disconnect', () => {
     it('should revoke token and set disconnected', async () => {
-      const client = mockGoogleCodeClient();
-      await connectAsTestUser(service, client);
+      await connectAsTestUser(service);
 
-      mockFetchSequence([() => ({})]);
+      mockFetchByUrl({});
       await service.disconnect();
 
       expect(service.isConnected()).toBe(false);
     });
 
     it('should remove token from localStorage', async () => {
-      const client = mockGoogleCodeClient();
-      await connectAsTestUser(service, client);
+      await connectAsTestUser(service);
 
-      mockFetchSequence([() => ({})]);
+      mockFetchByUrl({});
       await service.disconnect();
 
       expect(localStorage.getItem('open-expenses_google_token')).toBeNull();
     });
 
     it('should cancel auto-backup timer', async () => {
-      const client = mockGoogleCodeClient();
-      await connectAsTestUser(service, client);
+      await connectAsTestUser(service);
 
       service.scheduleAutoBackup();
-      mockFetchSequence([() => ({})]);
+      mockFetchByUrl({});
       await service.disconnect();
 
       expect(service.isConnected()).toBe(false);
@@ -219,29 +201,26 @@ describe('DriveBackupService', () => {
       await expect(service.backupNow()).rejects.toThrow('Not connected');
     });
 
-    it('should create a backup on Drive', async () => {
-      const client = mockGoogleCodeClient();
-      await connectAsTestUser(service, client);
+    it('should create a backup inside the Open Expenses folder', async () => {
+      await connectAsTestUser(service);
 
       await accountService.create('Cash', 'EUR', 10000);
-      const category = await categoryService.create('Food', 'Expense');
-      const accounts = await accountService.getAll();
-      await transactionService.create(accounts[0].id!, category.id!, 500, new Date(), 'January', ['groceries']);
+      await categoryService.create('Food', 'Expense');
 
-      let callCount = 0;
+      const urls: string[] = [];
       vi.stubGlobal(
         'fetch',
-        vi.fn().mockImplementation((url: string) => {
-          callCount++;
-          if (callCount === 1) {
-            return Promise.resolve({
-              ok: true,
-              json: () => Promise.resolve({ files: [] }),
-            } as Response);
+        vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+          urls.push(url);
+          let result: unknown = { id: 'file-id-1' };
+          if (url.includes(FOLDER_SEARCH)) {
+            result = { files: [] };
+          } else if (url.includes(FILE_SEARCH)) {
+            result = { files: [] };
           }
           return Promise.resolve({
             ok: true,
-            json: () => Promise.resolve({ id: 'file-id-1' }),
+            json: () => Promise.resolve(result),
           } as Response);
         }),
       );
@@ -250,40 +229,28 @@ describe('DriveBackupService', () => {
 
       expect(service.isBackingUp()).toBe(false);
       expect(service.lastBackupAt()).toBeInstanceOf(Date);
+      expect(urls.some((u) => u.includes(FOLDER_SEARCH))).toBe(true);
+      expect(urls.some((u) => u.includes('upload/drive/v3/files'))).toBe(true);
     });
 
     it('should update existing file if backup already exists', async () => {
-      const client = mockGoogleCodeClient();
-      await connectAsTestUser(service, client);
+      await connectAsTestUser(service);
 
       await accountService.create('Cash', 'EUR', 0);
 
-      let urls: string[] = [];
-      vi.stubGlobal(
-        'fetch',
-        vi.fn().mockImplementation((url: string) => {
-          urls.push(url);
-          if (urls.length === 1) {
-            return Promise.resolve({
-              ok: true,
-              json: () => Promise.resolve({ files: [{ id: 'existing-file-id' }] }),
-            } as Response);
-          }
-          return Promise.resolve({
-            ok: true,
-            json: () => Promise.resolve({ id: 'existing-file-id' }),
-          } as Response);
-        }),
-      );
+      mockFetchByUrl({
+        [FOLDER_SEARCH]: () => ({ files: [{ id: 'folder-1' }] }),
+        [FILE_SEARCH]: () => ({ files: [{ id: 'existing-file-id' }] }),
+      });
 
       await service.backupNow();
 
-      expect(urls[1]).toContain('existing-file-id');
+      const calls = vi.mocked(fetch).mock.calls as [string][];
+      expect(calls.some(([url]) => url.includes('upload/drive/v3/files/existing-file-id'))).toBe(true);
     });
 
     it('should set error on upload failure', async () => {
-      const client = mockGoogleCodeClient();
-      await connectAsTestUser(service, client);
+      await connectAsTestUser(service);
 
       await accountService.create('Cash', 'EUR', 0);
 
@@ -308,19 +275,20 @@ describe('DriveBackupService', () => {
     });
 
     it('should throw if no backup file exists', async () => {
-      const client = mockGoogleCodeClient();
-      await connectAsTestUser(service, client);
+      await connectAsTestUser(service);
 
-      mockFetchSequence([() => ({ files: [] })]);
+      mockFetchByUrl({
+        [FOLDER_SEARCH]: () => ({ files: [{ id: 'folder-1' }] }),
+        [FILE_SEARCH]: () => ({ files: [] }),
+      });
 
       await expect(service.restore()).rejects.toThrow('No backup found');
     });
 
     it('should overwrite local IndexedDB with backup data', async () => {
-      const client = mockGoogleCodeClient();
-      await connectAsTestUser(service, client);
+      await connectAsTestUser(service);
 
-      const snapshot: DriveBackupSnapshot = {
+      const snapshot: BackupSnapshot = {
         accounts: [{ id: 1, name: 'Restored Cash', currency: 'EUR', initialBalance: 5000, active: true, createdAt: new Date().toISOString() }],
         categories: [{ id: 1, name: 'Food', type: 'Expense', active: true, createdAt: new Date().toISOString() }],
         transactions: [],
@@ -329,23 +297,11 @@ describe('DriveBackupService', () => {
         exportedAt: new Date().toISOString(),
       };
 
-      let callCount = 0;
-      vi.stubGlobal(
-        'fetch',
-        vi.fn().mockImplementation((url: string) => {
-          callCount++;
-          if (callCount === 1) {
-            return Promise.resolve({
-              ok: true,
-              json: () => Promise.resolve({ files: [{ id: 'backup-file-id' }] }),
-            } as Response);
-          }
-          return Promise.resolve({
-            ok: true,
-            json: () => Promise.resolve(snapshot),
-          } as Response);
-        }),
-      );
+      mockFetchByUrl({
+        [FOLDER_SEARCH]: () => ({ files: [{ id: 'folder-1' }] }),
+        [FILE_SEARCH]: () => ({ files: [{ id: 'backup-file-id' }] }),
+        [MEDIA_DOWNLOAD]: () => snapshot,
+      });
 
       await service.restore();
 
