@@ -13,9 +13,9 @@ Separately, the user doesn't currently have a finished, polished project on thei
 
 A single Angular application, deployed as a static site with no backend and no traditional account system. All data — accounts, categories, transactions, transfers, exchange rates — is stored locally in the browser via IndexedDB, giving instant, fully offline-capable reads and writes with zero network dependency for day-to-day use.
 
-The app has three tabs: **Dashboard** (read-only summary with period totals, per-category breakdown, yearly averages, and per-account balances), **Movements** (unified chronological list of transactions and transfers with filtering), and **Settings** (account/category/tag management, base currency, Google Drive backup).
+The app has three tabs: **Dashboard** (read-only summary with period totals, per-category breakdown, yearly averages, and per-account balances), **Movements** (unified chronological list of transactions and transfers with filtering), and **Settings** (account/category/tag management, base currency, Backup card offering download/restore-from-file/restore-from-cloud), plus a persistent backup banner.
 
-The user authenticates with Google only to enable an optional backup feature: the full dataset is periodically snapshotted as JSON and uploaded to a file the app itself owns in the user's Google Drive, using the most restrictive scope available (the app can only ever see files it created, never the user's broader Drive). This gives off-device backup and the ability to restore onto a new device or browser, without the user ever creating a password or the developer ever running or paying for a server.
+Backup is an optional, manual-only feature. The user authenticates with Google only to enable cloud backup of the full dataset, which is snapshotted as JSON and uploaded — always triggered by the user, never automatically — to a file the app itself owns in the user's Google Drive, using the most restrictive scope available (the app can only ever see files it created, never the user's broader Drive). This gives off-device backup and the ability to restore onto a new device or browser, without the user ever creating a password or the developer ever running or paying for a server.
 
 Exchange rate lookups happen directly from the client against a free, key-less provider. The app is explicitly mono-user — one browser/device profile is one person's data — so none of the multi-tenant isolation mechanics from earlier designs apply here. The app is packaged as a PWA for installability and offline use.
 
@@ -24,7 +24,7 @@ Exchange rate lookups happen directly from the client against a free, key-less p
 ### Local-first usage & onboarding
 
 1. As a user, I want to open the app and start using it immediately, without registering or logging in, so there's no friction between deciding to track an expense and actually recording it.
-2. As a first-time user, I want to complete a short onboarding flow (base currency, initial accounts, review default categories) before I start recording movements, so my data has meaningful context from day one.
+2. As a first-time user, I want to complete a short onboarding flow that opens with an optional restore step (restore from cloud, upload a backup file, or start fresh) before setting base currency, initial accounts, and reviewing default categories — so my data has meaningful context from day one, and I can pick up on a new device without starting from scratch.
 3. As a first-time user, I want the app to ship with pre-populated default categories (Expense: Food, Transport, Housing, Subscriptions, Leisure, Misc; Income: Payroll, Second-hand Sale, Refund) that I can review and edit during onboarding, so I don't have to create everything from scratch.
 4. As a returning user, I want the app to remember that I've already completed onboarding, so I land directly on my data instead of being asked to set up again.
 5. As a user, I want the app to work fully offline, so I can log a transaction with no signal.
@@ -108,16 +108,17 @@ Exchange rate lookups happen directly from the client against a free, key-less p
 56. As a user, I want a Settings tab where I can manage my categories (create, edit, deactivate), so I can keep my category list relevant.
 57. As a user, I want a Settings tab where I can view and rename my tags, so I can maintain tag quality without leaving the app.
 58. As a user, I want a Settings tab where I can change my base currency setting, so I can adjust my reporting currency if needed.
-59. As a user, I want a Settings tab where I can connect/disconnect Google Drive backup and see the last backup timestamp, so I can manage my off-device backup.
 
-### Backup & restore (Google Drive)
+### Backup & restore
 
-60. As a user, I want to connect my Google account to enable backup, so my data isn't only ever on one device.
-61. As a user, I want my data automatically (and on-demand) backed up as a snapshot to my own Google Drive, so I don't lose everything if I clear my browser or switch devices.
+59. As a user, I want a persistent backup banner that shows the backup method (Google Drive) and the last backup time, so I have a single, always-present trigger to back up when I choose.
+60. As a user, I want to tap the backup banner to back up my data to my own Google Drive on demand, so my data isn't only ever on one device — and only when I decide to.
+61. As a user, I want backup to be optional and manual-only, never triggered automatically, so backup never gets in the way of using the app fully locally.
 62. As a user, I want the app to only ever access files it created in my Drive, not my whole Drive, so I'm not granting more access than the feature actually needs.
-63. As a user, I want to restore my data from my most recent Drive backup on a new device or browser, so I can pick up where I left off without starting from scratch.
-64. As a user, I want to see when my last backup happened, so I know how current my off-device copy is.
-65. As a user, I want to disconnect Google Drive at any time and keep using the app fully locally, so backup stays optional, never a requirement to use the app.
+63. As a user, I want the Settings Backup card to offer download backup file, restore from file (upload), and restore from cloud, so I can move my data onto a new device or browser without starting from scratch.
+64. As a user, I want the banner to reflect an offline state, so I know when a backup can't reach the cloud and can try again later.
+65. As a user, I want the app to work fully locally without ever connecting Google, so backup stays optional, never a requirement to use the app.
+66. As a user, I want restoring my data — from cloud or from an uploaded file — to always overwrite the full local dataset and never itself trigger a new backup, so restore is a clean, predictable operation.
 
 ## Implementation Decisions
 
@@ -144,7 +145,7 @@ Exchange rate lookups happen directly from the client against a free, key-less p
 - The original spec's auto-created Transfer-type category is dropped entirely. Transfers are structurally separate from Transactions and never reference categories (see grilling decision).
 
 **Onboarding**
-- On app start, check for a local profile record (base currency, onboardingCompleted flag). If absent, show the onboarding wizard. Steps: set base currency, create initial accounts, review/edit pre-populated default categories. No pay-day rule configuration (periods are manually selected month names).
+- On app start, check for a local profile record (base currency, onboardingCompleted flag). If absent, show the onboarding wizard. The first step offers an optional restore (restore from cloud or upload a backup file, or start fresh); when declined, proceed to set base currency, create initial accounts, review/edit pre-populated default categories. No pay-day rule configuration (periods are manually selected month names).
 
 **Default categories**
 - Expense: Food, Transport, Housing, Subscriptions, Leisure, Misc
@@ -170,7 +171,7 @@ Exchange rate lookups happen directly from the client against a free, key-less p
 - Category management (CRUD, deactivate).
 - Tag management (view, rename inline — no dedicated screen).
 - Base currency setting.
-- Google Drive backup (connect/disconnect/status).
+- Backup banner (persistent trigger with method + last-backup time) and Settings Backup card (download backup file / restore from file / restore from cloud).
 
 **Google authentication (Drive backup only)**
 - OAuth 2.0 Authorization Code flow with PKCE via Google Identity Services — public client, no client secret.
@@ -180,8 +181,9 @@ Exchange rate lookups happen directly from the client against a free, key-less p
 
 **Backup & restore**
 - Full-dataset JSON snapshot (every Dexie table serialized), not incremental diff.
-- Debounced automatic backup plus manual "back up now" action.
-- Restore fully replaces local IndexedDB (last-write-wins, matches mono-user pattern).
+- Backup is manual-only and optional: the persistent banner is the single cloud-backup trigger, showing method + last backup time (and offline state). No automatic backup on change or on visibility-hide.
+- The Settings Backup card offers download backup file, restore from file (upload), and restore from cloud (see ADR-0006).
+- Restore always overwrites the full local dataset (last-write-wins, matches mono-user pattern) and never itself triggers a new backup.
 - Last backup timestamp stored and surfaced in the UI.
 
 **Exchange rates**
@@ -204,7 +206,7 @@ Exchange rate lookups happen directly from the client against a free, key-less p
 
 - A good test asserts on the resulting Dexie state after an operation, and on thrown or returned domain errors — not on internal call sequences between services.
 - **Unit tests**: for service-layer business rules — duplicate name rejection, self-transfer rejection, positive-amount validation, currency immutability, tag coexistence with categories. Run against a real in-memory IndexedDB implementation (e.g. fake-indexeddb) rather than a fully mocked data layer.
-- **Integration/E2E tests**: full user flows in a real browser — onboarding wizard end-to-end, creating a transaction and seeing it reflected in the Movements list, Dashboard period switching, Drive connect → backup → restore round trip (mocked Drive API in CI).
+- **Integration/E2E tests**: full user flows in a real browser — onboarding wizard end-to-end (including the optional restore first step), creating a transaction and seeing it reflected in the Movements list, Dashboard period switching, manual backup via the banner and backup-to-restore round trip (mocked Drive API in CI), and the Settings Backup card's download/restore-from-file/restore-from-cloud actions.
 - Suggested module coverage: onboarding flow, AccountService, CategoryService, TransactionService, TransferService, ExchangeRateService (mocking the Frankfurter call), DriveBackupService (mocking Drive API and OAuth).
 
 ## Out of Scope
@@ -224,4 +226,4 @@ Exchange rate lookups happen directly from the client against a free, key-less p
 
 - This spec supersedes the earlier v2 spec (docs/original-spec/open-expense-tracker-original-spec.md). Domain rules about Transaction/Transfer separation carry over; the period model, tag system, navigation structure, and Dashboard scope are new decisions from the grilling session.
 - The primary motivation: having a fully-developed, lightweight, actually-finished app for a currently-empty GitHub portfolio matters more than demonstrating a complete multi-tier stack.
-- Domain glossary is maintained in CONTEXT.md. Architectural decisions are recorded in docs/adr/ (0001 through 0004).
+- Domain glossary is maintained in CONTEXT.md. Architectural decisions are recorded in docs/adr/ (0001 through 0006).
