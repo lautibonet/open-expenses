@@ -396,6 +396,148 @@ describe('DriveBackupService', () => {
     });
   });
 
+  describe('getCloudSnapshot', () => {
+    it('returns the latest snapshot without overwriting local data', async () => {
+      await connectAsTestUser(service);
+      await accountService.create('Old Cash', 'EUR', 100);
+
+      const snapshot: BackupSnapshot = {
+        accounts: [{ id: 1, name: 'Restored Cash', currency: 'EUR', initialBalance: 5000, active: true, createdAt: new Date().toISOString() }],
+        categories: [],
+        transactions: [],
+        transfers: [],
+        profile: [],
+        exportedAt: '2026-08-27T00:00:00.000Z',
+      };
+
+      mockFetchByUrl({
+        [FOLDER_SEARCH]: () => ({ files: [{ id: 'folder-1' }] }),
+        [FILE_SEARCH]: () => ({ files: [{ id: 'backup-file-id' }] }),
+        [MEDIA_DOWNLOAD]: () => snapshot,
+      });
+
+      const result = await service.getCloudSnapshot();
+
+      expect(result).toEqual(snapshot);
+
+      const accounts = await db.accounts.toArray();
+      expect(accounts.length).toBe(1);
+      expect(accounts[0].name).toBe('Old Cash');
+    });
+
+    it('connects first when not connected', async () => {
+      mockTokenClient();
+
+      mockFetchByUrl({
+        [FOLDER_SEARCH]: () => ({ files: [{ id: 'folder-1' }] }),
+        [FILE_SEARCH]: () => ({ files: [{ id: 'backup-file-id' }] }),
+        [MEDIA_DOWNLOAD]: () => ({
+          accounts: [],
+          categories: [],
+          transactions: [],
+          transfers: [],
+          profile: [],
+          exportedAt: new Date().toISOString(),
+        }),
+      });
+
+      await service.getCloudSnapshot();
+
+      expect(service.isConnected()).toBe(true);
+    });
+
+    it('throws when offline', async () => {
+      await connectAsTestUser(service);
+      TestBed.inject(NetworkService).isOnline.set(false);
+
+      await expect(service.getCloudSnapshot()).rejects.toThrow('Cannot restore while offline');
+    });
+
+    it('throws when no backup exists', async () => {
+      await connectAsTestUser(service);
+
+      mockFetchByUrl({
+        [FOLDER_SEARCH]: () => ({ files: [{ id: 'folder-1' }] }),
+        [FILE_SEARCH]: () => ({ files: [] }),
+      });
+
+      await expect(service.getCloudSnapshot()).rejects.toThrow('No backup found');
+    });
+  });
+
+  describe('parseBackupFile', () => {
+    it('returns a validated snapshot from a file', async () => {
+      const snapshot: BackupSnapshot = {
+        accounts: [{ id: 1, name: 'Cash', currency: 'EUR', initialBalance: 1000, active: true, createdAt: new Date().toISOString() }],
+        categories: [],
+        transactions: [],
+        transfers: [],
+        profile: [],
+        exportedAt: '2026-08-27T00:00:00.000Z',
+      };
+      const file = new File([JSON.stringify(snapshot)], 'open-expenses-backup.json', {
+        type: 'application/json',
+      });
+
+      const parsed = await service.parseBackupFile(file);
+
+      expect(parsed).toEqual(snapshot);
+      expect(parsed.exportedAt).toBe('2026-08-27T00:00:00.000Z');
+    });
+
+    it('throws on invalid JSON', async () => {
+      const file = new File(['not json'], 'backup.json', { type: 'application/json' });
+
+      await expect(service.parseBackupFile(file)).rejects.toThrow('Invalid backup file');
+    });
+
+    it('throws when the file is not a backup snapshot', async () => {
+      const file = new File([JSON.stringify({ foo: 'bar' })], 'backup.json', {
+        type: 'application/json',
+      });
+
+      await expect(service.parseBackupFile(file)).rejects.toThrow('Invalid backup file');
+    });
+  });
+
+  describe('restoreFromSnapshot', () => {
+    it('replaces the full local dataset with the snapshot', async () => {
+      await accountService.create('Old Cash', 'EUR', 100);
+
+      const snapshot: BackupSnapshot = {
+        accounts: [{ id: 1, name: 'Restored Savings', currency: 'USD', initialBalance: 20000, active: true, createdAt: new Date().toISOString() }],
+        categories: [],
+        transactions: [],
+        transfers: [],
+        profile: [{ id: 1, baseCurrency: 'USD', onboardingCompleted: true, lastBackupAt: null }],
+        exportedAt: '2026-08-27T00:00:00.000Z',
+      };
+
+      await service.restoreFromSnapshot(snapshot);
+
+      const accounts = await db.accounts.toArray();
+      expect(accounts.length).toBe(1);
+      expect(accounts[0].name).toBe('Restored Savings');
+      expect(accounts[0].currency).toBe('USD');
+      expect(service.isBackingUp()).toBe(false);
+    });
+
+    it('does not trigger a new backup', async () => {
+      const snapshot: BackupSnapshot = {
+        accounts: [],
+        categories: [],
+        transactions: [],
+        transfers: [],
+        profile: [],
+        exportedAt: '2026-08-27T00:00:00.000Z',
+      };
+
+      await service.restoreFromSnapshot(snapshot);
+
+      expect(service.lastBackupAt()).toBeNull();
+    });
+  });
+
   describe('manual-only backups', () => {
     it('should not trigger a backup when the tab is hidden', async () => {
       await connectAsTestUser(service);
