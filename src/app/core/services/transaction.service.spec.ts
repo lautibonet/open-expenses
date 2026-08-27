@@ -40,6 +40,29 @@ describe('TransactionService', () => {
     expect(t.tags).toEqual([]);
   });
 
+  it('should create transaction with note', async () => {
+    const t = await transactionService.create(
+      accountId, categoryId, 1500, new Date('2026-01-15'), 'January', [], null, null,
+      getCurrentYear(), 'Dinner with friends',
+    );
+    expect(t.note).toBe('Dinner with friends');
+  });
+
+  it('should default the note to empty string', async () => {
+    const t = await transactionService.create(
+      accountId, categoryId, 1500, new Date('2026-01-15'), 'January',
+    );
+    expect(t.note).toBe('');
+  });
+
+  it('should update the note on a transaction', async () => {
+    const t = await transactionService.create(
+      accountId, categoryId, 1500, new Date('2026-01-15'), 'January',
+    );
+    const updated = await transactionService.update(t.id!, { note: 'Updated note' });
+    expect(updated.note).toBe('Updated note');
+  });
+
   it('should create transaction with tags', async () => {
     const t = await transactionService.create(
       accountId, categoryId, 1500, new Date('2026-01-15'), 'January',

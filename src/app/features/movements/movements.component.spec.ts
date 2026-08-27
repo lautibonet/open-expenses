@@ -941,3 +941,99 @@ describe('MovementsComponent - period year', () => {
     expect(component.trForm().year).toBe(2026);
   });
 });
+
+describe('MovementsComponent - transaction note', () => {
+  let fixture: ComponentFixture<MovementsComponent>;
+  let component: MovementsComponent;
+  let transactionService: TransactionService;
+  let accountService: AccountService;
+  let categoryService: CategoryService;
+  let accountId: number;
+  let categoryId: number;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    await TestBed.configureTestingModule({
+      imports: [MovementsComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(MovementsComponent);
+    component = fixture.componentInstance;
+    transactionService = TestBed.inject(TransactionService);
+    accountService = TestBed.inject(AccountService);
+    categoryService = TestBed.inject(CategoryService);
+
+    const account = await accountService.create('Cash', 'EUR', 100000);
+    accountId = account.id!;
+    const category = await categoryService.create('Food', 'Expense');
+    categoryId = category.id!;
+  });
+
+  afterEach(async () => {
+    await db.delete();
+  });
+
+  it('should initialize txForm note as empty string', async () => {
+    await component.ngOnInit();
+    expect(component.txForm().note).toBe('');
+  });
+
+  it('should populate note when editing a transaction', async () => {
+    const t = await transactionService.create(
+      accountId, categoryId, 1500, new Date('2026-01-15'), 'January', [], null, null,
+      getCurrentYear(), 'Dinner with friends',
+    );
+    await component.ngOnInit();
+    component.openTransactionForm(t.id!);
+    await new Promise(resolve => setTimeout(resolve, 10));
+
+    expect(component.txForm().note).toBe('Dinner with friends');
+  });
+
+  it('should default note to empty when opening new transaction form', async () => {
+    await component.ngOnInit();
+    component.openTransactionForm();
+    expect(component.txForm().note).toBe('');
+  });
+
+  it('should save transaction with note from txForm', async () => {
+    await component.ngOnInit();
+    component.txForm.update(f => ({
+      ...f, accountId, categoryId, amount: 500, date: '2026-01-15', note: 'Weekly groceries',
+    }));
+    await component.saveTransaction();
+
+    const transactions = await transactionService.getAll();
+    expect(transactions.length).toBe(1);
+    expect(transactions[0].note).toBe('Weekly groceries');
+  });
+
+  it('should preserve updated note when editing an existing transaction', async () => {
+    const t = await transactionService.create(
+      accountId, categoryId, 1500, new Date('2026-01-15'), 'January',
+    );
+    await component.ngOnInit();
+    component.openTransactionForm(t.id!);
+    await new Promise(resolve => setTimeout(resolve, 10));
+    component.txForm.update(f => ({ ...f, note: 'Updated note' }));
+    await component.saveTransaction();
+
+    const updated = await transactionService.getById(t.id!);
+    expect(updated!.note).toBe('Updated note');
+  });
+
+  it('should render note on transaction rows', async () => {
+    const period = getCurrentPeriod();
+    await transactionService.create(
+      accountId, categoryId, 500, new Date(), period, [], null, null, getCurrentYear(),
+      'Dinner with friends',
+    );
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const noteEl = fixture.nativeElement.querySelector('.note');
+    expect(noteEl).toBeTruthy();
+    expect(noteEl.textContent.trim()).toBe('Dinner with friends');
+  });
+});

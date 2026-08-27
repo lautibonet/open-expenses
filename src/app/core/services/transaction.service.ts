@@ -15,6 +15,7 @@ export class TransactionService {
     exchangeRate: number | null = null,
     baseCurrencyAmount: number | null = null,
     year: number = getCurrentYear(),
+    note: string = '',
   ): Promise<Transaction> {
     if (amount <= 0) {
       throw new Error('Amount must be positive');
@@ -50,6 +51,7 @@ export class TransactionService {
       tags: cleanedTags,
       exchangeRate,
       baseCurrencyAmount,
+      note,
       createdAt: new Date(),
     };
 

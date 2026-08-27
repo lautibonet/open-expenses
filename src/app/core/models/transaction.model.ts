@@ -9,5 +9,6 @@ export interface Transaction {
   tags: string[];
   exchangeRate: number | null;
   baseCurrencyAmount: number | null;
+  note: string;
   createdAt: Date;
 }

@@ -56,6 +56,14 @@
           />
         </label>
         <label>
+          Note
+          <input
+            type="text"
+            [ngModel]="txForm().note"
+            (ngModelChange)="txForm.update((f) => ({ ...f, note: $event }))"
+          />
+        </label>
+        <label>
           Date
           <input
             type="date"
@@ -319,7 +327,12 @@
               <tr>
                 <td [ngClass]="['arrow', getDirectionArrowClass(item)]">{{ getDirectionArrow(txn, 'transaction') }}</td>
                 <td>{{ txn.date | date: 'mediumDate' }}</td>
-                <td>{{ getCategoryName(txn.categoryId) }}</td>
+                <td>
+                  {{ getCategoryName(txn.categoryId) }}
+                  @if (txn.note) {
+                    <div class="note">{{ txn.note }}</div>
+                  }
+                </td>
                 <td
                   [class.income]="isIncomeTransaction(txn)"
                   [class.expense]="!isIncomeTransaction(txn)"
