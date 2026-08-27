@@ -26,3 +26,10 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Migrated sheet sources and the generated Backup: kept out of the repo.
+# Only the migration script under scripts/ is committed.
+/docs/original-spec/migration/accounts.txt
+/docs/original-spec/migration/categories.txt
+/docs/original-spec/migration/movements.csv
+/docs/original-spec/migration/backup.json
