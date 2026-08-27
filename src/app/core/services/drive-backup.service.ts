@@ -14,7 +14,6 @@ interface StoredToken {
 export class DriveBackupService {
   private readonly TOKEN_KEY = 'open-expenses_google_token';
   private readonly SCOPES = 'https://www.googleapis.com/auth/drive.file';
-  private readonly DEBOUNCE_MS = 5 * 60 * 1000;
 
   private profileService = inject(ProfileService);
   private networkService = inject(NetworkService);
@@ -26,13 +25,15 @@ export class DriveBackupService {
   lastBackupAt = signal<Date | null>(null);
   error = signal<string | null>(null);
 
-  private autoBackupTimer: ReturnType<typeof setTimeout> | null = null;
   private accessToken: string | null = null;
 
   constructor() {
     this.provider = new DriveBackupProvider(() => this.accessToken);
     this.loadStoredState();
-    this.setupVisibilityListener();
+  }
+
+  get method(): string {
+    return this.provider.method;
   }
 
   async connect(): Promise<void> {
@@ -68,8 +69,6 @@ export class DriveBackupService {
   }
 
   async disconnect(): Promise<void> {
-    this.cancelAutoBackup();
-
     if (this.accessToken) {
       try {
         await fetch(
@@ -87,12 +86,12 @@ export class DriveBackupService {
   }
 
   async backupNow(): Promise<void> {
-    if (!this.accessToken) {
-      throw new Error('Not connected');
-    }
-
     if (!this.networkService.isOnline()) {
       throw new Error('Cannot backup while offline');
+    }
+
+    if (!this.accessToken) {
+      await this.connect();
     }
 
     this.isBackingUp.set(true);
@@ -135,25 +134,6 @@ export class DriveBackupService {
       throw e;
     } finally {
       this.isBackingUp.set(false);
-    }
-  }
-
-  scheduleAutoBackup(): void {
-    this.cancelAutoBackup();
-    if (!this.networkService.isOnline()) {
-      return;
-    }
-    this.autoBackupTimer = setTimeout(() => {
-      if (this.isConnected()) {
-        this.backupNow().catch(() => {});
-      }
-    }, this.DEBOUNCE_MS);
-  }
-
-  cancelAutoBackup(): void {
-    if (this.autoBackupTimer) {
-      clearTimeout(this.autoBackupTimer);
-      this.autoBackupTimer = null;
     }
   }
 
@@ -212,15 +192,5 @@ export class DriveBackupService {
       script.onerror = () => reject(new Error('Failed to load Google Identity Services'));
       document.head.appendChild(script);
     });
-  }
-
-  private setupVisibilityListener(): void {
-    if (typeof document !== 'undefined') {
-      document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'hidden' && this.isConnected() && this.networkService.isOnline()) {
-          this.backupNow().catch(() => {});
-        }
-      });
-    }
   }
 }

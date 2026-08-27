@@ -1,11 +1,9 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable } from '@angular/core';
 import { db } from '../db/database';
 import { Transfer } from '../models/transfer.model';
-import { DriveBackupService } from './drive-backup.service';
 
 @Injectable({ providedIn: 'root' })
 export class TransferService {
-  private backupService = inject(DriveBackupService);
   async create(
     sourceAccountId: number,
     destinationAccountId: number,
@@ -58,7 +56,6 @@ export class TransferService {
     };
 
     const id = await db.transfers.add(transfer);
-    this.backupService.scheduleAutoBackup();
     return { ...transfer, id };
   }
 
@@ -106,7 +103,6 @@ export class TransferService {
     };
 
     await db.transfers.update(id, mergedChanges);
-    this.backupService.scheduleAutoBackup();
     return (await db.transfers.get(id))!;
   }
 
@@ -116,7 +112,6 @@ export class TransferService {
       throw new Error('Transfer not found');
     }
     await db.transfers.delete(id);
-    this.backupService.scheduleAutoBackup();
   }
 
   async getAll(): Promise<Transfer[]> {

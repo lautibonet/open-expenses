@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { DriveBackupService } from './drive-backup.service';
 import { ProfileService } from './profile.service';
+import { NetworkService } from './network.service';
 import { AccountService } from './account.service';
 import { CategoryService } from './category.service';
 import { TransactionService } from './transaction.service';
@@ -97,7 +98,6 @@ describe('DriveBackupService', () => {
   });
 
   afterEach(async () => {
-    service?.cancelAutoBackup();
     localStorage.clear();
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
@@ -184,21 +184,29 @@ describe('DriveBackupService', () => {
 
       expect(localStorage.getItem('open-expenses_google_token')).toBeNull();
     });
-
-    it('should cancel auto-backup timer', async () => {
-      await connectAsTestUser(service);
-
-      service.scheduleAutoBackup();
-      mockFetchByUrl({});
-      await service.disconnect();
-
-      expect(service.isConnected()).toBe(false);
-    });
   });
 
   describe('backupNow', () => {
-    it('should throw if not connected', async () => {
-      await expect(service.backupNow()).rejects.toThrow('Not connected');
+    it('should connect and back up when not connected', async () => {
+      mockTokenClient();
+
+      mockFetchByUrl({
+        [FOLDER_SEARCH]: () => ({ files: [{ id: 'folder-1' }] }),
+        [FILE_SEARCH]: () => ({ files: [] }),
+      });
+
+      await service.backupNow();
+
+      expect(service.isConnected()).toBe(true);
+      expect(service.lastBackupAt()).toBeInstanceOf(Date);
+    });
+
+    it('should throw when offline', async () => {
+      const networkService = TestBed.inject(NetworkService);
+      networkService.isOnline.set(false);
+
+      await expect(service.backupNow()).rejects.toThrow('Cannot backup while offline');
+      expect(service.isConnected()).toBe(false);
     });
 
     it('should create a backup inside the Open Expenses folder', async () => {
@@ -311,24 +319,20 @@ describe('DriveBackupService', () => {
     });
   });
 
-  describe('auto-backup', () => {
-    it('should set a timer when scheduleAutoBackup is called', () => {
-      service.scheduleAutoBackup();
-      expect((service as any).autoBackupTimer).toBeDefined();
+  describe('manual-only backups', () => {
+    it('should not trigger a backup when the tab is hidden', async () => {
+      await connectAsTestUser(service);
+
+      const spy = vi.spyOn(service, 'backupNow');
+      document.dispatchEvent(new Event('visibilitychange'));
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(spy).not.toHaveBeenCalled();
     });
 
-    it('should clear timer when cancelAutoBackup is called', () => {
-      service.scheduleAutoBackup();
-      service.cancelAutoBackup();
-      expect((service as any).autoBackupTimer).toBeNull();
-    });
-
-    it('should reset timer on consecutive schedule calls', () => {
-      service.scheduleAutoBackup();
-      const firstTimer = (service as any).autoBackupTimer;
-      service.scheduleAutoBackup();
-      const secondTimer = (service as any).autoBackupTimer;
-      expect(firstTimer).not.toBe(secondTimer);
+    it('should not keep an auto-backup timer', () => {
+      expect((service as any).autoBackupTimer).toBeUndefined();
+      expect((service as any).scheduleAutoBackup).toBeUndefined();
     });
   });
 

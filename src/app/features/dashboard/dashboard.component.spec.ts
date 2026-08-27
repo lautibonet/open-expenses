@@ -7,7 +7,6 @@ import { CategoryService } from '../../core/services/category.service';
 import { ProfileService } from '../../core/services/profile.service';
 import { ExchangeRateService } from '../../core/services/exchange-rate.service';
 import { NetworkService } from '../../core/services/network.service';
-import { DriveBackupService } from '../../core/services/drive-backup.service';
 import { db } from '../../core/db/database';
 import { getCurrentPeriod, getCurrentYear } from '../../core/types/period.type';
 
@@ -33,7 +32,6 @@ describe('DashboardComponent', () => {
   });
 
   afterEach(async () => {
-    TestBed.inject(DriveBackupService).cancelAutoBackup();
     await new Promise<void>(resolve => setTimeout(resolve, 10));
     await db.delete();
   });
