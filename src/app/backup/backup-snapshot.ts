@@ -1,4 +1,5 @@
 import { db } from '../core/db/database';
+import { getPeriodYear } from '../core/types/period.type';
 
 export interface BackupSnapshot {
   accounts: any[];
@@ -47,8 +48,20 @@ export async function overwriteLocalDb(snapshot: BackupSnapshot): Promise<void> 
   const tables = [
     { table: db.accounts as any, data: snapshot.accounts },
     { table: db.categories as any, data: snapshot.categories },
-    { table: db.transactions as any, data: snapshot.transactions },
-    { table: db.transfers as any, data: snapshot.transfers },
+    {
+      table: db.transactions as any,
+      data: snapshot.transactions.map((t: any) => ({
+        ...t,
+        year: getPeriodYear(t),
+      })),
+    },
+    {
+      table: db.transfers as any,
+      data: snapshot.transfers.map((t: any) => ({
+        ...t,
+        year: getPeriodYear(t),
+      })),
+    },
     { table: db.profile as any, data: snapshot.profile },
   ];
 

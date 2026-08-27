@@ -116,5 +116,58 @@ describe('backup-snapshot', () => {
 
       expect(await db.accounts.toArray()).toEqual([]);
     });
+
+    it('backfills the period year from the date for legacy movements without a stored year', async () => {
+      const snapshot: BackupSnapshot = {
+        accounts: [],
+        categories: [],
+        transactions: [
+          {
+            id: 1, accountId: 1, categoryId: 1, amount: 100,
+            date: '2025-12-22T00:00:00.000Z', period: 'January',
+            tags: [], exchangeRate: null, baseCurrencyAmount: null, createdAt: '2026-01-01T00:00:00.000Z',
+          },
+        ],
+        transfers: [
+          {
+            id: 1, sourceAccountId: 1, destinationAccountId: 2,
+            sourceAmount: 100, destinationAmount: 100, exchangeRate: 1, baseCurrencyAmount: 100,
+            date: '2025-12-22T00:00:00.000Z', period: 'January',
+            note: '', createdAt: '2026-01-01T00:00:00.000Z',
+          },
+        ],
+        profile: [],
+        exportedAt: '2026-01-01T00:00:00.000Z',
+      };
+
+      await overwriteLocalDb(snapshot);
+
+      const transactions = await db.transactions.toArray();
+      const transfers = await db.transfers.toArray();
+      expect(transactions[0].year).toBe(2025);
+      expect(transfers[0].year).toBe(2025);
+    });
+
+    it('keeps stored period years that differ from the date year', async () => {
+      const snapshot: BackupSnapshot = {
+        accounts: [],
+        categories: [],
+        transactions: [
+          {
+            id: 1, accountId: 1, categoryId: 1, amount: 100,
+            date: '2025-12-22T00:00:00.000Z', period: 'January', year: 2026,
+            tags: [], exchangeRate: null, baseCurrencyAmount: null, createdAt: '2026-01-01T00:00:00.000Z',
+          },
+        ],
+        transfers: [],
+        profile: [],
+        exportedAt: '2026-01-01T00:00:00.000Z',
+      };
+
+      await overwriteLocalDb(snapshot);
+
+      const transactions = await db.transactions.toArray();
+      expect(transactions[0].year).toBe(2026);
+    });
   });
 });

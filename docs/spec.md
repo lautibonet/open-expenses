@@ -136,7 +136,7 @@ Exchange rate lookups happen directly from the client against a free, key-less p
 - Transfers and Transactions are fully separate data stores, not a shared table with a type discriminator. This makes accidentally including a Transfer in an Income/Expense aggregate structurally impossible (see ADR-0002).
 
 **Data model — Periods are a text field, not an entity**
-- Period is a month name (January through December) stored as a text field on both Transactions and Transfers. Not a separate entity with its own table. Year is always implied as the current year. No automated period engine (see ADR-0003).
+- Period is a month name (January through December) stored as a text field on both Transactions and Transfers, together with the year of the Period the movement belongs to. Not a separate entity with its own table. No automated period engine (see ADR-0003). Reporting uses the stored year, not the movement's date; new movements default to the current year and legacy movements fall back to their date's year (see ADR-0007).
 
 **Data model — Tags are extracted, not a separate table**
 - Tags are freeform text strings stored per-transaction. Existing tags are discovered by scanning all transactions for unique tag strings. No separate Tags table. Rename = find-and-replace across transactions.
@@ -157,7 +157,7 @@ Exchange rate lookups happen directly from the client against a free, key-less p
 **Movements tab**
 - Unified chronological list of Transactions and Transfers, interleaved by date.
 - Two distinct add buttons: "+ Transaction" and "+ Transfer".
-- Default view: current period (month). Period dropdown to switch.
+- Default view: current period (month) and current year. Period and year dropdowns to switch.
 - Filters: category, account, tags. Sort: newest-first.
 - Transfers display as compact single rows.
 

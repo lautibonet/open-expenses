@@ -12,7 +12,7 @@ import { Transaction } from '../../core/models/transaction.model';
 import { Transfer } from '../../core/models/transfer.model';
 import { Account } from '../../core/models/account.model';
 import { Category } from '../../core/models/category.model';
-import { MONTHS, getCurrentPeriod } from '../../core/types/period.type';
+import { MONTHS, getCurrentPeriod, getCurrentYear, getPeriodYear } from '../../core/types/period.type';
 import { formatMoney } from '../../core/types/money';
 import { TagInputComponent } from '../../shared/components/tag-input/tag-input.component';
 
@@ -34,6 +34,7 @@ interface TransactionForm {
   amount: number;
   date: string;
   period: string;
+  year: number;
   tags: string[];
   exchangeRate: number | null;
   baseCurrencyAmount: number | null;
@@ -47,6 +48,7 @@ interface TransferForm {
   exchangeRate: number;
   date: string;
   period: string;
+  year: number;
   note: string;
 }
 
@@ -65,7 +67,9 @@ export class MovementsComponent implements OnInit {
   private exchangeRateService = inject(ExchangeRateService);
 
   selectedPeriod = signal(getCurrentPeriod());
+  selectedYear = signal(getCurrentYear());
   months = MONTHS;
+  years = Array.from({ length: 10 }, (_, i) => getCurrentYear() - i);
   accounts = signal<Account[]>([]);
   categories = signal<Category[]>([]);
   allCategoriesForNameResolution = signal<Category[]>([]);
@@ -87,14 +91,18 @@ export class MovementsComponent implements OnInit {
   txForm = signal<TransactionForm>({
     accountId: 0, categoryId: 0, amount: 0,
     date: new Date().toISOString().split('T')[0],
-    period: getCurrentPeriod(), tags: [],
+    period: getCurrentPeriod(),
+    year: getCurrentYear(),
+    tags: [],
     exchangeRate: null, baseCurrencyAmount: null,
   });
   trForm = signal<TransferForm>({
     sourceAccountId: 0, destAccountId: 0, sourceAmount: 0, destinationAmount: 0,
     exchangeRate: 1,
     date: new Date().toISOString().split('T')[0],
-    period: getCurrentPeriod(), note: '',
+    period: getCurrentPeriod(),
+    year: getCurrentYear(),
+    note: '',
   });
   errorMessage = signal('');
 
@@ -170,8 +178,9 @@ export class MovementsComponent implements OnInit {
 
   async refresh(): Promise<void> {
     const period = this.selectedPeriod();
-    const txns = await this.transactionService.getByPeriod(period);
-    const transfers = await this.transferService.getByPeriod(period);
+    const year = this.selectedYear();
+    const txns = await this.transactionService.getByPeriod(period, year);
+    const transfers = await this.transferService.getByPeriod(period, year);
 
     const items: MovementItem[] = [
       ...txns.map(t => ({ type: 'transaction' as const, data: t })),
@@ -203,6 +212,7 @@ export class MovementsComponent implements OnInit {
             amount: t.amount,
             date: new Date(t.date).toISOString().split('T')[0],
             period: t.period,
+            year: getPeriodYear(t),
             tags: [...t.tags],
             exchangeRate: t.exchangeRate,
             baseCurrencyAmount: t.baseCurrencyAmount,
@@ -219,6 +229,7 @@ export class MovementsComponent implements OnInit {
         amount: 0,
         date: new Date().toISOString().split('T')[0],
         period: this.selectedPeriod(),
+        year: this.selectedYear(),
         tags: [],
         exchangeRate: null,
         baseCurrencyAmount: null,
@@ -245,6 +256,7 @@ export class MovementsComponent implements OnInit {
             exchangeRate: t.exchangeRate,
             date: new Date(t.date).toISOString().split('T')[0],
             period: t.period,
+            year: getPeriodYear(t),
             note: t.note,
           });
           if (t.sourceAccountId !== t.destinationAccountId) {
@@ -269,6 +281,7 @@ export class MovementsComponent implements OnInit {
         exchangeRate: 1,
         date: new Date().toISOString().split('T')[0],
         period: this.selectedPeriod(),
+        year: this.selectedYear(),
         note: '',
       });
       if (srcId && dstId && srcId !== dstId) {
@@ -440,13 +453,13 @@ export class MovementsComponent implements OnInit {
       if (this.editingId()) {
         await this.transactionService.update(this.editingId()!, {
           accountId: f.accountId, categoryId: f.categoryId, amount: f.amount,
-          date: new Date(f.date), period: f.period, tags: f.tags,
+          date: new Date(f.date), period: f.period, year: f.year, tags: f.tags,
           exchangeRate: f.exchangeRate, baseCurrencyAmount: f.baseCurrencyAmount,
         });
       } else {
         await this.transactionService.create(
           f.accountId, f.categoryId, f.amount, new Date(f.date),
-          f.period, f.tags, f.exchangeRate, f.baseCurrencyAmount,
+          f.period, f.tags, f.exchangeRate, f.baseCurrencyAmount, f.year,
         );
       }
       this.cancelForm();
@@ -465,12 +478,12 @@ export class MovementsComponent implements OnInit {
           sourceAccountId: f.sourceAccountId, destinationAccountId: f.destAccountId,
           sourceAmount: f.sourceAmount, destinationAmount: f.destinationAmount,
           exchangeRate: f.exchangeRate,
-          date: new Date(f.date), period: f.period, note: f.note,
+          date: new Date(f.date), period: f.period, year: f.year, note: f.note,
         });
       } else {
         await this.transferService.create(
           f.sourceAccountId, f.destAccountId, f.sourceAmount,
-          new Date(f.date), f.period, f.note, f.exchangeRate,
+          new Date(f.date), f.period, f.note, f.exchangeRate, f.year,
         );
       }
       this.cancelForm();

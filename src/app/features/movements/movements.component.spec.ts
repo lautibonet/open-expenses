@@ -7,7 +7,7 @@ import { CategoryService } from '../../core/services/category.service';
 import { ProfileService } from '../../core/services/profile.service';
 import { ExchangeRateService, ExchangeRateResult } from '../../core/services/exchange-rate.service';
 import { db } from '../../core/db/database';
-import { getCurrentPeriod } from '../../core/types/period.type';
+import { getCurrentPeriod, getCurrentYear } from '../../core/types/period.type';
 
 describe('MovementsComponent - tags integration', () => {
   let fixture: ComponentFixture<MovementsComponent>;
@@ -834,5 +834,110 @@ describe('MovementsComponent - direction arrows and display amounts', () => {
     const arrows = Array.from(arrowCells).map((el: any) => el.textContent.trim());
     expect(arrows).toContain('←');
     expect(arrows).toContain('=');
+  });
+});
+
+describe('MovementsComponent - period year', () => {
+  let fixture: ComponentFixture<MovementsComponent>;
+  let component: MovementsComponent;
+  let transactionService: TransactionService;
+  let transferService: TransferService;
+  let accountService: AccountService;
+  let categoryService: CategoryService;
+  let accountId: number;
+  let categoryId: number;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    await TestBed.configureTestingModule({
+      imports: [MovementsComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(MovementsComponent);
+    component = fixture.componentInstance;
+    transactionService = TestBed.inject(TransactionService);
+    transferService = TestBed.inject(TransferService);
+    accountService = TestBed.inject(AccountService);
+    categoryService = TestBed.inject(CategoryService);
+
+    const account = await accountService.create('Cash', 'EUR', 100000);
+    accountId = account.id!;
+    const category = await categoryService.create('Food', 'Expense');
+    categoryId = category.id!;
+  });
+
+  afterEach(async () => {
+    await db.delete();
+  });
+
+  it('should default new movement forms to the current year', async () => {
+    await component.ngOnInit();
+    expect(component.txForm().year).toBe(getCurrentYear());
+    expect(component.trForm().year).toBe(getCurrentYear());
+  });
+
+  it('should filter movements by the selected period year', async () => {
+    const period = getCurrentPeriod();
+    await transactionService.create(accountId, categoryId, 100, new Date(), period, [], null, null, getCurrentYear() - 1);
+    await transactionService.create(accountId, categoryId, 200, new Date(), period);
+
+    await component.ngOnInit();
+    expect(component.movements().length).toBe(1);
+    expect((component.movements()[0].data as any).amount).toBe(200);
+
+    component.selectedYear.set(getCurrentYear() - 1);
+    await component.refresh();
+    expect(component.movements().length).toBe(1);
+    expect((component.movements()[0].data as any).amount).toBe(100);
+  });
+
+  it('should save the period year from the transaction form', async () => {
+    await component.ngOnInit();
+    component.txForm.update(f => ({
+      ...f, accountId, categoryId, amount: 500, date: '2025-12-22', period: 'January', year: 2026,
+    }));
+    await component.saveTransaction();
+
+    const txns = await transactionService.getAll();
+    expect(txns[0].year).toBe(2026);
+    expect(txns[0].date.getFullYear()).toBe(2025);
+  });
+
+  it('should save the period year from the transfer form', async () => {
+    const acc2 = await accountService.create('Savings', 'EUR', 50000);
+    await component.ngOnInit();
+    component.trForm.update(f => ({
+      ...f, sourceAccountId: accountId, destAccountId: acc2.id!,
+      sourceAmount: 500, destinationAmount: 500, date: '2025-12-22', period: 'January', year: 2026,
+    }));
+    await component.saveTransfer();
+
+    const transfers = await transferService.getAll();
+    expect(transfers[0].year).toBe(2026);
+    expect(transfers[0].date.getFullYear()).toBe(2025);
+  });
+
+  it('should populate the form year when editing a transaction', async () => {
+    const t = await transactionService.create(
+      accountId, categoryId, 500, new Date('2025-12-22'), 'January', [], null, null, 2026,
+    );
+    await component.ngOnInit();
+    component.openTransactionForm(t.id!);
+    await new Promise(resolve => setTimeout(resolve, 10));
+
+    expect(component.txForm().year).toBe(2026);
+  });
+
+  it('should populate the form year when editing a transfer', async () => {
+    const acc2 = await accountService.create('Savings', 'EUR', 50000);
+    const t = await transferService.create(
+      accountId, acc2.id!, 500, new Date('2025-12-22'), 'January', 'savings', 1, 2026,
+    );
+    await component.ngOnInit();
+    component.openTransferForm(t.id!);
+    await new Promise(resolve => setTimeout(resolve, 10));
+
+    expect(component.trForm().year).toBe(2026);
   });
 });

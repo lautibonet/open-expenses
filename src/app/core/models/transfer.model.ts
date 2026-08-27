@@ -8,6 +8,7 @@ export interface Transfer {
   baseCurrencyAmount: number;
   date: Date;
   period: string;
+  year: number;
   note: string;
   createdAt: Date;
 }
