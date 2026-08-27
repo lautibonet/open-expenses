@@ -3,7 +3,13 @@ import { ProfileService } from './profile.service';
 import { NetworkService } from './network.service';
 import { BackupProvider } from '../../backup/backup-provider';
 import { DriveBackupProvider } from '../../backup/drive-backup-provider';
-import { createSnapshot, overwriteLocalDb } from '../../backup/backup-snapshot';
+import {
+  BackupSnapshot,
+  createSnapshot,
+  isBackupSnapshotShape,
+  overwriteLocalDb,
+  parseSnapshot,
+} from '../../backup/backup-snapshot';
 
 interface StoredToken {
   accessToken: string;
@@ -134,6 +140,30 @@ export class DriveBackupService {
       throw e;
     } finally {
       this.isBackingUp.set(false);
+    }
+  }
+
+  async restoreFromFile(file: File): Promise<void> {
+    this.error.set(null);
+
+    const json = await file.text();
+    let snapshot: BackupSnapshot;
+    try {
+      snapshot = parseSnapshot(json);
+    } catch {
+      throw new Error('Invalid backup file');
+    }
+
+    if (!isBackupSnapshotShape(snapshot)) {
+      throw new Error('Invalid backup file');
+    }
+
+    try {
+      await overwriteLocalDb(snapshot);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Restore failed';
+      this.error.set(message);
+      throw e;
     }
   }
 

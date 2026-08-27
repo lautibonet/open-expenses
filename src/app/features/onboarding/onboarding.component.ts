@@ -4,6 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { ProfileService } from '../../core/services/profile.service';
 import { AccountService } from '../../core/services/account.service';
 import { CategoryService } from '../../core/services/category.service';
+import { DriveBackupService } from '../../core/services/drive-backup.service';
+import { NoBackupFoundError } from '../../backup/drive-backup-provider';
 import { SUPPORTED_CURRENCIES } from '../../core/constants/currencies';
 import { CategoryType } from '../../core/models/category.model';
 
@@ -22,10 +24,14 @@ export class OnboardingComponent {
   private profileService = inject(ProfileService);
   private accountService = inject(AccountService);
   private categoryService = inject(CategoryService);
+  private driveBackupService = inject(DriveBackupService);
   private router = inject(Router);
 
   supportedCurrencies = SUPPORTED_CURRENCIES;
-  step = signal(1);
+  step = signal(0);
+  isRestoring = signal(false);
+  noBackupMessage = signal('');
+  backupMethod = this.driveBackupService.method;
   baseCurrency = signal('EUR');
   accountName = signal('');
   accountCurrency = signal('EUR');
@@ -35,6 +41,50 @@ export class OnboardingComponent {
     CategoryService.DEFAULT_CATEGORIES.map(c => ({ name: c.name, type: c.type })),
   );
   errorMessage = signal('');
+
+  startFresh(): void {
+    this.errorMessage.set('');
+    this.noBackupMessage.set('');
+    this.step.set(1);
+  }
+
+  async restoreFromCloud(): Promise<void> {
+    await this.runRestore(async () => {
+      await this.driveBackupService.connect();
+      await this.driveBackupService.restore();
+    });
+  }
+
+  async restoreFromFile(file: File | null): Promise<void> {
+    if (!file) return;
+    await this.runRestore(() => this.driveBackupService.restoreFromFile(file));
+  }
+
+  onFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0] ?? null;
+    this.restoreFromFile(file);
+    input.value = '';
+  }
+
+  private async runRestore(action: () => Promise<void>): Promise<void> {
+    this.isRestoring.set(true);
+    this.errorMessage.set('');
+    this.noBackupMessage.set('');
+
+    try {
+      await action();
+      this.router.navigate(['/dashboard']);
+    } catch (e: unknown) {
+      if (e instanceof NoBackupFoundError) {
+        this.noBackupMessage.set('No backup was found in the cloud. You can start fresh instead.');
+      } else {
+        this.errorMessage.set(e instanceof Error ? e.message : 'Restore failed');
+      }
+    } finally {
+      this.isRestoring.set(false);
+    }
+  }
 
   addAccount(): void {
     if (!this.accountName()) {

@@ -3,6 +3,7 @@ import { db } from '../core/db/database';
 import {
   BackupSnapshot,
   createSnapshot,
+  isBackupSnapshotShape,
   overwriteLocalDb,
   parseSnapshot,
   stringifySnapshot,
@@ -41,6 +42,23 @@ describe('backup-snapshot', () => {
 
     it('parseSnapshot throws on invalid JSON', () => {
       expect(() => parseSnapshot('not json')).toThrow();
+    });
+  });
+
+  describe('isBackupSnapshotShape', () => {
+    it('accepts a well-formed snapshot', () => {
+      expect(isBackupSnapshotShape(sampleSnapshot())).toBe(true);
+    });
+
+    it('rejects objects missing required arrays', () => {
+      expect(isBackupSnapshotShape({ foo: 'bar' })).toBe(false);
+      expect(isBackupSnapshotShape({ ...sampleSnapshot(), accounts: 'nope' })).toBe(false);
+    });
+
+    it('rejects a missing exportedAt timestamp', () => {
+      const { exportedAt, ...rest } = sampleSnapshot();
+      expect(isBackupSnapshotShape(rest)).toBe(false);
+      void exportedAt;
     });
   });
 
