@@ -49,5 +49,16 @@ A read-only summary screen showing a total balance in base currency (sum of all 
 _Avoid_: Stats, overview, summary page
 
 **Onboarding**:
-The first-run flow that collects base currency, initial accounts, and initial categories before the app is usable.
+The first-run flow that collects base currency, initial accounts, and initial categories before the app is usable. Its first step asks whether to restore a Backup from a cloud provider or from an uploaded file, before the wizard itself runs.
 _Avoid_: Setup, wizard, first-time flow
+
+**Backup**:
+A user-initiated snapshot of the full dataset saved off-device, either to a cloud provider or downloaded as a file. Backups are never triggered automatically — the user starts a cloud backup by tapping the backup banner. _Avoid_: Sync, snapshot, export, autosave
+
+**Backup Method**:
+The destination of a cloud Backup — Google Drive today, with Dropbox and iCloud as future providers. Shown on the backup banner next to the last-backup time.
+_Avoid_: Provider, cloud service, storage
+
+**Restore**:
+A user-initiated, full overwrite of local data from a prior Backup — from a cloud provider or an uploaded file. Restore replaces the entire local dataset and never triggers a new Backup.
+_Avoid_: Recovery, import, rollback
