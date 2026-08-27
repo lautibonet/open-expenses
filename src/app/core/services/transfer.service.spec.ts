@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { TransferService } from './transfer.service';
 import { AccountService } from './account.service';
 import { db } from '../db/database';
+import { getCurrentYear } from '../types/period.type';
 
 describe('TransferService', () => {
   let transferService: TransferService;
@@ -137,5 +138,50 @@ describe('TransferService', () => {
     await transferService.create(cashId, savingsId, 200, new Date(), 'February');
     const jan = await transferService.getByPeriod('January');
     expect(jan.length).toBe(1);
+  });
+
+  it('should default the period year to the current year', async () => {
+    const t = await transferService.create(cashId, savingsId, 100, new Date('2025-12-22'), 'January');
+    expect(t.year).toBe(getCurrentYear());
+  });
+
+  it('should store an explicit period year different from the date year', async () => {
+    const t = await transferService.create(
+      cashId, savingsId, 100, new Date('2025-12-22'), 'January', '', 1, 2026,
+    );
+    expect(t.date.getFullYear()).toBe(2025);
+    expect(t.year).toBe(2026);
+  });
+
+  it('should filter transfers by period and year', async () => {
+    await transferService.create(cashId, savingsId, 100, new Date('2025-12-22'), 'January', '', 1, 2026);
+    await transferService.create(cashId, savingsId, 200, new Date('2024-12-22'), 'January', '', 1, 2025);
+    await transferService.create(cashId, savingsId, 300, new Date('2026-02-10'), 'February', '', 1, 2026);
+
+    const jan26 = await transferService.getByPeriod('January', 2026);
+    expect(jan26.length).toBe(1);
+    expect(jan26[0].sourceAmount).toBe(100);
+
+    const janAll = await transferService.getByPeriod('January');
+    expect(janAll.length).toBe(2);
+  });
+
+  it('should update the period year', async () => {
+    const t = await transferService.create(cashId, savingsId, 100, new Date('2025-12-22'), 'January');
+    const updated = await transferService.update(t.id!, { year: 2025 });
+    expect(updated.year).toBe(2025);
+  });
+
+  it('should reject an invalid period year on create', async () => {
+    await expect(
+      transferService.create(cashId, savingsId, 100, new Date(), 'January', '', 1, 22),
+    ).rejects.toThrow('Year must be a valid 4-digit year');
+  });
+
+  it('should reject an invalid period year on update', async () => {
+    const t = await transferService.create(cashId, savingsId, 100, new Date(), 'January');
+    await expect(
+      transferService.update(t.id!, { year: 22 }),
+    ).rejects.toThrow('Year must be a valid 4-digit year');
   });
 });

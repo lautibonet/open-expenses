@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { db } from '../db/database';
 import { Transaction } from '../models/transaction.model';
+import { getCurrentYear, getPeriodYear, isValidYear } from '../types/period.type';
 
 @Injectable({ providedIn: 'root' })
 export class TransactionService {
@@ -13,12 +14,16 @@ export class TransactionService {
     tags: string[] = [],
     exchangeRate: number | null = null,
     baseCurrencyAmount: number | null = null,
+    year: number = getCurrentYear(),
   ): Promise<Transaction> {
     if (amount <= 0) {
       throw new Error('Amount must be positive');
     }
     if (!period) {
       throw new Error('Period is required');
+    }
+    if (!isValidYear(year)) {
+      throw new Error('Year must be a valid 4-digit year');
     }
 
     const account = await db.accounts.get(accountId);
@@ -41,6 +46,7 @@ export class TransactionService {
       amount,
       date,
       period,
+      year,
       tags: cleanedTags,
       exchangeRate,
       baseCurrencyAmount,
@@ -62,6 +68,10 @@ export class TransactionService {
 
     if (changes.amount !== undefined && changes.amount <= 0) {
       throw new Error('Amount must be positive');
+    }
+
+    if (changes.year !== undefined && !isValidYear(changes.year)) {
+      throw new Error('Year must be a valid 4-digit year');
     }
 
     if (changes.tags !== undefined) {
@@ -86,8 +96,12 @@ export class TransactionService {
     return db.transactions.toArray();
   }
 
-  async getByPeriod(period: string): Promise<Transaction[]> {
-    return db.transactions.where('period').equals(period).toArray();
+  async getByPeriod(period: string, year?: number): Promise<Transaction[]> {
+    const transactions = await db.transactions.where('period').equals(period).toArray();
+    if (year === undefined) {
+      return transactions;
+    }
+    return transactions.filter(t => getPeriodYear(t) === year);
   }
 
   async getByAccount(accountId: number): Promise<Transaction[]> {

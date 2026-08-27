@@ -1,6 +1,6 @@
 <div class="dashboard">
   <div class="controls">
-    <select [ngModel]="selectedYear()" (ngModelChange)="selectedYear.set($event); refresh()">
+    <select [ngModel]="selectedYear()" (ngModelChange)="selectedYear.set(+$event); refresh()">
       @for (year of years; track year) {
         <option [value]="year">{{ year }}</option>
       }
@@ -13,7 +13,7 @@
   </div>
 
   <section class="card">
-    <h2>{{ selectedPeriod() }} Totals</h2>
+    <h2>{{ selectedPeriod() }} {{ selectedYear() }} Totals</h2>
     <div class="totals">
       <div class="stat">
         <span class="label">Income</span>

@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { db } from '../db/database';
 import { Transfer } from '../models/transfer.model';
+import { getCurrentYear, getPeriodYear, isValidYear } from '../types/period.type';
 
 @Injectable({ providedIn: 'root' })
 export class TransferService {
@@ -12,6 +13,7 @@ export class TransferService {
     period: string,
     note: string = '',
     exchangeRate: number = 1,
+    year: number = getCurrentYear(),
   ): Promise<Transfer> {
     if (sourceAccountId === destinationAccountId) {
       throw new Error('Source and destination accounts must be different');
@@ -24,6 +26,9 @@ export class TransferService {
     }
     if (exchangeRate <= 0) {
       throw new Error('Exchange rate must be positive');
+    }
+    if (!isValidYear(year)) {
+      throw new Error('Year must be a valid 4-digit year');
     }
 
     const sourceAccount = await db.accounts.get(sourceAccountId);
@@ -51,6 +56,7 @@ export class TransferService {
       baseCurrencyAmount,
       date,
       period,
+      year,
       note,
       createdAt: new Date(),
     };
@@ -86,6 +92,10 @@ export class TransferService {
       throw new Error('Exchange rate must be positive');
     }
 
+    if (changes.year !== undefined && !isValidYear(changes.year)) {
+      throw new Error('Year must be a valid 4-digit year');
+    }
+
     const newDestinationAccountId = changes.destinationAccountId ?? existing.destinationAccountId;
     const newSourceAccountId = changes.sourceAccountId ?? existing.sourceAccountId;
     const sourceAccount = await db.accounts.get(newSourceAccountId);
@@ -118,8 +128,12 @@ export class TransferService {
     return db.transfers.toArray();
   }
 
-  async getByPeriod(period: string): Promise<Transfer[]> {
-    return db.transfers.where('period').equals(period).toArray();
+  async getByPeriod(period: string, year?: number): Promise<Transfer[]> {
+    const transfers = await db.transfers.where('period').equals(period).toArray();
+    if (year === undefined) {
+      return transfers;
+    }
+    return transfers.filter(t => getPeriodYear(t) === year);
   }
 
   async getById(id: number): Promise<Transfer | undefined> {

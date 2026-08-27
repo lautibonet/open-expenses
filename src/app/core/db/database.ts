@@ -16,6 +16,8 @@ interface LegacyTransfer {
   createdAt: Date;
 }
 
+import { getPeriodYear } from '../types/period.type';
+
 export class AppDatabase extends Dexie {
   accounts!: Table<Account>;
   categories!: Table<Category>;
@@ -48,6 +50,30 @@ export class AppDatabase extends Dexie {
           exchangeRate: 1,
           baseCurrencyAmount: legacy.amount,
         });
+      }
+    });
+    this.version(3).stores({
+      accounts: '++id, name, currency, active',
+      categories: '++id, name, type, active',
+      transactions: '++id, accountId, categoryId, date, period, year, *tags',
+      transfers: '++id, sourceAccountId, destinationAccountId, date, period, year',
+      profile: 'id',
+    }).upgrade(async tx => {
+      const transactions = await tx.table('transactions').toArray();
+      for (const t of transactions) {
+        if (t.year == null) {
+          await tx.table('transactions').update(t.id!, {
+            year: getPeriodYear(t),
+          });
+        }
+      }
+      const transfers = await tx.table('transfers').toArray();
+      for (const t of transfers) {
+        if (t.year == null) {
+          await tx.table('transfers').update(t.id!, {
+            year: getPeriodYear(t),
+          });
+        }
       }
     });
   }

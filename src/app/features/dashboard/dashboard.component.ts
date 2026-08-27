@@ -7,7 +7,7 @@ import { CategoryService } from '../../core/services/category.service';
 import { ProfileService } from '../../core/services/profile.service';
 import { ExchangeRateService } from '../../core/services/exchange-rate.service';
 import { NetworkService } from '../../core/services/network.service';
-import { MONTHS, getCurrentPeriod, getCurrentYear } from '../../core/types/period.type';
+import { MONTHS, getCurrentPeriod, getCurrentYear, getPeriodYear } from '../../core/types/period.type';
 import { formatMoney } from '../../core/types/money';
 import { Transaction } from '../../core/models/transaction.model';
 import { Transfer } from '../../core/models/transfer.model';
@@ -63,9 +63,10 @@ export class DashboardComponent implements OnInit {
   async refresh(): Promise<void> {
     this.conversionFailed.set(false);
     const period = this.selectedPeriod();
-    const txns = await this.transactionService.getByPeriod(period);
+    const year = this.selectedYear();
+    const txns = await this.transactionService.getByPeriod(period, year);
     this.periodTransactions.set(txns);
-    this.periodTransfers.set(await this.transferService.getByPeriod(period));
+    this.periodTransfers.set(await this.transferService.getByPeriod(period, year));
     this.accounts.set(await this.accountService.getAll());
 
     const allCategories = await this.categoryService.getAll();
@@ -201,16 +202,13 @@ export class DashboardComponent implements OnInit {
 
     const filteredTxns = selectedYear === 'All time'
       ? allTxns
-      : allTxns.filter(t => {
-          const d = new Date(t.date);
-          return String(d.getFullYear()) === selectedYear;
-        });
+      : allTxns.filter(t => String(getPeriodYear(t)) === selectedYear);
 
     const isAllTime = selectedYear === 'All time';
 
     const monthsWithData = new Set(
       filteredTxns.map(t => isAllTime
-        ? `${new Date(t.date).getFullYear()}-${t.period}`
+        ? `${getPeriodYear(t)}-${t.period}`
         : t.period
       )
     );

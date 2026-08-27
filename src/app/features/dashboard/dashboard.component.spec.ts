@@ -146,6 +146,56 @@ describe('DashboardComponent', () => {
     expect(component.avgMonthlySavings()).toBe(0);
   });
 
+  it('should include a Dec-dated movement in the January report of its period year', async () => {
+    const acc = await accountService.create('Cash', 'EUR', 0);
+    const incomeCat = await categoryService.create('Payroll', 'Income');
+    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date('2025-12-22'), 'January', [], null, null, 2026);
+
+    await component.ngOnInit();
+    component.selectedYear.set(2026);
+    component.selectedPeriod.set('January');
+    await component.refresh();
+
+    expect(component.totalIncome()).toBe(3000);
+  });
+
+  it('should exclude a Dec-dated movement from the date year report', async () => {
+    const acc = await accountService.create('Cash', 'EUR', 0);
+    const incomeCat = await categoryService.create('Payroll', 'Income');
+    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date('2025-12-22'), 'January', [], null, null, 2026);
+
+    await component.ngOnInit();
+    component.selectedYear.set(2025);
+    component.selectedPeriod.set('January');
+    await component.refresh();
+
+    expect(component.totalIncome()).toBe(0);
+  });
+
+  it('should compute yearly averages against the period year, not the date year', async () => {
+    const acc = await accountService.create('Cash', 'EUR', 0);
+    const incomeCat = await categoryService.create('Payroll', 'Income');
+    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date('2025-12-22'), 'January', [], null, null, 2026);
+
+    await component.ngOnInit();
+    component.averagesYear.set('2026');
+    await component.refreshAverages();
+
+    expect(component.avgMonthlyIncome()).toBe(3000);
+  });
+
+  it('should exclude a Dec-dated movement from yearly averages of its date year', async () => {
+    const acc = await accountService.create('Cash', 'EUR', 0);
+    const incomeCat = await categoryService.create('Payroll', 'Income');
+    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date('2025-12-22'), 'January', [], null, null, 2026);
+
+    await component.ngOnInit();
+    component.averagesYear.set('2025');
+    await component.refreshAverages();
+
+    expect(component.avgMonthlyIncome()).toBe(0);
+  });
+
   describe('totalBalanceBaseCurrency', () => {
     let networkService: NetworkService;
 

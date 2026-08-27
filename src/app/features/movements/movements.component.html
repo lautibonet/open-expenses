@@ -1,5 +1,10 @@
 <div class="movements">
   <div class="controls">
+    <select [ngModel]="selectedYear()" (ngModelChange)="selectedYear.set(+$event); refresh()">
+      @for (yr of years; track yr) {
+        <option [value]="yr">{{ yr }}</option>
+      }
+    </select>
     <select [ngModel]="selectedPeriod()" (ngModelChange)="selectedPeriod.set($event); refresh()">
       @for (month of months; track month) {
         <option [value]="month">{{ month }}</option>
@@ -66,6 +71,17 @@
           >
             @for (month of months; track month) {
               <option [value]="month">{{ month }}</option>
+            }
+          </select>
+        </label>
+        <label>
+          Year
+          <select
+            [ngModel]="txForm().year"
+            (ngModelChange)="txForm.update((f) => ({ ...f, year: +$event }))"
+          >
+            @for (yr of years; track yr) {
+              <option [value]="yr">{{ yr }}</option>
             }
           </select>
         </label>
@@ -173,6 +189,17 @@
           >
             @for (month of months; track month) {
               <option [value]="month">{{ month }}</option>
+            }
+          </select>
+        </label>
+        <label>
+          Year
+          <select
+            [ngModel]="trForm().year"
+            (ngModelChange)="trForm.update((f) => ({ ...f, year: +$event }))"
+          >
+            @for (yr of years; track yr) {
+              <option [value]="yr">{{ yr }}</option>
             }
           </select>
         </label>
@@ -341,7 +368,7 @@
         </tbody>
       </table>
     } @else {
-      <p class="empty">No movements for {{ selectedPeriod() }}.</p>
+      <p class="empty">No movements for {{ selectedPeriod() }} {{ selectedYear() }}.</p>
     }
   </div>
 </div>

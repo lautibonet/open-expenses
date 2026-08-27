@@ -25,7 +25,7 @@ A freeform, reusable text label applied optionally to Transactions for extra gro
 _Avoid_: Label, keyword, marker
 
 **Period**:
-A month name (January through December) assigned to a Transaction or Transfer to group it for reporting. Not a separate entity — a text field on the movement. Year is always implied as the current year.
+A month name (January through December) assigned to a Transaction or Transfer to group it for reporting, together with the year of the Period the movement belongs to. Not a separate entity — a month text field plus a `year` on the movement. Reporting (Dashboard year filter, period totals, yearly averages) uses the stored year, not the movement's date; dates are purely informational. New movements default to the current year; pre-existing movements without a stored year fall back to their date's year.
 _Avoid_: Cycle, fiscal period, date range
 
 **Base Currency**:

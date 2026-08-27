@@ -3,6 +3,7 @@ import { TransactionService } from './transaction.service';
 import { AccountService } from './account.service';
 import { CategoryService } from './category.service';
 import { db } from '../db/database';
+import { getCurrentYear } from '../types/period.type';
 
 describe('TransactionService', () => {
   let transactionService: TransactionService;
@@ -185,5 +186,50 @@ describe('TransactionService', () => {
     );
     expect(t.exchangeRate).toBe(1.08);
     expect(t.baseCurrencyAmount).toBe(1620);
+  });
+
+  it('should default the period year to the current year', async () => {
+    const t = await transactionService.create(accountId, categoryId, 100, new Date('2025-12-22'), 'January');
+    expect(t.year).toBe(getCurrentYear());
+  });
+
+  it('should store an explicit period year different from the date year', async () => {
+    const t = await transactionService.create(
+      accountId, categoryId, 100, new Date('2025-12-22'), 'January', [], null, null, 2026,
+    );
+    expect(t.date.getFullYear()).toBe(2025);
+    expect(t.year).toBe(2026);
+  });
+
+  it('should filter transactions by period and year', async () => {
+    await transactionService.create(accountId, categoryId, 100, new Date('2025-12-22'), 'January', [], null, null, 2026);
+    await transactionService.create(accountId, categoryId, 200, new Date('2024-12-22'), 'January', [], null, null, 2025);
+    await transactionService.create(accountId, categoryId, 300, new Date('2026-02-10'), 'February', [], null, null, 2026);
+
+    const jan26 = await transactionService.getByPeriod('January', 2026);
+    expect(jan26.length).toBe(1);
+    expect(jan26[0].amount).toBe(100);
+
+    const janAll = await transactionService.getByPeriod('January');
+    expect(janAll.length).toBe(2);
+  });
+
+  it('should update the period year', async () => {
+    const t = await transactionService.create(accountId, categoryId, 100, new Date('2025-12-22'), 'January');
+    const updated = await transactionService.update(t.id!, { year: 2025 });
+    expect(updated.year).toBe(2025);
+  });
+
+  it('should reject an invalid period year on create', async () => {
+    await expect(
+      transactionService.create(accountId, categoryId, 100, new Date(), 'January', [], null, null, 22),
+    ).rejects.toThrow('Year must be a valid 4-digit year');
+  });
+
+  it('should reject an invalid period year on update', async () => {
+    const t = await transactionService.create(accountId, categoryId, 100, new Date(), 'January');
+    await expect(
+      transactionService.update(t.id!, { year: 22 }),
+    ).rejects.toThrow('Year must be a valid 4-digit year');
   });
 });
