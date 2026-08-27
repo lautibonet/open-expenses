@@ -1,16 +1,9 @@
 import { Injectable, inject, signal } from '@angular/core';
-import { db } from '../db/database';
 import { ProfileService } from './profile.service';
 import { NetworkService } from './network.service';
-
-export interface DriveBackupSnapshot {
-  accounts: any[];
-  categories: any[];
-  transactions: any[];
-  transfers: any[];
-  profile: any[];
-  exportedAt: string;
-}
+import { BackupProvider } from '../../backup/backup-provider';
+import { DriveBackupProvider } from '../../backup/drive-backup-provider';
+import { createSnapshot, overwriteLocalDb } from '../../backup/backup-snapshot';
 
 interface StoredToken {
   accessToken: string;
@@ -19,13 +12,14 @@ interface StoredToken {
 
 @Injectable({ providedIn: 'root' })
 export class DriveBackupService {
-  private readonly BACKUP_FILE_NAME = 'open-expenses-backup.json';
   private readonly TOKEN_KEY = 'open-expenses_google_token';
   private readonly SCOPES = 'https://www.googleapis.com/auth/drive.file';
   private readonly DEBOUNCE_MS = 5 * 60 * 1000;
 
   private profileService = inject(ProfileService);
   private networkService = inject(NetworkService);
+
+  private provider: BackupProvider;
 
   isConnected = signal(false);
   isBackingUp = signal(false);
@@ -36,6 +30,7 @@ export class DriveBackupService {
   private accessToken: string | null = null;
 
   constructor() {
+    this.provider = new DriveBackupProvider(() => this.accessToken);
     this.loadStoredState();
     this.setupVisibilityListener();
   }
@@ -104,14 +99,8 @@ export class DriveBackupService {
     this.error.set(null);
 
     try {
-      const snapshot = await this.createSnapshot();
-      const fileId = await this.findBackupFileId();
-
-      if (fileId) {
-        await this.updateFile(fileId, snapshot);
-      } else {
-        await this.createFile(snapshot);
-      }
+      const snapshot = await createSnapshot();
+      await this.provider.saveSnapshot(snapshot);
 
       const now = new Date();
       this.lastBackupAt.set(now);
@@ -138,13 +127,8 @@ export class DriveBackupService {
     this.error.set(null);
 
     try {
-      const fileId = await this.findBackupFileId();
-      if (!fileId) {
-        throw new Error('No backup found');
-      }
-
-      const snapshot = await this.downloadFile(fileId);
-      await this.overwriteLocalDb(snapshot);
+      const snapshot = await this.provider.downloadSnapshot();
+      await overwriteLocalDb(snapshot);
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : 'Restore failed';
       this.error.set(message);
@@ -170,108 +154,6 @@ export class DriveBackupService {
     if (this.autoBackupTimer) {
       clearTimeout(this.autoBackupTimer);
       this.autoBackupTimer = null;
-    }
-  }
-
-  private async createSnapshot(): Promise<DriveBackupSnapshot> {
-    return {
-      accounts: await db.accounts.toArray(),
-      categories: await db.categories.toArray(),
-      transactions: await db.transactions.toArray(),
-      transfers: await db.transfers.toArray(),
-      profile: await db.profile.toArray(),
-      exportedAt: new Date().toISOString(),
-    };
-  }
-
-  private async findBackupFileId(): Promise<string | null> {
-    const response = await fetch(
-      `https://www.googleapis.com/drive/v3/files?q=name='${this.BACKUP_FILE_NAME}' and trashed=false&fields=files(id)`,
-      {
-        headers: { Authorization: `Bearer ${this.accessToken}` },
-      },
-    );
-
-    if (!response.ok) {
-      throw new Error('Failed to search Drive');
-    }
-
-    const data = await response.json();
-    return data.files?.length > 0 ? data.files[0].id : null;
-  }
-
-  private async createFile(snapshot: DriveBackupSnapshot): Promise<void> {
-    const metadata = { name: this.BACKUP_FILE_NAME, mimeType: 'application/json' };
-    await this.uploadFile(
-      snapshot,
-      'POST',
-      'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
-      metadata,
-    );
-  }
-
-  private async updateFile(fileId: string, snapshot: DriveBackupSnapshot): Promise<void> {
-    await this.uploadFile(
-      snapshot,
-      'PATCH',
-      `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`,
-    );
-  }
-
-  private async downloadFile(fileId: string): Promise<DriveBackupSnapshot> {
-    const response = await fetch(
-      `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
-      {
-        headers: { Authorization: `Bearer ${this.accessToken}` },
-      },
-    );
-
-    if (!response.ok) {
-      throw new Error('Failed to download backup');
-    }
-
-    return response.json();
-  }
-
-  private async overwriteLocalDb(snapshot: DriveBackupSnapshot): Promise<void> {
-    const tables = [
-      { table: db.accounts as any, data: snapshot.accounts },
-      { table: db.categories as any, data: snapshot.categories },
-      { table: db.transactions as any, data: snapshot.transactions },
-      { table: db.transfers as any, data: snapshot.transfers },
-      { table: db.profile as any, data: snapshot.profile },
-    ];
-
-    await db.transaction(
-      'rw',
-      tables.map((t) => t.table),
-      async () => {
-        for (const { table, data } of tables) {
-          await table.clear();
-          if (data?.length) await table.bulkAdd(data);
-        }
-      },
-    );
-  }
-
-  private async uploadFile(
-    snapshot: DriveBackupSnapshot,
-    method: string,
-    url: string,
-    metadata: Record<string, unknown> = {},
-  ): Promise<void> {
-    const form = new FormData();
-    form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-    form.append('file', new Blob([JSON.stringify(snapshot)], { type: 'application/json' }));
-
-    const response = await fetch(url, {
-      method,
-      headers: { Authorization: `Bearer ${this.accessToken}` },
-      body: form,
-    });
-
-    if (!response.ok) {
-      throw new Error(method === 'POST' ? 'Failed to create backup file' : 'Failed to update backup file');
     }
   }
 
