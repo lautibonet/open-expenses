@@ -169,5 +169,28 @@ describe('backup-snapshot', () => {
       const transactions = await db.transactions.toArray();
       expect(transactions[0].year).toBe(2026);
     });
+
+    it('round-trips a transaction note through backup and restore', async () => {
+      const snapshot: BackupSnapshot = {
+        accounts: [],
+        categories: [],
+        transactions: [
+          {
+            id: 1, accountId: 1, categoryId: 1, amount: 100,
+            date: '2026-01-15T00:00:00.000Z', period: 'January', year: 2026,
+            tags: [], exchangeRate: null, baseCurrencyAmount: null,
+            note: 'Dinner with friends', createdAt: '2026-01-01T00:00:00.000Z',
+          },
+        ],
+        transfers: [],
+        profile: [],
+        exportedAt: '2026-01-01T00:00:00.000Z',
+      };
+
+      await overwriteLocalDb(snapshot);
+
+      const transactions = await db.transactions.toArray();
+      expect(transactions[0].note).toBe('Dinner with friends');
+    });
   });
 });

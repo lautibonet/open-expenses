@@ -38,6 +38,7 @@ interface TransactionForm {
   tags: string[];
   exchangeRate: number | null;
   baseCurrencyAmount: number | null;
+  note: string;
 }
 
 interface TransferForm {
@@ -94,7 +95,7 @@ export class MovementsComponent implements OnInit {
     period: getCurrentPeriod(),
     year: getCurrentYear(),
     tags: [],
-    exchangeRate: null, baseCurrencyAmount: null,
+    exchangeRate: null, baseCurrencyAmount: null, note: '',
   });
   trForm = signal<TransferForm>({
     sourceAccountId: 0, destAccountId: 0, sourceAmount: 0, destinationAmount: 0,
@@ -216,6 +217,7 @@ export class MovementsComponent implements OnInit {
             tags: [...t.tags],
             exchangeRate: t.exchangeRate,
             baseCurrencyAmount: t.baseCurrencyAmount,
+            note: t.note ?? '',
           });
           if (t.exchangeRate) {
             this.exchangeRateState.update(s => ({ ...s, rate: t.exchangeRate, date: 'stored' }));
@@ -233,6 +235,7 @@ export class MovementsComponent implements OnInit {
         tags: [],
         exchangeRate: null,
         baseCurrencyAmount: null,
+        note: '',
       });
       if (this.accounts().length > 0) {
         this.checkExchangeRate(this.accounts()[0].id!, this.txForm().date);
@@ -455,11 +458,12 @@ export class MovementsComponent implements OnInit {
           accountId: f.accountId, categoryId: f.categoryId, amount: f.amount,
           date: new Date(f.date), period: f.period, year: f.year, tags: f.tags,
           exchangeRate: f.exchangeRate, baseCurrencyAmount: f.baseCurrencyAmount,
+          note: f.note,
         });
       } else {
         await this.transactionService.create(
           f.accountId, f.categoryId, f.amount, new Date(f.date),
-          f.period, f.tags, f.exchangeRate, f.baseCurrencyAmount, f.year,
+          f.period, f.tags, f.exchangeRate, f.baseCurrencyAmount, f.year, f.note,
         );
       }
       this.cancelForm();
