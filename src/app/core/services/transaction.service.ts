@@ -1,11 +1,9 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable } from '@angular/core';
 import { db } from '../db/database';
 import { Transaction } from '../models/transaction.model';
-import { DriveBackupService } from './drive-backup.service';
 
 @Injectable({ providedIn: 'root' })
 export class TransactionService {
-  private backupService = inject(DriveBackupService);
   async create(
     accountId: number,
     categoryId: number,
@@ -50,7 +48,6 @@ export class TransactionService {
     };
 
     const id = await db.transactions.add(transaction);
-    this.backupService.scheduleAutoBackup();
     return { ...transaction, id };
   }
 
@@ -74,7 +71,6 @@ export class TransactionService {
     }
 
     await db.transactions.update(id, changes);
-    this.backupService.scheduleAutoBackup();
     return (await db.transactions.get(id))!;
   }
 
@@ -84,7 +80,6 @@ export class TransactionService {
       throw new Error('Transaction not found');
     }
     await db.transactions.delete(id);
-    this.backupService.scheduleAutoBackup();
   }
 
   async getAll(): Promise<Transaction[]> {
@@ -144,7 +139,6 @@ export class TransactionService {
         await db.transactions.update(t.id!, { tags: updatedTags });
       }
     }
-    this.backupService.scheduleAutoBackup();
   }
 
   async renameTag(oldName: string, newName: string): Promise<void> {
@@ -164,6 +158,5 @@ export class TransactionService {
         await db.transactions.update(t.id!, { tags: updatedTags });
       }
     }
-    this.backupService.scheduleAutoBackup();
   }
 }

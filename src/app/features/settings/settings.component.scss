@@ -127,45 +127,6 @@ table {
   margin-bottom: 0.75rem;
 }
 
-.backup-description {
-  color: #6b7280;
-  font-size: 0.9rem;
-  margin-bottom: 0.75rem;
-}
-
-.backup-status {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 0.75rem;
-}
-
-.status-connected {
-  color: #16a34a;
-  font-weight: 500;
-}
-
-.status-disconnected {
-  color: #9ca3af;
-  font-style: italic;
-}
-
-.status-offline {
-  color: #d97706;
-  font-weight: 500;
-}
-
-.backup-timestamp {
-  color: #6b7280;
-  font-size: 0.85rem;
-}
-
-.backup-actions {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
 .editable {
   cursor: pointer;
   border-bottom: 1px dashed #d1d5db;
