@@ -143,10 +143,32 @@ export class DriveBackupService {
     }
   }
 
-  async restoreFromFile(file: File): Promise<void> {
+  async getCloudSnapshot(): Promise<BackupSnapshot> {
+    if (!this.accessToken) {
+      await this.connect();
+    }
+
+    if (!this.networkService.isOnline()) {
+      throw new Error('Cannot restore while offline');
+    }
+
+    this.isBackingUp.set(true);
     this.error.set(null);
 
+    try {
+      return await this.provider.downloadSnapshot();
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Restore failed';
+      this.error.set(message);
+      throw e;
+    } finally {
+      this.isBackingUp.set(false);
+    }
+  }
+
+  async parseBackupFile(file: File): Promise<BackupSnapshot> {
     const json = await file.text();
+
     let snapshot: BackupSnapshot;
     try {
       snapshot = parseSnapshot(json);
@@ -158,13 +180,27 @@ export class DriveBackupService {
       throw new Error('Invalid backup file');
     }
 
+    return snapshot;
+  }
+
+  async restoreFromSnapshot(snapshot: BackupSnapshot): Promise<void> {
+    this.isBackingUp.set(true);
+    this.error.set(null);
+
     try {
       await overwriteLocalDb(snapshot);
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : 'Restore failed';
       this.error.set(message);
       throw e;
+    } finally {
+      this.isBackingUp.set(false);
     }
+  }
+
+  async restoreFromFile(file: File): Promise<void> {
+    const snapshot = await this.parseBackupFile(file);
+    await this.restoreFromSnapshot(snapshot);
   }
 
   private loadStoredState(): void {

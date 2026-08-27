@@ -1,0 +1,82 @@
+<section class="card">
+  <h2>Backup</h2>
+  <p class="description">
+    Save a copy of your data as a file, or restore from a previous backup.
+    Restoring replaces all of your current data.
+  </p>
+
+  <div class="backup-actions">
+    <button
+      type="button"
+      class="btn primary"
+      [disabled]="isBusy()"
+      (click)="downloadBackup()"
+    >
+      Download backup file
+    </button>
+
+    <input
+      #fileInput
+      type="file"
+      accept="application/json,.json"
+      class="file-input"
+      (change)="onFileSelected($event)"
+    />
+    <button
+      type="button"
+      class="btn"
+      [disabled]="isBusy()"
+      (click)="fileInput.click()"
+    >
+      Restore from file
+    </button>
+
+    <button
+      type="button"
+      class="btn"
+      [disabled]="isBusy()"
+      (click)="restoreFromCloud()"
+    >
+      Restore from {{ method }}
+    </button>
+  </div>
+
+  @if (isBusy()) {
+    <p class="info">Working…</p>
+  }
+  @if (message()) {
+    <p class="success">{{ message() }}</p>
+  }
+  @if (errorMessage()) {
+    <p class="error">{{ errorMessage() }}</p>
+  }
+
+  @if (pendingRestore()) {
+    <div class="restore-confirm">
+      <p>
+        Backup from <strong>{{ backupDate() }}</strong>
+      </p>
+      <p class="warning">
+        This replaces all current data.
+      </p>
+      <div class="restore-confirm-actions">
+        <button
+          type="button"
+          class="btn danger"
+          [disabled]="isBusy()"
+          (click)="confirmRestore()"
+        >
+          Restore data
+        </button>
+        <button
+          type="button"
+          class="btn"
+          [disabled]="isBusy()"
+          (click)="cancelRestore()"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  }
+</section>

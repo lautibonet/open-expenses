@@ -7,10 +7,11 @@ import { TransactionService } from '../../core/services/transaction.service';
 import { SUPPORTED_CURRENCIES } from '../../core/constants/currencies';
 import { Account } from '../../core/models/account.model';
 import { Category } from '../../core/models/category.model';
+import { BackupCardComponent } from './backup-card/backup-card.component';
 
 @Component({
   selector: 'app-settings',
-  imports: [FormsModule],
+  imports: [FormsModule, BackupCardComponent],
   templateUrl: './settings.component.html',
   styleUrl: './settings.component.scss',
 })
