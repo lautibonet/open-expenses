@@ -166,6 +166,23 @@ describe('TransferService', () => {
     expect(janAll.length).toBe(2);
   });
 
+  it('should get transfers for a month scope by period and year', async () => {
+    await transferService.create(cashId, savingsId, 100, new Date('2025-12-22'), 'January', '', 1, 2026);
+    await transferService.create(cashId, savingsId, 200, new Date('2026-02-10'), 'February', '', 1, 2026);
+
+    const jan26 = await transferService.getByScope({ kind: 'month', period: 'January', year: 2026 });
+    expect(jan26.length).toBe(1);
+    expect(jan26[0].sourceAmount).toBe(100);
+  });
+
+  it('should get all transfers for the all-time scope', async () => {
+    await transferService.create(cashId, savingsId, 100, new Date('2010-05-01'), 'May', '', 1, 2010);
+    await transferService.create(cashId, savingsId, 200, new Date('2026-06-01'), 'June', '', 1, 2026);
+
+    const all = await transferService.getByScope({ kind: 'all-time' });
+    expect(all.length).toBe(2);
+  });
+
   it('should update the period year', async () => {
     const t = await transferService.create(cashId, savingsId, 100, new Date('2025-12-22'), 'January');
     const updated = await transferService.update(t.id!, { year: 2025 });

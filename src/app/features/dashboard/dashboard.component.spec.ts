@@ -8,7 +8,7 @@ import { ProfileService } from '../../core/services/profile.service';
 import { ExchangeRateService } from '../../core/services/exchange-rate.service';
 import { NetworkService } from '../../core/services/network.service';
 import { db } from '../../core/db/database';
-import { getCurrentPeriod, getCurrentYear } from '../../core/types/period.type';
+import { defaultScope, getCurrentPeriod, getCurrentYear } from '../../core/types/period.type';
 
 describe('DashboardComponent', () => {
   let fixture: ComponentFixture<DashboardComponent>;
@@ -71,7 +71,7 @@ describe('DashboardComponent', () => {
 
   it('should have all time option in years list', async () => {
     await component.ngOnInit();
-    expect(component.averagesYears).toContain('All time');
+    expect(component.averagesYears()).toContain('All time');
   });
 
   it('should compute average income for current year', async () => {
@@ -152,9 +152,8 @@ describe('DashboardComponent', () => {
     await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date('2025-12-22'), 'January', [], null, null, 2026);
 
     await component.ngOnInit();
-    component.selectedYear.set(2026);
-    component.selectedPeriod.set('January');
-    await component.refresh();
+    await component.onScopeYearChange(2026);
+    await component.onScopeMonthChange('January');
 
     expect(component.totalIncome()).toBe(3000);
   });
@@ -165,9 +164,8 @@ describe('DashboardComponent', () => {
     await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date('2025-12-22'), 'January', [], null, null, 2026);
 
     await component.ngOnInit();
-    component.selectedYear.set(2025);
-    component.selectedPeriod.set('January');
-    await component.refresh();
+    await component.onScopeYearChange(2025);
+    await component.onScopeMonthChange('January');
 
     expect(component.totalIncome()).toBe(0);
   });
@@ -327,5 +325,103 @@ describe('DashboardComponent', () => {
 
       expect(component.conversionFailed()).toBe(false);
     });
+  });
+});
+
+describe('DashboardComponent - shared scope', () => {
+  let fixture: ComponentFixture<DashboardComponent>;
+  let component: DashboardComponent;
+  let accountService: AccountService;
+  let categoryService: CategoryService;
+  let transactionService: TransactionService;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    await TestBed.configureTestingModule({
+      imports: [DashboardComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(DashboardComponent);
+    component = fixture.componentInstance;
+    accountService = TestBed.inject(AccountService);
+    categoryService = TestBed.inject(CategoryService);
+    transactionService = TestBed.inject(TransactionService);
+  });
+
+  afterEach(async () => {
+    await new Promise<void>(resolve => setTimeout(resolve, 10));
+    await db.delete();
+  });
+
+  it('should default to the current month scope', async () => {
+    await component.ngOnInit();
+    expect(component.scope()).toEqual(defaultScope());
+  });
+
+  it('should derive year options from the data range, not a fixed window', async () => {
+    const acc = await accountService.create('Cash', 'EUR', 0);
+    const incomeCat = await categoryService.create('Payroll', 'Income');
+    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date('2012-01-15'), 'January', [], null, null, 2012);
+    await transactionService.create(acc.id!, incomeCat.id!, 5000, new Date('2016-03-15'), 'March', [], null, null, 2016);
+
+    await component.ngOnInit();
+
+    expect(component.scopeYears()).toEqual(expect.arrayContaining([2012, 2016, getCurrentYear()]));
+  });
+
+  it('should derive month options from the months actually present in data', async () => {
+    const acc = await accountService.create('Cash', 'EUR', 0);
+    const incomeCat = await categoryService.create('Payroll', 'Income');
+    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date('2026-01-15'), 'January');
+    await transactionService.create(acc.id!, incomeCat.id!, 5000, new Date('2026-05-15'), 'May');
+
+    await component.ngOnInit();
+
+    expect(component.scopeMonths()).toContain('January');
+    expect(component.scopeMonths()).toContain('May');
+  });
+
+  it('should compute All time totals across every period present in the data', async () => {
+    const acc = await accountService.create('Cash', 'EUR', 0);
+    const incomeCat = await categoryService.create('Payroll', 'Income');
+    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date('2012-01-15'), 'January', [], null, null, 2012);
+    await transactionService.create(acc.id!, incomeCat.id!, 4000, new Date('2026-03-15'), 'March');
+
+    await component.ngOnInit();
+    expect(component.totalIncome()).toBe(0);
+
+    await component.onScopeYearChange('all-time');
+
+    expect(component.scope().kind).toBe('all-time');
+    expect(component.totalIncome()).toBe(7000);
+  });
+
+  it('should include movements older than ten years in All time totals', async () => {
+    const acc = await accountService.create('Cash', 'EUR', 0);
+    const incomeCat = await categoryService.create('Payroll', 'Income');
+    const oldYear = getCurrentYear() - 20;
+    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(`${oldYear}-01-15`), 'January', [], null, null, oldYear);
+
+    await component.ngOnInit();
+    await component.onScopeYearChange('all-time');
+
+    expect(component.totalIncome()).toBe(3000);
+  });
+
+  it('should announce the scope to assistive tech on change', async () => {
+    await component.ngOnInit();
+    expect(component.scopeAnnouncement()).toBe('');
+
+    await component.onScopeYearChange('all-time');
+    expect(component.scopeAnnouncement()).toBe('All time');
+  });
+
+  it('should label the totals card with the current scope', async () => {
+    await component.ngOnInit();
+    expect(component.scopeLabelText()).toBe(`${getCurrentPeriod()} ${getCurrentYear()}`);
+
+    await component.onScopeYearChange('all-time');
+    expect(component.scopeLabelText()).toBe('All time');
   });
 });

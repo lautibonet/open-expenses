@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { db } from '../db/database';
 import { Transaction } from '../models/transaction.model';
-import { getCurrentYear, getPeriodYear, isValidYear } from '../types/period.type';
+import { PeriodScope, getCurrentYear, getPeriodYear, isValidYear } from '../types/period.type';
 
 @Injectable({ providedIn: 'root' })
 export class TransactionService {
@@ -104,6 +104,13 @@ export class TransactionService {
       return transactions;
     }
     return transactions.filter(t => getPeriodYear(t) === year);
+  }
+
+  async getByScope(scope: PeriodScope): Promise<Transaction[]> {
+    if (scope.kind === 'all-time') {
+      return this.getAll();
+    }
+    return this.getByPeriod(scope.period, scope.year);
   }
 
   async getByAccount(accountId: number): Promise<Transaction[]> {

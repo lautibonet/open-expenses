@@ -7,7 +7,7 @@ import { CategoryService } from '../../core/services/category.service';
 import { ProfileService } from '../../core/services/profile.service';
 import { ExchangeRateService } from '../../core/services/exchange-rate.service';
 import { NetworkService } from '../../core/services/network.service';
-import { MONTHS, getCurrentPeriod, getCurrentYear, getPeriodYear } from '../../core/types/period.type';
+import { MonthName, PeriodScope, defaultScope, getCurrentPeriod, getCurrentYear, getPeriodYear, isAllTime, scopeLabel, scopeOptionsFromMovements, yearsFromData } from '../../core/types/period.type';
 import { formatMoney } from '../../core/types/money';
 import { Transaction } from '../../core/models/transaction.model';
 import { Transfer } from '../../core/models/transfer.model';
@@ -29,10 +29,10 @@ export class DashboardComponent implements OnInit {
   private exchangeRateService = inject(ExchangeRateService);
   private networkService = inject(NetworkService);
 
-  selectedPeriod = signal(getCurrentPeriod());
-  selectedYear = signal(getCurrentYear());
-  months = MONTHS;
-  years = Array.from({ length: 10 }, (_, i) => getCurrentYear() - i);
+  scope = signal<PeriodScope>(defaultScope());
+  scopeYears = signal<number[]>([]);
+  scopeMonths = signal<string[]>([]);
+  scopeAnnouncement = signal('');
 
   periodTransactions = signal<Transaction[]>([]);
   periodTransfers = signal<Transfer[]>([]);
@@ -49,7 +49,7 @@ export class DashboardComponent implements OnInit {
   conversionFailed = signal(false);
 
   averagesYear = signal<string>(String(getCurrentYear()));
-  averagesYears: string[] = [...this.years.map(String), 'All time'];
+  averagesYears = signal<string[]>([]);
   avgMonthlyIncome = signal(0);
   avgMonthlyExpenses = signal(0);
   avgMonthlySavings = signal(0);
@@ -58,15 +58,16 @@ export class DashboardComponent implements OnInit {
     this.baseCurrency.set(await this.profileService.getBaseCurrency());
     await this.refresh();
     await this.refreshAverages();
+    await this.applyScopeOptions();
   }
 
   async refresh(): Promise<void> {
     this.conversionFailed.set(false);
-    const period = this.selectedPeriod();
-    const year = this.selectedYear();
-    const txns = await this.transactionService.getByPeriod(period, year);
+    const txns = await this.transactionService.getByScope(this.scope());
+    const transfers = await this.transferService.getByScope(this.scope());
+
     this.periodTransactions.set(txns);
-    this.periodTransfers.set(await this.transferService.getByPeriod(period, year));
+    this.periodTransfers.set(transfers);
     this.accounts.set(await this.accountService.getAll());
 
     const allCategories = await this.categoryService.getAll();
@@ -144,6 +145,59 @@ export class DashboardComponent implements OnInit {
       this.conversionFailed.set(true);
       this.totalBalanceBaseCurrency.set(this.sumBalances(balances, base));
     }
+  }
+
+  async onScopeYearChange(value: number | 'all-time'): Promise<void> {
+    if (value === 'all-time') {
+      await this.setScope({ kind: 'all-time' });
+      return;
+    }
+    const current = this.scope();
+    const period = current.kind === 'month' && current.year === value && current.period
+      ? current.period
+      : getCurrentPeriod();
+    await this.setScope({ kind: 'month', period, year: value });
+  }
+
+  async onScopeMonthChange(period: string): Promise<void> {
+    const current = this.scope();
+    if (!isAllTime(current)) {
+      await this.setScope({ ...current, period: period as MonthName });
+    }
+  }
+
+  private async setScope(scope: PeriodScope): Promise<void> {
+    this.scope.set(scope);
+    this.scopeAnnouncement.set(scopeLabel(scope));
+    await Promise.all([this.refresh(), this.refreshAverages()]);
+    await this.applyScopeOptions();
+  }
+
+  private async applyScopeOptions(): Promise<void> {
+    const txns = await this.transactionService.getAll();
+    const transfers = await this.transferService.getAll();
+    const all = [
+      ...txns.map(t => ({ period: t.period, year: t.year, date: t.date })),
+      ...transfers.map(t => ({ period: t.period, year: t.year, date: t.date })),
+    ];
+    const options = scopeOptionsFromMovements(all);
+    this.scopeYears.set(options.years);
+    this.scopeMonths.set(options.months);
+    this.averagesYears.set([...yearsFromData(all).map(String), 'All time']);
+  }
+
+  scopeLabelText(): string {
+    return scopeLabel(this.scope());
+  }
+
+  scopePeriod(): string {
+    const s = this.scope();
+    return !isAllTime(s) ? s.period : '';
+  }
+
+  scopeYearValue(): number | 'all-time' {
+    const s = this.scope();
+    return !isAllTime(s) ? s.year : 'all-time';
   }
 
   private async computeBaseAmounts(
