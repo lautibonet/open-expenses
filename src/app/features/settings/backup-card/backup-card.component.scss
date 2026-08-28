@@ -1,7 +1,9 @@
+@use '../../../shared/styles/patterns' as *;
+
 .card {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  background: var(--paper-white);
+  border: 1px solid var(--hairline-graphite);
+  border-radius: var(--radius-lg);
   padding: 1rem;
   margin-bottom: 1rem;
 
@@ -14,7 +16,7 @@
 }
 
 .description {
-  color: #6b7280;
+  color: var(--muted-slate);
   font-size: var(--type-body);
   line-height: var(--leading-body);
   max-width: var(--prose-measure);
@@ -29,23 +31,18 @@
 }
 
 .btn {
-  padding: 0.5rem 1rem;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  background: #fff;
-  cursor: pointer;
-  font-size: 0.9rem;
+  @extend %btn-base;
 
   &.primary {
-    background: #2563eb;
-    color: #fff;
-    border-color: #2563eb;
+    @extend %btn-primary;
   }
 
   &.danger {
-    background: #dc2626;
-    color: #fff;
-    border-color: #dc2626;
+    @extend %btn-danger;
+  }
+
+  &.danger.filled {
+    @extend %btn-danger-filled;
   }
 
   &:disabled {
@@ -59,26 +56,26 @@
 }
 
 .info {
-  color: #2563eb;
+  color: var(--ledger-ink);
   margin: 0.75rem 0;
 }
 
 .success {
-  color: #16a34a;
+  color: var(--ledger-green);
   margin: 0.75rem 0;
 }
 
 .error {
-  color: #dc2626;
+  color: var(--officers-red);
   margin: 0.75rem 0;
 }
 
 .restore-confirm {
   margin-top: 1rem;
   padding: 0.75rem;
-  border: 1px solid #fecaca;
-  border-radius: 6px;
-  background: #fef2f2;
+  border: 1px solid var(--danger-border);
+  border-radius: var(--radius-md);
+  background: var(--danger-surface);
 
   p {
     margin: 0 0 0.5rem;
@@ -86,7 +83,7 @@
 }
 
 .warning {
-  color: #dc2626;
+  color: var(--officers-red);
   font-weight: 600;
 }
 

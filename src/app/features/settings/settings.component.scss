@@ -1,3 +1,5 @@
+@use '../../shared/styles/patterns' as *;
+
 .settings {
   padding-bottom: 1rem;
 
@@ -10,9 +12,9 @@
 }
 
 .card {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  background: var(--paper-white);
+  border: 1px solid var(--hairline-graphite);
+  border-radius: var(--radius-lg);
   padding: 1rem;
   margin-bottom: 1rem;
 
@@ -34,9 +36,9 @@
 
 .input {
   padding: 0.5rem;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  font-size: 0.9rem;
+  border: 1px solid var(--edge-graphite);
+  border-radius: var(--radius-sm);
+  font-size: var(--type-body);
 
   &.small {
     width: 100px;
@@ -44,28 +46,18 @@
 }
 
 .btn {
-  padding: 0.5rem 1rem;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  background: #fff;
-  cursor: pointer;
-  font-size: 0.9rem;
+  @extend %btn-base;
 
   &.primary {
-    background: #2563eb;
-    color: #fff;
-    border-color: #2563eb;
+    @extend %btn-primary;
   }
 
   &.danger {
-    background: #dc2626;
-    color: #fff;
-    border-color: #dc2626;
+    @extend %btn-danger;
   }
 
   &.small {
-    padding: 0.25rem 0.5rem;
-    font-size: 0.8rem;
+    @extend %btn-small;
   }
 }
 
@@ -73,22 +65,23 @@ table {
   width: 100%;
   border-collapse: collapse;
 
-  th, td {
+  th,
+  td {
     padding: 0.5rem;
     text-align: left;
-    border-bottom: 1px solid #f3f4f6;
+    border-bottom: 1px solid var(--silvered-paper);
   }
 
   th {
     font-size: var(--type-label);
-    color: #6b7280;
+    color: var(--muted-slate);
     font-weight: 500;
     letter-spacing: var(--tracking-micro);
     line-height: var(--leading-label);
   }
 
   tr.inactive {
-    opacity: 0.5;
+    opacity: 0.6;
   }
 }
 
@@ -101,7 +94,7 @@ table {
     align-items: center;
     gap: 0.5rem;
     padding: 0.5rem 0;
-    border-bottom: 1px solid #f3f4f6;
+    border-bottom: 1px solid var(--silvered-paper);
   }
 
   .tag-name {
@@ -109,42 +102,42 @@ table {
   }
 
   .tag-count {
-    color: #6b7280;
-    font-size: 0.85rem;
+    color: var(--muted-slate);
+    font-size: var(--type-caption);
   }
 
   .tag-delete-confirm {
-    color: #dc2626;
-    font-size: 0.9rem;
+    color: var(--officers-red);
+    font-size: var(--type-body);
   }
 
   .delete-confirm {
-    color: #dc2626;
-    font-size: 0.9rem;
+    color: var(--officers-red);
+    font-size: var(--type-body);
   }
 }
 
 .empty {
-  color: #9ca3af;
+  color: var(--muted-slate);
   font-style: italic;
 }
 
 .error {
-  color: #dc2626;
+  color: var(--officers-red);
   margin-bottom: 0.75rem;
 }
 
 .success {
-  color: #16a34a;
+  color: var(--ledger-green);
   margin-bottom: 0.75rem;
 }
 
 .editable {
   cursor: pointer;
-  border-bottom: 1px dashed #d1d5db;
+  border-bottom: 1px dashed var(--edge-graphite);
   padding: 0.25rem;
 }
 
 .editable:hover {
-  border-bottom-color: #2563eb;
+  border-bottom-color: var(--ledger-ink);
 }
