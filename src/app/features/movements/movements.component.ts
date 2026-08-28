@@ -1,4 +1,4 @@
-import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnDestroy, OnInit, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DatePipe, NgClass } from '@angular/common';
 import { TransactionService } from '../../core/services/transaction.service';
@@ -26,6 +26,11 @@ import {
 } from '../../core/types/period.type';
 import { formatMoney } from '../../core/types/money';
 import { TagInputComponent } from '../../shared/components/tag-input/tag-input.component';
+import {
+  QuickAddCardComponent,
+  QuickAddSaveData,
+  QuickAddSelection,
+} from './quick-add-card/quick-add-card.component';
 
 interface ExchangeRateState {
   loading: boolean;
@@ -71,7 +76,7 @@ interface TransferForm {
 
 @Component({
   selector: 'app-movements',
-  imports: [FormsModule, DatePipe, NgClass, TagInputComponent],
+  imports: [FormsModule, DatePipe, NgClass, TagInputComponent, QuickAddCardComponent],
   templateUrl: './movements.component.html',
   styleUrl: './movements.component.scss',
 })
@@ -139,6 +144,8 @@ export class MovementsComponent implements OnInit, OnDestroy {
   filterCategory = signal<number | null>(null);
   filterAccount = signal<number | null>(null);
   filterTag = signal<string | null>(null);
+
+  quickAddCard = viewChild(QuickAddCardComponent);
 
   filteredMovements = computed(() => {
     const cat = this.filterCategory();
@@ -565,6 +572,36 @@ export class MovementsComponent implements OnInit, OnDestroy {
     } catch (e: unknown) {
       this.errorMessage.set(e instanceof Error ? e.message : 'Failed to save');
     }
+  }
+
+  async onQuickAddSaved(data: QuickAddSaveData): Promise<void> {
+    try {
+      await this.transactionService.create(
+        data.accountId, data.categoryId, data.amount, new Date(data.date),
+        data.period, [], data.exchangeRate, data.baseCurrencyAmount, data.year, '',
+      );
+      await this.refresh();
+      await this.applyScopeOptions();
+      await this.refreshTags();
+      this.quickAddCard()?.resetForNext();
+    } catch (e: unknown) {
+      this.errorMessage.set(e instanceof Error ? e.message : 'Failed to save');
+      this.quickAddCard()?.failSave();
+    }
+  }
+
+  onQuickAddExpand(selection: QuickAddSelection): void {
+    this.openTransactionForm();
+    this.txForm.update(f => ({
+      ...f,
+      accountId: selection.accountId,
+      categoryId: selection.categoryId,
+      amount: selection.amount,
+      date: selection.date,
+      period: selection.period,
+      year: selection.year,
+    }));
+    this.checkExchangeRate(selection.accountId, selection.date);
   }
 
   deleteConfirmationLabel(item: MovementItem): string {

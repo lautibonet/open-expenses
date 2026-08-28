@@ -1,4 +1,12 @@
 <div class="movements">
+  <app-quick-add-card
+    [accounts]="accounts()"
+    [categories]="categories()"
+    [baseCurrency]="baseCurrency()"
+    (saved)="onQuickAddSaved($event)"
+    (expand)="onQuickAddExpand($event)"
+  />
+
   <div class="controls">
     <select
       [ngModel]="scopeYearValue()"
@@ -21,7 +29,7 @@
         }
       </select>
     }
-    <button class="btn primary" (click)="openTransactionForm()">+ Transaction</button>
+    <button class="btn" (click)="openTransactionForm()">+ Transaction</button>
     <button class="btn" (click)="openTransferForm()">+ Transfer</button>
     <span class="visually-hidden" aria-live="polite">{{ scopeAnnouncement() }}</span>
   </div>
@@ -417,7 +425,12 @@
         </tbody>
       </table>
     } @else {
-      <p class="empty">No movements for {{ scopeLabelText() }}.</p>
+      <p class="empty">
+        No movements for {{ scopeLabelText() }}.
+        @if (accounts().length > 0 && categories().length > 0) {
+          Use the quick-add card above to record one.
+        }
+      </p>
     }
   </div>
 

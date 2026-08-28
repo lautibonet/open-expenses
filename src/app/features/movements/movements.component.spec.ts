@@ -1308,3 +1308,68 @@ describe('MovementsComponent - contextual delete confirmation and undo', () => {
     expect(component.undo()).toBeNull();
   });
 });
+
+describe('MovementsComponent - quick-add integration', () => {
+  let fixture: ComponentFixture<MovementsComponent>;
+  let component: MovementsComponent;
+  let transactionService: TransactionService;
+  let accountService: AccountService;
+  let categoryService: CategoryService;
+  let accountId: number;
+  let categoryId: number;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    await TestBed.configureTestingModule({
+      imports: [MovementsComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(MovementsComponent);
+    component = fixture.componentInstance;
+    transactionService = TestBed.inject(TransactionService);
+    accountService = TestBed.inject(AccountService);
+    categoryService = TestBed.inject(CategoryService);
+
+    const account = await accountService.create('Cash', 'EUR', 100000);
+    accountId = account.id!;
+    const category = await categoryService.create('Food', 'Expense');
+    categoryId = category.id!;
+  });
+
+  afterEach(async () => {
+    await db.delete();
+  });
+
+  it('saves a transaction from the quick-add payload', async () => {
+    await component.ngOnInit();
+
+    await component.onQuickAddSaved({
+      accountId, categoryId, amount: 42, date: '2026-08-15',
+      period: getCurrentPeriod(), year: getCurrentYear(),
+      exchangeRate: null, baseCurrencyAmount: null,
+    });
+
+    const txns = await transactionService.getAll();
+    expect(txns.length).toBe(1);
+    expect(txns[0].amount).toBe(42);
+    expect(component.movements().length).toBe(1);
+    expect((component.movements()[0].data as any).amount).toBe(42);
+  });
+
+  it('expands to the full transaction form, prefilled from the quick-add selection', async () => {
+    await component.ngOnInit();
+
+    component.onQuickAddExpand({
+      accountId, categoryId, amount: 42, date: '2026-08-15',
+      period: getCurrentPeriod(), year: getCurrentYear(),
+    });
+
+    expect(component.showForm()).toBe('transaction');
+    expect(component.editingId()).toBeNull();
+    expect(component.txForm().accountId).toBe(accountId);
+    expect(component.txForm().categoryId).toBe(categoryId);
+    expect(component.txForm().amount).toBe(42);
+    expect(component.txForm().date).toBe('2026-08-15');
+  });
+});
