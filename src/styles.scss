@@ -1,1 +1,56 @@
-/* You can add global styles to this file, and also import other style files */
+/* Type ramp — the Ledger Ink of the register.
+   Hierarchy is carried by size and weight alone; no display face is loaded.
+   Tokens codify DESIGN.md and keep every role identical across screens. */
+:root {
+  --type-headline: 1.1rem;
+  --type-title: 1rem;
+  --type-body: 0.9rem;
+  --type-caption: 0.85rem;
+  --type-label: 0.8rem;
+  --type-tag: 0.75rem;
+
+  --leading-headline: 1.3;
+  --leading-body: 1.55;
+  --leading-label: 1.5;
+  --leading-tight: 1.2;
+  --leading-table: 1.4;
+
+  --tracking-micro: 0.01em;
+  --prose-measure: 60ch;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  text-size-adjust: 100%;
+}
+
+body {
+  font-size: var(--type-body);
+  line-height: var(--leading-body);
+  color: #374151;
+  margin: 0;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
+table {
+  font-variant-numeric: tabular-nums;
+  line-height: var(--leading-table);
+}
+
+th,
+td {
+  text-align: left;
+}
+
+/* Data figures inherit the tabular setting so columns read as one register. */
+.value,
+.amount,
+.stat .value {
+  font-variant-numeric: tabular-nums;
+}

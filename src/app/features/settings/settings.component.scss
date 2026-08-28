@@ -2,6 +2,9 @@
   padding-bottom: 1rem;
 
   h1 {
+    font-size: var(--type-title);
+    font-weight: 500;
+    line-height: var(--leading-headline);
     margin-bottom: 1rem;
   }
 }
@@ -14,7 +17,9 @@
   margin-bottom: 1rem;
 
   h2 {
-    font-size: 1.1rem;
+    font-size: var(--type-headline);
+    font-weight: 600;
+    line-height: var(--leading-headline);
     margin-bottom: 0.75rem;
   }
 }
@@ -75,9 +80,11 @@ table {
   }
 
   th {
-    font-size: 0.8rem;
+    font-size: var(--type-label);
     color: #6b7280;
     font-weight: 500;
+    letter-spacing: var(--tracking-micro);
+    line-height: var(--leading-label);
   }
 
   tr.inactive {

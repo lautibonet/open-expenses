@@ -6,14 +6,18 @@
   margin-bottom: 1rem;
 
   h2 {
-    font-size: 1.1rem;
+    font-size: var(--type-headline);
+    font-weight: 600;
+    line-height: var(--leading-headline);
     margin-bottom: 0.5rem;
   }
 }
 
 .description {
   color: #6b7280;
-  font-size: 0.9rem;
+  font-size: var(--type-body);
+  line-height: var(--leading-body);
+  max-width: var(--prose-measure);
   margin-bottom: 0.75rem;
 }
 
