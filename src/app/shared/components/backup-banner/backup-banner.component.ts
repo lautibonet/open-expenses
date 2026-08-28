@@ -9,7 +9,7 @@ import { describeBackupError } from '../../../backup/backup-errors';
     @if (isOnline()) {
       <section class="backup-banner" aria-label="Backup status">
         <div class="backup-status">
-          <span class="backup-method">{{ method }}</span>
+          <span class="backup-method">{{ method }} backup</span>
           <span class="backup-time">Last backup: {{ lastBackupDisplay() }}</span>
         </div>
         <button
