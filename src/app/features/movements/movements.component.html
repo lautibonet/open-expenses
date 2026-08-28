@@ -38,7 +38,7 @@
 
   @if (showForm() === 'transfer') {
     <div class="form-card">
-      <h3>{{ editingId() ? 'Edit' : 'New' }} Transfer</h3>
+      <h3 #transferHeading tabindex="-1">{{ editingId() ? 'Edit' : 'New' }} Transfer</h3>
       @if (accounts().length < 2) {
         <p class="form-hint">
           Transfers move money between two accounts. Add a second account in Settings first.
@@ -328,7 +328,15 @@
   </div>
 
   @if (undo(); as pending) {
-    <div class="undo-toast" role="status" aria-live="polite">
+    <div
+      class="undo-toast"
+      role="status"
+      aria-live="polite"
+      (mouseenter)="pauseUndo()"
+      (mouseleave)="resumeUndo()"
+      (focusin)="pauseUndo()"
+      (focusout)="resumeUndo()"
+    >
       <span class="undo-message"> Deleted {{ undoDeleteLabel(pending) }} </span>
       <button class="btn small" (click)="undoDelete()">Undo</button>
     </div>
