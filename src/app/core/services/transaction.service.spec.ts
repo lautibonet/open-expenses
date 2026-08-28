@@ -144,6 +144,40 @@ describe('TransactionService', () => {
     expect(found).toBeUndefined();
   });
 
+  it('should restore a deleted transaction with its original id and fields', async () => {
+    const t = await transactionService.create(
+      accountId, categoryId, 1500, new Date('2026-01-15'), 'January',
+      ['food'], 1.08, 1620, getCurrentYear(), 'Dinner',
+    );
+    const snapshot = { ...t, tags: [...t.tags] };
+    await transactionService.delete(t.id!);
+    expect(await transactionService.getById(t.id!)).toBeUndefined();
+
+    await transactionService.restore(snapshot);
+
+    const restored = await transactionService.getById(t.id!);
+    expect(restored).toBeDefined();
+    expect(restored!.id).toBe(t.id);
+    expect(restored!.accountId).toBe(t.accountId);
+    expect(restored!.categoryId).toBe(t.categoryId);
+    expect(restored!.amount).toBe(t.amount);
+    expect(restored!.period).toBe(t.period);
+    expect(restored!.year).toBe(t.year);
+    expect(restored!.tags).toEqual(['food']);
+    expect(restored!.exchangeRate).toBe(1.08);
+    expect(restored!.baseCurrencyAmount).toBe(1620);
+    expect(restored!.note).toBe('Dinner');
+  });
+
+  it('should reject restoring a transaction that still exists', async () => {
+    const t = await transactionService.create(
+      accountId, categoryId, 1500, new Date('2026-01-15'), 'January',
+    );
+    await expect(
+      transactionService.restore(t),
+    ).rejects.toThrow('Transaction already exists');
+  });
+
   it('should get transactions by period', async () => {
     await transactionService.create(accountId, categoryId, 100, new Date(), 'January');
     await transactionService.create(accountId, categoryId, 200, new Date(), 'February');

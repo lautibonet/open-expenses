@@ -94,6 +94,19 @@ export class TransactionService {
     await db.transactions.delete(id);
   }
 
+  async restore(snapshot: Transaction): Promise<Transaction> {
+    if (!snapshot.id) {
+      throw new Error('Transaction id is required');
+    }
+    const existing = await db.transactions.get(snapshot.id);
+    if (existing) {
+      throw new Error('Transaction already exists');
+    }
+    const { id, ...fields } = snapshot;
+    await db.transactions.add({ ...fields, id });
+    return (await db.transactions.get(id))!;
+  }
+
   async getAll(): Promise<Transaction[]> {
     return db.transactions.toArray();
   }

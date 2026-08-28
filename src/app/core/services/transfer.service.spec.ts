@@ -133,6 +133,37 @@ describe('TransferService', () => {
     expect(found).toBeUndefined();
   });
 
+  it('should restore a deleted transfer with its original id and fields', async () => {
+    const t = await transferService.create(
+      cashId, savingsId, 50000, new Date('2026-01-15'), 'January', 'savings', 1.08, 2026,
+    );
+    const snapshot = { ...t };
+    await transferService.delete(t.id!);
+    expect(await transferService.getById(t.id!)).toBeUndefined();
+
+    await transferService.restore(snapshot);
+
+    const restored = await transferService.getById(t.id!);
+    expect(restored).toBeDefined();
+    expect(restored!.id).toBe(t.id);
+    expect(restored!.sourceAccountId).toBe(t.sourceAccountId);
+    expect(restored!.destinationAccountId).toBe(t.destinationAccountId);
+    expect(restored!.sourceAmount).toBe(t.sourceAmount);
+    expect(restored!.destinationAmount).toBe(t.destinationAmount);
+    expect(restored!.exchangeRate).toBe(1.08);
+    expect(restored!.baseCurrencyAmount).toBe(t.baseCurrencyAmount);
+    expect(restored!.period).toBe('January');
+    expect(restored!.year).toBe(2026);
+    expect(restored!.note).toBe('savings');
+  });
+
+  it('should reject restoring a transfer that still exists', async () => {
+    const t = await transferService.create(cashId, savingsId, 50000, new Date('2026-01-15'), 'January');
+    await expect(
+      transferService.restore(t),
+    ).rejects.toThrow('Transfer already exists');
+  });
+
   it('should get transfers by period', async () => {
     await transferService.create(cashId, savingsId, 100, new Date(), 'January');
     await transferService.create(cashId, savingsId, 200, new Date(), 'February');

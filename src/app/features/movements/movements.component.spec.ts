@@ -7,6 +7,8 @@ import { CategoryService } from '../../core/services/category.service';
 import { ProfileService } from '../../core/services/profile.service';
 import { ExchangeRateService, ExchangeRateResult } from '../../core/services/exchange-rate.service';
 import { db } from '../../core/db/database';
+import { Transaction } from '../../core/models/transaction.model';
+import { Transfer } from '../../core/models/transfer.model';
 import { defaultScope, getCurrentPeriod, getCurrentYear } from '../../core/types/period.type';
 
 describe('MovementsComponent - tags integration', () => {
@@ -1156,5 +1158,153 @@ describe('MovementsComponent - shared scope', () => {
     expect(component.scopeLabelText()).toBe(`${getCurrentPeriod()} ${getCurrentYear()}`);
     await component.onScopeYearChange('all-time');
     expect(component.scopeLabelText()).toBe('All time');
+  });
+});
+
+describe('MovementsComponent - contextual delete confirmation and undo', () => {
+  let fixture: ComponentFixture<MovementsComponent>;
+  let component: MovementsComponent;
+  let transactionService: TransactionService;
+  let transferService: TransferService;
+  let accountService: AccountService;
+  let categoryService: CategoryService;
+  let accountId: number;
+  let categoryId: number;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    await TestBed.configureTestingModule({
+      imports: [MovementsComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(MovementsComponent);
+    component = fixture.componentInstance;
+    transactionService = TestBed.inject(TransactionService);
+    transferService = TestBed.inject(TransferService);
+    accountService = TestBed.inject(AccountService);
+    categoryService = TestBed.inject(CategoryService);
+
+    const account = await accountService.create('Cash', 'EUR', 100000);
+    accountId = account.id!;
+    const category = await categoryService.create('Food', 'Expense');
+    categoryId = category.id!;
+  });
+
+  afterEach(async () => {
+    vi.useRealTimers();
+    fixture.destroy();
+    await db.delete();
+  });
+
+  it('should set and clear the inline confirmation target', async () => {
+    const txn = await transactionService.create(accountId, categoryId, 500, new Date(), getCurrentPeriod());
+    await component.ngOnInit();
+    const item = component.movements().find(m => (m.data as Transaction).id === txn.id)!;
+
+    component.requestDelete(item);
+    expect(component.confirmingDelete()).toBe(item);
+
+    component.cancelDelete();
+    expect(component.confirmingDelete()).toBeNull();
+  });
+
+  it('should name amount and account in the transaction delete confirmation', async () => {
+    const txn = await transactionService.create(accountId, categoryId, 500, new Date(), getCurrentPeriod());
+    await component.ngOnInit();
+    const item = component.movements().find(m => (m.data as Transaction).id === txn.id)!;
+
+    const label = component.deleteConfirmationLabel(item);
+    expect(label).toContain('€500.00');
+    expect(label).toContain('Cash');
+  });
+
+  it('should name the end accounts in the transfer delete confirmation', async () => {
+    const acc2 = await accountService.create('Savings', 'EUR', 50000);
+    await transferService.create(accountId, acc2.id!, 1000, new Date(), getCurrentPeriod());
+    await component.ngOnInit();
+    const item = component.movements()[0];
+
+    const label = component.deleteConfirmationLabel(item);
+    expect(label).toContain('€1,000.00');
+    expect(label).toContain('Cash');
+    expect(label).toContain('Savings');
+  });
+
+  it('should delete a transaction only after confirming, then expose an undo', async () => {
+    const txn = await transactionService.create(accountId, categoryId, 500, new Date(), getCurrentPeriod());
+    await component.ngOnInit();
+    const item = component.movements().find(m => (m.data as Transaction).id === txn.id)!;
+
+    expect(await transactionService.getAll()).toHaveLength(1);
+
+    component.requestDelete(item);
+    await component.confirmDelete();
+
+    expect(await transactionService.getAll()).toHaveLength(0);
+    expect(component.confirmingDelete()).toBeNull();
+    expect(component.undo()?.item.data.id).toBe(txn.id);
+  });
+
+  it('should not delete a transaction until confirmed', async () => {
+    const txn = await transactionService.create(accountId, categoryId, 500, new Date(), getCurrentPeriod());
+    await component.ngOnInit();
+    const item = component.movements().find(m => (m.data as Transaction).id === txn.id)!;
+
+    component.requestDelete(item);
+    component.cancelDelete();
+
+    expect(await transactionService.getAll()).toHaveLength(1);
+    expect(component.undo()).toBeNull();
+  });
+
+  it('should restore a deleted transaction via undo', async () => {
+    const txn = await transactionService.create(
+      accountId, categoryId, 500, new Date(), getCurrentPeriod(), ['food'],
+    );
+    await component.ngOnInit();
+    const item = component.movements().find(m => (m.data as Transaction).id === txn.id)!;
+
+    component.requestDelete(item);
+    await component.confirmDelete();
+    expect(await transactionService.getAll()).toHaveLength(0);
+
+    await component.undoDelete();
+
+    const restored = await transactionService.getById(txn.id!);
+    expect(restored).toBeDefined();
+    expect(restored!.amount).toBe(500);
+    expect(restored!.tags).toEqual(['food']);
+    expect(component.undo()).toBeNull();
+  });
+
+  it('should delete a transfer only after confirming, then expose an undo and restore', async () => {
+    const acc2 = await accountService.create('Savings', 'EUR', 50000);
+    const tr = await transferService.create(accountId, acc2.id!, 1000, new Date(), getCurrentPeriod());
+    await component.ngOnInit();
+    const item = component.movements()[0];
+
+    component.requestDelete(item);
+    await component.confirmDelete();
+    expect(await transferService.getAll()).toHaveLength(0);
+
+    await component.undoDelete();
+    const restored = await transferService.getById(tr.id!);
+    expect(restored).toBeDefined();
+    expect(restored!.sourceAmount).toBe(1000);
+  });
+
+  it('should auto-dismiss the undo affordance after the window', async () => {
+    component.undoWindowMs = 20;
+    component.undo.set({
+      item: { type: 'transaction', data: { id: 1 } as Transaction },
+      snapshot: {} as Transaction,
+    });
+    component.scheduleUndoAutoDismiss();
+    expect(component.undo()).not.toBeNull();
+
+    await new Promise(resolve => setTimeout(resolve, 60));
+
+    expect(component.undo()).toBeNull();
   });
 });

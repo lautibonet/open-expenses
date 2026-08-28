@@ -72,7 +72,20 @@
             <td>{{ acc.active ? 'Active' : 'Inactive' }}</td>
             <td>
               @if (acc.active) {
-                <button class="btn small" (click)="deactivateAccount(acc.id!)">Deactivate</button>
+                @if (confirmingDeactivate() === acc.id) {
+                  <span
+                    class="delete-confirm"
+                    role="alert"
+                    aria-live="polite"
+                    aria-label="Confirm account deactivation"
+                  >
+                    {{ deactivationConfirmationLabel(acc.id!) }}
+                  </span>
+                  <button class="btn small danger" (click)="confirmDeactivate()">Confirm</button>
+                  <button class="btn small" (click)="cancelDeactivate()">Cancel</button>
+                } @else {
+                  <button class="btn small" (click)="requestDeactivate(acc.id!)">Deactivate</button>
+                }
               } @else {
                 <button class="btn small" (click)="reactivateAccount(acc.id!)">Reactivate</button>
               }
