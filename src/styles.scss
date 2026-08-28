@@ -1,7 +1,7 @@
-/* Type ramp — the Ledger Ink of the register.
-   Hierarchy is carried by size and weight alone; no display face is loaded.
-   Tokens codify DESIGN.md and keep every role identical across screens. */
+/* Design tokens — the single source of truth for "The Quiet Register" (DESIGN.md).
+   Every role resolves here; components reference tokens, never raw values. */
 :root {
+  /* Type ramp — hierarchy is carried by size and weight alone. */
   --type-headline: 1.1rem;
   --type-title: 1rem;
   --type-body: 0.9rem;
@@ -18,11 +18,58 @@
   --tracking-micro: 0.01em;
   --prose-measure: 60ch;
 
-  /* Warning ramp — the sanctioned amber for conversion/status warnings.
-     A defined design-system color, not a stray; reserved for signal strips. */
+  /* Paper ramp — tonal surfaces carry all structure. */
+  --paper-white: #ffffff;
+  --mist-paper: #f9fafb;
+  --silvered-paper: #f3f4f6;
+  --hairline-graphite: #e5e7eb;
+  --edge-graphite: #d1d5db;
+
+  /* Ink ramp — text roles. Readable empty states use Muted Slate;
+     Faint Ash is reserved for placeholders and disabled hints. */
+  --body-ink: #374151;
+  --muted-slate: #6b7280;
+  --faint-ash: #9ca3af;
+
+  /* Functional inks — blue acts, green is money in, red is money out. */
+  --ledger-ink: #2563eb;
+  --ink-well-blue: #1e40af;
+  --ledger-ink-bright: #3b82f6;
+  --ledger-green: #16a34a;
+  --officers-red: #dc2626;
+
+  /* Ink tint — the blue wash for chips, banners, and callouts. */
+  --ink-tint: #eff6ff;
+  --ink-tint-hover: #dbeafe;
+  --ink-tint-edge: #bfdbfe;
+
+  /* Warning ramp — sanctioned amber for signal strips that warn. */
   --amber-surface: #fef3c7;
   --amber-border: #fcd34d;
   --amber-ink: #92400e;
+
+  /* Danger ramp — sanctioned red wash for destructive confirmations and errors. */
+  --danger-surface: #fef2f2;
+  --danger-border: #fecaca;
+  --danger-edge: #fca5a5;
+  --danger-ink: #dc2626;
+
+  /* Corner scale — sized to the element's role, never its importance. */
+  --radius-tag: 3px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-pill: 9999px;
+
+  /* Spacing rhythm — four steps plus the page gutter. */
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 0.75rem;
+  --space-lg: 1rem;
+  --space-xl: 2rem;
+
+  /* Elevation — the single sanctioned float shadow (floating menus only). */
+  --shadow-float: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 html {
@@ -31,9 +78,16 @@ html {
 }
 
 body {
+  /* No webfont is loaded; the system stack pins intent across platforms. */
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
   font-size: var(--type-body);
   line-height: var(--leading-body);
-  color: #374151;
+  color: var(--body-ink);
   margin: 0;
 }
 
@@ -47,7 +101,7 @@ textarea {
 /* Keyboard focus is always visible: a flat 2px Deep Ledger Ink outline.
    No glow, no shadow — focus darkens the boundary against the paper system. */
 :focus-visible {
-  outline: 2px solid #2563eb;
+  outline: 2px solid var(--ledger-ink);
   outline-offset: 2px;
 }
 

@@ -6,12 +6,7 @@ import { NetworkService } from '../../../core/services/network.service';
   selector: 'app-backup-banner',
   template: `
     @if (isOnline()) {
-      <button
-        type="button"
-        class="backup-banner"
-        (click)="backUp()"
-        [disabled]="isBackingUp()"
-      >
+      <button type="button" class="backup-banner" (click)="backUp()" [disabled]="isBackingUp()">
         <span class="backup-method">
           {{ isBackingUp() ? 'Backing up…' : 'Back up' }} to {{ method }}
         </span>
@@ -35,15 +30,15 @@ import { NetworkService } from '../../../core/services/network.service';
       gap: 0.5rem;
       width: 100%;
       padding: 0.6rem 1rem;
-      background: #eff6ff;
+      background: var(--ink-tint);
       border: none;
-      border-bottom: 1px solid #bfdbfe;
+      border-bottom: 1px solid var(--ink-tint-edge);
       cursor: pointer;
       font: inherit;
       text-align: left;
 
       &:hover {
-        background: #dbeafe;
+        background: var(--ink-tint-hover);
       }
 
       &:disabled {
@@ -52,37 +47,37 @@ import { NetworkService } from '../../../core/services/network.service';
       }
 
       &.offline {
-        color: #6b7280;
-        background: #f3f4f6;
-        border-bottom-color: #e5e7eb;
+        color: var(--muted-slate);
+        background: var(--silvered-paper);
+        border-bottom-color: var(--hairline-graphite);
       }
     }
 
     .backup-method {
       font-weight: 600;
-      color: #1e40af;
+      color: var(--ink-well-blue);
     }
 
     .offline .backup-method {
-      color: #6b7280;
+      color: var(--muted-slate);
     }
 
     .backup-time {
-      color: #3b82f6;
+      color: var(--ledger-ink-bright);
       font-size: 0.85rem;
     }
 
     .offline .backup-time {
-      color: #9ca3af;
+      color: var(--faint-ash);
     }
 
     .backup-banner-error {
       margin: 0;
       padding: 0.5rem 1rem;
-      background: #fef2f2;
-      color: #dc2626;
+      background: var(--danger-surface);
+      color: var(--officers-red);
       font-size: 0.85rem;
-      border-bottom: 1px solid #fecaca;
+      border-bottom: 1px solid var(--danger-border);
     }
   `,
 })
