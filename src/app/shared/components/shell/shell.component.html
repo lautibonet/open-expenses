@@ -1,10 +1,32 @@
+<a class="skip-link" href="#main-content" (click)="skipToContent($event)">Skip to content</a>
 <app-install-prompt />
 <app-backup-banner />
-<nav class="tab-bar">
-  <a routerLink="/movements" routerLinkActive="active" class="tab">Movements</a>
-  <a routerLink="/dashboard" routerLinkActive="active" class="tab">Stats</a>
-  <a routerLink="/settings" routerLinkActive="active" class="tab">Settings</a>
+<nav class="tab-bar" aria-label="Primary">
+  <a
+    routerLink="/movements"
+    routerLinkActive="active"
+    #movementsTab="routerLinkActive"
+    class="tab"
+    [attr.aria-current]="movementsTab.isActive ? 'page' : null"
+    >Movements</a
+  >
+  <a
+    routerLink="/dashboard"
+    routerLinkActive="active"
+    #statsTab="routerLinkActive"
+    class="tab"
+    [attr.aria-current]="statsTab.isActive ? 'page' : null"
+    >Stats</a
+  >
+  <a
+    routerLink="/settings"
+    routerLinkActive="active"
+    #settingsTab="routerLinkActive"
+    class="tab"
+    [attr.aria-current]="settingsTab.isActive ? 'page' : null"
+    >Settings</a
+  >
 </nav>
-<main class="content">
+<main class="content" id="main-content" tabindex="-1">
   <router-outlet />
 </main>

@@ -137,7 +137,8 @@ A second sanctioned sub-ramp for signal strips that destroy or report failure �
 
 - **Danger Surface** (#fef2f2): the tinted fill of destructive-confirmation wells and error strips.
 - **Danger Border** (#fecaca): the hairline around those wells and strips.
-- **Danger Ink** (#dc2626): the text inside them (Officer's Red).
+- **Danger Ink** (#dc2626): red text at UI scale (Officer's Red) — outline danger buttons and row-level intent.
+- **Danger Text** (#b91c1c): the text ink for copy sitting on the danger tint — Danger Ink alone fails AA on the tinted surface.
 - **Danger Edge** (#fca5a5): the hairline of outline danger buttons — red intent at row density.
 
 ### Name Rules
@@ -171,9 +172,9 @@ Amounts are always **600 weight** at their size (1.25rem stat values on Stats, r
 
 ## Layout
 
-A single centered column, `max-width: 800px` (`main.content` in the shell), padded 1rem on each side, `margin: 0 auto`. The onboarding flow narrows to 600px. Everything above the content — install prompt, backup banner, and the tab bar — spans full width and is top-fixed/sticky.
+A single centered column, `max-width: 800px` (`main.content` in the shell), padded 1rem on each side, `margin: 0 auto`. The onboarding flow narrows to 600px. The chrome strips above the content — install prompt, backup banner, error strip, and the tab bar — span full width edge-to-edge, but their inner content aligns to the centered content column via the shared chrome gutter (`--chrome-gutter`); only the tab bar is sticky.
 
-The tab bar is a 3-up equal flex row, sticky at `top: 0`. Cards stack vertically with 1rem gutter (a 1rem bottom margin on each card). Forms lay out on a two-column grid (`1fr 1fr`, 0.75rem gap); the Quick Add card's compact mode uses `1.5fr 1fr 1fr` so the amount column reads widest. Tables are full-width, `border-collapse: collapse`, with 0.5rem cell padding.
+The tab bar is a 3-up equal flex row, sticky at `top: 0`, its links constrained to the content column by the chrome gutter. Cards stack vertically with 1rem gutter (a 1rem bottom margin on each card). Forms lay out on a two-column grid (`1fr 1fr`, 0.75rem gap); the Quick Add card's compact mode uses `1.5fr 1fr 1fr` so the amount column reads widest. Tables are full-width, `border-collapse: collapse`, with 0.5rem cell padding.
 
 Spacing rhythm is a 4-step scale — 0.5rem (button clusters, table cells), 0.75rem (form-grid gutters, heading offsets, action rows), 1rem (card padding, page padding, card gutters, section spacing), 2rem (Stats stat groups). A single breakpoint at 560px handles phones: form grids and the Quick Add compact grid collapse to one column, Stats stat groups wrap, the filter bar and controls wrap, and the movements table gains a horizontal scroll container. Above it, the column simply reflows.
 
@@ -226,7 +227,7 @@ Borders are uniformly 1px hairlines whose darkness encodes role: surfaces use Ha
 - **Style:** a sticky top tab bar of three equal links (Movements, Stats, Settings), 1px Hairline Graphite rule beneath. Resting tabs are Muted Slate at 500; hover darkens to Body Ink (#374151) — the ramp's darkest step, never a stray near-black; the active tab is Deep Ledger Ink with a 2px Ink underline replacing the rule. No pill, no filled background — active state is the underline alone.
 
 ### Signature Components
-- **Backup Banner:** a full-width tinted strip (ink-tint #eff6ff fill, #bfdbfe bottom hairline) pairing a strong "Back up to Google Drive" label in Ink Well Blue with a relative-time caption in blue-500 (#3b82f6); hover deepens the tint one step to #dbeafe. Offline, it degrades to Silvered Paper with Muted Slate/Faint Ash text and renders as a genuinely disabled button (native `disabled`), so assistive tech hears a real disabled control. Backup failures render an error strip in the danger tint (#fef2f2 fill, #fecaca hairline) below the banner. Its sibling Install Prompt uses the same strip language.
+- **Backup Banner:** a non-interactive full-width status strip (ink-tint #eff6ff fill, #bfdbfe bottom hairline) with its content aligned to the centered content column via the chrome gutter. Status reads left: the method label ("Google Drive") in Ink Well Blue at 600, with the relative-time caption ("Last backup: …") in Ink Well Blue beneath it; a compact primary **Back up** button (`%btn-primary`/`%btn-small`) sits pinned right and is the strip's only interactive element — hover deepens the button to Ink Well Blue, never the strip. Offline, it degrades to Silvered Paper with the method and caption in Muted Slate and renders a genuinely disabled neutral button (native `disabled`), so assistive tech hears a real disabled control. Backup failures render an error strip in the danger tint (#fef2f2 fill, #fecaca hairline) below the banner, announced via `role="alert"`, with provider codes mapped to one ledger-voice sentence (raw code demoted to the `title`) and a small outline-danger Dismiss button in Danger Text. Its sibling Install Prompt uses the same strip language.
 - **Movement Rows:** each row opens with the Direction Arrow rendered at 600 weight — a right arrow → for income, left ← for expense, equals = for transfer — in Ledger Green, Officer's Red, or Muted Slate respectively. Amounts always render positive, in 600 weight, colored only by income/expense direction. Cross-currency rows show original → converted (e.g. `$10.00 → €8.57`).
 - **Undo Toast:** a fixed, bottom-center Paper White strip (6px, Hairline Graphite border) pairing the deleted-movement label with a small Undo button. It floats but casts no shadow — the Flat-By-Default Rule spares nothing at rest.
 - **Tables:** headers are 0.8rem Muted Slate at 500, rows separated by 1px Silvered Paper rules; transfer rows tint Mist Paper; amount cells are 600-weight and colored only by direction; inactive rows dim to 0.6 opacity.
