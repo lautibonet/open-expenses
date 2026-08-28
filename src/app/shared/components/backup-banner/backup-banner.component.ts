@@ -47,7 +47,7 @@ import { describeBackupError } from '../../../backup/backup-errors';
       gap: 0.5rem;
       width: 100%;
       box-sizing: border-box;
-      padding: 0.6rem 1rem;
+      padding: 0.6rem var(--chrome-gutter);
       background: var(--ink-tint);
       border-bottom: 1px solid var(--ink-tint-edge);
 
@@ -106,7 +106,7 @@ import { describeBackupError } from '../../../backup/backup-errors';
       justify-content: space-between;
       gap: 0.5rem;
       margin: 0;
-      padding: 0.5rem 1rem;
+      padding: 0.5rem var(--chrome-gutter);
       background: var(--danger-surface);
       color: var(--officers-red);
       font-size: 0.85rem;
@@ -122,6 +122,12 @@ import { describeBackupError } from '../../../backup/backup-errors';
       @extend %btn-danger;
       @extend %btn-small;
       flex-shrink: 0;
+    }
+
+    @media (pointer: coarse) {
+      .backup-action {
+        min-height: 44px;
+      }
     }
   `,
 })
