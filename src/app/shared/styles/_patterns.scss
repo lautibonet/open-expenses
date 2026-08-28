@@ -11,6 +11,11 @@
   background: var(--paper-white);
   cursor: pointer;
   font-size: var(--type-body);
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
 }
 
 %btn-small {

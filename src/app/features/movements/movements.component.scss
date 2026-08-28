@@ -75,6 +75,12 @@
   }
 }
 
+.form-hint {
+  margin: 0 0 0.75rem;
+  font-size: var(--type-caption);
+  color: var(--muted-slate);
+}
+
 .form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
