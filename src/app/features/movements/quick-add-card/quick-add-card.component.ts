@@ -219,7 +219,6 @@ export class QuickAddCardComponent implements OnInit, AfterViewInit {
     this.resetFormForNew();
     this.resetRate();
     this.announcement.set(wasEdit ? 'Transaction updated' : 'Transaction saved');
-    this.focusAmount();
   }
 
   markFailed(message: string): void {

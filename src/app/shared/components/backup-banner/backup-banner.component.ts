@@ -18,10 +18,10 @@ import { NetworkService } from '../../../core/services/network.service';
         <span class="backup-time">Last backup: {{ lastBackupDisplay() }}</span>
       </button>
     } @else {
-      <div class="backup-banner offline" aria-disabled="true">
+      <button type="button" class="backup-banner offline" disabled>
         <span class="backup-method">{{ method }} backup</span>
         <span class="backup-time">Offline</span>
-      </div>
+      </button>
     }
     @if (backupError()) {
       <p class="backup-banner-error">{{ backupError() }}</p>

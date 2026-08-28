@@ -210,13 +210,13 @@ Borders are uniformly 1px hairlines whose darkness encodes role: surfaces use Ha
 ### Inputs / Fields
 - **Style:** Paper White, 1px Edge Graphite border, 4px radius, 0.5rem padding, 0.9rem type. Labels sit above the field (column flex, 0.8rem Muted Slate).
 - **Readonly:** Silvered Paper fill, Muted Slate text, `not-allowed` cursor — used for the auto-computed base-currency equivalent.
-- **Focus:** the boundary between Edge and own-ink darkens; no glow, no ring, no shadow is defined in the incumbent.
+- **Focus:** keyboard focus is always visible — a flat 2px Deep Ledger Ink outline (via `:focus-visible`), no glow, no shadow. On hover and at rest the boundary follows the Edge/own-ink darkening described above.
 
 ### Navigation
-- **Style:** a sticky top tab bar of three equal links (Movements, Stats, Settings), 1px Hairline Graphite rule beneath. Resting tabs are Muted Slate at 500; hover darkens to near-black; the active tab is Deep Ledger Ink with a 2px Ink underline replacing the rule. No pill, no filled background — active state is the underline alone.
+- **Style:** a sticky top tab bar of three equal links (Movements, Stats, Settings), 1px Hairline Graphite rule beneath. Resting tabs are Muted Slate at 500; hover darkens to Body Ink (#374151) — the ramp's darkest step, never a stray near-black; the active tab is Deep Ledger Ink with a 2px Ink underline replacing the rule. No pill, no filled background — active state is the underline alone.
 
 ### Signature Components
-- **Backup Banner:** a full-width tinted strip (ink-tint #eff6ff fill, #bfdbfe bottom hairline) pairing a strong "Back up to Google Drive" label in Ink Well Blue with a relative-time caption in blue-500 (#3b82f6). Offline, it degrades to Silvered Paper with Muted Slate/Faint Ash text and `aria-disabled`. Its sibling Install Prompt uses the same strip language.
+- **Backup Banner:** a full-width tinted strip (ink-tint #eff6ff fill, #bfdbfe bottom hairline) pairing a strong "Back up to Google Drive" label in Ink Well Blue with a relative-time caption in blue-500 (#3b82f6). Offline, it degrades to Silvered Paper with Muted Slate/Faint Ash text and renders as a genuinely disabled button (native `disabled`), so assistive tech hears a real disabled control. Its sibling Install Prompt uses the same strip language.
 - **Movement Rows:** each row opens with a direction glyph rendered at 600 weight — a right arrow → for income, left ← for expense, equals = for transfer — in Ledger Green, Officer's Red, or Muted Slate respectively. Amounts always render positive, in 600 weight, colored only by income/expense direction. Cross-currency rows show original → converted (e.g. `$10.00 → €8.57`).
 - **Tables:** headers are 0.8rem Muted Slate at 500, rows separated by 1px Silvered Paper rules; inactive rows dim to 0.5 opacity.
 

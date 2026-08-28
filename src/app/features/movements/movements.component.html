@@ -33,6 +33,7 @@
     }
     <button class="btn" (click)="openTransferForm()">+ Transfer</button>
     <span class="visually-hidden" aria-live="polite">{{ scopeAnnouncement() }}</span>
+    <span class="visually-hidden" aria-live="polite">{{ movementAnnouncement() }}</span>
   </div>
 
   @if (showForm() === 'transfer') {
