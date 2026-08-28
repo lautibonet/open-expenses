@@ -42,6 +42,10 @@ export class DriveBackupService {
     return this.provider.method;
   }
 
+  clearError(): void {
+    this.error.set(null);
+  }
+
   async connect(): Promise<void> {
     this.error.set(null);
 

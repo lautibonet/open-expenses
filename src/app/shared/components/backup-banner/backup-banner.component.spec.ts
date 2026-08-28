@@ -52,11 +52,17 @@ describe('BackupBannerComponent', () => {
 
   it('backs up when tapped', async () => {
     const spy = vi.spyOn(driveBackupService, 'backupNow').mockResolvedValue(undefined);
-    const button = fixture.nativeElement.querySelector('button') as HTMLButtonElement;
+    const button = fixture.nativeElement.querySelector('.backup-action') as HTMLButtonElement;
     button.click();
     await fixture.whenStable();
 
     expect(spy).toHaveBeenCalled();
+  });
+
+  it('renders the strip as a non-interactive status region', () => {
+    const strip = fixture.nativeElement.querySelector('.backup-banner') as HTMLElement;
+    expect(strip.tagName).toBe('SECTION');
+    expect(strip.getAttribute('aria-label')).toBe('Backup status');
   });
 
   it('renders an Offline state as a genuinely disabled control', async () => {
@@ -65,7 +71,7 @@ describe('BackupBannerComponent', () => {
 
     expect(fixture.nativeElement.textContent).toContain('Offline');
 
-    const button = fixture.nativeElement.querySelector('button') as HTMLButtonElement;
+    const button = fixture.nativeElement.querySelector('.backup-action') as HTMLButtonElement;
     expect(button).not.toBeNull();
     expect(button.disabled).toBe(true);
 
@@ -81,7 +87,37 @@ describe('BackupBannerComponent', () => {
     driveBackupService.isBackingUp.set(true);
     fixture.detectChanges();
 
-    const button = fixture.nativeElement.querySelector('button') as HTMLButtonElement;
+    const button = fixture.nativeElement.querySelector('.backup-action') as HTMLButtonElement;
     expect(button.disabled).toBe(true);
+  });
+
+  it('announces backup failure as a live region and dismisses it', async () => {
+    driveBackupService.error.set('popup_closed_by_user');
+    fixture.detectChanges();
+
+    const strip = fixture.nativeElement.querySelector(
+      '.backup-banner-error',
+    ) as HTMLElement;
+    expect(strip).not.toBeNull();
+    expect(strip.getAttribute('role')).toBe('alert');
+
+    const dismiss = strip.querySelector('.error-dismiss') as HTMLButtonElement;
+    dismiss.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.backup-banner-error')).toBeNull();
+  });
+
+  it('clears a stale error when the app goes offline', () => {
+    driveBackupService.error.set('Backup failed');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.backup-banner-error')).not.toBeNull();
+
+    networkService.isOnline.set(false);
+    fixture.detectChanges();
+
+    expect(driveBackupService.error()).toBeNull();
+    expect(fixture.nativeElement.querySelector('.backup-banner-error')).toBeNull();
   });
 });
