@@ -42,7 +42,11 @@ _Avoid_: Feed, timeline, history
 
 **Direction Arrow**:
 A visual indicator at the start of each Movement row. → (right arrow) for Income, ← (left arrow) for Expense, = (equals) for Transfer. Uses green/red color coding for Income/Expense respectively.
-_Avoid_: Sign, prefix, indicator
+_Avoid_: Sign, prefix, indicator, direction glyph
+
+**Quick Add**:
+The compact capture form at the top of the Movements screen for recording a Transaction or Transfer in one step, without opening the full editor.
+_Avoid_: Quick entry, mini form, inline add
 
 **Stats** (formerly Dashboard):
 A read-only summary screen showing a total balance in base currency (sum of all account balances, non-base converted using latest rate), period totals, per-category expense breakdown, yearly averages, and per-account balances (current and period-end). Reached via the `/dashboard` route.
