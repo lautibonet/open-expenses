@@ -4,7 +4,7 @@ description: A quiet, ledger-flat personal expense tracker.
 colors:
   primary: "#2563eb"
   primary-deep: "#1e40af"
-  income: "#16a34a"
+  income: "#15803d"
   expense: "#dc2626"
   neutral-bg: "#ffffff"
   neutral-surface: "#f9fafb"

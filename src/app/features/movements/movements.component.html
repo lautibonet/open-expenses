@@ -205,7 +205,9 @@
       </select>
     </label>
     @if (activeFilterCount() > 0) {
-      <span class="filter-badge">{{ activeFilterCount() }}</span>
+      <span class="filter-badge"
+        >{{ activeFilterCount() }}<span class="visually-hidden"> filters active</span></span
+      >
       <button class="btn small" (click)="clearFilters()">Clear filters</button>
     }
   </div>
@@ -214,15 +216,18 @@
     @if (filteredMovements().length > 0) {
       <div class="table-scroll">
         <table>
+          <caption class="visually-hidden">
+            Movements for {{ scopeLabelText() }}
+          </caption>
           <thead>
             <tr>
-              <th>Type</th>
-              <th>Date</th>
-              <th>Category / Transfer</th>
-              <th>Amount</th>
-              <th>Account</th>
-              <th>Tags</th>
-              <th>Actions</th>
+              <th scope="col">Type</th>
+              <th scope="col">Date</th>
+              <th scope="col">Category / Transfer</th>
+              <th scope="col">Amount</th>
+              <th scope="col">Account</th>
+              <th scope="col">Tags</th>
+              <th scope="col">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -259,7 +264,6 @@
                     @if (confirmingDelete() === item) {
                       <span
                         class="delete-confirm"
-                        role="alert"
                         aria-live="polite"
                         aria-label="Confirm transaction deletion"
                       >
@@ -296,7 +300,6 @@
                     @if (confirmingDelete() === item) {
                       <span
                         class="delete-confirm"
-                        role="alert"
                         aria-live="polite"
                         aria-label="Confirm transfer deletion"
                       >
