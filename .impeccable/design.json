@@ -1,0 +1,228 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-28T00:00:00.000Z",
+  "title": "Design System: Open Expenses",
+  "extensions": {
+    "colorMeta": {
+      "primary": {
+        "role": "primary",
+        "displayName": "Deep Ledger Ink",
+        "canonical": "#2563eb",
+        "tonalRamp": ["#0b1a3d", "#123062", "#1a4a97", "#2653b8", "#2563eb", "#4c7ef2", "#84a5f7", "#eef2fe"]
+      },
+      "primary-deep": {
+        "role": "primary",
+        "displayName": "Ink Well Blue",
+        "canonical": "#1e40af",
+        "tonalRamp": ["#0a1738", "#101f5c", "#162d86", "#1e40af", "#3d5cc9", "#6a85dc", "#aebff0", "#e6ebfa"]
+      },
+      "income": {
+        "role": "semantic",
+        "displayName": "Ledger Green",
+        "canonical": "#16a34a",
+        "tonalRamp": ["#05230f", "#0a3d1c", "#0e6330", "#128f45", "#16a34a", "#3cb865", "#75d08f", "#eef9f2"]
+      },
+      "expense": {
+        "role": "semantic",
+        "displayName": "Officer's Red",
+        "canonical": "#dc2626",
+        "tonalRamp": ["#3f0606", "#650a0a", "#8f1414", "#b51f1f", "#dc2626", "#e65050", "#ed8080", "#fdeded"]
+      },
+      "neutral-bg": {
+        "role": "neutral",
+        "displayName": "Paper White",
+        "canonical": "#ffffff",
+        "tonalRamp": ["#0a0a0a", "#242424", "#484848", "#6b6b6b", "#969696", "#bcbcbc", "#e0e0e0", "#ffffff"]
+      },
+      "neutral-surface": {
+        "role": "neutral",
+        "displayName": "Mist Paper",
+        "canonical": "#f9fafb",
+        "tonalRamp": ["#0b0c0e", "#16171b", "#23252b", "#33353d", "#474b55", "#6b7280", "#c3c7d1", "#f9fafb"]
+      },
+      "neutral-surface-muted": {
+        "role": "neutral",
+        "displayName": "Silvered Paper",
+        "canonical": "#f3f4f6",
+        "tonalRamp": ["#0c0d0f", "#17181b", "#24262a", "#34363c", "#484b52", "#6e7179", "#c6c9d0", "#f3f4f6"]
+      },
+      "neutral-border": {
+        "role": "neutral",
+        "displayName": "Hairline Graphite",
+        "canonical": "#e5e7eb",
+        "tonalRamp": ["#0e0f11", "#1a1b1e", "#282a2f", "#3a3d44", "#50535c", "#767982", "#c9ccd2", "#f4f5f7"]
+      },
+      "neutral-border-strong": {
+        "role": "neutral",
+        "displayName": "Edge Graphite",
+        "canonical": "#d1d5db",
+        "tonalRamp": ["#101114", "#1d1e22", "#2d2f34", "#40434a", "#575b63", "#7e828b", "#cdd0d6", "#f4f5f7"]
+      },
+      "neutral-text": {
+        "role": "neutral",
+        "displayName": "Body Ink",
+        "canonical": "#374151",
+        "tonalRamp": ["#1f2530", "#2c333f", "#374151", "#485265", "#5d6880", "#79849b", "#a7aec0", "#e2e5ea"]
+      },
+      "neutral-text-muted": {
+        "role": "neutral",
+        "displayName": "Muted Slate",
+        "canonical": "#6b7280",
+        "tonalRamp": ["#33363d", "#454950", "#5a5e67", "#6b7280", "#8a909b", "#a8adb6", "#cfd2d8", "#f0f1f3"]
+      },
+      "neutral-text-faint": {
+        "role": "neutral",
+        "displayName": "Faint Ash",
+        "canonical": "#9ca3af",
+        "tonalRamp": ["#4b5059", "#5f656f", "#747b86", "#87909b", "#9ca3af", "#b6bcc5", "#d5d8de", "#f1f2f4"]
+      }
+    },
+    "typographyMeta": {
+      "headline": { "displayName": "Headline", "purpose": "Card titles (h2 inside cards)." },
+      "title": { "displayName": "Title", "purpose": "Onboarding heading and page-level h1." },
+      "body": { "displayName": "Body", "purpose": "Buttons, inputs, selects, and general content." },
+      "body-caption": { "displayName": "Body Caption", "purpose": "Secondary explanation, backup timestamps, error messages." },
+      "label": { "displayName": "Label", "purpose": "Form field labels, table headers." },
+      "tag": { "displayName": "Tag/Meta", "purpose": "Tags, chips, badges, inline type labels — the recognized floor." }
+    },
+    "shadows": [
+      {
+        "name": "float",
+        "value": "0 2px 4px rgba(0, 0, 0, 0.1)",
+        "purpose": "Only the tag-input autocomplete dropdown lifts off the page. Resting surfaces never cast shadows."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-quick",
+        "value": "color 0.15s ease, border-color 0.15s ease",
+        "purpose": "Tab hover and active state color/border transitions."
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The single prominent action on a form or view (Save, + Transaction).",
+      "html": "<button class=\"ds-btn-primary\">Save</button>",
+      "css": ".ds-btn-primary { background: #2563eb; color: #fff; border: 1px solid #2563eb; border-radius: 4px; padding: 0.5rem 1rem; font-size: 0.9rem; font-family: inherit; cursor: pointer; transition: background 0.2s ease, color 0.2s ease; }\n.ds-btn-primary:hover { background: #1e40af; }\n.ds-btn-primary:focus-visible { outline: 2px solid #1e40af; outline-offset: 2px; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button",
+      "description": "Quiet supporting action (Cancel, + Transfer). Paper fill with an Edge Graphite hairline.",
+      "html": "<button class=\"ds-btn-secondary\">Cancel</button>",
+      "css": ".ds-btn-secondary { background: #fff; color: #374151; border: 1px solid #d1d5db; border-radius: 4px; padding: 0.5rem 1rem; font-size: 0.9rem; font-family: inherit; cursor: pointer; transition: color 0.15s ease, border-color 0.15s ease; }\n.ds-btn-secondary:hover { color: #111827; }\n.ds-btn-secondary:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }"
+    },
+    {
+      "name": "Compact Danger Button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Row-level destructive Delete on dense tables: Officer's Red text on a red-300 hairline.",
+      "html": "<button class=\"ds-btn-danger\">Delete</button>",
+      "css": ".ds-btn-danger { background: transparent; color: #dc2626; border: 1px solid #fca5a5; border-radius: 4px; padding: 0.25rem 0.5rem; font-size: 0.8rem; font-family: inherit; cursor: pointer; transition: background 0.2s ease; }\n.ds-btn-danger:hover { background: #fef2f2; }\n.ds-btn-danger:focus-visible { outline: 2px solid #dc2626; outline-offset: 2px; }"
+    },
+    {
+      "name": "Text Input (labeled)",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Label above a Paper White field with an Edge Graphite hairline, 4px radius.",
+      "html": "<label class=\"ds-field\">Amount<input class=\"ds-input\" type=\"text\" value=\"42.00\" /></label>",
+      "css": ".ds-field { display: flex; flex-direction: column; font-size: 0.8rem; color: #374151; font-family: inherit; }\n.ds-input { margin-top: 0.25rem; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.9rem; font-family: inherit; background: #fff; color: #374151; }\n.ds-input:focus, .ds-input:focus-visible { outline: 2px solid #2563eb; outline-offset: 1px; border-color: #2563eb; }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "The universal unit of Dashboard and Settings: Paper White, 1px hairline, 8px corners.",
+      "html": "<div class=\"ds-card\"><h2>Period Totals</h2><p class=\"ds-card__lede\">Income and expenses for the selected period.</p></div>",
+      "css": ".ds-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 1rem; font-family: inherit; }\n.ds-card h2 { font-size: 1.1rem; font-weight: 600; margin: 0 0 0.75rem; }\n.ds-card__lede { margin: 0; font-size: 0.85rem; color: #6b7280; }"
+    },
+    {
+      "name": "Tag Chip",
+      "kind": "chip",
+      "refersTo": "tag",
+      "description": "Reusable grouping label: ink-tint fill, Deep Ledger Ink text, removable ×.",
+      "html": "<span class=\"ds-tag\">Food<button class=\"ds-tag__remove\" type=\"button\" aria-label=\"remove\">×</button></span>",
+      "css": ".ds-tag { display: inline-flex; align-items: center; gap: 0.25rem; background: #eff6ff; color: #2563eb; padding: 0.125rem 0.375rem; border-radius: 3px; font-size: 0.8rem; font-weight: 500; font-family: inherit; }\n.ds-tag__remove { background: none; border: none; color: #2563eb; cursor: pointer; padding: 0; font-size: 1rem; line-height: 1; opacity: 0.6; font-family: inherit; }\n.ds-tag__remove:hover { opacity: 1; }\n.ds-tag__remove:focus-visible { outline: 2px solid #2563eb; outline-offset: 1px; }"
+    },
+    {
+      "name": "Tab Navigation",
+      "kind": "nav",
+      "refersTo": "navigation",
+      "description": "Three equal links; the active tab is Deep Ledger Ink with a 2px underline.",
+      "html": "<nav class=\"ds-tabs\"><a class=\"ds-tab is-active\" href=\"#\">Dashboard</a><a class=\"ds-tab\" href=\"#\">Movements</a><a class=\"ds-tab\" href=\"#\">Settings</a></nav>",
+      "css": ".ds-tabs { display: flex; border-bottom: 1px solid #e5e7eb; font-family: inherit; }\n.ds-tab { flex: 1; padding: 0.75rem 1rem; text-align: center; text-decoration: none; color: #6b7280; font-weight: 500; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color 0.15s ease, border-color 0.15s ease; font-family: inherit; }\n.ds-tab:hover { color: #111827; }\n.ds-tab.is-active { color: #2563eb; border-bottom-color: #2563eb; }\n.ds-tab:focus-visible { outline: 2px solid #2563eb; outline-offset: -2px; }"
+    },
+    {
+      "name": "Backup Banner",
+      "kind": "custom",
+      "description": "Signature tinted strip: ink-tint fill, Ink Well Blue method, relative-time caption.",
+      "html": "<button class=\"ds-banner\" type=\"button\"><span class=\"ds-banner__method\">Back up to Google Drive</span><span class=\"ds-banner__time\">Last backup: 2 hours ago</span></button>",
+      "css": ".ds-banner { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; width: 100%; padding: 0.6rem 1rem; background: #eff6ff; border: none; border-bottom: 1px solid #bfdbfe; cursor: pointer; font-family: inherit; text-align: left; transition: background 0.15s ease; }\n.ds-banner:hover { background: #dbeafe; }\n.ds-banner__method { font-weight: 600; color: #1e40af; }\n.ds-banner__time { color: #3b82f6; font-size: 0.85rem; }\n.ds-banner:focus-visible { outline: 2px solid #1e40af; outline-offset: -2px; }"
+    },
+    {
+      "name": "Movement Row",
+      "kind": "custom",
+      "description": "Signature list line: direction glyph, category, account/meta, and 600-weight amount colored by direction.",
+      "html": "<div class=\"ds-movement\"><span class=\"ds-movement__arrow ds-movement__arrow--expense\">←</span><span class=\"ds-movement__category\">Food</span><span class=\"ds-movement__meta\">· Aug 14 · Checking</span><span class=\"ds-movement__amount ds-movement__amount--expense\">$42.00</span></div>",
+      "css": ".ds-movement { display: flex; align-items: center; gap: 0.75rem; font-size: 0.9rem; font-family: inherit; padding: 0.5rem 0; border-bottom: 1px solid #f3f4f6; }\n.ds-movement__arrow { font-weight: 600; text-align: center; width: 1.25rem; }\n.ds-movement__arrow--income { color: #16a34a; }\n.ds-movement__arrow--expense { color: #dc2626; }\n.ds-movement__arrow--transfer { color: #6b7280; }\n.ds-movement__category { font-weight: 500; }\n.ds-movement__meta { font-size: 0.8rem; color: #6b7280; }\n.ds-movement__amount { margin-left: auto; font-weight: 600; }\n.ds-movement__amount--income { color: #16a34a; }\n.ds-movement__amount--expense { color: #dc2626; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Quiet Register",
+    "overview": "Open Expenses is the calm, precise successor to the trusted paper ledger — a spreadsheet made into furniture. Every screen is a page of an account book that never raises its voice: white paper surfaces, hairline rules between rows, and a single blue ink reserved for the places the user acts. The interface is honest utility first: nothing decorative earns space unless it helps the user record or read a number correctly.\n\nDensity is comfortable and scannable. Cards stack as clean ruled pages inside a centered 800px column; tables run hairline row rules and muted labels; forms sit in two-column gridded wells. Depth is flat by construction — one-pixel borders and gray surface steps carry structure, never shadows. The whole system is assembled from a small neutral ramp plus three functional accents (blue for action, green for income, red for expense), which is exactly as much color as a ledger needs.\n\nThe layout treats accuracy as the product. Type carries hierarchy through size and weight alone; amounts are always weighted 600 so figures stand out of the page at a glance; muted gray supplies context, faint gray signals absence. Nothing distracts, nothing nags, and every surface sits quietly behind the work of keeping money straight.",
+    "keyCharacteristics": [
+      "Flat, tonal, paper-based surfaces (no gradients, no glass, no shadows at rest)",
+      "A single blue accent that only ever marks action, active state, or information",
+      "Weight-driven type hierarchy on a neutral gray ramp",
+      "Hairline borders (1px) as the universal separator",
+      "Rounded corners kept small and functional (4px inputs to 8px cards)"
+    ],
+    "rules": [
+      {
+        "name": "The Ledger's Ink Rule",
+        "body": "Deep Ledger Ink appears only on action, active state, and information. It is never a background fill, never a full-bleed panel, never decoration. Blue on a screen means 'here is where you do something.'",
+        "section": "colors"
+      },
+      {
+        "name": "The Paper Ramp Rule",
+        "body": "Surface stepping uses only the neutral paper family (Paper White → Mist Paper → Silvered Paper). Tinted fills are limited to the tag chip's ink-tint (#eff6ff), the exchange-rate callout, the backup banner, and status wells — never as gratuitous cards.",
+        "section": "colors"
+      },
+      {
+        "name": "The Ink Is the Voice Rule",
+        "body": "Hierarchy is carried by size and weight alone. Never add color, italics (except the accepted note-italic), underlines, or styling tricks to make text stand out — the figures and headings already do that by weight.",
+        "section": "typography"
+      },
+      {
+        "name": "The No-Whisper Rule",
+        "body": "Nothing renders below 0.75rem. Faint Ash is for absence and empty states; type that users must read is never Faint Ash at a small size.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat-By-Default Rule",
+        "body": "Depth is tonal, never shadowed. A surface that isn't floating in a menu has no shadow, ever. Hover on a button darkens ink — it never lifts, scales, or casts.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do build depth from the paper ramp — Paper White, Mist Paper, Silvered Paper — with 1px hairline borders.",
+      "Do reserve Deep Ledger Ink for actions, the active tab, tags, and info; let figures speak through 600-weight type instead.",
+      "Do keep corners small and role-scaled: 4px controls, 6px wells, 8px cards.",
+      "Do color amounts only by direction: Ledger Green for income, Officer's Red for expense, gray for transfers.",
+      "Do signal destructive confirmations with the filled danger button and dense row Deletes with the outline danger hairline."
+    ],
+    "donts": [
+      "Don't add drop shadows to cards or buttons (float shadows belong only to menus).",
+      "Don't use gradients, glassmorphism, backdrop blur, or full-bleed color panels anywhere.",
+      "Don't introduce stray grays (#ccc, #eee, #666) — the onboarding component currently drifts this way; use the neutral ramp (#e5e7eb / #d1d5db / #9ca3af...).",
+      "Don't round controls past 4px, and never move an active tab's affordance off the underline.",
+      "Don't whisper content below 0.75rem or render readable copy in Faint Ash.",
+      "Don't let the primary accent fill a whole screen or decorate a card background."
+    ]
+  }
+}
