@@ -36,6 +36,14 @@ describe('DashboardComponent', () => {
     await db.delete();
   });
 
+  it('titles the surface Stats, not Dashboard', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+    const heading = fixture.nativeElement.querySelector('h1');
+    expect(heading).toBeTruthy();
+    expect(heading.textContent?.trim()).toBe('Stats');
+  });
+
   it('should format account balance with the account currency', async () => {
     const eur = await accountService.create('Cash', 'EUR', 100000);
     const usd = await accountService.create('USD Account', 'USD', 50000);

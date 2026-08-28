@@ -205,7 +205,7 @@ Borders are uniformly 1px hairlines whose darkness encodes role: surfaces use Ha
 - **Focus:** the boundary between Edge and own-ink darkens; no glow, no ring, no shadow is defined in the incumbent.
 
 ### Navigation
-- **Style:** a sticky top tab bar of three equal links (Dashboard, Movements, Settings), 1px Hairline Graphite rule beneath. Resting tabs are Muted Slate at 500; hover darkens to near-black; the active tab is Deep Ledger Ink with a 2px Ink underline replacing the rule. No pill, no filled background — active state is the underline alone.
+- **Style:** a sticky top tab bar of three equal links (Movements, Stats, Settings), 1px Hairline Graphite rule beneath. Resting tabs are Muted Slate at 500; hover darkens to near-black; the active tab is Deep Ledger Ink with a 2px Ink underline replacing the rule. No pill, no filled background — active state is the underline alone.
 
 ### Signature Components
 - **Backup Banner:** a full-width tinted strip (ink-tint #eff6ff fill, #bfdbfe bottom hairline) pairing a strong "Back up to Google Drive" label in Ink Well Blue with a relative-time caption in blue-500 (#3b82f6). Offline, it degrades to Silvered Paper with Muted Slate/Faint Ash text and `aria-disabled`. Its sibling Install Prompt uses the same strip language.

@@ -11,7 +11,7 @@ export const routes: Routes = [
     path: '',
     component: ShellComponent,
     children: [
-      { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
+      { path: '', redirectTo: 'movements', pathMatch: 'full' },
       {
         path: 'dashboard',
         loadComponent: () =>
@@ -29,5 +29,5 @@ export const routes: Routes = [
       },
     ],
   },
-  { path: '**', redirectTo: 'dashboard' },
+  { path: '**', redirectTo: 'movements' },
 ];

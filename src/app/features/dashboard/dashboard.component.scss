@@ -1,5 +1,12 @@
 .dashboard {
   padding-bottom: 1rem;
+
+  h1 {
+    font-size: var(--type-title);
+    font-weight: 500;
+    line-height: var(--leading-headline);
+    margin-bottom: 1rem;
+  }
 }
 
 .controls {

@@ -25,11 +25,11 @@ A freeform, reusable text label applied optionally to Transactions for extra gro
 _Avoid_: Label, keyword, marker
 
 **Period**:
-A month name (January through December) assigned to a Transaction or Transfer to group it for reporting, together with the year of the Period the movement belongs to. Not a separate entity — a month text field plus a `year` on the movement. Reporting (Dashboard year filter, period totals, yearly averages) uses the stored year, not the movement's date; dates are purely informational. New movements default to the current year; pre-existing movements without a stored year fall back to their date's year.
+A month name (January through December) assigned to a Transaction or Transfer to group it for reporting, together with the year of the Period the movement belongs to. Not a separate entity — a month text field plus a `year` on the movement. Reporting (Stats year filter, period totals, yearly averages) uses the stored year, not the movement's date; dates are purely informational. New movements default to the current year; pre-existing movements without a stored year fall back to their date's year.
 _Avoid_: Cycle, fiscal period, date range
 
 **Base Currency**:
-The single currency in which the Dashboard total balance and all period totals/averages are reported. Set during onboarding. Accounts may hold different currencies; amounts are converted using exchange rates recorded at transaction/transfer time.
+The single currency in which the Stats total balance and all period totals/averages are reported. Set during onboarding. Accounts may hold different currencies; amounts are converted using exchange rates recorded at transaction/transfer time.
 _Avoid_: Report currency, display currency
 
 **Exchange Rate**:
@@ -44,9 +44,9 @@ _Avoid_: Feed, timeline, history
 A visual indicator at the start of each Movement row. → (right arrow) for Income, ← (left arrow) for Expense, = (equals) for Transfer. Uses green/red color coding for Income/Expense respectively.
 _Avoid_: Sign, prefix, indicator
 
-**Dashboard**:
-A read-only summary screen showing a total balance in base currency (sum of all account balances, non-base converted using latest rate), period totals, per-category expense breakdown, yearly averages, and per-account balances (current and period-end).
-_Avoid_: Stats, overview, summary page
+**Stats** (formerly Dashboard):
+A read-only summary screen showing a total balance in base currency (sum of all account balances, non-base converted using latest rate), period totals, per-category expense breakdown, yearly averages, and per-account balances (current and period-end). Reached via the `/dashboard` route.
+_Avoid_: overview, summary page
 
 **Onboarding**:
 The first-run flow that collects base currency, initial accounts, and initial categories before the app is usable. Its first step asks whether to restore a Backup from a cloud provider or from an uploaded file, before the wizard itself runs.
