@@ -100,6 +100,8 @@ describe('BackupBannerComponent', () => {
     ) as HTMLElement;
     expect(strip).not.toBeNull();
     expect(strip.getAttribute('role')).toBe('alert');
+    expect(strip.textContent).toContain('sign-in was cancelled');
+    expect(strip.getAttribute('title')).toBe('popup_closed_by_user');
 
     const dismiss = strip.querySelector('.error-dismiss') as HTMLButtonElement;
     dismiss.click();
