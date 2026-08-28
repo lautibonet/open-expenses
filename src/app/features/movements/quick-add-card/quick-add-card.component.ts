@@ -107,6 +107,26 @@ export class QuickAddCardComponent implements OnInit, AfterViewInit {
   cancelEdit = output<void>();
 
   amountInput = viewChild<ElementRef<HTMLInputElement>>('amountInput');
+  editHeading = viewChild<ElementRef<HTMLHeadingElement>>('editHeading');
+
+  private focusEditForm = effect(() => {
+    const heading = this.editHeading();
+    if (heading) {
+      const el = heading.nativeElement;
+      if (typeof el.scrollIntoView === 'function') {
+        el.scrollIntoView({ behavior: this.prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
+      }
+      el.focus();
+    }
+  });
+
+  private prefersReducedMotion(): boolean {
+    return (
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    );
+  }
 
   months = MONTHS;
   years = Array.from({ length: 10 }, (_, i) => getCurrentYear() - i);

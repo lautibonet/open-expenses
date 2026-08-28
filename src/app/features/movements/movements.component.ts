@@ -1,4 +1,4 @@
-import { Component, computed, inject, OnDestroy, OnInit, signal, viewChild } from '@angular/core';
+import { Component, ElementRef, computed, effect, inject, OnDestroy, OnInit, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DatePipe, NgClass } from '@angular/common';
 import { TransactionService } from '../../core/services/transaction.service';
@@ -92,7 +92,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
 
   confirmingDelete = signal<MovementItem | null>(null);
   undo = signal<PendingDelete | null>(null);
-  undoWindowMs = 5000;
+  undoWindowMs = 10000;
   private undoHandle: ReturnType<typeof setTimeout> | null = null;
 
   transferExchangeRateState = signal<ExchangeRateState>({
@@ -139,6 +139,26 @@ export class MovementsComponent implements OnInit, OnDestroy {
   filterTag = signal<string | null>(null);
 
   quickAddCard = viewChild(QuickAddCardComponent);
+  transferHeading = viewChild<ElementRef<HTMLHeadingElement>>('transferHeading');
+
+  private focusTransferForm = effect(() => {
+    const heading = this.transferHeading();
+    if (heading) {
+      const el = heading.nativeElement;
+      if (typeof el.scrollIntoView === 'function') {
+        el.scrollIntoView({ behavior: this.prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
+      }
+      el.focus();
+    }
+  });
+
+  private prefersReducedMotion(): boolean {
+    return (
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    );
+  }
 
   filteredMovements = computed(() => {
     const cat = this.filterCategory();
@@ -583,6 +603,19 @@ export class MovementsComponent implements OnInit, OnDestroy {
       clearTimeout(this.undoHandle);
     }
     this.undoHandle = setTimeout(() => this.clearUndo(), this.undoWindowMs);
+  }
+
+  pauseUndo(): void {
+    if (this.undoHandle !== null) {
+      clearTimeout(this.undoHandle);
+      this.undoHandle = null;
+    }
+  }
+
+  resumeUndo(): void {
+    if (this.undo()) {
+      this.scheduleUndoAutoDismiss();
+    }
   }
 
   private clearUndo(): void {
