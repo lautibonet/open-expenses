@@ -17,6 +17,12 @@
 
   --tracking-micro: 0.01em;
   --prose-measure: 60ch;
+
+  /* Warning ramp — the sanctioned amber for conversion/status warnings.
+     A defined design-system color, not a stray; reserved for signal strips. */
+  --amber-surface: #fef3c7;
+  --amber-border: #fcd34d;
+  --amber-ink: #92400e;
 }
 
 html {

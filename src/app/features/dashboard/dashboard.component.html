@@ -38,7 +38,7 @@
       </div>
       <div class="stat">
         <span class="label">Net</span>
-        <span class="value" [class.income]="netIncome() >= 0" [class.expense]="netIncome() < 0">
+        <span class="value information">
           {{ formatMoney(netIncome()) }}
         </span>
       </div>
@@ -47,7 +47,7 @@
 
   @if (categoryBreakdown().length > 0) {
     <section class="card">
-      <h2>Expenses by Category</h2>
+      <h2>{{ scopeLabelText() }} Expenses by Category</h2>
       <table>
         <thead>
           <tr><th>Category</th><th>Amount</th></tr>
@@ -65,7 +65,7 @@
   }
 
   <section class="card">
-    <h2>Total Balance</h2>
+    <h2>{{ scopeLabelText() }} Total Balance</h2>
     <div class="totals">
       <div class="stat">
         <span class="label">All accounts ({{ baseCurrency() }})</span>
@@ -80,7 +80,7 @@
   </section>
 
   <section class="card">
-    <h2>Account Balances</h2>
+    <h2>{{ scopeLabelText() }} Account Balances</h2>
     <table>
       <thead>
         <tr><th>Account</th><th>Currency</th><th>Balance</th></tr>
@@ -98,14 +98,7 @@
   </section>
 
   <section class="card">
-    <h2>Monthly Averages</h2>
-    <div class="controls">
-      <select [ngModel]="averagesYear()" (ngModelChange)="averagesYear.set($event); refreshAverages()">
-        @for (y of averagesYears(); track y) {
-          <option [value]="y">{{ y }}</option>
-        }
-      </select>
-    </div>
+    <h2>{{ scopeLabelText() }} Monthly Averages</h2>
     <div class="totals">
       <div class="stat">
         <span class="label">Avg Monthly Income</span>
@@ -117,7 +110,7 @@
       </div>
       <div class="stat">
         <span class="label">Avg Monthly Savings</span>
-        <span class="value" [class.income]="avgMonthlySavings() >= 0" [class.expense]="avgMonthlySavings() < 0">
+        <span class="value information">
           {{ formatMoney(avgMonthlySavings()) }}
         </span>
       </div>
