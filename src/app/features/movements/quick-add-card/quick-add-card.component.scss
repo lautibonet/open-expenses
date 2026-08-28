@@ -1,7 +1,9 @@
+@use '../../../shared/styles/patterns' as *;
+
 .quick-add {
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  background: var(--mist-paper);
+  border: 1px solid var(--hairline-graphite);
+  border-radius: var(--radius-lg);
   padding: 1rem;
   margin-bottom: 1rem;
 }
@@ -23,21 +25,13 @@
 }
 
 label {
-  display: flex;
-  flex-direction: column;
-  font-size: var(--type-label);
-  letter-spacing: var(--tracking-micro);
-  line-height: var(--leading-label);
-  color: #374151;
+  @extend %stacked-label;
 
   input,
   select {
+    @extend %field;
     margin-top: 0.25rem;
-    padding: 0.5rem;
-    border: 1px solid #d1d5db;
-    border-radius: 4px;
-    font-size: 0.9rem;
-    background: #fff;
+    background: var(--paper-white);
   }
 }
 
@@ -55,17 +49,17 @@ label {
 
 .record {
   padding: 0.5rem 1rem;
-  border: 1px solid #2563eb;
-  border-radius: 4px;
-  background: #2563eb;
-  color: #fff;
+  border: 1px solid var(--ledger-ink);
+  border-radius: var(--radius-sm);
+  background: var(--ledger-ink);
+  color: var(--paper-white);
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: var(--type-body);
   font-weight: 600;
 
   &:hover:not(:disabled) {
-    background: #1e40af;
-    border-color: #1e40af;
+    background: var(--ink-well-blue);
+    border-color: var(--ink-well-blue);
   }
 
   &:disabled {
@@ -76,29 +70,29 @@ label {
 
 .more {
   padding: 0.5rem 0.75rem;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  background: #fff;
-  color: #374151;
+  border: 1px solid var(--edge-graphite);
+  border-radius: var(--radius-sm);
+  background: var(--paper-white);
+  color: var(--body-ink);
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: var(--type-caption);
 
   &:hover {
-    background: #f3f4f6;
+    background: var(--silvered-paper);
   }
 }
 
 .material-btn {
   padding: 0.5rem 1rem;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
-  background: #fff;
-  color: #374151;
+  border: 1px solid var(--edge-graphite);
+  border-radius: var(--radius-sm);
+  background: var(--paper-white);
+  color: var(--body-ink);
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: var(--type-body);
 
   &:hover {
-    background: #f3f4f6;
+    background: var(--silvered-paper);
   }
 }
 
@@ -122,17 +116,7 @@ label {
 }
 
 .exchange-rate-section {
-  margin-top: 0.75rem;
-  padding: 0.75rem;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
-  border-radius: 6px;
-
-  h4 {
-    margin: 0 0 0.5rem;
-    font-size: 0.85rem;
-    color: #1e40af;
-  }
+  @extend %exchange-well;
 }
 
 .exchange-rate-grid {
@@ -142,35 +126,33 @@ label {
 
   label input {
     &.readonly {
-      background: #f3f4f6;
-      color: #6b7280;
-      cursor: not-allowed;
+      @extend %readonly-field;
     }
   }
 }
 
 .rate-status {
-  font-size: 0.8rem;
-  color: #6b7280;
-  margin: 0 0 0.5rem;
-  font-style: italic;
+  @extend %rate-status;
 }
 
 .rate-error {
-  font-size: 0.8rem;
-  color: #dc2626;
-  margin: 0.5rem 0 0;
+  @extend %rate-error;
 }
 
 .rate-source {
-  font-size: 0.75rem;
-  color: #6b7280;
-  margin: 0.5rem 0 0;
+  @extend %rate-source;
 }
 
 .empty-state {
   margin: 0;
   text-align: center;
-  color: #6b7280;
-  font-size: 0.9rem;
+  color: var(--muted-slate);
+  font-size: var(--type-body);
+}
+
+@media (max-width: 560px) {
+  .quick-add-form.compact,
+  .exchange-rate-grid {
+    grid-template-columns: 1fr;
+  }
 }
