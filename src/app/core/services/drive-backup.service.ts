@@ -100,14 +100,18 @@ export class DriveBackupService {
       throw new Error('Cannot backup while offline');
     }
 
-    if (!this.accessToken) {
-      await this.connect();
+    if (this.isBackingUp()) {
+      return;
     }
 
     this.isBackingUp.set(true);
     this.error.set(null);
 
     try {
+      if (!this.accessToken) {
+        await this.connect();
+      }
+
       const snapshot = await createSnapshot();
       await this.provider.saveSnapshot(snapshot);
 
@@ -148,18 +152,22 @@ export class DriveBackupService {
   }
 
   async getCloudSnapshot(): Promise<BackupSnapshot> {
-    if (!this.accessToken) {
-      await this.connect();
-    }
-
     if (!this.networkService.isOnline()) {
       throw new Error('Cannot restore while offline');
+    }
+
+    if (this.isBackingUp()) {
+      throw new Error('Backup already in progress');
     }
 
     this.isBackingUp.set(true);
     this.error.set(null);
 
     try {
+      if (!this.accessToken) {
+        await this.connect();
+      }
+
       return await this.provider.downloadSnapshot();
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : 'Restore failed';

@@ -1,6 +1,7 @@
 import { Injectable, signal } from '@angular/core';
 
 const DISMISS_KEY = 'open-expenses_pwa_install_dismissed';
+const DISMISS_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
@@ -17,7 +18,7 @@ export class PwaInstallService {
   constructor() {
     if (typeof window === 'undefined') return;
 
-    if (localStorage.getItem(DISMISS_KEY)) return;
+    if (this.isDismissalActive()) return;
 
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
@@ -49,6 +50,19 @@ export class PwaInstallService {
   dismiss(): void {
     this.canInstall.set(false);
     this.deferredPrompt = null;
-    localStorage.setItem(DISMISS_KEY, '1');
+    localStorage.setItem(DISMISS_KEY, String(Date.now()));
+  }
+
+  private isDismissalActive(): boolean {
+    const raw = localStorage.getItem(DISMISS_KEY);
+    if (!raw) return false;
+
+    const dismissedAt = Number(raw);
+    if (!Number.isFinite(dismissedAt) || Date.now() - dismissedAt >= DISMISS_TTL_MS) {
+      localStorage.removeItem(DISMISS_KEY);
+      return false;
+    }
+
+    return true;
   }
 }
