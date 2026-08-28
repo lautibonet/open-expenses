@@ -1,0 +1,79 @@
+.quick-add {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.quick-add-form {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr auto;
+  gap: 0.75rem;
+  align-items: end;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  font-size: var(--type-label);
+  letter-spacing: var(--tracking-micro);
+  line-height: var(--leading-label);
+  color: #374151;
+
+  input, select {
+    margin-top: 0.25rem;
+    padding: 0.5rem;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    background: #fff;
+  }
+}
+
+.amount-field input {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  font-size: 1rem;
+}
+
+.record {
+  padding: 0.5rem 1rem;
+  border: 1px solid #2563eb;
+  border-radius: 4px;
+  background: #2563eb;
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+
+  &:hover:not(:disabled) {
+    background: #1e40af;
+    border-color: #1e40af;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+}
+
+.rate-status {
+  font-size: 0.8rem;
+  color: #6b7280;
+  margin: 0;
+  font-style: italic;
+}
+
+.rate-error {
+  font-size: 0.8rem;
+  color: #dc2626;
+  margin: 0;
+}
+
+.empty-state {
+  margin: 0;
+  text-align: center;
+  color: #6b7280;
+  font-size: 0.9rem;
+}
