@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-08-28T00:00:00.000Z",
+  "generatedAt": "2026-08-28T18:05:00.000Z",
   "title": "Design System: Open Expenses",
   "extensions": {
     "colorMeta": {
@@ -75,6 +75,78 @@
         "displayName": "Faint Ash",
         "canonical": "#9ca3af",
         "tonalRamp": ["#4b5059", "#5f656f", "#747b86", "#87909b", "#9ca3af", "#b6bcc5", "#d5d8de", "#f1f2f4"]
+      },
+      "ledger-ink-bright": {
+        "role": "semantic",
+        "displayName": "Ledger Ink Bright",
+        "canonical": "#3b82f6",
+        "tonalRamp": ["#0a1f3d", "#12345f", "#1d4f92", "#2a62b8", "#3b82f6", "#6da2f8", "#9ec1fa", "#dbeafe"]
+      },
+      "ink-tint": {
+        "role": "semantic",
+        "displayName": "Ink Tint",
+        "canonical": "#eff6ff",
+        "tonalRamp": ["#0b1a3d", "#123062", "#1a4a97", "#2653b8", "#2563eb", "#4c7ef2", "#84a5f7", "#eff6ff"]
+      },
+      "ink-tint-hover": {
+        "role": "semantic",
+        "displayName": "Ink Tint Hover",
+        "canonical": "#dbeafe",
+        "tonalRamp": ["#0b1a3d", "#123062", "#1a4a97", "#2653b8", "#2563eb", "#6d9af5", "#a8c4f9", "#dbeafe"]
+      },
+      "ink-tint-edge": {
+        "role": "semantic",
+        "displayName": "Ink Tint Edge",
+        "canonical": "#bfdbfe",
+        "tonalRamp": ["#0b1a3d", "#123062", "#1a4a97", "#2653b8", "#2563eb", "#6d9af5", "#9dc0f9", "#bfdbfe"]
+      },
+      "amber-surface": {
+        "role": "semantic",
+        "displayName": "Warning Surface",
+        "canonical": "#fef3c7",
+        "tonalRamp": ["#452a03", "#6b4205", "#8f5a07", "#b37209", "#d19a12", "#fcd34d", "#fee68a", "#fef3c7"]
+      },
+      "amber-border": {
+        "role": "semantic",
+        "displayName": "Warning Border",
+        "canonical": "#fcd34d",
+        "tonalRamp": ["#452a03", "#6b4205", "#8f5a07", "#b37209", "#d19a12", "#fcd34d", "#fde68a", "#fef3c7"]
+      },
+      "amber-ink": {
+        "role": "semantic",
+        "displayName": "Warning Ink",
+        "canonical": "#92400e",
+        "tonalRamp": ["#452a03", "#6b4205", "#92400e", "#b45309", "#d97706", "#f59e0b", "#fcd34d", "#fef3c7"]
+      },
+      "danger-surface": {
+        "role": "semantic",
+        "displayName": "Danger Surface",
+        "canonical": "#fef2f2",
+        "tonalRamp": ["#450a0a", "#7f1d1d", "#991b1b", "#b91c1c", "#dc2626", "#ef4444", "#fecaca", "#fef2f2"]
+      },
+      "danger-border": {
+        "role": "semantic",
+        "displayName": "Danger Border",
+        "canonical": "#fecaca",
+        "tonalRamp": ["#450a0a", "#7f1d1d", "#991b1b", "#b91c1c", "#dc2626", "#ef4444", "#fecaca", "#fef2f2"]
+      },
+      "danger-ink": {
+        "role": "semantic",
+        "displayName": "Danger Ink",
+        "canonical": "#dc2626",
+        "tonalRamp": ["#450a0a", "#7f1d1d", "#991b1b", "#b91c1c", "#dc2626", "#ef4444", "#f87171", "#fee2e2"]
+      },
+      "danger-text": {
+        "role": "semantic",
+        "displayName": "Danger Text",
+        "canonical": "#b91c1c",
+        "tonalRamp": ["#450a0a", "#7f1d1d", "#991b1b", "#b91c1c", "#dc2626", "#ef4444", "#f87171", "#fee2e2"]
+      },
+      "danger-edge": {
+        "role": "semantic",
+        "displayName": "Danger Edge",
+        "canonical": "#fca5a5",
+        "tonalRamp": ["#450a0a", "#7f1d1d", "#991b1b", "#b91c1c", "#dc2626", "#ef4444", "#fca5a5", "#fee2e2"]
       }
     },
     "typographyMeta": {
@@ -97,6 +169,11 @@
         "name": "ease-quick",
         "value": "color 0.15s ease, border-color 0.15s ease",
         "purpose": "Tab hover and active state color/border transitions."
+      },
+      {
+        "name": "banner-in",
+        "value": "transform 0.25s ease-out, reduced-motion aware",
+        "purpose": "Install banner entrance slide so the strip no longer pops in mid-scroll."
       }
     ]
   },
@@ -107,7 +184,7 @@
       "refersTo": "button-primary",
       "description": "The single prominent action on a form or view (Save, + Transaction).",
       "html": "<button class=\"ds-btn-primary\">Save</button>",
-      "css": ".ds-btn-primary { background: #2563eb; color: #fff; border: 1px solid #2563eb; border-radius: 4px; padding: 0.5rem 1rem; font-size: 0.9rem; font-family: inherit; cursor: pointer; transition: background 0.2s ease, color 0.2s ease; }\n.ds-btn-primary:hover { background: #1e40af; }\n.ds-btn-primary:focus-visible { outline: 2px solid #1e40af; outline-offset: 2px; }"
+      "css": ".ds-btn-primary { background: #2563eb; color: #fff; border: 1px solid #2563eb; border-radius: 4px; padding: 0.5rem 1rem; font-size: 0.9rem; font-family: inherit; cursor: pointer; transition: background 0.2s ease, color 0.2s ease; }\n.ds-btn-primary:hover:not(:disabled) { background: #1e40af; border-color: #1e40af; }\n.ds-btn-primary:disabled { opacity: 0.6; cursor: default; }\n.ds-btn-primary:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }"
     },
     {
       "name": "Secondary Button",
@@ -115,7 +192,7 @@
       "refersTo": "button",
       "description": "Quiet supporting action (Cancel, + Transfer). Paper fill with an Edge Graphite hairline.",
       "html": "<button class=\"ds-btn-secondary\">Cancel</button>",
-      "css": ".ds-btn-secondary { background: #fff; color: #374151; border: 1px solid #d1d5db; border-radius: 4px; padding: 0.5rem 1rem; font-size: 0.9rem; font-family: inherit; cursor: pointer; transition: color 0.15s ease, border-color 0.15s ease; }\n.ds-btn-secondary:hover { color: #111827; }\n.ds-btn-secondary:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }"
+      "css": ".ds-btn-secondary { background: #fff; color: #374151; border: 1px solid #d1d5db; border-radius: 4px; padding: 0.5rem 1rem; font-size: 0.9rem; font-family: inherit; cursor: pointer; transition: color 0.15s ease, border-color 0.15s ease; }\n.ds-btn-secondary:hover:not(:disabled) { background: #f3f4f6; }\n.ds-btn-secondary:disabled { opacity: 0.6; cursor: default; }\n.ds-btn-secondary:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }"
     },
     {
       "name": "Compact Danger Button",
@@ -137,7 +214,7 @@
       "name": "Card",
       "kind": "card",
       "refersTo": "card",
-      "description": "The universal unit of Dashboard and Settings: Paper White, 1px hairline, 8px corners.",
+      "description": "The universal unit of Stats and Settings: Paper White, 1px hairline, 8px corners.",
       "html": "<div class=\"ds-card\"><h2>Period Totals</h2><p class=\"ds-card__lede\">Income and expenses for the selected period.</p></div>",
       "css": ".ds-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 1rem; font-family: inherit; }\n.ds-card h2 { font-size: 1.1rem; font-weight: 600; margin: 0 0 0.75rem; }\n.ds-card__lede { margin: 0; font-size: 0.85rem; color: #6b7280; }"
     },
@@ -153,16 +230,23 @@
       "name": "Tab Navigation",
       "kind": "nav",
       "refersTo": "navigation",
-      "description": "Three equal links; the active tab is Deep Ledger Ink with a 2px underline.",
-      "html": "<nav class=\"ds-tabs\"><a class=\"ds-tab is-active\" href=\"#\">Dashboard</a><a class=\"ds-tab\" href=\"#\">Movements</a><a class=\"ds-tab\" href=\"#\">Settings</a></nav>",
-      "css": ".ds-tabs { display: flex; border-bottom: 1px solid #e5e7eb; font-family: inherit; }\n.ds-tab { flex: 1; padding: 0.75rem 1rem; text-align: center; text-decoration: none; color: #6b7280; font-weight: 500; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color 0.15s ease, border-color 0.15s ease; font-family: inherit; }\n.ds-tab:hover { color: #111827; }\n.ds-tab.is-active { color: #2563eb; border-bottom-color: #2563eb; }\n.ds-tab:focus-visible { outline: 2px solid #2563eb; outline-offset: -2px; }"
+      "description": "Three equal links constrained to the content column; the active tab is Deep Ledger Ink with a 2px underline and aria-current.",
+      "html": "<nav class=\"ds-tabs\" aria-label=\"Primary\"><a class=\"ds-tab is-active\" aria-current=\"page\" href=\"#\">Movements</a><a class=\"ds-tab\" href=\"#\">Stats</a><a class=\"ds-tab\" href=\"#\">Settings</a></nav>",
+      "css": ".ds-tabs { display: flex; border-bottom: 1px solid #e5e7eb; font-family: inherit; }\n.ds-tab { flex: 1; padding: 0.75rem 1rem; text-align: center; text-decoration: none; color: #6b7280; font-weight: 500; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color 0.15s ease, border-color 0.15s ease; font-family: inherit; }\n.ds-tab:hover { color: #374151; }\n.ds-tab.is-active { color: #2563eb; border-bottom-color: #2563eb; }\n.ds-tab:focus-visible { outline: 2px solid #2563eb; outline-offset: -2px; }\n@media (pointer: coarse) { .ds-tab { min-height: 44px; } }"
     },
     {
       "name": "Backup Banner",
       "kind": "custom",
-      "description": "Signature tinted strip: ink-tint fill, Ink Well Blue method, relative-time caption.",
-      "html": "<button class=\"ds-banner\" type=\"button\"><span class=\"ds-banner__method\">Back up to Google Drive</span><span class=\"ds-banner__time\">Last backup: 2 hours ago</span></button>",
-      "css": ".ds-banner { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; width: 100%; padding: 0.6rem 1rem; background: #eff6ff; border: none; border-bottom: 1px solid #bfdbfe; cursor: pointer; font-family: inherit; text-align: left; transition: background 0.15s ease; }\n.ds-banner:hover { background: #dbeafe; }\n.ds-banner__method { font-weight: 600; color: #1e40af; }\n.ds-banner__time { color: #3b82f6; font-size: 0.85rem; }\n.ds-banner:focus-visible { outline: 2px solid #1e40af; outline-offset: -2px; }"
+      "description": "Signature status strip: non-interactive ink-tint well with the method and timestamp left, compact primary Back up button right.",
+      "html": "<section class=\"ds-banner\" aria-label=\"Backup status\"><div class=\"ds-banner__status\"><span class=\"ds-banner__method\">Google Drive</span><span class=\"ds-banner__time\">Last backup: 2 hours ago</span></div><button class=\"ds-banner__action\" type=\"button\">Back up</button></section>",
+      "css": ".ds-banner { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; width: 100%; box-sizing: border-box; padding: 0.6rem 1rem; background: #eff6ff; border-bottom: 1px solid #bfdbfe; font-family: inherit; }\n.ds-banner__status { display: flex; flex-direction: column; gap: 0.125rem; min-width: 0; }\n.ds-banner__method { font-weight: 600; color: #1e40af; }\n.ds-banner__time { color: #1e40af; font-size: 0.85rem; }\n.ds-banner__action { background: #2563eb; color: #fff; border: 1px solid #2563eb; border-radius: 4px; padding: 0.25rem 0.5rem; font-size: 0.8rem; font-family: inherit; cursor: pointer; flex-shrink: 0; transition: background 0.2s ease, border-color 0.2s ease; }\n.ds-banner__action:hover:not(:disabled) { background: #1e40af; border-color: #1e40af; }\n.ds-banner__action:disabled { opacity: 0.6; cursor: default; }\n.ds-banner__action:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }\n@media (pointer: coarse) { .ds-banner__action { min-height: 44px; } }"
+    },
+    {
+      "name": "Backup Error Strip",
+      "kind": "custom",
+      "description": "Danger-tint failure strip below the banner: role=alert, ledger-voice copy in Danger Text, outline-danger Dismiss.",
+      "html": "<p class=\"ds-error\" role=\"alert\" title=\"popup_closed_by_user\"><span class=\"ds-error__text\">Google sign-in was cancelled — try again when you are ready.</span><button class=\"ds-error__dismiss\" type=\"button\">Dismiss</button></p>",
+      "css": ".ds-error { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin: 0; padding: 0.5rem 1rem; background: #fef2f2; color: #b91c1c; font-size: 0.85rem; font-family: inherit; border-bottom: 1px solid #fecaca; }\n.ds-error__text { min-width: 0; }\n.ds-error__dismiss { background: #fff; color: #b91c1c; border: 1px solid #fca5a5; border-radius: 4px; padding: 0.25rem 0.5rem; font-size: 0.8rem; font-family: inherit; cursor: pointer; flex-shrink: 0; }\n.ds-error__dismiss:hover { background: #fef2f2; }\n.ds-error__dismiss:focus-visible { outline: 2px solid #dc2626; outline-offset: 2px; }"
     },
     {
       "name": "Movement Row",
@@ -185,12 +269,12 @@
     "rules": [
       {
         "name": "The Ledger's Ink Rule",
-        "body": "Deep Ledger Ink appears only on action, active state, and information. It is never a background fill, never a full-bleed panel, never decoration. Blue on a screen means 'here is where you do something.'",
+        "body": "Deep Ledger Ink appears only on action, active state, and information. It is never a background fill, never a full-bleed panel, never decoration. Blue on a screen means \"here is where you do something.\" Derived, computed figures — such as the Stats Net and Avg Monthly Savings amounts — are information, not money in or out, so they read in Deep Ledger Ink rather than green or red.",
         "section": "colors"
       },
       {
         "name": "The Paper Ramp Rule",
-        "body": "Surface stepping uses only the neutral paper family (Paper White → Mist Paper → Silvered Paper). Tinted fills are limited to the tag chip's ink-tint (#eff6ff), the exchange-rate callout, the backup banner, and status wells — never as gratuitous cards.",
+        "body": "Surface stepping uses only the neutral paper family (Paper White → Mist Paper → Silvered Paper). Tinted fills are limited to the tag chip's ink-tint (#eff6ff), the ink-tint hover step (#dbeafe), the exchange-rate callout, the backup banner, status wells (amber), and danger wells (#fef2f2) — never as gratuitous cards.",
         "section": "colors"
       },
       {
@@ -200,7 +284,7 @@
       },
       {
         "name": "The No-Whisper Rule",
-        "body": "Nothing renders below 0.75rem. Faint Ash is for absence and empty states; type that users must read is never Faint Ash at a small size.",
+        "body": "Nothing renders below 0.75rem. Faint Ash is for placeholders and disabled hints; type that users must read — empty states included — renders in Muted Slate, never Faint Ash at a small size.",
         "section": "typography"
       },
       {
@@ -214,14 +298,15 @@
       "Do reserve Deep Ledger Ink for actions, the active tab, tags, and info; let figures speak through 600-weight type instead.",
       "Do keep corners small and role-scaled: 4px controls, 6px wells, 8px cards.",
       "Do color amounts only by direction: Ledger Green for income, Officer's Red for expense, gray for transfers.",
-      "Do signal destructive confirmations with the filled danger button and dense row Deletes with the outline danger hairline."
+      "Do render derived figures (Net, Avg Monthly Savings) in Deep Ledger Ink as information, never in income/expense green or red.",
+      "Do signal destructive confirmations with the filled danger button and anything inside a table row or dense list with the outline danger hairline; render destructive-confirmation wells and error strips in the danger tint family."
     ],
     "donts": [
       "Don't add drop shadows to cards or buttons (float shadows belong only to menus).",
       "Don't use gradients, glassmorphism, backdrop blur, or full-bleed color panels anywhere.",
-      "Don't introduce stray grays (#ccc, #eee, #666) — the onboarding component currently drifts this way; use the neutral ramp (#e5e7eb / #d1d5db / #9ca3af...).",
+      "Don't invent off-ramp grays or ad-hoc tints (#ccc, #eee, #666, one-off washes) — every fill beyond the paper ramp must belong to a sanctioned family (ink-tint, amber, danger) before it touches a component.",
       "Don't round controls past 4px, and never move an active tab's affordance off the underline.",
-      "Don't whisper content below 0.75rem or render readable copy in Faint Ash.",
+      "Don't whisper content below 0.75rem or render readable copy (empty states included) in Faint Ash.",
       "Don't let the primary accent fill a whole screen or decorate a card background."
     ]
   }
