@@ -17,12 +17,33 @@ import { PwaInstallService } from '../../../core/services/pwa-install.service';
       .install-banner {
         display: flex;
         align-items: center;
+        flex-wrap: wrap;
         gap: 0.5rem;
-        padding: 0.5rem 1rem;
+        padding: 0.5rem var(--chrome-gutter);
         background: var(--ink-tint);
         border-bottom: 1px solid var(--ink-tint-edge);
         font-size: 0.85rem;
         color: var(--ink-well-blue);
+
+        > span {
+          flex: 1 1 auto;
+          min-width: 0;
+        }
+      }
+
+      @media (prefers-reduced-motion: no-preference) {
+        .install-banner {
+          animation: banner-in 0.25s ease-out;
+        }
+
+        @keyframes banner-in {
+          from {
+            transform: translateY(-100%);
+          }
+          to {
+            transform: translateY(0);
+          }
+        }
       }
 
       .btn {
@@ -37,6 +58,12 @@ import { PwaInstallService } from '../../../core/services/pwa-install.service';
           background: var(--ledger-ink);
           color: var(--paper-white);
           border-color: var(--ledger-ink);
+        }
+      }
+
+      @media (pointer: coarse) {
+        .btn {
+          min-height: 44px;
         }
       }
     `,

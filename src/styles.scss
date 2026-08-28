@@ -68,6 +68,9 @@
   --space-lg: 1rem;
   --space-xl: 2rem;
 
+  /* Full-bleed chrome strips align their content to the centered content column. */
+  --chrome-gutter: max(1rem, calc((100% - 800px) / 2));
+
   /* Elevation — the single sanctioned float shadow (floating menus only). */
   --shadow-float: 0 2px 4px rgba(0, 0, 0, 0.1);
 }

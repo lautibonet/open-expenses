@@ -5,6 +5,7 @@
   position: sticky;
   top: 0;
   z-index: 10;
+  padding-inline: var(--chrome-gutter);
 }
 
 .tab {
@@ -26,6 +27,12 @@
   &.active {
     color: var(--ledger-ink);
     border-bottom-color: var(--ledger-ink);
+  }
+}
+
+@media (pointer: coarse) {
+  .tab {
+    min-height: 44px;
   }
 }
 
