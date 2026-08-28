@@ -65,6 +65,10 @@
     &.expense {
       color: #dc2626;
     }
+
+    &.information {
+      color: #2563eb;
+    }
   }
 }
 
@@ -90,9 +94,9 @@ table {
 .conversion-warning {
   margin-top: 0.75rem;
   padding: 0.5rem 0.75rem;
-  background: #fef3c7;
-  border: 1px solid #fcd34d;
+  background: var(--amber-surface);
+  border: 1px solid var(--amber-border);
   border-radius: 6px;
   font-size: 0.8rem;
-  color: #92400e;
+  color: var(--amber-ink);
 }

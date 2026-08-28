@@ -123,9 +123,17 @@ The paper family. One ramp, five steps, everywhere.
 
 Text runs on its own three-step ink ramp: **Body Ink** (#374151) for labels and detail, **Muted Slate** (#6b7280) for captions, table headers, inactive tabs, and meta, **Faint Ash** (#9ca3af) for empty states and disabled hints.
 
+### Warning (Amber)
+
+A single sanctioned sub-ramp for signal strips that warn rather than destroy. It is the lone non-neutral fill beyond the functional inks and the ink-tint, reserved for status warnings like the dashboard's conversion failure.
+
+- **Warning Surface** (#fef3c7): the tinted fill of the warning strip.
+- **Warning Border** (#fcd34d): the hairline around the strip.
+- **Warning Ink** (#92400e): the warning text.
+
 ### Name Rules
 
-**The Ledger's Ink Rule.** Deep Ledger Ink appears only on action, active state, and information. It is never a background fill, never a full-bleed panel, never decoration. Blue on a screen means "here is where you do something."
+**The Ledger's Ink Rule.** Deep Ledger Ink appears only on action, active state, and information. It is never a background fill, never a full-bleed panel, never decoration. Blue on a screen means "here is where you do something." Derived, computed figures — such as the Stats Net and Avg Monthly Savings amounts — are information, not money in or out, so they read in Deep Ledger Ink rather than green or red.
 
 **The Paper Ramp Rule.** Surface stepping uses only the neutral paper family (Paper White → Mist Paper → Silvered Paper). Tinted fills are limited to the tag chip's ink-tint (#eff6ff), the exchange-rate callout, the backup banner, and status wells — never as gratuitous cards.
 
@@ -219,6 +227,7 @@ Borders are uniformly 1px hairlines whose darkness encodes role: surfaces use Ha
 - **Do** reserve Deep Ledger Ink for actions, the active tab, tags, and info; let figures speak through 600-weight type instead.
 - **Do** keep corners small and role-scaled: 4px controls, 6px wells, 8px cards.
 - **Do** color amounts only by direction: Ledger Green for income, Officer's Red for expense, gray for transfers.
+- **Do** render derived figures (Net, Avg Monthly Savings) in Deep Ledger Ink as information, never in income/expense green or red.
 - **Do** signal destructive confirmations with the filled danger button and dense row Deletes with the outline danger hairline.
 
 ### Don't:

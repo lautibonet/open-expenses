@@ -72,88 +72,6 @@ describe('DashboardComponent', () => {
     expect(component.totalIncome()).toBe(3000);
   });
 
-  it('should default averages year selector to current calendar year', async () => {
-    await component.ngOnInit();
-    expect(component.averagesYear()).toBe(String(getCurrentYear()));
-  });
-
-  it('should have all time option in years list', async () => {
-    await component.ngOnInit();
-    expect(component.averagesYears()).toContain('All time');
-  });
-
-  it('should compute average income for current year', async () => {
-    const acc = await accountService.create('Cash', 'EUR', 0);
-    const incomeCat = await categoryService.create('Payroll', 'Income');
-    const year = getCurrentYear();
-
-    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(`${year}-01-15`), 'January');
-    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(`${year}-02-15`), 'February');
-
-    await component.ngOnInit();
-    component.averagesYear.set(String(year));
-    await component.refreshAverages();
-
-    expect(component.avgMonthlyIncome()).toBe(3000);
-  });
-
-  it('should compute average expenses for current year', async () => {
-    const acc = await accountService.create('Cash', 'EUR', 100000);
-    const expenseCat = await categoryService.create('Food', 'Expense');
-    const year = getCurrentYear();
-
-    await transactionService.create(acc.id!, expenseCat.id!, 500, new Date(`${year}-01-15`), 'January');
-    await transactionService.create(acc.id!, expenseCat.id!, 700, new Date(`${year}-03-15`), 'March');
-
-    await component.ngOnInit();
-    component.averagesYear.set(String(year));
-    await component.refreshAverages();
-
-    expect(component.avgMonthlyExpenses()).toBe(600);
-  });
-
-  it('should compute average savings as income minus expenses', async () => {
-    const acc = await accountService.create('Cash', 'EUR', 0);
-    const incomeCat = await categoryService.create('Payroll', 'Income');
-    const expenseCat = await categoryService.create('Food', 'Expense');
-    const year = getCurrentYear();
-
-    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(`${year}-01-15`), 'January');
-    await transactionService.create(acc.id!, expenseCat.id!, 500, new Date(`${year}-01-15`), 'January');
-    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(`${year}-02-15`), 'February');
-    await transactionService.create(acc.id!, expenseCat.id!, 700, new Date(`${year}-02-15`), 'February');
-
-    await component.ngOnInit();
-    component.averagesYear.set(String(year));
-    await component.refreshAverages();
-
-    expect(component.avgMonthlySavings()).toBe(2400);
-  });
-
-  it('should compute all-time averages across all months with data', async () => {
-    const acc = await accountService.create('Cash', 'EUR', 0);
-    const incomeCat = await categoryService.create('Payroll', 'Income');
-
-    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date('2025-01-15'), 'January');
-    await transactionService.create(acc.id!, incomeCat.id!, 4000, new Date('2026-03-15'), 'March');
-    await transactionService.create(acc.id!, incomeCat.id!, 2500, new Date('2026-06-15'), 'June');
-
-    await component.ngOnInit();
-    component.averagesYear.set('All time');
-    await component.refreshAverages();
-
-    expect(component.avgMonthlyIncome()).toBeCloseTo(3166.67, 0);
-  });
-
-  it('should show zero averages when no data exists', async () => {
-    await component.ngOnInit();
-    await component.refreshAverages();
-
-    expect(component.avgMonthlyIncome()).toBe(0);
-    expect(component.avgMonthlyExpenses()).toBe(0);
-    expect(component.avgMonthlySavings()).toBe(0);
-  });
-
   it('should include a Dec-dated movement in the January report of its period year', async () => {
     const acc = await accountService.create('Cash', 'EUR', 0);
     const incomeCat = await categoryService.create('Payroll', 'Income');
@@ -178,28 +96,107 @@ describe('DashboardComponent', () => {
     expect(component.totalIncome()).toBe(0);
   });
 
-  it('should compute yearly averages against the period year, not the date year', async () => {
-    const acc = await accountService.create('Cash', 'EUR', 0);
-    const incomeCat = await categoryService.create('Payroll', 'Income');
-    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date('2025-12-22'), 'January', [], null, null, 2026);
+  describe('monthly averages follow the page scope', () => {
+    it('should derive average income across the months of the scope year', async () => {
+      const acc = await accountService.create('Cash', 'EUR', 0);
+      const incomeCat = await categoryService.create('Payroll', 'Income');
+      const year = getCurrentYear();
 
-    await component.ngOnInit();
-    component.averagesYear.set('2026');
-    await component.refreshAverages();
+      await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(`${year}-01-15`), 'January');
+      await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(`${year}-02-15`), 'February');
 
-    expect(component.avgMonthlyIncome()).toBe(3000);
-  });
+      await component.ngOnInit();
 
-  it('should exclude a Dec-dated movement from yearly averages of its date year', async () => {
-    const acc = await accountService.create('Cash', 'EUR', 0);
-    const incomeCat = await categoryService.create('Payroll', 'Income');
-    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date('2025-12-22'), 'January', [], null, null, 2026);
+      expect(component.avgMonthlyIncome()).toBe(3000);
+    });
 
-    await component.ngOnInit();
-    component.averagesYear.set('2025');
-    await component.refreshAverages();
+    it('should keep averaging across the scope year when the scope month changes', async () => {
+      const acc = await accountService.create('Cash', 'EUR', 0);
+      const incomeCat = await categoryService.create('Payroll', 'Income');
+      const year = getCurrentYear();
 
-    expect(component.avgMonthlyIncome()).toBe(0);
+      await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(`${year}-01-15`), 'January');
+      await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(`${year}-02-15`), 'February');
+
+      await component.ngOnInit();
+      await component.onScopeMonthChange('August');
+
+      expect(component.avgMonthlyIncome()).toBe(3000);
+    });
+
+    it('should compute average expenses across the scope year', async () => {
+      const acc = await accountService.create('Cash', 'EUR', 100000);
+      const expenseCat = await categoryService.create('Food', 'Expense');
+      const year = getCurrentYear();
+
+      await transactionService.create(acc.id!, expenseCat.id!, 500, new Date(`${year}-01-15`), 'January');
+      await transactionService.create(acc.id!, expenseCat.id!, 700, new Date(`${year}-03-15`), 'March');
+
+      await component.ngOnInit();
+
+      expect(component.avgMonthlyExpenses()).toBe(600);
+    });
+
+    it('should compute average savings as income minus expenses', async () => {
+      const acc = await accountService.create('Cash', 'EUR', 0);
+      const incomeCat = await categoryService.create('Payroll', 'Income');
+      const expenseCat = await categoryService.create('Food', 'Expense');
+      const year = getCurrentYear();
+
+      await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(`${year}-01-15`), 'January');
+      await transactionService.create(acc.id!, expenseCat.id!, 500, new Date(`${year}-01-15`), 'January');
+      await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(`${year}-02-15`), 'February');
+      await transactionService.create(acc.id!, expenseCat.id!, 700, new Date(`${year}-02-15`), 'February');
+
+      await component.ngOnInit();
+
+      expect(component.avgMonthlySavings()).toBe(2400);
+    });
+
+    it('should compute all-time averages across all months with data', async () => {
+      const acc = await accountService.create('Cash', 'EUR', 0);
+      const incomeCat = await categoryService.create('Payroll', 'Income');
+
+      await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date('2025-01-15'), 'January');
+      await transactionService.create(acc.id!, incomeCat.id!, 4000, new Date('2026-03-15'), 'March');
+      await transactionService.create(acc.id!, incomeCat.id!, 2500, new Date('2026-06-15'), 'June');
+
+      await component.ngOnInit();
+      await component.onScopeYearChange('all-time');
+
+      expect(component.avgMonthlyIncome()).toBeCloseTo(3166.67, 0);
+    });
+
+    it('should show zero averages when no data exists', async () => {
+      await component.ngOnInit();
+      await component.refreshAverages();
+
+      expect(component.avgMonthlyIncome()).toBe(0);
+      expect(component.avgMonthlyExpenses()).toBe(0);
+      expect(component.avgMonthlySavings()).toBe(0);
+    });
+
+    it('should compute yearly averages against the period year, not the date year', async () => {
+      const acc = await accountService.create('Cash', 'EUR', 0);
+      const incomeCat = await categoryService.create('Payroll', 'Income');
+      await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date('2025-12-22'), 'January', [], null, null, 2026);
+
+      await component.ngOnInit();
+      await component.onScopeYearChange(2026);
+
+      expect(component.avgMonthlyIncome()).toBe(3000);
+    });
+
+    it('should exclude a Dec-dated movement from yearly averages of its date year', async () => {
+      const acc = await accountService.create('Cash', 'EUR', 0);
+      const incomeCat = await categoryService.create('Payroll', 'Income');
+      await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date('2025-12-22'), 'January', [], null, null, 2026);
+
+      await component.ngOnInit();
+      await component.onScopeYearChange(2025);
+
+      expect(component.avgMonthlyIncome()).toBe(0);
+    });
   });
 
   describe('totalBalanceBaseCurrency', () => {
@@ -431,5 +428,83 @@ describe('DashboardComponent - shared scope', () => {
 
     await component.onScopeYearChange('all-time');
     expect(component.scopeLabelText()).toBe('All time');
+  });
+
+  it('should render exactly two scope selects and no extra averages dropdown', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const selects = fixture.nativeElement.querySelectorAll('select');
+    expect(selects.length).toBe(2);
+
+    const labels = Array.from(selects as NodeListOf<HTMLSelectElement>).map(s => s.getAttribute('aria-label'));
+    expect(labels).toContain('Scope year');
+    expect(labels).toContain('Scope month');
+  });
+
+  it('should hide the month selector for All time when month adds no meaning', async () => {
+    await component.ngOnInit();
+    await component.onScopeYearChange('all-time');
+    fixture.detectChanges();
+
+    const monthSelect = fixture.nativeElement.querySelector('select[aria-label="Scope month"]');
+    expect(monthSelect).toBeNull();
+  });
+
+  it('should name the scope in every card heading', async () => {
+    await component.ngOnInit();
+    await component.onScopeYearChange('all-time');
+    fixture.detectChanges();
+
+    const headings = Array.from(fixture.nativeElement.querySelectorAll('h2') as NodeListOf<HTMLElement>);
+    expect(headings.length).toBeGreaterThan(0);
+    for (const h of headings) {
+      expect(h.textContent).toContain('All time');
+    }
+  });
+
+  it('should render the page heading as an h1', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+    const headings = fixture.nativeElement.querySelectorAll('h1');
+    expect(headings.length).toBe(1);
+  });
+
+  it('should color Net with the information ink, not income or expense green', async () => {
+    const acc = await accountService.create('Cash', 'EUR', 0);
+    const incomeCat = await categoryService.create('Payroll', 'Income');
+
+    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(), getCurrentPeriod());
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const net = fixture.nativeElement.querySelector('.stat .value.information');
+    expect(net).toBeTruthy();
+    expect(component.netIncome()).toBe(3000);
+  });
+
+  it('should color Avg Monthly Savings with the information ink, not income or expense green', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const savingsValues = fixture.nativeElement.querySelectorAll('.stat .value.information');
+    expect(savingsValues.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('should compute all-time balances across every period present in the data', async () => {
+    const acc = await accountService.create('Cash', 'EUR', 0);
+    const incomeCat = await categoryService.create('Payroll', 'Income');
+    const expenseCat = await categoryService.create('Food', 'Expense');
+
+    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date('2012-01-15'), 'January', [], null, null, 2012);
+    await transactionService.create(acc.id!, expenseCat.id!, 500, new Date('2026-03-15'), 'March');
+
+    await component.ngOnInit();
+    await component.onScopeYearChange('all-time');
+
+    expect(component.totalIncome()).toBe(3000);
+    expect(component.totalExpenses()).toBe(500);
+    expect(component.netIncome()).toBe(2500);
   });
 });

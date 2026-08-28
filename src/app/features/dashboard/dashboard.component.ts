@@ -7,7 +7,7 @@ import { CategoryService } from '../../core/services/category.service';
 import { ProfileService } from '../../core/services/profile.service';
 import { ExchangeRateService } from '../../core/services/exchange-rate.service';
 import { NetworkService } from '../../core/services/network.service';
-import { MonthName, PeriodScope, defaultScope, getCurrentPeriod, getCurrentYear, getPeriodYear, isAllTime, scopeLabel, scopeOptionsFromMovements, yearsFromData } from '../../core/types/period.type';
+import { MonthName, PeriodScope, defaultScope, getCurrentPeriod, getPeriodYear, isAllTime, scopeLabel, scopeOptionsFromMovements } from '../../core/types/period.type';
 import { formatMoney } from '../../core/types/money';
 import { Transaction } from '../../core/models/transaction.model';
 import { Transfer } from '../../core/models/transfer.model';
@@ -48,8 +48,6 @@ export class DashboardComponent implements OnInit {
   totalBalanceBaseCurrency = signal(0);
   conversionFailed = signal(false);
 
-  averagesYear = signal<string>(String(getCurrentYear()));
-  averagesYears = signal<string[]>([]);
   avgMonthlyIncome = signal(0);
   avgMonthlyExpenses = signal(0);
   avgMonthlySavings = signal(0);
@@ -183,7 +181,6 @@ export class DashboardComponent implements OnInit {
     const options = scopeOptionsFromMovements(all);
     this.scopeYears.set(options.years);
     this.scopeMonths.set(options.months);
-    this.averagesYears.set([...yearsFromData(all).map(String), 'All time']);
   }
 
   scopeLabelText(): string {
@@ -252,16 +249,17 @@ export class DashboardComponent implements OnInit {
     const allCategories = await this.categoryService.getAll();
     const catMap = new Map(allCategories.map(c => [c.id!, c]));
 
-    const selectedYear = this.averagesYear();
+    const scope = this.scope();
+    const selectedYear = scope.kind === 'all-time' ? 'All time' : String(scope.year);
 
     const filteredTxns = selectedYear === 'All time'
       ? allTxns
       : allTxns.filter(t => String(getPeriodYear(t)) === selectedYear);
 
-    const isAllTime = selectedYear === 'All time';
+    const averagesAllTime = selectedYear === 'All time';
 
     const monthsWithData = new Set(
-      filteredTxns.map(t => isAllTime
+      filteredTxns.map(t => averagesAllTime
         ? `${getPeriodYear(t)}-${t.period}`
         : t.period
       )
