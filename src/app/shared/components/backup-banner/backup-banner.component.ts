@@ -1,4 +1,4 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
 import { DriveBackupService } from '../../../core/services/drive-backup.service';
 import { NetworkService } from '../../../core/services/network.service';
 
@@ -6,72 +6,104 @@ import { NetworkService } from '../../../core/services/network.service';
   selector: 'app-backup-banner',
   template: `
     @if (isOnline()) {
-      <button type="button" class="backup-banner" (click)="backUp()" [disabled]="isBackingUp()">
-        <span class="backup-method">
-          {{ isBackingUp() ? 'Backing up…' : 'Back up' }} to {{ method }}
-        </span>
-        <span class="backup-time">Last backup: {{ lastBackupDisplay() }}</span>
-      </button>
+      <section class="backup-banner" aria-label="Backup status">
+        <div class="backup-status">
+          <span class="backup-method">{{ method }}</span>
+          <span class="backup-time">Last backup: {{ lastBackupDisplay() }}</span>
+        </div>
+        <button
+          type="button"
+          class="backup-action"
+          (click)="backUp()"
+          [disabled]="isBackingUp()"
+        >
+          {{ isBackingUp() ? 'Backing up…' : 'Back up' }}
+        </button>
+      </section>
     } @else {
-      <button type="button" class="backup-banner offline" disabled>
-        <span class="backup-method">{{ method }} backup</span>
-        <span class="backup-time">Offline</span>
-      </button>
+      <section class="backup-banner offline" aria-label="Backup status">
+        <div class="backup-status">
+          <span class="backup-method">{{ method }} backup</span>
+          <span class="backup-time">Offline</span>
+        </div>
+        <button type="button" class="backup-action" disabled>Back up</button>
+      </section>
     }
-    @if (backupError()) {
-      <p class="backup-banner-error">{{ backupError() }}</p>
+    @if (backupError(); as error) {
+      <p class="backup-banner-error" role="alert">
+        <span class="error-text">{{ error }}</span>
+        <button type="button" class="error-dismiss" (click)="dismissError()">Dismiss</button>
+      </p>
     }
   `,
   styles: `
+    @use '../../styles/patterns' as *;
+
     .backup-banner {
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 0.5rem;
       width: 100%;
+      box-sizing: border-box;
       padding: 0.6rem 1rem;
       background: var(--ink-tint);
-      border: none;
       border-bottom: 1px solid var(--ink-tint-edge);
-      cursor: pointer;
-      font: inherit;
-      text-align: left;
-
-      &:hover {
-        background: var(--ink-tint-hover);
-      }
-
-      &:disabled {
-        cursor: default;
-        opacity: 0.7;
-      }
 
       &.offline {
-        color: var(--muted-slate);
         background: var(--silvered-paper);
         border-bottom-color: var(--hairline-graphite);
       }
     }
 
+    .backup-status {
+      display: flex;
+      flex-direction: column;
+      gap: 0.125rem;
+      min-width: 0;
+    }
+
     .backup-method {
       font-weight: 600;
       color: var(--ink-well-blue);
-    }
 
-    .offline .backup-method {
-      color: var(--muted-slate);
+      .offline & {
+        color: var(--muted-slate);
+      }
     }
 
     .backup-time {
       color: var(--ledger-ink-bright);
       font-size: 0.85rem;
+
+      .offline & {
+        color: var(--faint-ash);
+      }
     }
 
-    .offline .backup-time {
-      color: var(--faint-ash);
+    .backup-action {
+      @extend %btn-base;
+      @extend %btn-primary;
+      @extend %btn-small;
+      flex-shrink: 0;
+
+      &:disabled {
+        cursor: default;
+        opacity: 0.6;
+      }
+
+      .offline & {
+        background: var(--paper-white);
+        color: var(--muted-slate);
+        border-color: var(--edge-graphite);
+      }
     }
 
     .backup-banner-error {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
       margin: 0;
       padding: 0.5rem 1rem;
       background: var(--danger-surface);
@@ -79,21 +111,45 @@ import { NetworkService } from '../../../core/services/network.service';
       font-size: 0.85rem;
       border-bottom: 1px solid var(--danger-border);
     }
+
+    .error-text {
+      min-width: 0;
+    }
+
+    .error-dismiss {
+      @extend %btn-base;
+      @extend %btn-danger;
+      @extend %btn-small;
+      flex-shrink: 0;
+    }
   `,
 })
 export class BackupBannerComponent {
   private backupService = inject(DriveBackupService);
   private networkService = inject(NetworkService);
 
+  private minuteTick = signal(0);
+
   method = this.backupService.method;
-  lastBackupDisplay = computed(() =>
-    this.backupService.lastBackupAt()
-      ? this.formatRelativeTime(this.backupService.lastBackupAt()!)
-      : 'Never',
-  );
+  lastBackupDisplay = computed(() => {
+    this.minuteTick();
+    const at = this.backupService.lastBackupAt();
+    return at ? this.formatRelativeTime(at) : 'Never';
+  });
   isBackingUp = computed(() => this.backupService.isBackingUp());
   isOnline = computed(() => this.networkService.isOnline());
   backupError = computed(() => this.backupService.error());
+
+  constructor() {
+    const intervalId = setInterval(() => this.minuteTick.update((t) => t + 1), 60_000);
+    inject(DestroyRef).onDestroy(() => clearInterval(intervalId));
+
+    effect(() => {
+      if (!this.networkService.isOnline()) {
+        this.backupService.clearError();
+      }
+    });
+  }
 
   async backUp(): Promise<void> {
     if (!this.isOnline() || this.isBackingUp()) {
@@ -106,16 +162,20 @@ export class BackupBannerComponent {
     }
   }
 
+  dismissError(): void {
+    this.backupService.clearError();
+  }
+
   private formatRelativeTime(date: Date): string {
     const now = new Date();
-    const diffMs = now.getTime() - new Date(date).getTime();
+    const diffMs = now.getTime() - date.getTime();
     const diffMin = Math.floor(diffMs / 60000);
 
     if (diffMin < 1) return 'Just now';
     if (diffMin < 60) return `${diffMin} minute${diffMin === 1 ? '' : 's'} ago`;
     const diffHr = Math.floor(diffMin / 60);
     if (diffHr < 24) return `${diffHr} hour${diffHr === 1 ? '' : 's'} ago`;
-    const diffDay = Math.floor(diffHr / 24);
-    return `${diffDay} day${diffDay === 1 ? '' : 's'} ago`;
+    if (diffHr < 48) return 'Yesterday';
+    return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(date);
   }
 }
