@@ -7,7 +7,7 @@ import { CategoryService } from '../../core/services/category.service';
 import { ProfileService } from '../../core/services/profile.service';
 import { ExchangeRateService, ExchangeRateResult } from '../../core/services/exchange-rate.service';
 import { db } from '../../core/db/database';
-import { getCurrentPeriod, getCurrentYear } from '../../core/types/period.type';
+import { defaultScope, getCurrentPeriod, getCurrentYear } from '../../core/types/period.type';
 
 describe('MovementsComponent - tags integration', () => {
   let fixture: ComponentFixture<MovementsComponent>;
@@ -886,8 +886,7 @@ describe('MovementsComponent - period year', () => {
     expect(component.movements().length).toBe(1);
     expect((component.movements()[0].data as any).amount).toBe(200);
 
-    component.selectedYear.set(getCurrentYear() - 1);
-    await component.refresh();
+    await component.onScopeYearChange(getCurrentYear() - 1);
     expect(component.movements().length).toBe(1);
     expect((component.movements()[0].data as any).amount).toBe(100);
   });
@@ -1035,5 +1034,127 @@ describe('MovementsComponent - transaction note', () => {
     const noteEl = fixture.nativeElement.querySelector('.note');
     expect(noteEl).toBeTruthy();
     expect(noteEl.textContent.trim()).toBe('Dinner with friends');
+  });
+});
+
+describe('MovementsComponent - shared scope', () => {
+  let fixture: ComponentFixture<MovementsComponent>;
+  let component: MovementsComponent;
+  let transactionService: TransactionService;
+  let transferService: TransferService;
+  let accountService: AccountService;
+  let categoryService: CategoryService;
+  let accountId: number;
+  let categoryId: number;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    await TestBed.configureTestingModule({
+      imports: [MovementsComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(MovementsComponent);
+    component = fixture.componentInstance;
+    transactionService = TestBed.inject(TransactionService);
+    transferService = TestBed.inject(TransferService);
+    accountService = TestBed.inject(AccountService);
+    categoryService = TestBed.inject(CategoryService);
+
+    const account = await accountService.create('Cash', 'EUR', 100000);
+    accountId = account.id!;
+    const category = await categoryService.create('Food', 'Expense');
+    categoryId = category.id!;
+  });
+
+  afterEach(async () => {
+    await db.delete();
+  });
+
+  it('should default to the current month scope', async () => {
+    await component.ngOnInit();
+    expect(component.scope()).toEqual(defaultScope());
+  });
+
+  it('should derive year options from the data range, not a fixed window', async () => {
+    await transactionService.create(accountId, categoryId, 100, new Date('2012-01-15'), 'January', [], null, null, 2012);
+    await transactionService.create(accountId, categoryId, 200, new Date('2016-01-15'), 'January', [], null, null, 2016);
+    await component.ngOnInit();
+
+    expect(component.scopeYears()).toContain(2012);
+    expect(component.scopeYears()).toContain(2016);
+    expect(component.scopeYears()).toContain(getCurrentYear());
+    expect(component.scopeYears()).toEqual(expect.arrayContaining([2012, 2016, getCurrentYear()]));
+  });
+
+  it('should derive month options from the months actually present in data', async () => {
+    await transactionService.create(accountId, categoryId, 100, new Date('2026-03-15'), 'March', [], null, null, 2026);
+    await transactionService.create(accountId, categoryId, 200, new Date('2026-07-15'), 'July', [], null, null, 2026);
+    await component.ngOnInit();
+
+    expect(component.scopeMonths()).toContain('March');
+    expect(component.scopeMonths()).toContain('July');
+  });
+
+  it('should show movements from every period when All time is chosen', async () => {
+    await transactionService.create(accountId, categoryId, 100, new Date('2012-01-15'), 'January', [], null, null, 2012);
+    await transactionService.create(accountId, categoryId, 200, new Date('2016-05-15'), 'May', [], null, null, 2016);
+    await component.ngOnInit();
+    expect(component.movements().length).toBe(0);
+
+    await component.onScopeYearChange('all-time');
+    expect(component.scope().kind).toBe('all-time');
+    expect(component.movements().length).toBe(2);
+  });
+
+  it('should include movements older than ten years in All time', async () => {
+    const oldYear = getCurrentYear() - 20;
+    await transactionService.create(accountId, categoryId, 100, new Date(`${oldYear}-01-15`), 'January', [], null, null, oldYear);
+    await component.ngOnInit();
+
+    await component.onScopeYearChange('all-time');
+    expect(component.movements().length).toBe(1);
+    expect((component.movements()[0].data as any).year).toBe(oldYear);
+  });
+
+  it('should switch scope by year while keeping the current period', async () => {
+    const period = getCurrentPeriod();
+    await transactionService.create(accountId, categoryId, 100, new Date(), period, [], null, null, getCurrentYear() - 1);
+    await transactionService.create(accountId, categoryId, 200, new Date(), period);
+    await component.ngOnInit();
+
+    await component.onScopeYearChange(getCurrentYear() - 1);
+    expect(component.scope()).toEqual({ kind: 'month', period, year: getCurrentYear() - 1 });
+    expect(component.movements().length).toBe(1);
+  });
+
+  it('should switch scope month and filter accordingly', async () => {
+    const year = getCurrentYear();
+    await transactionService.create(accountId, categoryId, 100, new Date(`${year}-01-15`), 'January', [], null, null, year);
+    await transactionService.create(accountId, categoryId, 200, new Date(`${year}-02-15`), 'February', [], null, null, year);
+    await component.ngOnInit();
+
+    await component.onScopeMonthChange('January');
+    expect(component.scope()).toEqual({ kind: 'month', period: 'January', year });
+    expect(component.movements().length).toBe(1);
+  });
+
+  it('should announce the scope to assistive tech on change', async () => {
+    await component.ngOnInit();
+    expect(component.scopeAnnouncement()).toBe('');
+
+    await component.onScopeYearChange('all-time');
+    expect(component.scopeAnnouncement()).toBe('All time');
+
+    const period = getCurrentPeriod();
+    await component.onScopeYearChange(getCurrentYear());
+    expect(component.scopeAnnouncement()).toBe(`${period} ${getCurrentYear()}`);
+  });
+
+  it('should title a heading with the All time label', async () => {
+    await component.ngOnInit();
+    expect(component.scopeLabelText()).toBe(`${getCurrentPeriod()} ${getCurrentYear()}`);
+    await component.onScopeYearChange('all-time');
+    expect(component.scopeLabelText()).toBe('All time');
   });
 });

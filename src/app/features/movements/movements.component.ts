@@ -12,7 +12,18 @@ import { Transaction } from '../../core/models/transaction.model';
 import { Transfer } from '../../core/models/transfer.model';
 import { Account } from '../../core/models/account.model';
 import { Category } from '../../core/models/category.model';
-import { MONTHS, getCurrentPeriod, getCurrentYear, getPeriodYear } from '../../core/types/period.type';
+import {
+  MONTHS,
+  MonthName,
+  PeriodScope,
+  defaultScope,
+  getCurrentPeriod,
+  getCurrentYear,
+  getPeriodYear,
+  isAllTime,
+  scopeLabel,
+  scopeOptionsFromMovements,
+} from '../../core/types/period.type';
 import { formatMoney } from '../../core/types/money';
 import { TagInputComponent } from '../../shared/components/tag-input/tag-input.component';
 
@@ -67,8 +78,10 @@ export class MovementsComponent implements OnInit {
   private profileService = inject(ProfileService);
   private exchangeRateService = inject(ExchangeRateService);
 
-  selectedPeriod = signal(getCurrentPeriod());
-  selectedYear = signal(getCurrentYear());
+  scope = signal<PeriodScope>(defaultScope());
+  scopeYears = signal<number[]>([]);
+  scopeMonths = signal<string[]>([]);
+  scopeAnnouncement = signal('');
   months = MONTHS;
   years = Array.from({ length: 10 }, (_, i) => getCurrentYear() - i);
   accounts = signal<Account[]>([]);
@@ -175,13 +188,12 @@ export class MovementsComponent implements OnInit {
       this.trForm.update(f => ({ ...f, sourceAccountId: first, destAccountId: second ?? first }));
     }
     await this.refresh();
+    await this.applyScopeOptions();
   }
 
   async refresh(): Promise<void> {
-    const period = this.selectedPeriod();
-    const year = this.selectedYear();
-    const txns = await this.transactionService.getByPeriod(period, year);
-    const transfers = await this.transferService.getByPeriod(period, year);
+    const txns = await this.transactionService.getByScope(this.scope());
+    const transfers = await this.transferService.getByScope(this.scope());
 
     const items: MovementItem[] = [
       ...txns.map(t => ({ type: 'transaction' as const, data: t })),
@@ -193,6 +205,52 @@ export class MovementsComponent implements OnInit {
     });
 
     this.movements.set(items);
+  }
+
+  private async applyScopeOptions(): Promise<void> {
+    const txns = await this.transactionService.getAll();
+    const transfers = await this.transferService.getAll();
+    const all = [
+      ...txns.map(t => ({ period: t.period, year: t.year, date: t.date })),
+      ...transfers.map(t => ({ period: t.period, year: t.year, date: t.date })),
+    ];
+    const options = scopeOptionsFromMovements(all);
+    this.scopeYears.set(options.years);
+    this.scopeMonths.set(options.months);
+  }
+
+  async onScopeYearChange(value: number | 'all-time'): Promise<void> {
+    if (value === 'all-time') {
+      await this.setScope({ kind: 'all-time' });
+      return;
+    }
+    const current = this.scope();
+    const period = current.kind === 'month' && current.year === value && current.period
+      ? current.period
+      : getCurrentPeriod();
+    await this.setScope({ kind: 'month', period, year: value });
+  }
+
+  async onScopeMonthChange(period: string): Promise<void> {
+    const current = this.scope();
+    if (current.kind === 'month') {
+      await this.setScope({ ...current, period: period as MonthName });
+    }
+  }
+
+  private async setScope(scope: PeriodScope): Promise<void> {
+    this.scope.set(scope);
+    this.scopeAnnouncement.set(scopeLabel(scope));
+    await this.refresh();
+    await this.applyScopeOptions();
+  }
+
+  private formPeriodYear(): { period: MonthName; year: number } {
+    const s = this.scope();
+    if (!isAllTime(s)) {
+      return { period: s.period, year: s.year };
+    }
+    return { period: getCurrentPeriod(), year: getCurrentYear() };
   }
 
   private async refreshTags(): Promise<void> {
@@ -230,8 +288,8 @@ export class MovementsComponent implements OnInit {
         categoryId: this.categories()[0]?.id ?? 0,
         amount: 0,
         date: new Date().toISOString().split('T')[0],
-        period: this.selectedPeriod(),
-        year: this.selectedYear(),
+        period: this.formPeriodYear().period,
+        year: this.formPeriodYear().year,
         tags: [],
         exchangeRate: null,
         baseCurrencyAmount: null,
@@ -283,8 +341,8 @@ export class MovementsComponent implements OnInit {
         destinationAmount: 0,
         exchangeRate: 1,
         date: new Date().toISOString().split('T')[0],
-        period: this.selectedPeriod(),
-        year: this.selectedYear(),
+        period: this.formPeriodYear().period,
+        year: this.formPeriodYear().year,
         note: '',
       });
       if (srcId && dstId && srcId !== dstId) {
@@ -468,6 +526,7 @@ export class MovementsComponent implements OnInit {
       }
       this.cancelForm();
       await this.refresh();
+      await this.applyScopeOptions();
       await this.refreshTags();
     } catch (e: unknown) {
       this.errorMessage.set(e instanceof Error ? e.message : 'Failed to save');
@@ -492,6 +551,7 @@ export class MovementsComponent implements OnInit {
       }
       this.cancelForm();
       await this.refresh();
+      await this.applyScopeOptions();
     } catch (e: unknown) {
       this.errorMessage.set(e instanceof Error ? e.message : 'Failed to save');
     }
@@ -501,6 +561,7 @@ export class MovementsComponent implements OnInit {
     if (confirm('Delete this transaction?')) {
       await this.transactionService.delete(id);
       await this.refresh();
+      await this.applyScopeOptions();
     }
   }
 
@@ -508,6 +569,7 @@ export class MovementsComponent implements OnInit {
     if (confirm('Delete this transfer?')) {
       await this.transferService.delete(id);
       await this.refresh();
+      await this.applyScopeOptions();
     }
   }
 
@@ -521,6 +583,20 @@ export class MovementsComponent implements OnInit {
 
   formatMoney(amount: number): string {
     return formatMoney(amount, this.baseCurrency());
+  }
+
+  scopeLabelText(): string {
+    return scopeLabel(this.scope());
+  }
+
+  scopePeriod(): string {
+    const s = this.scope();
+    return !isAllTime(s) ? s.period : '';
+  }
+
+  scopeYearValue(): number | 'all-time' {
+    const s = this.scope();
+    return !isAllTime(s) ? s.year : 'all-time';
   }
 
   getDirectionArrow(item: Transaction | Transfer, type: 'transaction' | 'transfer'): string {

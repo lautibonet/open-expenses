@@ -1,17 +1,29 @@
 <div class="movements">
   <div class="controls">
-    <select [ngModel]="selectedYear()" (ngModelChange)="selectedYear.set(+$event); refresh()">
-      @for (yr of years; track yr) {
+    <select
+      [ngModel]="scopeYearValue()"
+      (ngModelChange)="onScopeYearChange($event)"
+      aria-label="Scope year"
+    >
+      @for (yr of scopeYears(); track yr) {
         <option [value]="yr">{{ yr }}</option>
       }
+      <option [value]="'all-time'">All time</option>
     </select>
-    <select [ngModel]="selectedPeriod()" (ngModelChange)="selectedPeriod.set($event); refresh()">
-      @for (month of months; track month) {
-        <option [value]="month">{{ month }}</option>
-      }
-    </select>
+    @if (scope().kind !== 'all-time') {
+      <select
+        [ngModel]="scopePeriod()"
+        (ngModelChange)="onScopeMonthChange($event)"
+        aria-label="Scope month"
+      >
+        @for (month of scopeMonths(); track month) {
+          <option [value]="month">{{ month }}</option>
+        }
+      </select>
+    }
     <button class="btn primary" (click)="openTransactionForm()">+ Transaction</button>
     <button class="btn" (click)="openTransferForm()">+ Transfer</button>
+    <span class="visually-hidden" aria-live="polite">{{ scopeAnnouncement() }}</span>
   </div>
 
   @if (showForm() === 'transaction') {
@@ -381,7 +393,7 @@
         </tbody>
       </table>
     } @else {
-      <p class="empty">No movements for {{ selectedPeriod() }} {{ selectedYear() }}.</p>
+      <p class="empty">No movements for {{ scopeLabelText() }}.</p>
     }
   </div>
 </div>

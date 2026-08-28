@@ -237,6 +237,23 @@ describe('TransactionService', () => {
     expect(janAll.length).toBe(2);
   });
 
+  it('should get transactions for a month scope by period and year', async () => {
+    await transactionService.create(accountId, categoryId, 100, new Date('2025-12-22'), 'January', [], null, null, 2026);
+    await transactionService.create(accountId, categoryId, 200, new Date('2026-02-10'), 'February', [], null, null, 2026);
+
+    const jan26 = await transactionService.getByScope({ kind: 'month', period: 'January', year: 2026 });
+    expect(jan26.length).toBe(1);
+    expect(jan26[0].amount).toBe(100);
+  });
+
+  it('should get all transactions for the all-time scope', async () => {
+    await transactionService.create(accountId, categoryId, 100, new Date('2010-05-01'), 'May', [], null, null, 2010);
+    await transactionService.create(accountId, categoryId, 200, new Date('2026-06-01'), 'June', [], null, null, 2026);
+
+    const all = await transactionService.getByScope({ kind: 'all-time' });
+    expect(all.length).toBe(2);
+  });
+
   it('should update the period year', async () => {
     const t = await transactionService.create(accountId, categoryId, 100, new Date('2025-12-22'), 'January');
     const updated = await transactionService.update(t.id!, { year: 2025 });

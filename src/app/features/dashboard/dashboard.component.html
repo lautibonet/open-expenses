@@ -1,19 +1,31 @@
 <div class="dashboard">
   <div class="controls">
-    <select [ngModel]="selectedYear()" (ngModelChange)="selectedYear.set(+$event); refresh()">
-      @for (year of years; track year) {
-        <option [value]="year">{{ year }}</option>
+    <select
+      [ngModel]="scopeYearValue()"
+      (ngModelChange)="onScopeYearChange($event)"
+      aria-label="Scope year"
+    >
+      @for (yr of scopeYears(); track yr) {
+        <option [value]="yr">{{ yr }}</option>
       }
+      <option [value]="'all-time'">All time</option>
     </select>
-    <select [ngModel]="selectedPeriod()" (ngModelChange)="selectedPeriod.set($event); refresh()">
-      @for (month of months; track month) {
-        <option [value]="month">{{ month }}</option>
-      }
-    </select>
+    @if (scope().kind !== 'all-time') {
+      <select
+        [ngModel]="scopePeriod()"
+        (ngModelChange)="onScopeMonthChange($event)"
+        aria-label="Scope month"
+      >
+        @for (month of scopeMonths(); track month) {
+          <option [value]="month">{{ month }}</option>
+        }
+      </select>
+    }
+    <span class="visually-hidden" aria-live="polite">{{ scopeAnnouncement() }}</span>
   </div>
 
   <section class="card">
-    <h2>{{ selectedPeriod() }} {{ selectedYear() }} Totals</h2>
+    <h2>{{ scopeLabelText() }} Totals</h2>
     <div class="totals">
       <div class="stat">
         <span class="label">Income</span>
@@ -88,7 +100,7 @@
     <h2>Monthly Averages</h2>
     <div class="controls">
       <select [ngModel]="averagesYear()" (ngModelChange)="averagesYear.set($event); refreshAverages()">
-        @for (y of averagesYears; track y) {
+        @for (y of averagesYears(); track y) {
           <option [value]="y">{{ y }}</option>
         }
       </select>
