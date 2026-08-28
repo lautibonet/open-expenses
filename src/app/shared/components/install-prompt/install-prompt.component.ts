@@ -14,6 +14,8 @@ import { PwaInstallService } from '../../../core/services/pwa-install.service';
   `,
   styles: [
     `
+      @use '../../../shared/styles/patterns' as *;
+
       .install-banner {
         display: flex;
         align-items: center;
@@ -47,17 +49,21 @@ import { PwaInstallService } from '../../../core/services/pwa-install.service';
       }
 
       .btn {
-        padding: 0.25rem 0.5rem;
-        border: 1px solid var(--edge-graphite);
-        border-radius: var(--radius-sm);
-        background: var(--paper-white);
-        cursor: pointer;
-        font-size: 0.8rem;
+        @extend %btn-base;
+        @extend %btn-small;
+        color: var(--body-ink);
+
+        &:hover:not(:disabled) {
+          background: var(--silvered-paper);
+        }
 
         &.primary {
-          background: var(--ledger-ink);
-          color: var(--paper-white);
-          border-color: var(--ledger-ink);
+          @extend %btn-primary;
+
+          &:hover:not(:disabled) {
+            background: var(--ink-well-blue);
+            border-color: var(--ink-well-blue);
+          }
         }
       }
 

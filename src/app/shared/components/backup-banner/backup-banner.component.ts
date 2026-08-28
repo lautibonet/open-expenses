@@ -74,11 +74,11 @@ import { describeBackupError } from '../../../backup/backup-errors';
     }
 
     .backup-time {
-      color: var(--ledger-ink-bright);
+      color: var(--ink-well-blue);
       font-size: 0.85rem;
 
       .offline & {
-        color: var(--faint-ash);
+        color: var(--muted-slate);
       }
     }
 
@@ -108,7 +108,7 @@ import { describeBackupError } from '../../../backup/backup-errors';
       margin: 0;
       padding: 0.5rem var(--chrome-gutter);
       background: var(--danger-surface);
-      color: var(--officers-red);
+      color: var(--danger-text);
       font-size: 0.85rem;
       border-bottom: 1px solid var(--danger-border);
     }
@@ -121,6 +121,7 @@ import { describeBackupError } from '../../../backup/backup-errors';
       @extend %btn-base;
       @extend %btn-danger;
       @extend %btn-small;
+      color: var(--danger-text);
       flex-shrink: 0;
     }
 
@@ -143,9 +144,9 @@ export class BackupBannerComponent {
     const at = this.backupService.lastBackupAt();
     return at ? this.formatRelativeTime(at) : 'Never';
   });
-  isBackingUp = computed(() => this.backupService.isBackingUp());
-  isOnline = computed(() => this.networkService.isOnline());
-  backupError = computed(() => this.backupService.error());
+  isBackingUp = this.backupService.isBackingUp;
+  isOnline = this.networkService.isOnline;
+  backupError = this.backupService.error;
   errorCopy = computed(() => describeBackupError(this.backupError() ?? ''));
 
   constructor() {

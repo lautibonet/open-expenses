@@ -9,4 +9,9 @@ import { BackupBannerComponent } from '../backup-banner/backup-banner.component'
   templateUrl: './shell.component.html',
   styleUrl: './shell.component.scss',
 })
-export class ShellComponent {}
+export class ShellComponent {
+  skipToContent(event: MouseEvent): void {
+    event.preventDefault();
+    document.getElementById('main-content')?.focus();
+  }
+}
