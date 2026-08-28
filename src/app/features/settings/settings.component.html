@@ -11,7 +11,12 @@
   <section class="card">
     <h2>Base Currency</h2>
     <div class="inline-form">
-      <select [ngModel]="baseCurrency()" (ngModelChange)="baseCurrency.set($event)" class="input small">
+      <select
+        [ngModel]="baseCurrency()"
+        (ngModelChange)="baseCurrency.set($event)"
+        class="input small"
+        aria-label="Base currency"
+      >
         @for (currency of supportedCurrencies; track currency) {
           <option [value]="currency">{{ currency }}</option>
         }
@@ -30,7 +35,12 @@
         placeholder="Name"
         class="input"
       />
-      <select [ngModel]="newAccountCurrency()" (ngModelChange)="newAccountCurrency.set($event)" class="input small">
+      <select
+        [ngModel]="newAccountCurrency()"
+        (ngModelChange)="newAccountCurrency.set($event)"
+        class="input small"
+        aria-label="Account currency"
+      >
         @for (currency of supportedCurrencies; track currency) {
           <option [value]="currency">{{ currency }}</option>
         }
@@ -106,7 +116,12 @@
         placeholder="Name"
         class="input"
       />
-      <select [ngModel]="newCategoryType()" (ngModelChange)="newCategoryType.set($event)" class="input small">
+      <select
+        [ngModel]="newCategoryType()"
+        (ngModelChange)="newCategoryType.set($event)"
+        class="input small"
+        aria-label="Category type"
+      >
         <option value="Expense">Expense</option>
         <option value="Income">Income</option>
       </select>

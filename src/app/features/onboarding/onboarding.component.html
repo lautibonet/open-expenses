@@ -63,7 +63,12 @@
     <section class="step">
       <h2>1. Base Currency</h2>
       <p>This is the currency your Stats totals will be reported in.</p>
-      <select [ngModel]="baseCurrency()" (ngModelChange)="baseCurrency.set($event)" class="input">
+      <select
+        [ngModel]="baseCurrency()"
+        (ngModelChange)="baseCurrency.set($event)"
+        class="input"
+        aria-label="Base currency"
+      >
         @for (currency of supportedCurrencies; track currency) {
           <option [value]="currency">{{ currency }}</option>
         }
@@ -88,7 +93,12 @@
           placeholder="Account name"
           class="input"
         />
-        <select [ngModel]="accountCurrency()" (ngModelChange)="accountCurrency.set($event)" class="input small">
+        <select
+          [ngModel]="accountCurrency()"
+          (ngModelChange)="accountCurrency.set($event)"
+          class="input small"
+          aria-label="Account currency"
+        >
           @for (currency of supportedCurrencies; track currency) {
             <option [value]="currency">{{ currency }}</option>
           }
@@ -159,6 +169,7 @@
                   [ngModel]="cat.type"
                   (ngModelChange)="updateCategoryField($index, 'type', $event)"
                   class="input"
+                  aria-label="Category type"
                 >
                   <option value="Expense">Expense</option>
                   <option value="Income">Income</option>

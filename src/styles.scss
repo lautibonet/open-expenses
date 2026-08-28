@@ -44,6 +44,13 @@ textarea {
   font-family: inherit;
 }
 
+/* Keyboard focus is always visible: a flat 2px Deep Ledger Ink outline.
+   No glow, no shadow — focus darkens the boundary against the paper system. */
+:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
 table {
   font-variant-numeric: tabular-nums;
   line-height: var(--leading-table);

@@ -77,6 +77,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
   scopeYears = signal<number[]>([]);
   scopeMonths = signal<string[]>([]);
   scopeAnnouncement = signal('');
+  movementAnnouncement = signal('');
   months = MONTHS;
   years = Array.from({ length: 10 }, (_, i) => getCurrentYear() - i);
   accounts = signal<Account[]>([]);
@@ -405,6 +406,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
   async saveTransfer(): Promise<void> {
     try {
       const f = this.trForm();
+      const wasEdit = this.editingId() !== null;
       if (this.editingId()) {
         await this.transferService.update(this.editingId()!, {
           sourceAccountId: f.sourceAccountId,
@@ -432,6 +434,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
       this.cancelForm();
       await this.refresh();
       await this.applyScopeOptions();
+      this.movementAnnouncement.set(wasEdit ? 'Transfer updated' : 'Transfer saved');
     } catch (e: unknown) {
       this.errorMessage.set(e instanceof Error ? e.message : 'Failed to save');
     }

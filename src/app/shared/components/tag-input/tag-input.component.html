@@ -17,6 +17,7 @@
       (keydown)="onKeyDown($event)"
       (blur)="onBlur()"
       placeholder="Add tag..."
+      aria-label="Add tag"
     />
     @if (showDropdown() && filteredSuggestions().length > 0) {
       <ul class="suggestions">

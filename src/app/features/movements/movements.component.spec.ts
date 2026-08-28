@@ -1397,6 +1397,121 @@ describe('MovementsComponent - contextual delete confirmation and undo', () => {
   });
 });
 
+describe('MovementsComponent - assistive tech', () => {
+  let fixture: ComponentFixture<MovementsComponent>;
+  let component: MovementsComponent;
+  let transactionService: TransactionService;
+  let transferService: TransferService;
+  let accountService: AccountService;
+  let categoryService: CategoryService;
+  let accountId: number;
+  let accountId2: number;
+  let categoryId: number;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    await TestBed.configureTestingModule({
+      imports: [MovementsComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(MovementsComponent);
+    component = fixture.componentInstance;
+    transactionService = TestBed.inject(TransactionService);
+    transferService = TestBed.inject(TransferService);
+    accountService = TestBed.inject(AccountService);
+    categoryService = TestBed.inject(CategoryService);
+
+    const account = await accountService.create('Cash', 'EUR', 100000);
+    accountId = account.id!;
+    const account2 = await accountService.create('Savings', 'EUR', 50000);
+    accountId2 = account2.id!;
+    const category = await categoryService.create('Food', 'Expense');
+    categoryId = category.id!;
+  });
+
+  afterEach(async () => {
+    await db.delete();
+  });
+
+  function accessibleName(select: HTMLSelectElement): string {
+    const labelledBy = select.getAttribute('aria-labelledby');
+    if (labelledBy) {
+      return labelledBy
+        .split(' ')
+        .map((id) => document.getElementById(id)?.textContent ?? '')
+        .join(' ')
+        .trim();
+    }
+    const ariaLabel = select.getAttribute('aria-label');
+    if (ariaLabel) return ariaLabel.trim();
+    return (select.closest('label')?.textContent ?? '').trim();
+  }
+
+  it('gives every select an accessible name', async () => {
+    await component.ngOnInit();
+    component.openTransferForm();
+    fixture.detectChanges();
+
+    const selects = fixture.nativeElement.querySelectorAll('select');
+    expect(selects.length).toBeGreaterThan(0);
+    for (const select of selects) {
+      expect(accessibleName(select)).toBeTruthy();
+    }
+  });
+
+  it('gives every quick-add select an accessible name', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const selects = fixture.nativeElement.querySelectorAll('.quick-add select');
+    expect(selects.length).toBeGreaterThan(0);
+    for (const select of selects) {
+      expect(accessibleName(select)).toBeTruthy();
+    }
+  });
+
+  it('announces a saved transfer via a polite live region', async () => {
+    await component.ngOnInit();
+    component.openTransferForm();
+    component.trForm.update((f) => ({
+      ...f,
+      sourceAccountId: accountId,
+      destAccountId: accountId2,
+      sourceAmount: 100,
+      destinationAmount: 100,
+    }));
+
+    await component.saveTransfer();
+    fixture.detectChanges();
+
+    expect(component.movementAnnouncement()).toContain('Transfer saved');
+    const live = fixture.nativeElement.querySelector('[aria-live="polite"]');
+    expect(live).toBeTruthy();
+  });
+
+  it('announces a deleted movement via the undo live region', async () => {
+    const txn = await transactionService.create(
+      accountId,
+      categoryId,
+      500,
+      new Date(),
+      getCurrentPeriod(),
+    );
+    await component.ngOnInit();
+    const item = component.movements().find((m) => (m.data as Transaction).id === txn.id)!;
+
+    component.requestDelete(item);
+    await component.confirmDelete();
+    fixture.detectChanges();
+
+    const toast = fixture.nativeElement.querySelector('.undo-toast');
+    expect(toast).toBeTruthy();
+    expect(toast.getAttribute('role')).toBe('status');
+    expect(toast.getAttribute('aria-live')).toBe('polite');
+  });
+});
+
 describe('MovementsComponent - quick-add integration', () => {
   let fixture: ComponentFixture<MovementsComponent>;
   let component: MovementsComponent;

@@ -263,6 +263,26 @@ describe('QuickAddCardComponent', () => {
     expect(component.form().amount).toBe(0);
   });
 
+  it('exposes the announcement to assistive tech in the expanded form', async () => {
+    await component.ngOnInit();
+    component.expandForm();
+    component.announcement.set('Transaction saved');
+    fixture.detectChanges();
+
+    const live = fixture.nativeElement.querySelector('[aria-live="polite"]');
+    expect(live).toBeTruthy();
+    expect(live.textContent).toContain('Transaction saved');
+  });
+
+  it('does not pop focus back to the amount input when a save completes', async () => {
+    await component.ngOnInit();
+    const focusSpy = vi.spyOn(component, 'focusAmount');
+
+    component.markSaved(false);
+
+    expect(focusSpy).not.toHaveBeenCalled();
+  });
+
   it('clears saving and surfaces the error after markFailed', async () => {
     await component.ngOnInit();
     component.form.update((f) => ({ ...f, amount: 25 }));

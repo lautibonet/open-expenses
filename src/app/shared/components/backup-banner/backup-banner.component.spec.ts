@@ -59,14 +59,18 @@ describe('BackupBannerComponent', () => {
     expect(spy).toHaveBeenCalled();
   });
 
-  it('renders an Offline state and does not back up when offline', async () => {
+  it('renders an Offline state as a genuinely disabled control', async () => {
     networkService.isOnline.set(false);
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain('Offline');
-    expect(fixture.nativeElement.querySelector('button')).toBeNull();
+
+    const button = fixture.nativeElement.querySelector('button') as HTMLButtonElement;
+    expect(button).not.toBeNull();
+    expect(button.disabled).toBe(true);
 
     const spy = vi.spyOn(driveBackupService, 'backupNow');
+    button.click();
     component.backUp();
     await fixture.whenStable();
 
