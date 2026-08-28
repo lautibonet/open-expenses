@@ -64,21 +64,21 @@ import { describeBackupError } from '../../../backup/backup-errors';
       min-width: 0;
     }
 
-    .backup-method {
+      .backup-method {
       font-weight: 600;
       color: var(--ink-well-blue);
 
       .offline & {
-        color: var(--muted-slate);
+        color: var(--body-ink);
       }
     }
 
-    .backup-time {
+      .backup-time {
       color: var(--ink-well-blue);
       font-size: 0.85rem;
 
       .offline & {
-        color: var(--muted-slate);
+        color: var(--body-ink);
       }
     }
 
@@ -115,6 +115,7 @@ import { describeBackupError } from '../../../backup/backup-errors';
 
     .error-text {
       min-width: 0;
+      overflow-wrap: anywhere;
     }
 
     .error-dismiss {
