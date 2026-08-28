@@ -39,7 +39,7 @@
 .skip-link {
   position: absolute;
   top: -100px;
-  left: 0;
+  left: var(--chrome-gutter);
   z-index: 20;
   padding: 0.5rem 1rem;
   background: var(--paper-white);
