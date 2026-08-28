@@ -1,6 +1,7 @@
 import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
 import { DriveBackupService } from '../../../core/services/drive-backup.service';
 import { NetworkService } from '../../../core/services/network.service';
+import { describeBackupError } from '../../../backup/backup-errors';
 
 @Component({
   selector: 'app-backup-banner',
@@ -29,9 +30,9 @@ import { NetworkService } from '../../../core/services/network.service';
         <button type="button" class="backup-action" disabled>Back up</button>
       </section>
     }
-    @if (backupError(); as error) {
-      <p class="backup-banner-error" role="alert">
-        <span class="error-text">{{ error }}</span>
+    @if (backupError()) {
+      <p class="backup-banner-error" role="alert" [attr.title]="errorCopy().code">
+        <span class="error-text">{{ errorCopy().text }}</span>
         <button type="button" class="error-dismiss" (click)="dismissError()">Dismiss</button>
       </p>
     }
@@ -139,6 +140,7 @@ export class BackupBannerComponent {
   isBackingUp = computed(() => this.backupService.isBackingUp());
   isOnline = computed(() => this.networkService.isOnline());
   backupError = computed(() => this.backupService.error());
+  errorCopy = computed(() => describeBackupError(this.backupError() ?? ''));
 
   constructor() {
     const intervalId = setInterval(() => this.minuteTick.update((t) => t + 1), 60_000);
