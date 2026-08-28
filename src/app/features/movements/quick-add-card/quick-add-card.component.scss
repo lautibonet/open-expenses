@@ -7,10 +7,19 @@
 }
 
 .quick-add-form {
-  display: grid;
-  grid-template-columns: 1.5fr 1fr 1fr auto;
-  gap: 0.75rem;
-  align-items: end;
+  &.compact {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr 1fr;
+    gap: 0.75rem;
+    align-items: end;
+  }
+
+  h3 {
+    font-size: var(--type-headline);
+    font-weight: 600;
+    line-height: var(--leading-headline);
+    margin: 0 0 0.75rem;
+  }
 }
 
 label {
@@ -21,7 +30,8 @@ label {
   line-height: var(--leading-label);
   color: #374151;
 
-  input, select {
+  input,
+  select {
     margin-top: 0.25rem;
     padding: 0.5rem;
     border: 1px solid #d1d5db;
@@ -35,6 +45,12 @@ label {
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   font-size: 1rem;
+}
+
+.compact-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
 }
 
 .record {
@@ -58,17 +74,98 @@ label {
   }
 }
 
+.more {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  background: #fff;
+  color: #374151;
+  cursor: pointer;
+  font-size: 0.85rem;
+
+  &:hover {
+    background: #f3f4f6;
+  }
+}
+
+.material-btn {
+  padding: 0.5rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  background: #fff;
+  color: #374151;
+  cursor: pointer;
+  font-size: 0.9rem;
+
+  &:hover {
+    background: #f3f4f6;
+  }
+}
+
+.form-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+
+  label {
+    input,
+    select {
+      margin-top: 0.25rem;
+    }
+  }
+}
+
+.exchange-rate-section {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+
+  h4 {
+    margin: 0 0 0.5rem;
+    font-size: 0.85rem;
+    color: #1e40af;
+  }
+}
+
+.exchange-rate-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+
+  label input {
+    &.readonly {
+      background: #f3f4f6;
+      color: #6b7280;
+      cursor: not-allowed;
+    }
+  }
+}
+
 .rate-status {
   font-size: 0.8rem;
   color: #6b7280;
-  margin: 0;
+  margin: 0 0 0.5rem;
   font-style: italic;
 }
 
 .rate-error {
   font-size: 0.8rem;
   color: #dc2626;
-  margin: 0;
+  margin: 0.5rem 0 0;
+}
+
+.rate-source {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin: 0.5rem 0 0;
 }
 
 .empty-state {

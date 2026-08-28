@@ -5,7 +5,7 @@ import { TransferService } from '../../core/services/transfer.service';
 import { AccountService } from '../../core/services/account.service';
 import { CategoryService } from '../../core/services/category.service';
 import { ProfileService } from '../../core/services/profile.service';
-import { ExchangeRateService, ExchangeRateResult } from '../../core/services/exchange-rate.service';
+import { ExchangeRateService } from '../../core/services/exchange-rate.service';
 import { db } from '../../core/db/database';
 import { Transaction } from '../../core/models/transaction.model';
 import { Transfer } from '../../core/models/transfer.model';
@@ -49,55 +49,33 @@ describe('MovementsComponent - tags integration', () => {
   });
 
   it('should load existing tags into allTags', async () => {
-    await transactionService.create(accountId, categoryId, 100, new Date(), 'January', ['food', 'weekly']);
-    await transactionService.create(accountId, categoryId, 200, new Date(), 'January', ['groceries']);
+    await transactionService.create(accountId, categoryId, 100, new Date(), 'January', [
+      'food',
+      'weekly',
+    ]);
+    await transactionService.create(accountId, categoryId, 200, new Date(), 'January', [
+      'groceries',
+    ]);
     await component.ngOnInit();
     expect(component.allTags()).toEqual(['food', 'groceries', 'weekly']);
   });
 
-  it('should initialize txForm.tags as empty array', async () => {
+  it('should update allTags after saving a transaction via the card payload', async () => {
     await component.ngOnInit();
-    expect(component.txForm().tags).toEqual([]);
-  });
-
-  it('should populate tags when editing a transaction', async () => {
-    const t = await transactionService.create(
-      accountId, categoryId, 1500, new Date('2026-01-15'), 'January',
-      ['vacation', 'food'],
-    );
-    await component.ngOnInit();
-    component.openTransactionForm(t.id!);
-    await new Promise(resolve => setTimeout(resolve, 10));
-
-    expect(component.txForm().tags).toEqual(['vacation', 'food']);
-  });
-
-  it('should save transaction with tags from txForm', async () => {
-    await component.ngOnInit();
-    component.txForm.update(f => ({
-      ...f, tags: ['groceries', 'weekly'], accountId, categoryId, amount: 500, date: '2026-01-15',
-    }));
-    await component.saveTransaction();
-
-    const transactions = await transactionService.getAll();
-    expect(transactions.length).toBe(1);
-    expect(transactions[0].tags).toEqual(['groceries', 'weekly']);
-  });
-
-  it('should update allTags after saving a transaction', async () => {
-    await component.ngOnInit();
-    component.txForm.update(f => ({
-      ...f, tags: ['newtag'], accountId, categoryId, amount: 500, date: '2026-01-15',
-    }));
-    await component.saveTransaction();
+    await component.onSaveTransaction({
+      id: null,
+      accountId,
+      categoryId,
+      amount: 500,
+      date: '2026-01-15',
+      period: 'January',
+      year: getCurrentYear(),
+      tags: ['newtag'],
+      exchangeRate: null,
+      baseCurrencyAmount: null,
+      note: '',
+    });
     expect(component.allTags()).toEqual(['newtag']);
-  });
-
-  it('should reset tags when cancelling form', async () => {
-    await component.ngOnInit();
-    component.txForm.update(f => ({ ...f, tags: ['test'] }));
-    component.cancelForm();
-    expect(component.txForm().tags).toEqual([]);
   });
 });
 
@@ -143,9 +121,13 @@ describe('MovementsComponent - filtering', () => {
 
   async function seedMovements(): Promise<void> {
     const period = getCurrentPeriod();
-    await transactionService.create(accountId1, categoryId1, 500, new Date(), period, ['groceries']);
+    await transactionService.create(accountId1, categoryId1, 500, new Date(), period, [
+      'groceries',
+    ]);
     await transactionService.create(accountId2, categoryId2, 300, new Date(), period, ['commute']);
-    await transactionService.create(accountId1, categoryId2, 200, new Date(), period, ['groceries']);
+    await transactionService.create(accountId1, categoryId2, 200, new Date(), period, [
+      'groceries',
+    ]);
     await transferService.create(accountId1, accountId2, 1000, new Date(), period, 'savings');
     await component.ngOnInit();
   }
@@ -174,7 +156,9 @@ describe('MovementsComponent - filtering', () => {
         expect((item.data as any).accountId).toBe(accountId2);
       } else {
         const tr = item.data as any;
-        expect(tr.sourceAccountId === accountId2 || tr.destinationAccountId === accountId2).toBe(true);
+        expect(tr.sourceAccountId === accountId2 || tr.destinationAccountId === accountId2).toBe(
+          true,
+        );
       }
     }
   });
@@ -264,16 +248,16 @@ describe('MovementsComponent - self-transfer guard', () => {
 
   it('should exclude source account from destination accounts', async () => {
     await component.ngOnInit();
-    component.trForm.update(f => ({ ...f, sourceAccountId: accountId1 }));
+    component.trForm.update((f) => ({ ...f, sourceAccountId: accountId1 }));
 
     const filtered = component.filteredDestinationAccounts();
-    expect(filtered.find(a => a.id === accountId1)).toBeUndefined();
+    expect(filtered.find((a) => a.id === accountId1)).toBeUndefined();
     expect(filtered.length).toBe(2);
   });
 
   it('should show all accounts when no source is selected', async () => {
     await component.ngOnInit();
-    component.trForm.update(f => ({ ...f, sourceAccountId: 0 }));
+    component.trForm.update((f) => ({ ...f, sourceAccountId: 0 }));
 
     const filtered = component.filteredDestinationAccounts();
     expect(filtered.length).toBe(3);
@@ -281,7 +265,11 @@ describe('MovementsComponent - self-transfer guard', () => {
 
   it('should reset destination when source changes to match it', async () => {
     await component.ngOnInit();
-    component.trForm.update(f => ({ ...f, sourceAccountId: accountId1, destAccountId: accountId2 }));
+    component.trForm.update((f) => ({
+      ...f,
+      sourceAccountId: accountId1,
+      destAccountId: accountId2,
+    }));
 
     component.onTransferSourceChange(accountId2);
 
@@ -291,7 +279,11 @@ describe('MovementsComponent - self-transfer guard', () => {
 
   it('should not reset destination when source changes to a different account', async () => {
     await component.ngOnInit();
-    component.trForm.update(f => ({ ...f, sourceAccountId: accountId1, destAccountId: accountId2 }));
+    component.trForm.update((f) => ({
+      ...f,
+      sourceAccountId: accountId1,
+      destAccountId: accountId2,
+    }));
 
     component.onTransferSourceChange(accountId3);
 
@@ -301,16 +293,16 @@ describe('MovementsComponent - self-transfer guard', () => {
 
   it('should update destination dropdown when source changes', async () => {
     await component.ngOnInit();
-    component.trForm.update(f => ({ ...f, sourceAccountId: accountId1 }));
+    component.trForm.update((f) => ({ ...f, sourceAccountId: accountId1 }));
 
     let filtered = component.filteredDestinationAccounts();
-    expect(filtered.find(a => a.id === accountId1)).toBeUndefined();
-    expect(filtered.find(a => a.id === accountId2)).toBeDefined();
+    expect(filtered.find((a) => a.id === accountId1)).toBeUndefined();
+    expect(filtered.find((a) => a.id === accountId2)).toBeDefined();
 
     component.onTransferSourceChange(accountId2);
     filtered = component.filteredDestinationAccounts();
-    expect(filtered.find(a => a.id === accountId2)).toBeUndefined();
-    expect(filtered.find(a => a.id === accountId1)).toBeDefined();
+    expect(filtered.find((a) => a.id === accountId2)).toBeUndefined();
+    expect(filtered.find((a) => a.id === accountId1)).toBeDefined();
   });
 });
 
@@ -381,7 +373,9 @@ describe('MovementsComponent - category deactivation and income sign', () => {
     await categoryService.setActive(expenseCategoryId, false);
     await component.ngOnInit();
 
-    expect(component.allCategoriesForNameResolution().find(c => c.id === expenseCategoryId)).toBeDefined();
+    expect(
+      component.allCategoriesForNameResolution().find((c) => c.id === expenseCategoryId),
+    ).toBeDefined();
   });
 
   it('should show income amount as positive without minus prefix', async () => {
@@ -405,117 +399,6 @@ describe('MovementsComponent - category deactivation and income sign', () => {
   });
 });
 
-describe('MovementsComponent - transaction exchange rate re-fetch', () => {
-  let fixture: ComponentFixture<MovementsComponent>;
-  let component: MovementsComponent;
-  let accountService: AccountService;
-  let categoryService: CategoryService;
-  let exchangeRateService: ExchangeRateService;
-  let eurAccountId: number;
-  let usdAccountId: number;
-  let categoryId: number;
-
-  beforeEach(async () => {
-    await db.delete();
-    await db.open();
-
-    const mockExchangeRateService = {
-      getRate: vi.fn().mockResolvedValue({ rate: 1.08, from: 'USD', to: 'EUR', date: '2026-08-15' }),
-    };
-
-    await TestBed.configureTestingModule({
-      imports: [MovementsComponent],
-      providers: [
-        { provide: ExchangeRateService, useValue: mockExchangeRateService },
-      ],
-    }).compileComponents();
-
-    fixture = TestBed.createComponent(MovementsComponent);
-    component = fixture.componentInstance;
-    accountService = TestBed.inject(AccountService);
-    categoryService = TestBed.inject(CategoryService);
-    exchangeRateService = TestBed.inject(ExchangeRateService);
-
-    const eurAcc = await accountService.create('Cash EUR', 'EUR', 100000);
-    eurAccountId = eurAcc.id!;
-    const usdAcc = await accountService.create('Cash USD', 'USD', 50000);
-    usdAccountId = usdAcc.id!;
-    const cat = await categoryService.create('Food', 'Expense');
-    categoryId = cat.id!;
-  });
-
-  afterEach(async () => {
-    await db.delete();
-    vi.restoreAllMocks();
-  });
-
-  it('should fetch rate using transaction date when account changes to foreign currency', async () => {
-    await component.ngOnInit();
-    component.txForm.update(f => ({ ...f, accountId: usdAccountId, date: '2026-03-10' }));
-
-    await component.onAccountChange(usdAccountId);
-
-    expect(exchangeRateService.getRate).toHaveBeenCalledWith('USD', 'EUR', '2026-03-10');
-    expect(component.exchangeRateState().rate).toBe(1.08);
-    expect(component.txForm().exchangeRate).toBe(1.08);
-  });
-
-  it('should re-fetch rate when date changes', async () => {
-    await component.ngOnInit();
-    component.txForm.update(f => ({ ...f, accountId: usdAccountId, date: '2026-01-15' }));
-    await component.onAccountChange(usdAccountId);
-
-    vi.mocked(exchangeRateService.getRate).mockResolvedValueOnce({
-      rate: 1.12, from: 'USD', to: 'EUR', date: '2026-01-15',
-    });
-
-    await component.onTxDateChange('2026-01-15');
-
-    expect(exchangeRateService.getRate).toHaveBeenCalledWith('USD', 'EUR', '2026-01-15');
-    expect(component.txForm().exchangeRate).toBe(1.12);
-  });
-
-  it('should reset exchange rate when account changes to base currency', async () => {
-    await component.ngOnInit();
-    component.txForm.update(f => ({ ...f, accountId: usdAccountId, date: '2026-03-10' }));
-    await component.onAccountChange(usdAccountId);
-    expect(component.txForm().exchangeRate).toBe(1.08);
-
-    await component.onAccountChange(eurAccountId);
-
-    expect(component.txForm().exchangeRate).toBeNull();
-    expect(component.txForm().baseCurrencyAmount).toBeNull();
-    expect(component.exchangeRateState().rate).toBeNull();
-  });
-
-  it('should compute baseCurrencyAmount after rate is fetched', async () => {
-    await component.ngOnInit();
-    component.txForm.update(f => ({ ...f, accountId: usdAccountId, amount: 100, date: '2026-03-10' }));
-
-    await component.onAccountChange(usdAccountId);
-
-    expect(component.txForm().baseCurrencyAmount).toBe(108);
-  });
-
-  it('should show loading state while fetching rate', async () => {
-    let resolveGetRate: (value: ExchangeRateResult) => void;
-    vi.mocked(exchangeRateService.getRate).mockImplementationOnce(
-      () => new Promise(resolve => { resolveGetRate = resolve; }),
-    );
-
-    await component.ngOnInit();
-    component.txForm.update(f => ({ ...f, accountId: usdAccountId, date: '2026-03-10' }));
-
-    const changePromise = component.onAccountChange(usdAccountId);
-    expect(component.exchangeRateState().loading).toBe(true);
-
-    resolveGetRate!({ rate: 1.08, from: 'USD', to: 'EUR', date: '2026-03-10' });
-    await changePromise;
-
-    expect(component.exchangeRateState().loading).toBe(false);
-  });
-});
-
 describe('MovementsComponent - transfer exchange rate', () => {
   let fixture: ComponentFixture<MovementsComponent>;
   let component: MovementsComponent;
@@ -530,14 +413,14 @@ describe('MovementsComponent - transfer exchange rate', () => {
     await db.open();
 
     const mockExchangeRateService = {
-      getRate: vi.fn().mockResolvedValue({ rate: 1.08, from: 'USD', to: 'EUR', date: '2026-08-26' }),
+      getRate: vi
+        .fn()
+        .mockResolvedValue({ rate: 1.08, from: 'USD', to: 'EUR', date: '2026-08-26' }),
     };
 
     await TestBed.configureTestingModule({
       imports: [MovementsComponent],
-      providers: [
-        { provide: ExchangeRateService, useValue: mockExchangeRateService },
-      ],
+      providers: [{ provide: ExchangeRateService, useValue: mockExchangeRateService }],
     }).compileComponents();
 
     fixture = TestBed.createComponent(MovementsComponent);
@@ -560,7 +443,12 @@ describe('MovementsComponent - transfer exchange rate', () => {
 
   it('should fetch exchange rate when source account changes to foreign currency', async () => {
     await component.ngOnInit();
-    component.trForm.update(f => ({ ...f, sourceAccountId: usdAccountId, destAccountId: eurAccountId, date: '2026-08-20' }));
+    component.trForm.update((f) => ({
+      ...f,
+      sourceAccountId: usdAccountId,
+      destAccountId: eurAccountId,
+      date: '2026-08-20',
+    }));
 
     await component.onTransferSourceChange(usdAccountId);
 
@@ -570,11 +458,19 @@ describe('MovementsComponent - transfer exchange rate', () => {
 
   it('should re-fetch exchange rate when transfer date changes', async () => {
     await component.ngOnInit();
-    component.trForm.update(f => ({ ...f, sourceAccountId: usdAccountId, destAccountId: eurAccountId, date: '2026-08-20' }));
+    component.trForm.update((f) => ({
+      ...f,
+      sourceAccountId: usdAccountId,
+      destAccountId: eurAccountId,
+      date: '2026-08-20',
+    }));
     await component.onTransferSourceChange(usdAccountId);
 
     vi.mocked(exchangeRateService.getRate).mockResolvedValueOnce({
-      rate: 1.12, from: 'USD', to: 'EUR', date: '2026-01-15',
+      rate: 1.12,
+      from: 'USD',
+      to: 'EUR',
+      date: '2026-01-15',
     });
 
     await component.onTransferDateChange('2026-01-15');
@@ -585,9 +481,12 @@ describe('MovementsComponent - transfer exchange rate', () => {
 
   it('should auto-calculate destination amount from source amount and rate', async () => {
     await component.ngOnInit();
-    component.trForm.update(f => ({
-      ...f, sourceAccountId: usdAccountId, destAccountId: eurAccountId,
-      sourceAmount: 500, date: '2026-08-20',
+    component.trForm.update((f) => ({
+      ...f,
+      sourceAccountId: usdAccountId,
+      destAccountId: eurAccountId,
+      sourceAmount: 500,
+      date: '2026-08-20',
     }));
     await component.onTransferSourceChange(usdAccountId);
 
@@ -597,9 +496,12 @@ describe('MovementsComponent - transfer exchange rate', () => {
   it('should show suggested rate text in transfer form', async () => {
     await component.ngOnInit();
     component.openTransferForm();
-    component.trForm.update(f => ({
-      ...f, sourceAccountId: usdAccountId, destAccountId: eurAccountId,
-      sourceAmount: 500, date: '2026-08-20',
+    component.trForm.update((f) => ({
+      ...f,
+      sourceAccountId: usdAccountId,
+      destAccountId: eurAccountId,
+      sourceAmount: 500,
+      date: '2026-08-20',
     }));
     await component.onTransferSourceChange(usdAccountId);
     fixture.detectChanges();
@@ -613,9 +515,12 @@ describe('MovementsComponent - transfer exchange rate', () => {
 
   it('should not fetch rate when source and destination are same currency', async () => {
     await component.ngOnInit();
-    component.trForm.update(f => ({
-      ...f, sourceAccountId: eurAccountId, destAccountId: eurAccountId,
-      sourceAmount: 500, date: '2026-08-20',
+    component.trForm.update((f) => ({
+      ...f,
+      sourceAccountId: eurAccountId,
+      destAccountId: eurAccountId,
+      sourceAmount: 500,
+      date: '2026-08-20',
     }));
 
     await component.onTransferSourceChange(eurAccountId);
@@ -625,14 +530,17 @@ describe('MovementsComponent - transfer exchange rate', () => {
 
   it('should allow manual override of exchange rate', async () => {
     await component.ngOnInit();
-    component.trForm.update(f => ({
-      ...f, sourceAccountId: usdAccountId, destAccountId: eurAccountId,
-      sourceAmount: 500, date: '2026-08-20',
+    component.trForm.update((f) => ({
+      ...f,
+      sourceAccountId: usdAccountId,
+      destAccountId: eurAccountId,
+      sourceAmount: 500,
+      date: '2026-08-20',
     }));
     await component.onTransferSourceChange(usdAccountId);
     expect(component.trForm().exchangeRate).toBe(1.08);
 
-    component.trForm.update(f => ({ ...f, exchangeRate: 1.15 }));
+    component.trForm.update((f) => ({ ...f, exchangeRate: 1.15 }));
     expect(component.trForm().exchangeRate).toBe(1.15);
   });
 });
@@ -655,14 +563,14 @@ describe('MovementsComponent - direction arrows and display amounts', () => {
     await db.open();
 
     const mockExchangeRateService = {
-      getRate: vi.fn().mockResolvedValue({ rate: 1.08, from: 'USD', to: 'EUR', date: '2026-08-26' }),
+      getRate: vi
+        .fn()
+        .mockResolvedValue({ rate: 1.08, from: 'USD', to: 'EUR', date: '2026-08-26' }),
     };
 
     await TestBed.configureTestingModule({
       imports: [MovementsComponent],
-      providers: [
-        { provide: ExchangeRateService, useValue: mockExchangeRateService },
-      ],
+      providers: [{ provide: ExchangeRateService, useValue: mockExchangeRateService }],
     }).compileComponents();
 
     fixture = TestBed.createComponent(MovementsComponent);
@@ -738,7 +646,16 @@ describe('MovementsComponent - direction arrows and display amounts', () => {
 
   it('should show both currencies for cross-currency transactions', async () => {
     const period = getCurrentPeriod();
-    await transactionService.create(usdAccountId, expenseCategoryId, 10, new Date('2026-08-20'), period, [], 1.08, 10.80);
+    await transactionService.create(
+      usdAccountId,
+      expenseCategoryId,
+      10,
+      new Date('2026-08-20'),
+      period,
+      [],
+      1.08,
+      10.8,
+    );
     await component.ngOnInit();
 
     const txn = component.movements()[0].data as any;
@@ -759,7 +676,16 @@ describe('MovementsComponent - direction arrows and display amounts', () => {
 
   it('should fall back to source-only display when baseCurrencyAmount is null', async () => {
     const period = getCurrentPeriod();
-    await transactionService.create(usdAccountId, expenseCategoryId, 10, new Date('2026-08-20'), period, [], null, null);
+    await transactionService.create(
+      usdAccountId,
+      expenseCategoryId,
+      10,
+      new Date('2026-08-20'),
+      period,
+      [],
+      null,
+      null,
+    );
     await component.ngOnInit();
 
     const txn = component.movements()[0].data as any;
@@ -873,15 +799,24 @@ describe('MovementsComponent - period year', () => {
     await db.delete();
   });
 
-  it('should default new movement forms to the current year', async () => {
+  it('should default new transfer form to the current year', async () => {
     await component.ngOnInit();
-    expect(component.txForm().year).toBe(getCurrentYear());
     expect(component.trForm().year).toBe(getCurrentYear());
   });
 
   it('should filter movements by the selected period year', async () => {
     const period = getCurrentPeriod();
-    await transactionService.create(accountId, categoryId, 100, new Date(), period, [], null, null, getCurrentYear() - 1);
+    await transactionService.create(
+      accountId,
+      categoryId,
+      100,
+      new Date(),
+      period,
+      [],
+      null,
+      null,
+      getCurrentYear() - 1,
+    );
     await transactionService.create(accountId, categoryId, 200, new Date(), period);
 
     await component.ngOnInit();
@@ -893,12 +828,21 @@ describe('MovementsComponent - period year', () => {
     expect((component.movements()[0].data as any).amount).toBe(100);
   });
 
-  it('should save the period year from the transaction form', async () => {
+  it('should save the period year from the transaction payload', async () => {
     await component.ngOnInit();
-    component.txForm.update(f => ({
-      ...f, accountId, categoryId, amount: 500, date: '2025-12-22', period: 'January', year: 2026,
-    }));
-    await component.saveTransaction();
+    await component.onSaveTransaction({
+      id: null,
+      accountId,
+      categoryId,
+      amount: 500,
+      date: '2025-12-22',
+      period: 'January',
+      year: 2026,
+      tags: [],
+      exchangeRate: null,
+      baseCurrencyAmount: null,
+      note: '',
+    });
 
     const txns = await transactionService.getAll();
     expect(txns[0].year).toBe(2026);
@@ -908,9 +852,15 @@ describe('MovementsComponent - period year', () => {
   it('should save the period year from the transfer form', async () => {
     const acc2 = await accountService.create('Savings', 'EUR', 50000);
     await component.ngOnInit();
-    component.trForm.update(f => ({
-      ...f, sourceAccountId: accountId, destAccountId: acc2.id!,
-      sourceAmount: 500, destinationAmount: 500, date: '2025-12-22', period: 'January', year: 2026,
+    component.trForm.update((f) => ({
+      ...f,
+      sourceAccountId: accountId,
+      destAccountId: acc2.id!,
+      sourceAmount: 500,
+      destinationAmount: 500,
+      date: '2025-12-22',
+      period: 'January',
+      year: 2026,
     }));
     await component.saveTransfer();
 
@@ -919,25 +869,21 @@ describe('MovementsComponent - period year', () => {
     expect(transfers[0].date.getFullYear()).toBe(2025);
   });
 
-  it('should populate the form year when editing a transaction', async () => {
-    const t = await transactionService.create(
-      accountId, categoryId, 500, new Date('2025-12-22'), 'January', [], null, null, 2026,
-    );
-    await component.ngOnInit();
-    component.openTransactionForm(t.id!);
-    await new Promise(resolve => setTimeout(resolve, 10));
-
-    expect(component.txForm().year).toBe(2026);
-  });
-
   it('should populate the form year when editing a transfer', async () => {
     const acc2 = await accountService.create('Savings', 'EUR', 50000);
     const t = await transferService.create(
-      accountId, acc2.id!, 500, new Date('2025-12-22'), 'January', 'savings', 1, 2026,
+      accountId,
+      acc2.id!,
+      500,
+      new Date('2025-12-22'),
+      'January',
+      'savings',
+      1,
+      2026,
     );
     await component.ngOnInit();
     component.openTransferForm(t.id!);
-    await new Promise(resolve => setTimeout(resolve, 10));
+    await new Promise((resolve) => setTimeout(resolve, 10));
 
     expect(component.trForm().year).toBe(2026);
   });
@@ -975,50 +921,49 @@ describe('MovementsComponent - transaction note', () => {
     await db.delete();
   });
 
-  it('should initialize txForm note as empty string', async () => {
+  it('should save transaction with note from the card payload', async () => {
     await component.ngOnInit();
-    expect(component.txForm().note).toBe('');
-  });
-
-  it('should populate note when editing a transaction', async () => {
-    const t = await transactionService.create(
-      accountId, categoryId, 1500, new Date('2026-01-15'), 'January', [], null, null,
-      getCurrentYear(), 'Dinner with friends',
-    );
-    await component.ngOnInit();
-    component.openTransactionForm(t.id!);
-    await new Promise(resolve => setTimeout(resolve, 10));
-
-    expect(component.txForm().note).toBe('Dinner with friends');
-  });
-
-  it('should default note to empty when opening new transaction form', async () => {
-    await component.ngOnInit();
-    component.openTransactionForm();
-    expect(component.txForm().note).toBe('');
-  });
-
-  it('should save transaction with note from txForm', async () => {
-    await component.ngOnInit();
-    component.txForm.update(f => ({
-      ...f, accountId, categoryId, amount: 500, date: '2026-01-15', note: 'Weekly groceries',
-    }));
-    await component.saveTransaction();
+    await component.onSaveTransaction({
+      id: null,
+      accountId,
+      categoryId,
+      amount: 500,
+      date: '2026-01-15',
+      period: 'January',
+      year: getCurrentYear(),
+      tags: [],
+      note: 'Weekly groceries',
+      exchangeRate: null,
+      baseCurrencyAmount: null,
+    });
 
     const transactions = await transactionService.getAll();
     expect(transactions.length).toBe(1);
     expect(transactions[0].note).toBe('Weekly groceries');
   });
 
-  it('should preserve updated note when editing an existing transaction', async () => {
+  it('should preserve an updated note when updating an existing transaction', async () => {
     const t = await transactionService.create(
-      accountId, categoryId, 1500, new Date('2026-01-15'), 'January',
+      accountId,
+      categoryId,
+      1500,
+      new Date('2026-01-15'),
+      'January',
     );
     await component.ngOnInit();
-    component.openTransactionForm(t.id!);
-    await new Promise(resolve => setTimeout(resolve, 10));
-    component.txForm.update(f => ({ ...f, note: 'Updated note' }));
-    await component.saveTransaction();
+    await component.onSaveTransaction({
+      id: t.id!,
+      accountId,
+      categoryId,
+      amount: 1500,
+      date: '2026-01-15',
+      period: 'January',
+      year: getCurrentYear(),
+      tags: [],
+      note: 'Updated note',
+      exchangeRate: null,
+      baseCurrencyAmount: null,
+    });
 
     const updated = await transactionService.getById(t.id!);
     expect(updated!.note).toBe('Updated note');
@@ -1027,7 +972,15 @@ describe('MovementsComponent - transaction note', () => {
   it('should render note on transaction rows', async () => {
     const period = getCurrentPeriod();
     await transactionService.create(
-      accountId, categoryId, 500, new Date(), period, [], null, null, getCurrentYear(),
+      accountId,
+      categoryId,
+      500,
+      new Date(),
+      period,
+      [],
+      null,
+      null,
+      getCurrentYear(),
       'Dinner with friends',
     );
     await component.ngOnInit();
@@ -1079,8 +1032,28 @@ describe('MovementsComponent - shared scope', () => {
   });
 
   it('should derive year options from the data range, not a fixed window', async () => {
-    await transactionService.create(accountId, categoryId, 100, new Date('2012-01-15'), 'January', [], null, null, 2012);
-    await transactionService.create(accountId, categoryId, 200, new Date('2016-01-15'), 'January', [], null, null, 2016);
+    await transactionService.create(
+      accountId,
+      categoryId,
+      100,
+      new Date('2012-01-15'),
+      'January',
+      [],
+      null,
+      null,
+      2012,
+    );
+    await transactionService.create(
+      accountId,
+      categoryId,
+      200,
+      new Date('2016-01-15'),
+      'January',
+      [],
+      null,
+      null,
+      2016,
+    );
     await component.ngOnInit();
 
     expect(component.scopeYears()).toContain(2012);
@@ -1090,8 +1063,28 @@ describe('MovementsComponent - shared scope', () => {
   });
 
   it('should derive month options from the months actually present in data', async () => {
-    await transactionService.create(accountId, categoryId, 100, new Date('2026-03-15'), 'March', [], null, null, 2026);
-    await transactionService.create(accountId, categoryId, 200, new Date('2026-07-15'), 'July', [], null, null, 2026);
+    await transactionService.create(
+      accountId,
+      categoryId,
+      100,
+      new Date('2026-03-15'),
+      'March',
+      [],
+      null,
+      null,
+      2026,
+    );
+    await transactionService.create(
+      accountId,
+      categoryId,
+      200,
+      new Date('2026-07-15'),
+      'July',
+      [],
+      null,
+      null,
+      2026,
+    );
     await component.ngOnInit();
 
     expect(component.scopeMonths()).toContain('March');
@@ -1099,8 +1092,28 @@ describe('MovementsComponent - shared scope', () => {
   });
 
   it('should show movements from every period when All time is chosen', async () => {
-    await transactionService.create(accountId, categoryId, 100, new Date('2012-01-15'), 'January', [], null, null, 2012);
-    await transactionService.create(accountId, categoryId, 200, new Date('2016-05-15'), 'May', [], null, null, 2016);
+    await transactionService.create(
+      accountId,
+      categoryId,
+      100,
+      new Date('2012-01-15'),
+      'January',
+      [],
+      null,
+      null,
+      2012,
+    );
+    await transactionService.create(
+      accountId,
+      categoryId,
+      200,
+      new Date('2016-05-15'),
+      'May',
+      [],
+      null,
+      null,
+      2016,
+    );
     await component.ngOnInit();
     expect(component.movements().length).toBe(0);
 
@@ -1111,7 +1124,17 @@ describe('MovementsComponent - shared scope', () => {
 
   it('should include movements older than ten years in All time', async () => {
     const oldYear = getCurrentYear() - 20;
-    await transactionService.create(accountId, categoryId, 100, new Date(`${oldYear}-01-15`), 'January', [], null, null, oldYear);
+    await transactionService.create(
+      accountId,
+      categoryId,
+      100,
+      new Date(`${oldYear}-01-15`),
+      'January',
+      [],
+      null,
+      null,
+      oldYear,
+    );
     await component.ngOnInit();
 
     await component.onScopeYearChange('all-time');
@@ -1121,7 +1144,17 @@ describe('MovementsComponent - shared scope', () => {
 
   it('should switch scope by year while keeping the current period', async () => {
     const period = getCurrentPeriod();
-    await transactionService.create(accountId, categoryId, 100, new Date(), period, [], null, null, getCurrentYear() - 1);
+    await transactionService.create(
+      accountId,
+      categoryId,
+      100,
+      new Date(),
+      period,
+      [],
+      null,
+      null,
+      getCurrentYear() - 1,
+    );
     await transactionService.create(accountId, categoryId, 200, new Date(), period);
     await component.ngOnInit();
 
@@ -1132,8 +1165,28 @@ describe('MovementsComponent - shared scope', () => {
 
   it('should switch scope month and filter accordingly', async () => {
     const year = getCurrentYear();
-    await transactionService.create(accountId, categoryId, 100, new Date(`${year}-01-15`), 'January', [], null, null, year);
-    await transactionService.create(accountId, categoryId, 200, new Date(`${year}-02-15`), 'February', [], null, null, year);
+    await transactionService.create(
+      accountId,
+      categoryId,
+      100,
+      new Date(`${year}-01-15`),
+      'January',
+      [],
+      null,
+      null,
+      year,
+    );
+    await transactionService.create(
+      accountId,
+      categoryId,
+      200,
+      new Date(`${year}-02-15`),
+      'February',
+      [],
+      null,
+      null,
+      year,
+    );
     await component.ngOnInit();
 
     await component.onScopeMonthChange('January');
@@ -1198,9 +1251,15 @@ describe('MovementsComponent - contextual delete confirmation and undo', () => {
   });
 
   it('should set and clear the inline confirmation target', async () => {
-    const txn = await transactionService.create(accountId, categoryId, 500, new Date(), getCurrentPeriod());
+    const txn = await transactionService.create(
+      accountId,
+      categoryId,
+      500,
+      new Date(),
+      getCurrentPeriod(),
+    );
     await component.ngOnInit();
-    const item = component.movements().find(m => (m.data as Transaction).id === txn.id)!;
+    const item = component.movements().find((m) => (m.data as Transaction).id === txn.id)!;
 
     component.requestDelete(item);
     expect(component.confirmingDelete()).toBe(item);
@@ -1210,9 +1269,15 @@ describe('MovementsComponent - contextual delete confirmation and undo', () => {
   });
 
   it('should name amount and account in the transaction delete confirmation', async () => {
-    const txn = await transactionService.create(accountId, categoryId, 500, new Date(), getCurrentPeriod());
+    const txn = await transactionService.create(
+      accountId,
+      categoryId,
+      500,
+      new Date(),
+      getCurrentPeriod(),
+    );
     await component.ngOnInit();
-    const item = component.movements().find(m => (m.data as Transaction).id === txn.id)!;
+    const item = component.movements().find((m) => (m.data as Transaction).id === txn.id)!;
 
     const label = component.deleteConfirmationLabel(item);
     expect(label).toContain('€500.00');
@@ -1232,9 +1297,15 @@ describe('MovementsComponent - contextual delete confirmation and undo', () => {
   });
 
   it('should delete a transaction only after confirming, then expose an undo', async () => {
-    const txn = await transactionService.create(accountId, categoryId, 500, new Date(), getCurrentPeriod());
+    const txn = await transactionService.create(
+      accountId,
+      categoryId,
+      500,
+      new Date(),
+      getCurrentPeriod(),
+    );
     await component.ngOnInit();
-    const item = component.movements().find(m => (m.data as Transaction).id === txn.id)!;
+    const item = component.movements().find((m) => (m.data as Transaction).id === txn.id)!;
 
     expect(await transactionService.getAll()).toHaveLength(1);
 
@@ -1247,9 +1318,15 @@ describe('MovementsComponent - contextual delete confirmation and undo', () => {
   });
 
   it('should not delete a transaction until confirmed', async () => {
-    const txn = await transactionService.create(accountId, categoryId, 500, new Date(), getCurrentPeriod());
+    const txn = await transactionService.create(
+      accountId,
+      categoryId,
+      500,
+      new Date(),
+      getCurrentPeriod(),
+    );
     await component.ngOnInit();
-    const item = component.movements().find(m => (m.data as Transaction).id === txn.id)!;
+    const item = component.movements().find((m) => (m.data as Transaction).id === txn.id)!;
 
     component.requestDelete(item);
     component.cancelDelete();
@@ -1260,10 +1337,15 @@ describe('MovementsComponent - contextual delete confirmation and undo', () => {
 
   it('should restore a deleted transaction via undo', async () => {
     const txn = await transactionService.create(
-      accountId, categoryId, 500, new Date(), getCurrentPeriod(), ['food'],
+      accountId,
+      categoryId,
+      500,
+      new Date(),
+      getCurrentPeriod(),
+      ['food'],
     );
     await component.ngOnInit();
-    const item = component.movements().find(m => (m.data as Transaction).id === txn.id)!;
+    const item = component.movements().find((m) => (m.data as Transaction).id === txn.id)!;
 
     component.requestDelete(item);
     await component.confirmDelete();
@@ -1280,7 +1362,13 @@ describe('MovementsComponent - contextual delete confirmation and undo', () => {
 
   it('should delete a transfer only after confirming, then expose an undo and restore', async () => {
     const acc2 = await accountService.create('Savings', 'EUR', 50000);
-    const tr = await transferService.create(accountId, acc2.id!, 1000, new Date(), getCurrentPeriod());
+    const tr = await transferService.create(
+      accountId,
+      acc2.id!,
+      1000,
+      new Date(),
+      getCurrentPeriod(),
+    );
     await component.ngOnInit();
     const item = component.movements()[0];
 
@@ -1303,7 +1391,7 @@ describe('MovementsComponent - contextual delete confirmation and undo', () => {
     component.scheduleUndoAutoDismiss();
     expect(component.undo()).not.toBeNull();
 
-    await new Promise(resolve => setTimeout(resolve, 60));
+    await new Promise((resolve) => setTimeout(resolve, 60));
 
     expect(component.undo()).toBeNull();
   });
@@ -1341,13 +1429,21 @@ describe('MovementsComponent - quick-add integration', () => {
     await db.delete();
   });
 
-  it('saves a transaction from the quick-add payload', async () => {
+  it('saves a new transaction from the card payload', async () => {
     await component.ngOnInit();
 
-    await component.onQuickAddSaved({
-      accountId, categoryId, amount: 42, date: '2026-08-15',
-      period: getCurrentPeriod(), year: getCurrentYear(),
-      exchangeRate: null, baseCurrencyAmount: null,
+    await component.onSaveTransaction({
+      id: null,
+      accountId,
+      categoryId,
+      amount: 42,
+      date: '2026-08-15',
+      period: getCurrentPeriod(),
+      year: getCurrentYear(),
+      tags: [],
+      exchangeRate: null,
+      baseCurrencyAmount: null,
+      note: '',
     });
 
     const txns = await transactionService.getAll();
@@ -1357,19 +1453,48 @@ describe('MovementsComponent - quick-add integration', () => {
     expect((component.movements()[0].data as any).amount).toBe(42);
   });
 
-  it('expands to the full transaction form, prefilled from the quick-add selection', async () => {
+  it('updates an existing transaction when the card payload carries an id', async () => {
+    const t = await transactionService.create(
+      accountId,
+      categoryId,
+      10,
+      new Date(),
+      getCurrentPeriod(),
+    );
     await component.ngOnInit();
 
-    component.onQuickAddExpand({
-      accountId, categoryId, amount: 42, date: '2026-08-15',
-      period: getCurrentPeriod(), year: getCurrentYear(),
+    await component.onSaveTransaction({
+      id: t.id!,
+      accountId,
+      categoryId,
+      amount: 99,
+      date: '2026-08-15',
+      period: getCurrentPeriod(),
+      year: getCurrentYear(),
+      tags: [],
+      exchangeRate: null,
+      baseCurrencyAmount: null,
+      note: '',
     });
 
-    expect(component.showForm()).toBe('transaction');
-    expect(component.editingId()).toBeNull();
-    expect(component.txForm().accountId).toBe(accountId);
-    expect(component.txForm().categoryId).toBe(categoryId);
-    expect(component.txForm().amount).toBe(42);
-    expect(component.txForm().date).toBe('2026-08-15');
+    expect(await transactionService.getAll()).toHaveLength(1);
+    const updated = await transactionService.getById(t.id!);
+    expect(updated!.amount).toBe(99);
+  });
+
+  it('clears editTransaction on cancel', async () => {
+    await component.ngOnInit();
+    const t = await transactionService.create(
+      accountId,
+      categoryId,
+      10,
+      new Date(),
+      getCurrentPeriod(),
+    );
+    component.editTransaction.set(t);
+
+    component.onCancelEdit();
+
+    expect(component.editTransaction()).toBeNull();
   });
 });

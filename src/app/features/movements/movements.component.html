@@ -3,8 +3,10 @@
     [accounts]="accounts()"
     [categories]="categories()"
     [baseCurrency]="baseCurrency()"
-    (saved)="onQuickAddSaved($event)"
-    (expand)="onQuickAddExpand($event)"
+    [allTags]="allTags()"
+    [editTransaction]="editTransaction()"
+    (save)="onSaveTransaction($event)"
+    (cancelEdit)="onCancelEdit()"
   />
 
   <div class="controls">
@@ -29,141 +31,9 @@
         }
       </select>
     }
-    <button class="btn" (click)="openTransactionForm()">+ Transaction</button>
     <button class="btn" (click)="openTransferForm()">+ Transfer</button>
     <span class="visually-hidden" aria-live="polite">{{ scopeAnnouncement() }}</span>
   </div>
-
-  @if (showForm() === 'transaction') {
-    <div class="form-card">
-      <h3>{{ editingId() ? 'Edit' : 'New' }} Transaction</h3>
-      <div class="form-grid">
-        <label>
-          Account
-          <select [ngModel]="txForm().accountId" (ngModelChange)="onAccountChange(+$event)">
-            @for (acc of accounts(); track acc.id) {
-              <option [value]="acc.id">{{ acc.name }} ({{ acc.currency }})</option>
-            }
-          </select>
-        </label>
-        <label>
-          Category
-          <select
-            [ngModel]="txForm().categoryId"
-            (ngModelChange)="txForm.update((f) => ({ ...f, categoryId: +$event }))"
-          >
-            @for (cat of categories(); track cat.id) {
-              <option [value]="cat.id">{{ cat.name }} ({{ cat.type }})</option>
-            }
-          </select>
-        </label>
-        <label>
-          Amount
-          <input
-            type="number"
-            [ngModel]="txForm().amount"
-            (ngModelChange)="
-              txForm.update((f) => ({ ...f, amount: +$event })); onAmountOrRateChange()
-            "
-          />
-        </label>
-        <label>
-          Tags
-          <app-tag-input
-            [tags]="txForm().tags"
-            [suggestions]="allTags()"
-            (tagsChange)="txForm.update((f) => ({ ...f, tags: $event }))"
-          />
-        </label>
-        <label>
-          Note
-          <input
-            type="text"
-            [ngModel]="txForm().note"
-            (ngModelChange)="txForm.update((f) => ({ ...f, note: $event }))"
-          />
-        </label>
-        <label>
-          Date
-          <input
-            type="date"
-            [ngModel]="txForm().date"
-            (ngModelChange)="onTxDateChange($event)"
-          />
-        </label>
-        <label>
-          Period
-          <select
-            [ngModel]="txForm().period"
-            (ngModelChange)="txForm.update((f) => ({ ...f, period: $event }))"
-          >
-            @for (month of months; track month) {
-              <option [value]="month">{{ month }}</option>
-            }
-          </select>
-        </label>
-        <label>
-          Year
-          <select
-            [ngModel]="txForm().year"
-            (ngModelChange)="txForm.update((f) => ({ ...f, year: +$event }))"
-          >
-            @for (yr of years; track yr) {
-              <option [value]="yr">{{ yr }}</option>
-            }
-          </select>
-        </label>
-      </div>
-
-      @if (isForeignCurrency()) {
-        <div class="exchange-rate-section">
-          <h4>Exchange Rate</h4>
-          @if (exchangeRateState().loading) {
-            <p class="rate-status">Fetching rate...</p>
-          }
-          @if (exchangeRateState().error) {
-            <p class="rate-error">{{ exchangeRateState().error }}</p>
-          }
-          <div class="exchange-rate-grid">
-            <label>
-              Exchange Rate ({{ getAccountCurrency(txForm().accountId) }} &rarr;
-              {{ baseCurrency() }})
-              <input
-                type="number"
-                step="0.0001"
-                [ngModel]="txForm().exchangeRate"
-                (ngModelChange)="
-                  txForm.update((f) => ({ ...f, exchangeRate: +$event })); onAmountOrRateChange()
-                "
-              />
-            </label>
-            <label>
-              {{ baseCurrency() }} Equivalent
-              <input
-                type="number"
-                [ngModel]="txForm().baseCurrencyAmount"
-                readonly
-                class="readonly"
-              />
-            </label>
-          </div>
-          @if (exchangeRateState().rate !== null) {
-            <p class="rate-source">
-              Suggested rate: 1 {{ getAccountCurrency(txForm().accountId) }} =
-              {{ exchangeRateState().rate }} {{ baseCurrency() }} ({{ exchangeRateState().date }})
-            </p>
-          }
-        </div>
-      }
-      @if (errorMessage()) {
-        <p class="error">{{ errorMessage() }}</p>
-      }
-      <div class="form-actions">
-        <button class="btn" (click)="cancelForm()">Cancel</button>
-        <button class="btn primary" (click)="saveTransaction()">Save</button>
-      </div>
-    </div>
-  }
 
   @if (showForm() === 'transfer') {
     <div class="form-card">
@@ -184,7 +54,9 @@
           To
           <select
             [ngModel]="trForm().destAccountId"
-            (ngModelChange)="trForm.update((f) => ({ ...f, destAccountId: +$event })); checkTransferExchangeRate()"
+            (ngModelChange)="
+              trForm.update((f) => ({ ...f, destAccountId: +$event })); checkTransferExchangeRate()
+            "
           >
             @for (acc of filteredDestinationAccounts(); track acc.id) {
               <option [value]="acc.id">{{ acc.name }}</option>
@@ -197,7 +69,8 @@
             type="number"
             [ngModel]="trForm().sourceAmount"
             (ngModelChange)="
-              trForm.update((f) => ({ ...f, sourceAmount: +$event })); onTransferAmountOrRateChange()
+              trForm.update((f) => ({ ...f, sourceAmount: +$event }));
+              onTransferAmountOrRateChange()
             "
           />
         </label>
@@ -259,7 +132,8 @@
                 step="0.0001"
                 [ngModel]="trForm().exchangeRate"
                 (ngModelChange)="
-                  trForm.update((f) => ({ ...f, exchangeRate: +$event })); onTransferAmountOrRateChange()
+                  trForm.update((f) => ({ ...f, exchangeRate: +$event }));
+                  onTransferAmountOrRateChange()
                 "
               />
             </label>
@@ -275,8 +149,9 @@
           @if (transferExchangeRateState().rate !== null) {
             <p class="rate-source">
               Suggested rate: 1 {{ getTransferSourceCurrency() }} =
-              {{ transferExchangeRateState().rate }} {{ getTransferDestCurrency() }}
-              ({{ transferExchangeRateState().date }})
+              {{ transferExchangeRateState().rate }} {{ getTransferDestCurrency() }} ({{
+                transferExchangeRateState().date
+              }})
             </p>
           }
         </div>
@@ -345,7 +220,9 @@
             @if (isTransaction(item)) {
               @let txn = getTransactionData(item);
               <tr>
-                <td [ngClass]="['arrow', getDirectionArrowClass(item)]">{{ getDirectionArrow(txn, 'transaction') }}</td>
+                <td [ngClass]="['arrow', getDirectionArrowClass(item)]">
+                  {{ getDirectionArrow(txn, 'transaction') }}
+                </td>
                 <td>{{ txn.date | date: 'mediumDate' }}</td>
                 <td>
                   {{ getCategoryName(txn.categoryId) }}
@@ -368,7 +245,7 @@
                   }
                 </td>
                 <td>
-                  <button class="btn small" (click)="openTransactionForm(txn.id!)">Edit</button>
+                  <button class="btn small" (click)="editTransaction.set(txn)">Edit</button>
                   @if (confirmingDelete() === item) {
                     <span
                       class="delete-confirm"
@@ -388,7 +265,9 @@
             } @else {
               @let tr = getTransferData(item);
               <tr class="transfer-row">
-                <td [ngClass]="['arrow', getDirectionArrowClass(item)]">{{ getDirectionArrow(tr, 'transfer') }}</td>
+                <td [ngClass]="['arrow', getDirectionArrowClass(item)]">
+                  {{ getDirectionArrow(tr, 'transfer') }}
+                </td>
                 <td>{{ tr.date | date: 'mediumDate' }}</td>
                 <td>
                   {{ getAccountName(tr.sourceAccountId) }} →
@@ -436,9 +315,7 @@
 
   @if (undo(); as pending) {
     <div class="undo-toast" role="status" aria-live="polite">
-      <span class="undo-message">
-        Deleted {{ undoDeleteLabel(pending) }}
-      </span>
+      <span class="undo-message"> Deleted {{ undoDeleteLabel(pending) }} </span>
       <button class="btn small" (click)="undoDelete()">Undo</button>
     </div>
   }
