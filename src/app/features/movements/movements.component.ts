@@ -1,4 +1,4 @@
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DatePipe, NgClass } from '@angular/common';
 import { TransactionService } from '../../core/services/transaction.service';
@@ -39,6 +39,11 @@ interface MovementItem {
   data: Transaction | Transfer;
 }
 
+interface PendingDelete {
+  item: MovementItem;
+  snapshot: Transaction | Transfer;
+}
+
 interface TransactionForm {
   accountId: number;
   categoryId: number;
@@ -70,7 +75,7 @@ interface TransferForm {
   templateUrl: './movements.component.html',
   styleUrl: './movements.component.scss',
 })
-export class MovementsComponent implements OnInit {
+export class MovementsComponent implements OnInit, OnDestroy {
   private transactionService = inject(TransactionService);
   private transferService = inject(TransferService);
   private accountService = inject(AccountService);
@@ -93,6 +98,11 @@ export class MovementsComponent implements OnInit {
 
   showForm = signal<'none' | 'transaction' | 'transfer'>('none');
   editingId = signal<number | null>(null);
+
+  confirmingDelete = signal<MovementItem | null>(null);
+  undo = signal<PendingDelete | null>(null);
+  undoWindowMs = 5000;
+  private undoHandle: ReturnType<typeof setTimeout> | null = null;
 
   exchangeRateState = signal<ExchangeRateState>({
     loading: false, error: '', rate: null, date: '',
@@ -557,19 +567,84 @@ export class MovementsComponent implements OnInit {
     }
   }
 
-  async deleteTransaction(id: number): Promise<void> {
-    if (confirm('Delete this transaction?')) {
-      await this.transactionService.delete(id);
-      await this.refresh();
-      await this.applyScopeOptions();
+  deleteConfirmationLabel(item: MovementItem): string {
+    if (item.type === 'transaction') {
+      const txn = item.data as Transaction;
+      const amount = this.formatTransactionDisplayAmount(txn);
+      return `Delete ${amount} in ${this.getAccountName(txn.accountId)}?`;
     }
+    const tr = item.data as Transfer;
+    const amount = this.formatTransferDisplayAmount(tr);
+    return `Delete ${amount} transfer from ${this.getAccountName(tr.sourceAccountId)} to ${this.getAccountName(tr.destinationAccountId)}?`;
   }
 
-  async deleteTransfer(id: number): Promise<void> {
-    if (confirm('Delete this transfer?')) {
-      await this.transferService.delete(id);
-      await this.refresh();
-      await this.applyScopeOptions();
+  undoDeleteLabel(pending: PendingDelete): string {
+    const amount = pending.item.type === 'transaction'
+      ? this.formatTransactionDisplayAmount(pending.snapshot as Transaction)
+      : this.formatTransferDisplayAmount(pending.snapshot as Transfer);
+    return pending.item.type === 'transaction' ? `${amount} transaction` : `${amount} transfer`;
+  }
+
+  requestDelete(item: MovementItem): void {
+    this.confirmingDelete.set(item);
+  }
+
+  cancelDelete(): void {
+    this.confirmingDelete.set(null);
+  }
+
+  async confirmDelete(): Promise<void> {
+    const item = this.confirmingDelete();
+    if (!item) return;
+    const snapshot = item.data;
+    if (item.type === 'transaction') {
+      await this.transactionService.delete(item.data.id!);
+    } else {
+      await this.transferService.delete(item.data.id!);
+    }
+    this.confirmingDelete.set(null);
+    this.setUndo({ item, snapshot });
+    await this.refresh();
+    await this.applyScopeOptions();
+  }
+
+  async undoDelete(): Promise<void> {
+    const pending = this.undo();
+    if (!pending) return;
+    if (pending.item.type === 'transaction') {
+      await this.transactionService.restore(pending.snapshot as Transaction);
+    } else {
+      await this.transferService.restore(pending.snapshot as Transfer);
+    }
+    this.clearUndo();
+    await this.refresh();
+    await this.applyScopeOptions();
+  }
+
+  private setUndo(pending: PendingDelete): void {
+    this.undo.set(pending);
+    this.scheduleUndoAutoDismiss();
+  }
+
+  scheduleUndoAutoDismiss(): void {
+    if (this.undoHandle !== null) {
+      clearTimeout(this.undoHandle);
+    }
+    this.undoHandle = setTimeout(() => this.clearUndo(), this.undoWindowMs);
+  }
+
+  private clearUndo(): void {
+    if (this.undoHandle !== null) {
+      clearTimeout(this.undoHandle);
+      this.undoHandle = null;
+    }
+    this.undo.set(null);
+  }
+
+  ngOnDestroy(): void {
+    if (this.undoHandle !== null) {
+      clearTimeout(this.undoHandle);
+      this.undoHandle = null;
     }
   }
 

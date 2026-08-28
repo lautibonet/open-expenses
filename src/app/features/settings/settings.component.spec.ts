@@ -181,3 +181,63 @@ describe('SettingsComponent - inline editing', () => {
     expect(component.editingCategoryName()).not.toBeNull();
   });
 });
+
+describe('SettingsComponent - account deactivation confirmation', () => {
+  let fixture: ComponentFixture<SettingsComponent>;
+  let component: SettingsComponent;
+  let accountService: AccountService;
+  let accountId: number;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    await TestBed.configureTestingModule({
+      imports: [SettingsComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(SettingsComponent);
+    component = fixture.componentInstance;
+    accountService = TestBed.inject(AccountService);
+
+    const account = await accountService.create('Cash', 'EUR', 100000);
+    accountId = account.id!;
+    await component.ngOnInit();
+  });
+
+  afterEach(async () => {
+    await db.delete();
+  });
+
+  it('should set and clear the deactivation confirmation target', () => {
+    component.requestDeactivate(accountId);
+    expect(component.confirmingDeactivate()).toBe(accountId);
+
+    component.cancelDeactivate();
+    expect(component.confirmingDeactivate()).toBeNull();
+  });
+
+  it('should not deactivate an account until confirmed', async () => {
+    component.requestDeactivate(accountId);
+    component.cancelDeactivate();
+
+    const account = await accountService.getById(accountId);
+    expect(account?.active).toBe(true);
+  });
+
+  it('should deactivate an account only after confirming and name it inline', async () => {
+    expect(component.deactivationConfirmationLabel(accountId)).toContain('Cash');
+
+    component.requestDeactivate(accountId);
+    await component.confirmDeactivate();
+
+    const account = await accountService.getById(accountId);
+    expect(account?.active).toBe(false);
+    expect(component.confirmingDeactivate()).toBeNull();
+  });
+
+  it('should do nothing when confirming with no target', async () => {
+    await component.confirmDeactivate();
+    const account = await accountService.getById(accountId);
+    expect(account?.active).toBe(true);
+  });
+});

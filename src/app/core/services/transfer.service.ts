@@ -124,6 +124,19 @@ export class TransferService {
     await db.transfers.delete(id);
   }
 
+  async restore(snapshot: Transfer): Promise<Transfer> {
+    if (!snapshot.id) {
+      throw new Error('Transfer id is required');
+    }
+    const existing = await db.transfers.get(snapshot.id);
+    if (existing) {
+      throw new Error('Transfer already exists');
+    }
+    const { id, ...fields } = snapshot;
+    await db.transfers.add({ ...fields, id });
+    return (await db.transfers.get(id))!;
+  }
+
   async getAll(): Promise<Transfer[]> {
     return db.transfers.toArray();
   }

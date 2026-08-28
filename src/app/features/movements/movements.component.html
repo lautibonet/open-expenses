@@ -361,9 +361,20 @@
                 </td>
                 <td>
                   <button class="btn small" (click)="openTransactionForm(txn.id!)">Edit</button>
-                  <button class="btn small danger" (click)="deleteTransaction(txn.id!)">
-                    Delete
-                  </button>
+                  @if (confirmingDelete() === item) {
+                    <span
+                      class="delete-confirm"
+                      role="alert"
+                      aria-live="polite"
+                      aria-label="Confirm transaction deletion"
+                    >
+                      {{ deleteConfirmationLabel(confirmingDelete()!) }}
+                    </span>
+                    <button class="btn small danger" (click)="confirmDelete()">Delete</button>
+                    <button class="btn small" (click)="cancelDelete()">Cancel</button>
+                  } @else {
+                    <button class="btn small danger" (click)="requestDelete(item)">Delete</button>
+                  }
                 </td>
               </tr>
             } @else {
@@ -385,7 +396,20 @@
                 </td>
                 <td>
                   <button class="btn small" (click)="openTransferForm(tr.id!)">Edit</button>
-                  <button class="btn small danger" (click)="deleteTransfer(tr.id!)">Delete</button>
+                  @if (confirmingDelete() === item) {
+                    <span
+                      class="delete-confirm"
+                      role="alert"
+                      aria-live="polite"
+                      aria-label="Confirm transfer deletion"
+                    >
+                      {{ deleteConfirmationLabel(confirmingDelete()!) }}
+                    </span>
+                    <button class="btn small danger" (click)="confirmDelete()">Delete</button>
+                    <button class="btn small" (click)="cancelDelete()">Cancel</button>
+                  } @else {
+                    <button class="btn small danger" (click)="requestDelete(item)">Delete</button>
+                  }
                 </td>
               </tr>
             }
@@ -396,4 +420,13 @@
       <p class="empty">No movements for {{ scopeLabelText() }}.</p>
     }
   </div>
+
+  @if (undo(); as pending) {
+    <div class="undo-toast" role="status" aria-live="polite">
+      <span class="undo-message">
+        Deleted {{ undoDeleteLabel(pending) }}
+      </span>
+      <button class="btn small" (click)="undoDelete()">Undo</button>
+    </div>
+  }
 </div>
