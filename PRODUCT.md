@@ -22,13 +22,13 @@ An open-source, privacy-first personal finance tool that requires zero server, z
 
 - **Onboarding**: first-time wizard sets base currency, initial accounts, and reviews default categories; optional restore-from-backup as first step.
 - **Daily use**: open app → add transaction or transfer → close. No login, no loading, no network dependency.
-- **Periodic review**: Dashboard for monthly totals, category breakdown, yearly trends, and account balances.
+- **Periodic review**: Stats for monthly totals, category breakdown, yearly trends, and account balances.
 - **Data safety**: manual cloud backup via Google Drive (on-demand, never automatic) and file download/upload for device migration.
 - **Offline**: fully functional with no internet connection; exchange rates gracefully degrade to manual entry when offline.
 
 ## Capabilities and Constraints
 
-- **Three tabs**: Dashboard (read-only summary), Movements (unified chronological list + CRUD), Settings (accounts, categories, tags, base currency, backup).
+- **Three tabs**: Stats (read-only summary), Movements (unified chronological list + CRUD), Settings (accounts, categories, tags, base currency, backup).
 - **Multi-currency**: accounts can hold different currencies; amounts converted via Frankfurter API (ECB rates) at transaction/transfer time, with user confirm or manual override.
 - **Data model**: Transactions and Transfers are structurally separate; Periods are month-name text fields plus year on movements; Tags are freeform text extracted from transactions, not a separate table.
 - **Money safety**: integer minor units or Dinero.js; amounts always positive; category type determines income/expense effect.
@@ -49,8 +49,7 @@ An open-source, privacy-first personal finance tool that requires zero server, z
 - Complete spec at `docs/spec.md` with 66 user stories and implementation decisions.
 - Domain glossary at `CONTEXT.md`.
 - 7 architectural decision records in `docs/adr/`.
-- Component-scoped SCSS with consistent informal gray/blue palette, but no design tokens, no shared stylesheet, and per-component duplication.
-- No DESIGN.md, no design system, no global style tokens.
+- Component-scoped SCSS over a global token layer in `styles.scss` (colors, type, radii, spacing, elevation), with shared style patterns extracted into `src/app/shared/styles/_patterns.scss`; the design system is documented at `DESIGN.md`.
 
 ## Product Principles
 
