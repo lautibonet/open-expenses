@@ -114,8 +114,19 @@ export class MovementsComponent implements OnInit, OnDestroy {
     note: '',
   });
   errorMessage = signal('');
+  errorDetail = signal('');
+  transferSaving = signal(false);
 
   editTransaction = signal<Transaction | null>(null);
+
+  canSubmitTransfer = computed(() => {
+    const f = this.trForm();
+    if (!f.sourceAccountId || !f.destAccountId) return false;
+    if (f.sourceAccountId === f.destAccountId) return false;
+    if (!(f.sourceAmount > 0)) return false;
+    if (this.isTransferForeignCurrency() && this.transferExchangeRateState().loading) return false;
+    return !this.transferSaving();
+  });
 
   filteredDestinationAccounts = computed(() => {
     const sourceId = this.trForm().sourceAccountId;
@@ -262,6 +273,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
     this.showForm.set('transfer');
     this.editingId.set(id ?? null);
     this.errorMessage.set('');
+    this.errorDetail.set('');
     this.transferExchangeRateState.set({ loading: false, error: '', rate: null, date: '' });
     if (id) {
       this.transferService.getById(id).then((t) => {
@@ -314,6 +326,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
     this.showForm.set('none');
     this.editingId.set(null);
     this.errorMessage.set('');
+    this.errorDetail.set('');
     this.transferExchangeRateState.set({ loading: false, error: '', rate: null, date: '' });
   }
 
@@ -404,6 +417,8 @@ export class MovementsComponent implements OnInit, OnDestroy {
   }
 
   async saveTransfer(): Promise<void> {
+    if (!this.canSubmitTransfer()) return;
+    this.transferSaving.set(true);
     try {
       const f = this.trForm();
       const wasEdit = this.editingId() !== null;
@@ -436,8 +451,28 @@ export class MovementsComponent implements OnInit, OnDestroy {
       await this.applyScopeOptions();
       this.movementAnnouncement.set(wasEdit ? 'Transfer updated' : 'Transfer saved');
     } catch (e: unknown) {
-      this.errorMessage.set(e instanceof Error ? e.message : 'Failed to save');
+      this.setTransferError(e);
+    } finally {
+      this.transferSaving.set(false);
     }
+  }
+
+  private setTransferError(e: unknown): void {
+    const raw = e instanceof Error ? e.message : String(e);
+    const known: Record<string, string> = {
+      'Source and destination accounts must be different':
+        'Choose two different accounts for this transfer.',
+      'Amount must be positive': 'Enter an amount greater than zero.',
+      'Source amount must be positive': 'Enter an amount greater than zero.',
+      'Exchange rate must be positive': 'Enter an exchange rate greater than zero.',
+      'Source account not found': 'That account no longer exists. Pick another and try again.',
+      'Destination account not found':
+        'That account no longer exists. Pick another and try again.',
+    };
+    this.errorMessage.set(
+      known[raw] ?? 'The transfer could not be saved. Check the form and try again.',
+    );
+    this.errorDetail.set(raw);
   }
 
   async onSaveTransaction(payload: TransactionFormPayload): Promise<void> {

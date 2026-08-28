@@ -39,6 +39,11 @@
   @if (showForm() === 'transfer') {
     <div class="form-card">
       <h3>{{ editingId() ? 'Edit' : 'New' }} Transfer</h3>
+      @if (accounts().length < 2) {
+        <p class="form-hint">
+          Transfers move money between two accounts. Add a second account in Settings first.
+        </p>
+      }
       <div class="form-grid">
         <label>
           From
@@ -68,6 +73,7 @@
           Amount ({{ getTransferSourceCurrency() }})
           <input
             type="number"
+            min="0.01"
             [ngModel]="trForm().sourceAmount"
             (ngModelChange)="
               trForm.update((f) => ({ ...f, sourceAmount: +$event }));
@@ -159,11 +165,13 @@
       }
 
       @if (errorMessage()) {
-        <p class="error">{{ errorMessage() }}</p>
+        <p class="error" [title]="errorDetail()">{{ errorMessage() }}</p>
       }
       <div class="form-actions">
         <button class="btn" (click)="cancelForm()">Cancel</button>
-        <button class="btn primary" (click)="saveTransfer()">Save</button>
+        <button class="btn primary" (click)="saveTransfer()" [disabled]="!canSubmitTransfer()">
+          Save
+        </button>
       </div>
     </div>
   }
