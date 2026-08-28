@@ -12,33 +12,35 @@ import { PwaInstallService } from '../../../core/services/pwa-install.service';
       </div>
     }
   `,
-  styles: [`
-    .install-banner {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.5rem 1rem;
-      background: #eff6ff;
-      border-bottom: 1px solid #bfdbfe;
-      font-size: 0.85rem;
-      color: #1e40af;
-    }
-
-    .btn {
-      padding: 0.25rem 0.5rem;
-      border: 1px solid #d1d5db;
-      border-radius: 4px;
-      background: #fff;
-      cursor: pointer;
-      font-size: 0.8rem;
-
-      &.primary {
-        background: #2563eb;
-        color: #fff;
-        border-color: #2563eb;
+  styles: [
+    `
+      .install-banner {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        background: var(--ink-tint);
+        border-bottom: 1px solid var(--ink-tint-edge);
+        font-size: 0.85rem;
+        color: var(--ink-well-blue);
       }
-    }
-  `],
+
+      .btn {
+        padding: 0.25rem 0.5rem;
+        border: 1px solid var(--edge-graphite);
+        border-radius: var(--radius-sm);
+        background: var(--paper-white);
+        cursor: pointer;
+        font-size: 0.8rem;
+
+        &.primary {
+          background: var(--ledger-ink);
+          color: var(--paper-white);
+          border-color: var(--ledger-ink);
+        }
+      }
+    `,
+  ],
 })
 export class InstallPromptComponent {
   pwaInstall = inject(PwaInstallService);

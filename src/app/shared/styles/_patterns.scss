@@ -1,0 +1,94 @@
+/*
+ * Shared SCSS patterns — Sass placeholders consumed by component stylesheets
+ * via `@use ... as *` + `@extend`. Keeps repeated patterns in one place while
+ * preserving Angular's component style encapsulation.
+ */
+
+%btn-base {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--edge-graphite);
+  border-radius: var(--radius-sm);
+  background: var(--paper-white);
+  cursor: pointer;
+  font-size: var(--type-body);
+}
+
+%btn-small {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8rem;
+}
+
+%btn-primary {
+  background: var(--ledger-ink);
+  color: var(--paper-white);
+  border-color: var(--ledger-ink);
+}
+
+/* Outline danger: anything inside a table row or dense list. */
+%btn-danger {
+  color: var(--officers-red);
+  border-color: var(--danger-edge);
+}
+
+/* Filled danger: panel/card-level destructive confirmations only. */
+%btn-danger-filled {
+  background: var(--officers-red);
+  color: var(--paper-white);
+  border-color: var(--officers-red);
+}
+
+%stacked-label {
+  display: flex;
+  flex-direction: column;
+  font-size: var(--type-label);
+  letter-spacing: var(--tracking-micro);
+  line-height: var(--leading-label);
+  color: var(--body-ink);
+}
+
+%field {
+  padding: 0.5rem;
+  border: 1px solid var(--edge-graphite);
+  border-radius: var(--radius-sm);
+  font-size: var(--type-body);
+}
+
+%readonly-field {
+  background: var(--silvered-paper);
+  color: var(--muted-slate);
+  cursor: not-allowed;
+}
+
+/* The ink-tint well for exchange-rate capture. */
+%exchange-well {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  background: var(--ink-tint);
+  border: 1px solid var(--ink-tint-edge);
+  border-radius: var(--radius-md);
+
+  h4 {
+    margin: 0 0 0.5rem;
+    font-size: var(--type-caption);
+    color: var(--ink-well-blue);
+  }
+}
+
+%rate-status {
+  font-size: var(--type-label);
+  color: var(--muted-slate);
+  margin: 0 0 0.5rem;
+  font-style: italic;
+}
+
+%rate-error {
+  font-size: var(--type-label);
+  color: var(--officers-red);
+  margin: 0 0 0.5rem;
+}
+
+%rate-source {
+  font-size: var(--type-tag);
+  color: var(--muted-slate);
+  margin: 0.5rem 0 0;
+}
