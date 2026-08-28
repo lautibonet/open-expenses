@@ -1,10 +1,10 @@
-<div class="quick-add">
+<div class="quick-add" [class.expanded]="mode() !== 'compact'">
   @if (accounts().length === 0) {
     <p class="empty-state">No accounts yet. Add one in Settings to start recording.</p>
   } @else if (categories().length === 0) {
     <p class="empty-state">No categories yet. Add one in Settings to start recording.</p>
-  } @else {
-    <form class="quick-add-form" (ngSubmit)="onSubmit()">
+  } @else if (mode() === 'compact') {
+    <form class="quick-add-form compact" (ngSubmit)="onSubmit()">
       <label class="amount-field">
         <span class="label-text">Amount</span>
         <input
@@ -13,7 +13,7 @@
           inputmode="decimal"
           min="0.01"
           step="0.01"
-          [ngModel]="amount()"
+          [ngModel]="form().amount"
           (ngModelChange)="onAmountChange(+$event || 0)"
           name="quick-amount"
           aria-label="Amount"
@@ -23,7 +23,7 @@
       <label>
         <span class="label-text">Account</span>
         <select
-          [ngModel]="accountId()"
+          [ngModel]="form().accountId"
           (ngModelChange)="onAccountChange(+$event)"
           name="quick-account"
           aria-label="Account"
@@ -37,7 +37,7 @@
       <label>
         <span class="label-text">Category</span>
         <select
-          [ngModel]="categoryId()"
+          [ngModel]="form().categoryId"
           (ngModelChange)="onCategoryChange(+$event)"
           name="quick-category"
           aria-label="Category"
@@ -48,15 +48,168 @@
         </select>
       </label>
 
+      <div class="compact-actions">
+        <button type="submit" class="record" [disabled]="!canSubmit()">Record</button>
+        <button type="button" class="more" (click)="expandForm()">More options</button>
+      </div>
+
       @if (isForeignCurrency() && rateState().loading) {
         <p class="rate-status">Fetching rate...</p>
       }
       @if (isForeignCurrency() && rateState().error) {
         <p class="rate-error">{{ rateState().error }}</p>
       }
-
-      <button type="submit" class="record" [disabled]="!canSubmit()">Record</button>
+      @if (errorMessage()) {
+        <p class="rate-error" role="alert">{{ errorMessage() }}</p>
+      }
       <span class="visually-hidden" aria-live="polite">{{ announcement() }}</span>
+    </form>
+  } @else {
+    <form class="quick-add-form expanded" (ngSubmit)="onSubmitForm()">
+      <h3>{{ editingId() ? 'Edit' : 'New' }} Transaction</h3>
+
+      <div class="form-grid">
+        <label>
+          Account
+          <select
+            [ngModel]="form().accountId"
+            (ngModelChange)="onAccountChange(+$event)"
+            name="expand-account"
+          >
+            @for (acc of accounts(); track acc.id) {
+              <option [value]="acc.id">{{ acc.name }} ({{ acc.currency }})</option>
+            }
+          </select>
+        </label>
+        <label>
+          Category
+          <select
+            [ngModel]="form().categoryId"
+            (ngModelChange)="onCategoryChange(+$event)"
+            name="expand-category"
+          >
+            @for (cat of categories(); track cat.id) {
+              <option [value]="cat.id">{{ cat.name }} ({{ cat.type }})</option>
+            }
+          </select>
+        </label>
+        <label>
+          Amount
+          <input
+            type="number"
+            [ngModel]="form().amount"
+            (ngModelChange)="onAmountChange(+$event || 0); onAmountOrRateChange()"
+            name="expand-amount"
+            aria-label="Amount"
+          />
+        </label>
+        <label>
+          Tags
+          <app-tag-input
+            [tags]="form().tags"
+            [suggestions]="allTags()"
+            (tagsChange)="onTagsChange($event)"
+          />
+        </label>
+        <label>
+          Note
+          <input
+            type="text"
+            [ngModel]="form().note"
+            (ngModelChange)="form.update((f) => ({ ...f, note: $event }))"
+            name="expand-note"
+            aria-label="Note"
+          />
+        </label>
+        <label>
+          Date
+          <input
+            type="date"
+            [ngModel]="form().date"
+            (ngModelChange)="onDateChange($event)"
+            name="expand-date"
+            aria-label="Date"
+          />
+        </label>
+        <label>
+          Period
+          <select
+            [ngModel]="form().period"
+            (ngModelChange)="form.update((f) => ({ ...f, period: $event }))"
+            name="expand-period"
+            aria-label="Period"
+          >
+            @for (month of months; track month) {
+              <option [value]="month">{{ month }}</option>
+            }
+          </select>
+        </label>
+        <label>
+          Year
+          <select
+            [ngModel]="form().year"
+            (ngModelChange)="form.update((f) => ({ ...f, year: +$event }))"
+            name="expand-year"
+            aria-label="Year"
+          >
+            @for (yr of years; track yr) {
+              <option [value]="yr">{{ yr }}</option>
+            }
+          </select>
+        </label>
+      </div>
+
+      @if (isForeignCurrency()) {
+        <div class="exchange-rate-section">
+          <h4>Exchange Rate</h4>
+          @if (rateState().loading) {
+            <p class="rate-status">Fetching rate...</p>
+          }
+          @if (rateState().error) {
+            <p class="rate-error">{{ rateState().error }}</p>
+          }
+          <div class="exchange-rate-grid">
+            <label>
+              Exchange Rate ({{ getAccountCurrency(form().accountId) }} &rarr; {{ baseCurrency() }})
+              <input
+                type="number"
+                step="0.0001"
+                [ngModel]="form().exchangeRate"
+                (ngModelChange)="
+                  form.update((f) => ({ ...f, exchangeRate: +$event })); onAmountOrRateChange()
+                "
+                name="expand-rate"
+                aria-label="Exchange rate"
+              />
+            </label>
+            <label>
+              {{ baseCurrency() }} Equivalent
+              <input
+                type="number"
+                [ngModel]="form().baseCurrencyAmount"
+                readonly
+                class="readonly"
+                name="expand-equiv"
+                aria-label="{{ baseCurrency() }} equivalent"
+              />
+            </label>
+          </div>
+          @if (rateState().rate !== null) {
+            <p class="rate-source">
+              Suggested rate: 1 {{ getAccountCurrency(form().accountId) }} = {{ rateState().rate }}
+              {{ baseCurrency() }} ({{ rateState().date }})
+            </p>
+          }
+        </div>
+      }
+      @if (errorMessage()) {
+        <p class="rate-error" role="alert">{{ errorMessage() }}</p>
+      }
+
+      <div class="form-actions">
+        <button type="button" class="material-btn" (click)="cancelExpand()">Cancel</button>
+        <button type="submit" class="record" [disabled]="saving()">Save</button>
+      </div>
     </form>
   }
 </div>

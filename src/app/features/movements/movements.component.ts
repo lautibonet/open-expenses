@@ -25,11 +25,9 @@ import {
   scopeOptionsFromMovements,
 } from '../../core/types/period.type';
 import { formatMoney } from '../../core/types/money';
-import { TagInputComponent } from '../../shared/components/tag-input/tag-input.component';
 import {
   QuickAddCardComponent,
-  QuickAddSaveData,
-  QuickAddSelection,
+  TransactionFormPayload,
 } from './quick-add-card/quick-add-card.component';
 
 interface ExchangeRateState {
@@ -49,19 +47,6 @@ interface PendingDelete {
   snapshot: Transaction | Transfer;
 }
 
-interface TransactionForm {
-  accountId: number;
-  categoryId: number;
-  amount: number;
-  date: string;
-  period: string;
-  year: number;
-  tags: string[];
-  exchangeRate: number | null;
-  baseCurrencyAmount: number | null;
-  note: string;
-}
-
 interface TransferForm {
   sourceAccountId: number;
   destAccountId: number;
@@ -76,7 +61,7 @@ interface TransferForm {
 
 @Component({
   selector: 'app-movements',
-  imports: [FormsModule, DatePipe, NgClass, TagInputComponent, QuickAddCardComponent],
+  imports: [FormsModule, DatePipe, NgClass, QuickAddCardComponent],
   templateUrl: './movements.component.html',
   styleUrl: './movements.component.scss',
 })
@@ -101,7 +86,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
   baseCurrency = signal('EUR');
   allTags = signal<string[]>([]);
 
-  showForm = signal<'none' | 'transaction' | 'transfer'>('none');
+  showForm = signal<'none' | 'transfer'>('none');
   editingId = signal<number | null>(null);
 
   confirmingDelete = signal<MovementItem | null>(null);
@@ -109,24 +94,18 @@ export class MovementsComponent implements OnInit, OnDestroy {
   undoWindowMs = 5000;
   private undoHandle: ReturnType<typeof setTimeout> | null = null;
 
-  exchangeRateState = signal<ExchangeRateState>({
-    loading: false, error: '', rate: null, date: '',
-  });
-
   transferExchangeRateState = signal<ExchangeRateState>({
-    loading: false, error: '', rate: null, date: '',
+    loading: false,
+    error: '',
+    rate: null,
+    date: '',
   });
 
-  txForm = signal<TransactionForm>({
-    accountId: 0, categoryId: 0, amount: 0,
-    date: new Date().toISOString().split('T')[0],
-    period: getCurrentPeriod(),
-    year: getCurrentYear(),
-    tags: [],
-    exchangeRate: null, baseCurrencyAmount: null, note: '',
-  });
   trForm = signal<TransferForm>({
-    sourceAccountId: 0, destAccountId: 0, sourceAmount: 0, destinationAmount: 0,
+    sourceAccountId: 0,
+    destAccountId: 0,
+    sourceAmount: 0,
+    destinationAmount: 0,
     exchangeRate: 1,
     date: new Date().toISOString().split('T')[0],
     period: getCurrentPeriod(),
@@ -135,10 +114,12 @@ export class MovementsComponent implements OnInit, OnDestroy {
   });
   errorMessage = signal('');
 
+  editTransaction = signal<Transaction | null>(null);
+
   filteredDestinationAccounts = computed(() => {
     const sourceId = this.trForm().sourceAccountId;
     if (!sourceId) return this.accounts();
-    return this.accounts().filter(a => a.id !== sourceId);
+    return this.accounts().filter((a) => a.id !== sourceId);
   });
 
   filterCategory = signal<number | null>(null);
@@ -157,7 +138,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
       return items;
     }
 
-    return items.filter(item => {
+    return items.filter((item) => {
       if (cat !== null) {
         if (item.type === 'transaction') {
           if ((item.data as Transaction).categoryId !== cat) return false;
@@ -201,8 +182,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
     if (this.accounts().length > 0) {
       const first = this.accounts()[0].id!;
       const second = this.accounts()[1]?.id;
-      this.txForm.update(f => ({ ...f, accountId: first, categoryId: this.categories()[0]?.id ?? 0 }));
-      this.trForm.update(f => ({ ...f, sourceAccountId: first, destAccountId: second ?? first }));
+      this.trForm.update((f) => ({ ...f, sourceAccountId: first, destAccountId: second ?? first }));
     }
     await this.refresh();
     await this.applyScopeOptions();
@@ -213,11 +193,13 @@ export class MovementsComponent implements OnInit, OnDestroy {
     const transfers = await this.transferService.getByScope(this.scope());
 
     const items: MovementItem[] = [
-      ...txns.map(t => ({ type: 'transaction' as const, data: t })),
-      ...transfers.map(t => ({ type: 'transfer' as const, data: t })),
+      ...txns.map((t) => ({ type: 'transaction' as const, data: t })),
+      ...transfers.map((t) => ({ type: 'transfer' as const, data: t })),
     ].sort((a, b) => {
-      const dateA = a.type === 'transaction' ? (a.data as Transaction).date : (a.data as Transfer).date;
-      const dateB = b.type === 'transaction' ? (b.data as Transaction).date : (b.data as Transfer).date;
+      const dateA =
+        a.type === 'transaction' ? (a.data as Transaction).date : (a.data as Transfer).date;
+      const dateB =
+        b.type === 'transaction' ? (b.data as Transaction).date : (b.data as Transfer).date;
       return new Date(dateB).getTime() - new Date(dateA).getTime();
     });
 
@@ -228,8 +210,8 @@ export class MovementsComponent implements OnInit, OnDestroy {
     const txns = await this.transactionService.getAll();
     const transfers = await this.transferService.getAll();
     const all = [
-      ...txns.map(t => ({ period: t.period, year: t.year, date: t.date })),
-      ...transfers.map(t => ({ period: t.period, year: t.year, date: t.date })),
+      ...txns.map((t) => ({ period: t.period, year: t.year, date: t.date })),
+      ...transfers.map((t) => ({ period: t.period, year: t.year, date: t.date })),
     ];
     const options = scopeOptionsFromMovements(all);
     this.scopeYears.set(options.years);
@@ -242,9 +224,10 @@ export class MovementsComponent implements OnInit, OnDestroy {
       return;
     }
     const current = this.scope();
-    const period = current.kind === 'month' && current.year === value && current.period
-      ? current.period
-      : getCurrentPeriod();
+    const period =
+      current.kind === 'month' && current.year === value && current.period
+        ? current.period
+        : getCurrentPeriod();
     await this.setScope({ kind: 'month', period, year: value });
   }
 
@@ -274,57 +257,13 @@ export class MovementsComponent implements OnInit, OnDestroy {
     this.allTags.set(await this.transactionService.getAllTags());
   }
 
-  openTransactionForm(id?: number): void {
-    this.showForm.set('transaction');
-    this.editingId.set(id ?? null);
-    this.errorMessage.set('');
-    this.resetExchangeRate();
-    if (id) {
-      this.transactionService.getById(id).then(t => {
-        if (t) {
-          this.txForm.set({
-            accountId: t.accountId,
-            categoryId: t.categoryId,
-            amount: t.amount,
-            date: new Date(t.date).toISOString().split('T')[0],
-            period: t.period,
-            year: getPeriodYear(t),
-            tags: [...t.tags],
-            exchangeRate: t.exchangeRate,
-            baseCurrencyAmount: t.baseCurrencyAmount,
-            note: t.note ?? '',
-          });
-          if (t.exchangeRate) {
-            this.exchangeRateState.update(s => ({ ...s, rate: t.exchangeRate, date: 'stored' }));
-          }
-        }
-      });
-    } else {
-      this.txForm.set({
-        accountId: this.accounts()[0]?.id ?? 0,
-        categoryId: this.categories()[0]?.id ?? 0,
-        amount: 0,
-        date: new Date().toISOString().split('T')[0],
-        period: this.formPeriodYear().period,
-        year: this.formPeriodYear().year,
-        tags: [],
-        exchangeRate: null,
-        baseCurrencyAmount: null,
-        note: '',
-      });
-      if (this.accounts().length > 0) {
-        this.checkExchangeRate(this.accounts()[0].id!, this.txForm().date);
-      }
-    }
-  }
-
   openTransferForm(id?: number): void {
     this.showForm.set('transfer');
     this.editingId.set(id ?? null);
     this.errorMessage.set('');
     this.transferExchangeRateState.set({ loading: false, error: '', rate: null, date: '' });
     if (id) {
-      this.transferService.getById(id).then(t => {
+      this.transferService.getById(id).then((t) => {
         if (t) {
           this.trForm.set({
             sourceAccountId: t.sourceAccountId,
@@ -338,11 +277,13 @@ export class MovementsComponent implements OnInit, OnDestroy {
             note: t.note,
           });
           if (t.sourceAccountId !== t.destinationAccountId) {
-            const src = this.accounts().find(a => a.id === t.sourceAccountId);
-            const dst = this.accounts().find(a => a.id === t.destinationAccountId);
+            const src = this.accounts().find((a) => a.id === t.sourceAccountId);
+            const dst = this.accounts().find((a) => a.id === t.destinationAccountId);
             if (src && dst && src.currency !== dst.currency) {
-              this.transferExchangeRateState.update(s => ({
-                ...s, rate: t.exchangeRate, date: 'stored',
+              this.transferExchangeRateState.update((s) => ({
+                ...s,
+                rate: t.exchangeRate,
+                date: 'stored',
               }));
             }
           }
@@ -372,8 +313,6 @@ export class MovementsComponent implements OnInit, OnDestroy {
     this.showForm.set('none');
     this.editingId.set(null);
     this.errorMessage.set('');
-    this.txForm.update(f => ({ ...f, tags: [] }));
-    this.resetExchangeRate();
     this.transferExchangeRateState.set({ loading: false, error: '', rate: null, date: '' });
   }
 
@@ -383,22 +322,8 @@ export class MovementsComponent implements OnInit, OnDestroy {
     this.filterTag.set(null);
   }
 
-  private resetExchangeRate(): void {
-    this.exchangeRateState.set({ loading: false, error: '', rate: null, date: '' });
-  }
-
-  onAccountChange(accountId: number): void {
-    this.txForm.update(f => ({ ...f, accountId }));
-    this.checkExchangeRate(accountId, this.txForm().date);
-  }
-
-  onTxDateChange(date: string): void {
-    this.txForm.update(f => ({ ...f, date }));
-    this.checkExchangeRate(this.txForm().accountId, date);
-  }
-
   onTransferSourceChange(sourceId: number): void {
-    this.trForm.update(f => {
+    this.trForm.update((f) => {
       const destAccountId = f.destAccountId === sourceId ? 0 : f.destAccountId;
       return { ...f, sourceAccountId: sourceId, destAccountId };
     });
@@ -406,7 +331,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
   }
 
   onTransferDateChange(date: string): void {
-    this.trForm.update(f => ({ ...f, date }));
+    this.trForm.update((f) => ({ ...f, date }));
     this.checkTransferExchangeRate();
   }
 
@@ -426,8 +351,8 @@ export class MovementsComponent implements OnInit, OnDestroy {
   private getTransferAccounts(): { src: Account | undefined; dst: Account | undefined } {
     const f = this.trForm();
     return {
-      src: this.accounts().find(a => a.id === f.sourceAccountId),
-      dst: this.accounts().find(a => a.id === f.destAccountId),
+      src: this.accounts().find((a) => a.id === f.sourceAccountId),
+      dst: this.accounts().find((a) => a.id === f.destAccountId),
     };
   }
 
@@ -445,109 +370,36 @@ export class MovementsComponent implements OnInit, OnDestroy {
       return;
     }
 
-    this.transferExchangeRateState.update(s => ({ ...s, loading: true, error: '' }));
+    this.transferExchangeRateState.update((s) => ({ ...s, loading: true, error: '' }));
 
     try {
-      const result = await this.exchangeRateService.getRate(
-        src.currency, dst.currency, f.date,
-      );
-      this.transferExchangeRateState.update(s => ({ ...s, rate: result.rate, date: result.date }));
-      this.trForm.update(form => ({ ...f, exchangeRate: result.rate }));
+      const result = await this.exchangeRateService.getRate(src.currency, dst.currency, f.date);
+      this.transferExchangeRateState.update((s) => ({
+        ...s,
+        rate: result.rate,
+        date: result.date,
+      }));
+      this.trForm.update((form) => ({ ...f, exchangeRate: result.rate }));
       this.computeTransferDestinationAmount();
     } catch (e: unknown) {
-      const msg = e instanceof OfflineError
-        ? 'You are offline. Enter the exchange rate manually.'
-        : 'Could not fetch rate. Enter it manually below.';
-      this.transferExchangeRateState.update(s => ({ ...s, error: msg }));
+      const msg =
+        e instanceof OfflineError
+          ? 'You are offline. Enter the exchange rate manually.'
+          : 'Could not fetch rate. Enter it manually below.';
+      this.transferExchangeRateState.update((s) => ({ ...s, error: msg }));
     } finally {
-      this.transferExchangeRateState.update(s => ({ ...s, loading: false }));
+      this.transferExchangeRateState.update((s) => ({ ...s, loading: false }));
     }
   }
 
   private computeTransferDestinationAmount(): void {
     const f = this.trForm();
     const destAmount = Math.round(f.sourceAmount * f.exchangeRate * 100) / 100;
-    this.trForm.update(form => ({ ...form, destinationAmount: destAmount }));
-  }
-
-  private async checkExchangeRate(accountId: number, date?: string): Promise<void> {
-    const account = this.accounts().find(a => a.id === accountId);
-    if (!account || account.currency === this.baseCurrency()) {
-      this.txForm.update(f => ({ ...f, exchangeRate: null, baseCurrencyAmount: null }));
-      this.resetExchangeRate();
-      return;
-    }
-
-    this.exchangeRateState.update(s => ({ ...s, loading: true, error: '' }));
-
-    try {
-      const result = await this.exchangeRateService.getRate(
-        account.currency, this.baseCurrency(), date,
-      );
-      this.exchangeRateState.update(s => ({ ...s, rate: result.rate, date: result.date }));
-      this.txForm.update(f => ({ ...f, exchangeRate: result.rate }));
-      this.recomputeBaseCurrencyAmount();
-    } catch (e: unknown) {
-      const msg = e instanceof OfflineError
-        ? 'You are offline. Enter the exchange rate manually.'
-        : 'Could not fetch rate. Enter it manually below.';
-      this.exchangeRateState.update(s => ({
-        ...s, error: msg,
-      }));
-      this.txForm.update(f => ({ ...f, exchangeRate: null, baseCurrencyAmount: null }));
-    } finally {
-      this.exchangeRateState.update(s => ({ ...s, loading: false }));
-    }
-  }
-
-  onAmountOrRateChange(): void {
-    this.recomputeBaseCurrencyAmount();
-  }
-
-  private recomputeBaseCurrencyAmount(): void {
-    const f = this.txForm();
-    if (f.exchangeRate && f.amount > 0) {
-      this.txForm.update(form => ({
-        ...form,
-        baseCurrencyAmount: Math.round(form.amount * form.exchangeRate! * 100) / 100,
-      }));
-    } else {
-      this.txForm.update(form => ({ ...form, baseCurrencyAmount: null }));
-    }
+    this.trForm.update((form) => ({ ...form, destinationAmount: destAmount }));
   }
 
   getAccountCurrency(accountId: number): string {
-    return this.accounts().find(a => a.id === accountId)?.currency ?? '';
-  }
-
-  isForeignCurrency(): boolean {
-    const account = this.accounts().find(a => a.id === this.txForm().accountId);
-    return !!account && account.currency !== this.baseCurrency();
-  }
-
-  async saveTransaction(): Promise<void> {
-    try {
-      const f = this.txForm();
-      if (this.editingId()) {
-        await this.transactionService.update(this.editingId()!, {
-          accountId: f.accountId, categoryId: f.categoryId, amount: f.amount,
-          date: new Date(f.date), period: f.period, year: f.year, tags: f.tags,
-          exchangeRate: f.exchangeRate, baseCurrencyAmount: f.baseCurrencyAmount,
-          note: f.note,
-        });
-      } else {
-        await this.transactionService.create(
-          f.accountId, f.categoryId, f.amount, new Date(f.date),
-          f.period, f.tags, f.exchangeRate, f.baseCurrencyAmount, f.year, f.note,
-        );
-      }
-      this.cancelForm();
-      await this.refresh();
-      await this.applyScopeOptions();
-      await this.refreshTags();
-    } catch (e: unknown) {
-      this.errorMessage.set(e instanceof Error ? e.message : 'Failed to save');
-    }
+    return this.accounts().find((a) => a.id === accountId)?.currency ?? '';
   }
 
   async saveTransfer(): Promise<void> {
@@ -555,15 +407,26 @@ export class MovementsComponent implements OnInit, OnDestroy {
       const f = this.trForm();
       if (this.editingId()) {
         await this.transferService.update(this.editingId()!, {
-          sourceAccountId: f.sourceAccountId, destinationAccountId: f.destAccountId,
-          sourceAmount: f.sourceAmount, destinationAmount: f.destinationAmount,
+          sourceAccountId: f.sourceAccountId,
+          destinationAccountId: f.destAccountId,
+          sourceAmount: f.sourceAmount,
+          destinationAmount: f.destinationAmount,
           exchangeRate: f.exchangeRate,
-          date: new Date(f.date), period: f.period, year: f.year, note: f.note,
+          date: new Date(f.date),
+          period: f.period,
+          year: f.year,
+          note: f.note,
         });
       } else {
         await this.transferService.create(
-          f.sourceAccountId, f.destAccountId, f.sourceAmount,
-          new Date(f.date), f.period, f.note, f.exchangeRate, f.year,
+          f.sourceAccountId,
+          f.destAccountId,
+          f.sourceAmount,
+          new Date(f.date),
+          f.period,
+          f.note,
+          f.exchangeRate,
+          f.year,
         );
       }
       this.cancelForm();
@@ -574,34 +437,47 @@ export class MovementsComponent implements OnInit, OnDestroy {
     }
   }
 
-  async onQuickAddSaved(data: QuickAddSaveData): Promise<void> {
+  async onSaveTransaction(payload: TransactionFormPayload): Promise<void> {
     try {
-      await this.transactionService.create(
-        data.accountId, data.categoryId, data.amount, new Date(data.date),
-        data.period, [], data.exchangeRate, data.baseCurrencyAmount, data.year, '',
-      );
+      if (payload.id != null) {
+        await this.transactionService.update(payload.id, {
+          accountId: payload.accountId,
+          categoryId: payload.categoryId,
+          amount: payload.amount,
+          date: new Date(payload.date),
+          period: payload.period,
+          year: payload.year,
+          tags: payload.tags,
+          exchangeRate: payload.exchangeRate,
+          baseCurrencyAmount: payload.baseCurrencyAmount,
+          note: payload.note,
+        });
+      } else {
+        await this.transactionService.create(
+          payload.accountId,
+          payload.categoryId,
+          payload.amount,
+          new Date(payload.date),
+          payload.period,
+          payload.tags,
+          payload.exchangeRate,
+          payload.baseCurrencyAmount,
+          payload.year,
+          payload.note,
+        );
+      }
+      this.editTransaction.set(null);
       await this.refresh();
       await this.applyScopeOptions();
       await this.refreshTags();
-      this.quickAddCard()?.resetForNext();
+      this.quickAddCard()?.markSaved(payload.id != null);
     } catch (e: unknown) {
-      this.errorMessage.set(e instanceof Error ? e.message : 'Failed to save');
-      this.quickAddCard()?.failSave();
+      this.quickAddCard()?.markFailed(e instanceof Error ? e.message : 'Failed to save');
     }
   }
 
-  onQuickAddExpand(selection: QuickAddSelection): void {
-    this.openTransactionForm();
-    this.txForm.update(f => ({
-      ...f,
-      accountId: selection.accountId,
-      categoryId: selection.categoryId,
-      amount: selection.amount,
-      date: selection.date,
-      period: selection.period,
-      year: selection.year,
-    }));
-    this.checkExchangeRate(selection.accountId, selection.date);
+  onCancelEdit(): void {
+    this.editTransaction.set(null);
   }
 
   deleteConfirmationLabel(item: MovementItem): string {
@@ -616,9 +492,10 @@ export class MovementsComponent implements OnInit, OnDestroy {
   }
 
   undoDeleteLabel(pending: PendingDelete): string {
-    const amount = pending.item.type === 'transaction'
-      ? this.formatTransactionDisplayAmount(pending.snapshot as Transaction)
-      : this.formatTransferDisplayAmount(pending.snapshot as Transfer);
+    const amount =
+      pending.item.type === 'transaction'
+        ? this.formatTransactionDisplayAmount(pending.snapshot as Transaction)
+        : this.formatTransferDisplayAmount(pending.snapshot as Transfer);
     return pending.item.type === 'transaction' ? `${amount} transaction` : `${amount} transfer`;
   }
 
@@ -686,11 +563,11 @@ export class MovementsComponent implements OnInit, OnDestroy {
   }
 
   getAccountName(id: number): string {
-    return this.accounts().find(a => a.id === id)?.name ?? 'Unknown';
+    return this.accounts().find((a) => a.id === id)?.name ?? 'Unknown';
   }
 
   getCategoryName(id: number): string {
-    return this.allCategoriesForNameResolution().find(c => c.id === id)?.name ?? 'Unknown';
+    return this.allCategoriesForNameResolution().find((c) => c.id === id)?.name ?? 'Unknown';
   }
 
   formatMoney(amount: number): string {
@@ -717,11 +594,13 @@ export class MovementsComponent implements OnInit, OnDestroy {
   }
 
   isIncomeTransaction(txn: Transaction): boolean {
-    return this.allCategoriesForNameResolution().find(c => c.id === txn.categoryId)?.type === 'Income';
+    return (
+      this.allCategoriesForNameResolution().find((c) => c.id === txn.categoryId)?.type === 'Income'
+    );
   }
 
   isForeignCurrencyTransaction(txn: Transaction): boolean {
-    const account = this.accounts().find(a => a.id === txn.accountId);
+    const account = this.accounts().find((a) => a.id === txn.accountId);
     return !!account && account.currency !== this.baseCurrency();
   }
 
