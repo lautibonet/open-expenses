@@ -41,9 +41,15 @@ import { PwaInstallService } from '../../../core/services/pwa-install.service';
         @keyframes banner-in {
           from {
             transform: translateY(-100%);
+            max-height: 0;
+            padding-block: 0;
+            overflow: hidden;
           }
           to {
             transform: translateY(0);
+            max-height: 8rem;
+            padding-block: 0.5rem;
+            overflow: hidden;
           }
         }
       }
