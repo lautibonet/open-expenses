@@ -23,7 +23,9 @@
   margin-bottom: 1rem;
 
   h2 {
-    font-size: 1.1rem;
+    font-size: var(--type-headline);
+    font-weight: 600;
+    line-height: var(--leading-headline);
     margin-bottom: 0.75rem;
   }
 }
@@ -38,13 +40,16 @@
   flex-direction: column;
 
   .label {
-    font-size: 0.8rem;
+    font-size: var(--type-label);
+    letter-spacing: var(--tracking-micro);
+    line-height: var(--leading-label);
     color: #6b7280;
   }
 
   .value {
     font-size: 1.25rem;
     font-weight: 600;
+    line-height: var(--leading-tight);
 
     &.income {
       color: #16a34a;
@@ -67,9 +72,11 @@ table {
   }
 
   th {
-    font-size: 0.8rem;
+    font-size: var(--type-label);
     color: #6b7280;
     font-weight: 500;
+    letter-spacing: var(--tracking-micro);
+    line-height: var(--leading-label);
   }
 }
 
