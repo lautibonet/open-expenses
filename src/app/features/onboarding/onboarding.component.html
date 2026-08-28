@@ -62,7 +62,7 @@
   @if (step() === 1) {
     <section class="step">
       <h2>1. Base Currency</h2>
-      <p>This is the currency your Dashboard totals will be reported in.</p>
+      <p>This is the currency your Stats totals will be reported in.</p>
       <select [ngModel]="baseCurrency()" (ngModelChange)="baseCurrency.set($event)" class="input">
         @for (currency of supportedCurrencies; track currency) {
           <option [value]="currency">{{ currency }}</option>
