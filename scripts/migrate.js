@@ -292,7 +292,6 @@ function buildBackup(accountsSpec, categoriesSpec, movements, options = {}) {
       date: parseDate(m.dateCell),
       period: EN_PERIOD_BY_ES[m.period] ?? m.period,
       year: SHEET_YEAR,
-      tags: [],
       // Same-currency (Base EUR) transactions carry no rate or converted amount,
       // matching the app's behaviour for base-currency entries.
       exchangeRate: null,

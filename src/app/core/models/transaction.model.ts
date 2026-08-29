@@ -6,7 +6,6 @@ export interface Transaction {
   date: Date;
   period: string;
   year: number;
-  tags: string[];
   exchangeRate: number | null;
   baseCurrencyAmount: number | null;
   note: string;

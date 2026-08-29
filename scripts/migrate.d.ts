@@ -32,7 +32,6 @@ export interface Transaction {
   date: string;
   period: string;
   year: number;
-  tags: string[];
   exchangeRate: number | null;
   baseCurrencyAmount: number | null;
   note: string;

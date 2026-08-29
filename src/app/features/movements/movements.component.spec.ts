@@ -11,74 +11,6 @@ import { Transaction } from '../../core/models/transaction.model';
 import { Transfer } from '../../core/models/transfer.model';
 import { defaultScope, getCurrentPeriod, getCurrentYear } from '../../core/types/period.type';
 
-describe('MovementsComponent - tags integration', () => {
-  let fixture: ComponentFixture<MovementsComponent>;
-  let component: MovementsComponent;
-  let transactionService: TransactionService;
-  let accountService: AccountService;
-  let categoryService: CategoryService;
-  let accountId: number;
-  let categoryId: number;
-
-  beforeEach(async () => {
-    await db.delete();
-    await db.open();
-    await TestBed.configureTestingModule({
-      imports: [MovementsComponent],
-    }).compileComponents();
-
-    fixture = TestBed.createComponent(MovementsComponent);
-    component = fixture.componentInstance;
-    transactionService = TestBed.inject(TransactionService);
-    accountService = TestBed.inject(AccountService);
-    categoryService = TestBed.inject(CategoryService);
-
-    const account = await accountService.create('Cash', 'EUR', 100000);
-    accountId = account.id!;
-    const category = await categoryService.create('Food', 'Expense');
-    categoryId = category.id!;
-  });
-
-  afterEach(async () => {
-    await db.delete();
-  });
-
-  it('should initialize with empty allTags', async () => {
-    await component.ngOnInit();
-    expect(component.allTags()).toEqual([]);
-  });
-
-  it('should load existing tags into allTags', async () => {
-    await transactionService.create(accountId, categoryId, 100, new Date(), 'January', [
-      'food',
-      'weekly',
-    ]);
-    await transactionService.create(accountId, categoryId, 200, new Date(), 'January', [
-      'groceries',
-    ]);
-    await component.ngOnInit();
-    expect(component.allTags()).toEqual(['food', 'groceries', 'weekly']);
-  });
-
-  it('should update allTags after saving a transaction via the card payload', async () => {
-    await component.ngOnInit();
-    await component.onSaveTransaction({
-      id: null,
-      accountId,
-      categoryId,
-      amount: 500,
-      date: '2026-01-15',
-      period: 'January',
-      year: getCurrentYear(),
-      tags: ['newtag'],
-      exchangeRate: null,
-      baseCurrencyAmount: null,
-      note: '',
-    });
-    expect(component.allTags()).toEqual(['newtag']);
-  });
-});
-
 describe('MovementsComponent - filtering', () => {
   let fixture: ComponentFixture<MovementsComponent>;
   let component: MovementsComponent;
@@ -121,13 +53,9 @@ describe('MovementsComponent - filtering', () => {
 
   async function seedMovements(): Promise<void> {
     const period = getCurrentPeriod();
-    await transactionService.create(accountId1, categoryId1, 500, new Date(), period, [
-      'groceries',
-    ]);
-    await transactionService.create(accountId2, categoryId2, 300, new Date(), period, ['commute']);
-    await transactionService.create(accountId1, categoryId2, 200, new Date(), period, [
-      'groceries',
-    ]);
+    await transactionService.create(accountId1, categoryId1, 500, new Date(), period);
+    await transactionService.create(accountId2, categoryId2, 300, new Date(), period);
+    await transactionService.create(accountId1, categoryId2, 200, new Date(), period);
     await transferService.create(accountId1, accountId2, 1000, new Date(), period, 'savings');
     await component.ngOnInit();
   }
@@ -163,43 +91,33 @@ describe('MovementsComponent - filtering', () => {
     }
   });
 
-  it('should filter by tag', async () => {
-    await seedMovements();
-    component.filterTag.set('groceries');
-    const filtered = component.filteredMovements();
-    expect(filtered.length).toBe(2);
-    for (const item of filtered) {
-      expect(item.type).toBe('transaction');
-      expect((item.data as any).tags).toContain('groceries');
-    }
-  });
-
   it('should compose filters with AND logic', async () => {
     await seedMovements();
     component.filterCategory.set(categoryId2);
-    component.filterTag.set('commute');
+    component.filterAccount.set(accountId1);
     expect(component.filteredMovements().length).toBe(1);
     const item = component.filteredMovements()[0];
     expect((item.data as any).categoryId).toBe(categoryId2);
-    expect((item.data as any).tags).toContain('commute');
+    expect((item.data as any).accountId).toBe(accountId1);
   });
 
   it('should return empty when no movements match all filters', async () => {
     await seedMovements();
     component.filterCategory.set(categoryId1);
-    component.filterTag.set('commute');
+    component.filterAccount.set(accountId2);
     expect(component.filteredMovements().length).toBe(0);
   });
 
   it('should clear all filters', async () => {
     await seedMovements();
     component.filterCategory.set(categoryId1);
-    component.filterTag.set('groceries');
-    expect(component.filteredMovements().length).toBe(1);
+    component.filterAccount.set(accountId2);
+    component.searchQuery.set('cash');
+    expect(component.activeFilterCount()).toBeGreaterThan(0);
     component.clearFilters();
     expect(component.filterCategory()).toBeNull();
     expect(component.filterAccount()).toBeNull();
-    expect(component.filterTag()).toBeNull();
+    expect(component.searchQuery()).toBe('');
     expect(component.filteredMovements().length).toBe(4);
   });
 
@@ -210,8 +128,6 @@ describe('MovementsComponent - filtering', () => {
     expect(component.activeFilterCount()).toBe(1);
     component.filterAccount.set(accountId2);
     expect(component.activeFilterCount()).toBe(2);
-    component.filterTag.set('groceries');
-    expect(component.activeFilterCount()).toBe(3);
   });
 });
 
@@ -652,7 +568,6 @@ describe('MovementsComponent - direction arrows and display amounts', () => {
       10,
       new Date('2026-08-20'),
       period,
-      [],
       1.08,
       10.8,
     );
@@ -682,7 +597,6 @@ describe('MovementsComponent - direction arrows and display amounts', () => {
       10,
       new Date('2026-08-20'),
       period,
-      [],
       null,
       null,
     );
@@ -812,7 +726,6 @@ describe('MovementsComponent - period year', () => {
       100,
       new Date(),
       period,
-      [],
       null,
       null,
       getCurrentYear() - 1,
@@ -838,7 +751,6 @@ describe('MovementsComponent - period year', () => {
       date: '2025-12-22',
       period: 'January',
       year: 2026,
-      tags: [],
       exchangeRate: null,
       baseCurrencyAmount: null,
       note: '',
@@ -931,7 +843,6 @@ describe('MovementsComponent - transaction note', () => {
       date: '2026-01-15',
       period: 'January',
       year: getCurrentYear(),
-      tags: [],
       note: 'Weekly groceries',
       exchangeRate: null,
       baseCurrencyAmount: null,
@@ -959,7 +870,6 @@ describe('MovementsComponent - transaction note', () => {
       date: '2026-01-15',
       period: 'January',
       year: getCurrentYear(),
-      tags: [],
       note: 'Updated note',
       exchangeRate: null,
       baseCurrencyAmount: null,
@@ -977,7 +887,6 @@ describe('MovementsComponent - transaction note', () => {
       500,
       new Date(),
       period,
-      [],
       null,
       null,
       getCurrentYear(),
@@ -1038,7 +947,6 @@ describe('MovementsComponent - shared scope', () => {
       100,
       new Date('2012-01-15'),
       'January',
-      [],
       null,
       null,
       2012,
@@ -1049,7 +957,6 @@ describe('MovementsComponent - shared scope', () => {
       200,
       new Date('2016-01-15'),
       'January',
-      [],
       null,
       null,
       2016,
@@ -1069,7 +976,6 @@ describe('MovementsComponent - shared scope', () => {
       100,
       new Date('2026-03-15'),
       'March',
-      [],
       null,
       null,
       2026,
@@ -1080,7 +986,6 @@ describe('MovementsComponent - shared scope', () => {
       200,
       new Date('2026-07-15'),
       'July',
-      [],
       null,
       null,
       2026,
@@ -1098,7 +1003,6 @@ describe('MovementsComponent - shared scope', () => {
       100,
       new Date('2012-01-15'),
       'January',
-      [],
       null,
       null,
       2012,
@@ -1109,7 +1013,6 @@ describe('MovementsComponent - shared scope', () => {
       200,
       new Date('2016-05-15'),
       'May',
-      [],
       null,
       null,
       2016,
@@ -1130,7 +1033,6 @@ describe('MovementsComponent - shared scope', () => {
       100,
       new Date(`${oldYear}-01-15`),
       'January',
-      [],
       null,
       null,
       oldYear,
@@ -1150,7 +1052,6 @@ describe('MovementsComponent - shared scope', () => {
       100,
       new Date(),
       period,
-      [],
       null,
       null,
       getCurrentYear() - 1,
@@ -1171,7 +1072,6 @@ describe('MovementsComponent - shared scope', () => {
       100,
       new Date(`${year}-01-15`),
       'January',
-      [],
       null,
       null,
       year,
@@ -1182,7 +1082,6 @@ describe('MovementsComponent - shared scope', () => {
       200,
       new Date(`${year}-02-15`),
       'February',
-      [],
       null,
       null,
       year,
@@ -1342,7 +1241,6 @@ describe('MovementsComponent - contextual delete confirmation and undo', () => {
       500,
       new Date(),
       getCurrentPeriod(),
-      ['food'],
     );
     await component.ngOnInit();
     const item = component.movements().find((m) => (m.data as Transaction).id === txn.id)!;
@@ -1356,7 +1254,6 @@ describe('MovementsComponent - contextual delete confirmation and undo', () => {
     const restored = await transactionService.getById(txn.id!);
     expect(restored).toBeDefined();
     expect(restored!.amount).toBe(500);
-    expect(restored!.tags).toEqual(['food']);
     expect(component.undo()).toBeNull();
   });
 
@@ -1555,7 +1452,6 @@ describe('MovementsComponent - quick-add integration', () => {
       date: '2026-08-15',
       period: getCurrentPeriod(),
       year: getCurrentYear(),
-      tags: [],
       exchangeRate: null,
       baseCurrencyAmount: null,
       note: '',
@@ -1586,7 +1482,6 @@ describe('MovementsComponent - quick-add integration', () => {
       date: '2026-08-15',
       period: getCurrentPeriod(),
       year: getCurrentYear(),
-      tags: [],
       exchangeRate: null,
       baseCurrencyAmount: null,
       note: '',

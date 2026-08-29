@@ -23,7 +23,6 @@ import {
   MONTHS,
   MonthName,
 } from '../../../core/types/period.type';
-import { TagInputComponent } from '../../../shared/components/tag-input/tag-input.component';
 
 export interface TransactionFormPayload {
   id: number | null;
@@ -33,7 +32,6 @@ export interface TransactionFormPayload {
   date: string;
   period: string;
   year: number;
-  tags: string[];
   exchangeRate: number | null;
   baseCurrencyAmount: number | null;
   note: string;
@@ -60,7 +58,6 @@ interface TransactionFormState {
   date: string;
   period: MonthName;
   year: number;
-  tags: string[];
   note: string;
   exchangeRate: number | null;
   baseCurrencyAmount: number | null;
@@ -78,7 +75,6 @@ function defaultFormState(accountId = 0, categoryId = 0): TransactionFormState {
     date: today(),
     period: getCurrentPeriod(),
     year: getCurrentYear(),
-    tags: [],
     note: '',
     exchangeRate: null,
     baseCurrencyAmount: null,
@@ -87,7 +83,7 @@ function defaultFormState(accountId = 0, categoryId = 0): TransactionFormState {
 
 @Component({
   selector: 'app-quick-add-card',
-  imports: [FormsModule, TagInputComponent],
+  imports: [FormsModule],
   templateUrl: './quick-add-card.component.html',
   styleUrl: './quick-add-card.component.scss',
 })
@@ -100,7 +96,6 @@ export class QuickAddCardComponent implements OnInit, AfterViewInit {
   accounts = input<Account[]>([]);
   categories = input<Category[]>([]);
   baseCurrency = input('EUR');
-  allTags = input<string[]>([]);
   editTransaction = input<Transaction | null>(null);
 
   save = output<TransactionFormPayload>();
@@ -190,10 +185,6 @@ export class QuickAddCardComponent implements OnInit, AfterViewInit {
     this.checkRate(this.form().accountId, value);
   }
 
-  onTagsChange(tags: string[]): void {
-    this.form.update((f) => ({ ...f, tags }));
-  }
-
   onAmountOrRateChange(): void {
     this.recomputeBaseCurrencyAmount();
   }
@@ -276,7 +267,6 @@ export class QuickAddCardComponent implements OnInit, AfterViewInit {
       date: f.date,
       period: f.period,
       year: f.year,
-      tags: [],
       exchangeRate,
       baseCurrencyAmount,
       note: f.note ?? '',
@@ -330,7 +320,6 @@ export class QuickAddCardComponent implements OnInit, AfterViewInit {
       date: new Date(t.date).toISOString().split('T')[0],
       period: (t.period as MonthName) || getCurrentPeriod(),
       year: t.year || getCurrentYear(),
-      tags: [...(t.tags ?? [])],
       note: t.note ?? '',
       exchangeRate: t.exchangeRate,
       baseCurrencyAmount: t.baseCurrencyAmount,

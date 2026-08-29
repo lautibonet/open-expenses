@@ -125,7 +125,7 @@ describe('backup-snapshot', () => {
           {
             id: 1, accountId: 1, categoryId: 1, amount: 100,
             date: '2025-12-22T00:00:00.000Z', period: 'January',
-            tags: [], exchangeRate: null, baseCurrencyAmount: null, createdAt: '2026-01-01T00:00:00.000Z',
+            exchangeRate: null, baseCurrencyAmount: null, createdAt: '2026-01-01T00:00:00.000Z',
           },
         ],
         transfers: [
@@ -156,7 +156,7 @@ describe('backup-snapshot', () => {
           {
             id: 1, accountId: 1, categoryId: 1, amount: 100,
             date: '2025-12-22T00:00:00.000Z', period: 'January', year: 2026,
-            tags: [], exchangeRate: null, baseCurrencyAmount: null, createdAt: '2026-01-01T00:00:00.000Z',
+            exchangeRate: null, baseCurrencyAmount: null, createdAt: '2026-01-01T00:00:00.000Z',
           },
         ],
         transfers: [],
@@ -170,6 +170,30 @@ describe('backup-snapshot', () => {
       expect(transactions[0].year).toBe(2026);
     });
 
+    it('restores legacy backups whose transactions still carry a tags property', async () => {
+      const legacy = {
+        ...sampleSnapshot(),
+        transactions: [
+          {
+            id: 1, accountId: 1, categoryId: 1, amount: 100,
+            date: '2026-01-15T00:00:00.000Z', period: 'January', year: 2026,
+            tags: ['food'],
+            exchangeRate: null, baseCurrencyAmount: null, note: 'Legacy',
+            createdAt: '2026-01-01T00:00:00.000Z',
+          },
+        ],
+      };
+
+      await overwriteLocalDb(legacy);
+
+      const transactions = await db.transactions.toArray();
+      expect(transactions.length).toBe(1);
+      expect(transactions[0].amount).toBe(100);
+      expect(transactions[0].note).toBe('Legacy');
+      expect(transactions[0].year).toBe(2026);
+      expect('tags' in transactions[0]).toBe(false);
+    });
+
     it('round-trips a transaction note through backup and restore', async () => {
       const snapshot: BackupSnapshot = {
         accounts: [],
@@ -178,7 +202,7 @@ describe('backup-snapshot', () => {
           {
             id: 1, accountId: 1, categoryId: 1, amount: 100,
             date: '2026-01-15T00:00:00.000Z', period: 'January', year: 2026,
-            tags: [], exchangeRate: null, baseCurrencyAmount: null,
+            exchangeRate: null, baseCurrencyAmount: null,
             note: 'Dinner with friends', createdAt: '2026-01-01T00:00:00.000Z',
           },
         ],

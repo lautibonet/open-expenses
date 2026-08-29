@@ -85,38 +85,6 @@ table {
   }
 }
 
-.tag-list {
-  list-style: none;
-  padding: 0;
-
-  li {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 0;
-    border-bottom: 1px solid var(--silvered-paper);
-  }
-
-  .tag-name {
-    font-weight: 500;
-  }
-
-  .tag-count {
-    color: var(--muted-slate);
-    font-size: var(--type-caption);
-  }
-
-  .tag-delete-confirm {
-    color: var(--officers-red);
-    font-size: var(--type-body);
-  }
-
-  .delete-confirm {
-    color: var(--officers-red);
-    font-size: var(--type-body);
-  }
-}
-
 .empty {
   color: var(--muted-slate);
   font-style: italic;

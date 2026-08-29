@@ -165,40 +165,5 @@
     </table>
   </section>
 
-  <section class="card">
-    <h2>Tags</h2>
-    @if (tagCounts().length === 0) {
-      <p class="empty">No tags yet. Tags are added when you create transactions.</p>
-    } @else {
-      <ul class="tag-list">
-        @for (item of tagCounts(); track item.tag) {
-          <li>
-            @if (editingTag()?.old === item.tag) {
-              <input
-                type="text"
-                [ngModel]="editingTag()!.new"
-                (ngModelChange)="editingTag.set({ old: item.tag, new: $event })"
-                class="input"
-              />
-              <button class="btn small primary" (click)="saveTagRename()">Save</button>
-              <button class="btn small" (click)="cancelEditTag()">Cancel</button>
-            } @else if (tagToDelete() === item.tag) {
-              <span class="tag-delete-confirm">
-                Delete "{{ item.tag }}" from {{ item.count }} transaction(s)?
-              </span>
-              <button class="btn small danger" (click)="deleteTag()">Confirm</button>
-              <button class="btn small" (click)="cancelDeleteTag()">Cancel</button>
-            } @else {
-              <span class="tag-name">{{ item.tag }}</span>
-              <span class="tag-count">({{ item.count }})</span>
-              <button class="btn small" (click)="startEditTag(item.tag)">Rename</button>
-              <button class="btn small danger" (click)="confirmDeleteTag(item.tag)">Delete</button>
-            }
-          </li>
-        }
-      </ul>
-    }
-  </section>
-
   <app-backup-card />
 </div>

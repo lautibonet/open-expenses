@@ -37,12 +37,12 @@ describe('TransactionService', () => {
     expect(t.id).toBeDefined();
     expect(t.amount).toBe(1500);
     expect(t.period).toBe('January');
-    expect(t.tags).toEqual([]);
+    expect('tags' in t).toBe(false);
   });
 
   it('should create transaction with note', async () => {
     const t = await transactionService.create(
-      accountId, categoryId, 1500, new Date('2026-01-15'), 'January', [], null, null,
+      accountId, categoryId, 1500, new Date('2026-01-15'), 'January', null, null,
       getCurrentYear(), 'Dinner with friends',
     );
     expect(t.note).toBe('Dinner with friends');
@@ -61,30 +61,6 @@ describe('TransactionService', () => {
     );
     const updated = await transactionService.update(t.id!, { note: 'Updated note' });
     expect(updated.note).toBe('Updated note');
-  });
-
-  it('should create transaction with tags', async () => {
-    const t = await transactionService.create(
-      accountId, categoryId, 1500, new Date('2026-01-15'), 'January',
-      ['groceries', 'weekly'],
-    );
-    expect(t.tags).toEqual(['groceries', 'weekly']);
-  });
-
-  it('should normalize tags to lowercase and trimmed', async () => {
-    const t = await transactionService.create(
-      accountId, categoryId, 1500, new Date('2026-01-15'), 'January',
-      ['  Groceries  ', 'Weekly'],
-    );
-    expect(t.tags).toEqual(['groceries', 'weekly']);
-  });
-
-  it('should filter out empty tags', async () => {
-    const t = await transactionService.create(
-      accountId, categoryId, 1500, new Date('2026-01-15'), 'January',
-      ['groceries', '', '  ', 'weekly'],
-    );
-    expect(t.tags).toEqual(['groceries', 'weekly']);
   });
 
   it('should reject zero amount', async () => {
@@ -147,9 +123,9 @@ describe('TransactionService', () => {
   it('should restore a deleted transaction with its original id and fields', async () => {
     const t = await transactionService.create(
       accountId, categoryId, 1500, new Date('2026-01-15'), 'January',
-      ['food'], 1.08, 1620, getCurrentYear(), 'Dinner',
+      1.08, 1620, getCurrentYear(), 'Dinner',
     );
-    const snapshot = { ...t, tags: [...t.tags] };
+    const snapshot = { ...t };
     await transactionService.delete(t.id!);
     expect(await transactionService.getById(t.id!)).toBeUndefined();
 
@@ -163,7 +139,6 @@ describe('TransactionService', () => {
     expect(restored!.amount).toBe(t.amount);
     expect(restored!.period).toBe(t.period);
     expect(restored!.year).toBe(t.year);
-    expect(restored!.tags).toEqual(['food']);
     expect(restored!.exchangeRate).toBe(1.08);
     expect(restored!.baseCurrencyAmount).toBe(1620);
     expect(restored!.note).toBe('Dinner');
@@ -185,61 +160,9 @@ describe('TransactionService', () => {
     expect(jan.length).toBe(1);
   });
 
-  it('should collect all unique tags', async () => {
-    await transactionService.create(accountId, categoryId, 100, new Date(), 'January', ['food', 'weekly']);
-    await transactionService.create(accountId, categoryId, 200, new Date(), 'January', ['food', 'monthly']);
-    const tags = await transactionService.getAllTags();
-    expect(tags).toEqual(['food', 'monthly', 'weekly']);
-  });
-
-  it('should rename a tag across all transactions', async () => {
-    await transactionService.create(accountId, categoryId, 100, new Date(), 'January', ['food']);
-    await transactionService.create(accountId, categoryId, 200, new Date(), 'February', ['food', 'weekly']);
-    await transactionService.renameTag('food', 'groceries');
-    const tags = await transactionService.getAllTags();
-    expect(tags).toEqual(['groceries', 'weekly']);
-  });
-
-  it('should return tag counts across transactions', async () => {
-    await transactionService.create(accountId, categoryId, 100, new Date(), 'January', ['food', 'weekly']);
-    await transactionService.create(accountId, categoryId, 200, new Date(), 'February', ['food', 'monthly']);
-    await transactionService.create(accountId, categoryId, 300, new Date(), 'March', ['weekly']);
-    const counts = await transactionService.getTagCounts();
-    expect(counts).toEqual([
-      { tag: 'food', count: 2 },
-      { tag: 'monthly', count: 1 },
-      { tag: 'weekly', count: 2 },
-    ]);
-  });
-
-  it('should return empty array when no tags exist', async () => {
-    await transactionService.create(accountId, categoryId, 100, new Date(), 'January');
-    const counts = await transactionService.getTagCounts();
-    expect(counts).toEqual([]);
-  });
-
-  it('should delete a tag from all transactions', async () => {
-    await transactionService.create(accountId, categoryId, 100, new Date(), 'January', ['food', 'weekly']);
-    await transactionService.create(accountId, categoryId, 200, new Date(), 'February', ['food', 'monthly']);
-    await transactionService.deleteTag('food');
-    const tags = await transactionService.getAllTags();
-    expect(tags).toEqual(['monthly', 'weekly']);
-  });
-
-  it('should leave transactions with no other tags intact after tag deletion', async () => {
-    await transactionService.create(accountId, categoryId, 100, new Date(), 'January', ['food']);
-    await transactionService.deleteTag('food');
-    const all = await transactionService.getAll();
-    expect(all[0].tags).toEqual([]);
-  });
-
-  it('should throw when deleting empty tag name', async () => {
-    await expect(transactionService.deleteTag('')).rejects.toThrow('Tag name cannot be empty');
-  });
-
   it('should store exchange rate and base currency amount', async () => {
     const t = await transactionService.create(
-      accountId, categoryId, 1500, new Date(), 'January', [], 1.08, 1620,
+      accountId, categoryId, 1500, new Date(), 'January', 1.08, 1620,
     );
     expect(t.exchangeRate).toBe(1.08);
     expect(t.baseCurrencyAmount).toBe(1620);
@@ -252,16 +175,16 @@ describe('TransactionService', () => {
 
   it('should store an explicit period year different from the date year', async () => {
     const t = await transactionService.create(
-      accountId, categoryId, 100, new Date('2025-12-22'), 'January', [], null, null, 2026,
+      accountId, categoryId, 100, new Date('2025-12-22'), 'January', null, null, 2026,
     );
     expect(t.date.getFullYear()).toBe(2025);
     expect(t.year).toBe(2026);
   });
 
   it('should filter transactions by period and year', async () => {
-    await transactionService.create(accountId, categoryId, 100, new Date('2025-12-22'), 'January', [], null, null, 2026);
-    await transactionService.create(accountId, categoryId, 200, new Date('2024-12-22'), 'January', [], null, null, 2025);
-    await transactionService.create(accountId, categoryId, 300, new Date('2026-02-10'), 'February', [], null, null, 2026);
+    await transactionService.create(accountId, categoryId, 100, new Date('2025-12-22'), 'January', null, null, 2026);
+    await transactionService.create(accountId, categoryId, 200, new Date('2024-12-22'), 'January', null, null, 2025);
+    await transactionService.create(accountId, categoryId, 300, new Date('2026-02-10'), 'February', null, null, 2026);
 
     const jan26 = await transactionService.getByPeriod('January', 2026);
     expect(jan26.length).toBe(1);
@@ -272,8 +195,8 @@ describe('TransactionService', () => {
   });
 
   it('should get transactions for a month scope by period and year', async () => {
-    await transactionService.create(accountId, categoryId, 100, new Date('2025-12-22'), 'January', [], null, null, 2026);
-    await transactionService.create(accountId, categoryId, 200, new Date('2026-02-10'), 'February', [], null, null, 2026);
+    await transactionService.create(accountId, categoryId, 100, new Date('2025-12-22'), 'January', null, null, 2026);
+    await transactionService.create(accountId, categoryId, 200, new Date('2026-02-10'), 'February', null, null, 2026);
 
     const jan26 = await transactionService.getByScope({ kind: 'month', period: 'January', year: 2026 });
     expect(jan26.length).toBe(1);
@@ -281,8 +204,8 @@ describe('TransactionService', () => {
   });
 
   it('should get all transactions for the all-time scope', async () => {
-    await transactionService.create(accountId, categoryId, 100, new Date('2010-05-01'), 'May', [], null, null, 2010);
-    await transactionService.create(accountId, categoryId, 200, new Date('2026-06-01'), 'June', [], null, null, 2026);
+    await transactionService.create(accountId, categoryId, 100, new Date('2010-05-01'), 'May', null, null, 2010);
+    await transactionService.create(accountId, categoryId, 200, new Date('2026-06-01'), 'June', null, null, 2026);
 
     const all = await transactionService.getByScope({ kind: 'all-time' });
     expect(all.length).toBe(2);
@@ -296,7 +219,7 @@ describe('TransactionService', () => {
 
   it('should reject an invalid period year on create', async () => {
     await expect(
-      transactionService.create(accountId, categoryId, 100, new Date(), 'January', [], null, null, 22),
+      transactionService.create(accountId, categoryId, 100, new Date(), 'January', null, null, 22),
     ).rejects.toThrow('Year must be a valid 4-digit year');
   });
 

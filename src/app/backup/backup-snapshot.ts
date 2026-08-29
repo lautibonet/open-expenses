@@ -50,7 +50,7 @@ export async function overwriteLocalDb(snapshot: BackupSnapshot): Promise<void> 
     { table: db.categories as any, data: snapshot.categories },
     {
       table: db.transactions as any,
-      data: snapshot.transactions.map((t: any) => ({
+      data: snapshot.transactions.map(({ tags, ...t }: any) => ({
         ...t,
         year: getPeriodYear(t),
       })),

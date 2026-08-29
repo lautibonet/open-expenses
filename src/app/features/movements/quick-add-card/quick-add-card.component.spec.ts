@@ -79,7 +79,6 @@ describe('QuickAddCardComponent', () => {
       amount: 50,
       period: component.form().period,
       year: component.form().year,
-      tags: [],
       exchangeRate: null,
       baseCurrencyAmount: null,
     });
@@ -179,13 +178,12 @@ describe('QuickAddCardComponent', () => {
     expect(component.editingId()).toBeNull();
   });
 
-  it('emits a save with tags and note from the expanded new-transaction form', async () => {
+  it('emits a save with note from the expanded new-transaction form', async () => {
     await component.ngOnInit();
     component.expandForm();
     component.form.update((f) => ({
       ...f,
       amount: 25,
-      tags: ['food'],
       note: 'lunch',
     }));
 
@@ -195,7 +193,6 @@ describe('QuickAddCardComponent', () => {
 
     expect(saved.id).toBeNull();
     expect(saved.amount).toBe(25);
-    expect(saved.tags).toEqual(['food']);
     expect(saved.note).toBe('lunch');
   });
 
@@ -208,7 +205,6 @@ describe('QuickAddCardComponent', () => {
       date: new Date('2026-03-10'),
       period: 'March',
       year: 2026,
-      tags: ['travel'],
       note: 'flight',
       exchangeRate: 1.1,
       baseCurrencyAmount: 132,
@@ -221,7 +217,6 @@ describe('QuickAddCardComponent', () => {
     expect(component.editingId()).toBe(7);
     expect(component.form().accountId).toBe(2);
     expect(component.form().amount).toBe(120);
-    expect(component.form().tags).toEqual(['travel']);
     expect(component.form().note).toBe('flight');
   });
 
@@ -234,7 +229,6 @@ describe('QuickAddCardComponent', () => {
       date: new Date('2026-03-10'),
       period: 'March',
       year: 2026,
-      tags: [],
       note: '',
       exchangeRate: null,
       baseCurrencyAmount: null,
