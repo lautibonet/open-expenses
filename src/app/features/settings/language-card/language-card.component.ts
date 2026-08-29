@@ -7,6 +7,7 @@ import { isLanguage, LANGUAGES } from '../../../core/types/language.type';
   selector: 'app-language-card',
   imports: [FormsModule],
   templateUrl: './language-card.component.html',
+  styleUrl: './language-card.component.scss',
 })
 export class LanguageCardComponent {
   language = inject(LanguageService);
