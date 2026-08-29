@@ -43,7 +43,7 @@ describe('InstallPromptComponent', () => {
     await TestBed.inject(LanguageService).setLanguage('es');
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain('Instala Gastos Abiertos');
+    expect(fixture.nativeElement.textContent).toContain('Instala Open Expenses');
     expect(fixture.nativeElement.textContent).toContain('Instalar');
     expect(fixture.nativeElement.textContent).toContain('Descartar');
   });

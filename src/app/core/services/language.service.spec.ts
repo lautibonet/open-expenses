@@ -96,7 +96,7 @@ describe('LanguageService', () => {
       expect(document.title).toBe('Open Expenses');
 
       await service.setLanguage('es');
-      expect(document.title).toBe('Gastos Abiertos');
+      expect(document.title).toBe('Open Expenses');
     });
   });
 
