@@ -5,9 +5,15 @@ import { ProfileService } from '../../core/services/profile.service';
 import { AccountService } from '../../core/services/account.service';
 import { CategoryService } from '../../core/services/category.service';
 import { DriveBackupService } from '../../core/services/drive-backup.service';
+import { LanguageService } from '../../core/services/language.service';
 import { NoBackupFoundError } from '../../backup/drive-backup-provider';
 import { SUPPORTED_CURRENCIES } from '../../core/constants/currencies';
 import { CategoryType } from '../../core/models/category.model';
+import { isLanguage, LANGUAGES, detectBrowserLanguage } from '../../core/types/language.type';
+
+const STEPS = ['language', 'restore', 'currency', 'accounts', 'categories'] as const;
+
+type Step = (typeof STEPS)[number];
 
 interface EditableCategory {
   name: string;
@@ -25,10 +31,13 @@ export class OnboardingComponent {
   private accountService = inject(AccountService);
   private categoryService = inject(CategoryService);
   private driveBackupService = inject(DriveBackupService);
+  private languageService = inject(LanguageService);
   private router = inject(Router);
 
   supportedCurrencies = SUPPORTED_CURRENCIES;
-  step = signal(0);
+  languages = LANGUAGES;
+  step = signal<Step>('language');
+  language = signal(detectBrowserLanguage());
   isRestoring = signal(false);
   noBackupMessage = signal('');
   backupMethod = this.driveBackupService.method;
@@ -42,10 +51,24 @@ export class OnboardingComponent {
   );
   errorMessage = signal('');
 
+  goTo(step: Step): void {
+    this.step.set(step);
+  }
+
+  stepNumber(step: Step): number {
+    return STEPS.indexOf(step) + 1;
+  }
+
+  async onLanguageChange(value: string): Promise<void> {
+    if (!isLanguage(value)) return;
+    this.language.set(value);
+    await this.languageService.setLanguage(value);
+  }
+
   startFresh(): void {
     this.errorMessage.set('');
     this.noBackupMessage.set('');
-    this.step.set(1);
+    this.step.set('currency');
   }
 
   async restoreFromCloud(): Promise<void> {
@@ -147,7 +170,7 @@ export class OnboardingComponent {
 
     try {
       this.errorMessage.set('');
-      await this.profileService.completeOnboarding(this.baseCurrency());
+      await this.profileService.completeOnboarding(this.baseCurrency(), this.language());
       for (const acc of this.accounts()) {
         await this.accountService.create(acc.name, acc.currency, acc.balance);
       }

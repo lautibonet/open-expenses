@@ -2,9 +2,31 @@
   <h1>Welcome to Open Expenses</h1>
   <p class="subtitle">Set up your expense tracker in a few steps</p>
 
-  @if (step() === 0) {
+  @if (step() === 'language') {
     <section class="step">
-      <h2>Restore a previous backup?</h2>
+      <h2>{{ stepNumber('language') }}. Language</h2>
+      <p>Choose the language you want to use across the app.</p>
+
+      <select
+        [ngModel]="language()"
+        (ngModelChange)="onLanguageChange($event)"
+        class="input"
+        aria-label="Language"
+      >
+        @for (option of languages; track option.code) {
+          <option [value]="option.code">{{ option.label }}</option>
+        }
+      </select>
+
+      <div class="nav-buttons">
+        <button class="btn primary" (click)="goTo('restore')">Next</button>
+      </div>
+    </section>
+  }
+
+  @if (step() === 'restore') {
+    <section class="step">
+      <h2>{{ stepNumber('restore') }}. Restore a previous backup?</h2>
       <p>
         If you've used Open Expenses before, you can pick up where you left off by
         restoring an existing backup — from the cloud or from a file you saved.
@@ -59,9 +81,9 @@
     </section>
   }
 
-  @if (step() === 1) {
+  @if (step() === 'currency') {
     <section class="step">
-      <h2>1. Base Currency</h2>
+      <h2>{{ stepNumber('currency') }}. Base Currency</h2>
       <p>This is the currency your Stats totals will be reported in.</p>
       <select
         [ngModel]="baseCurrency()"
@@ -74,15 +96,15 @@
         }
       </select>
       <div class="nav-buttons">
-        <button class="btn" (click)="step.set(0)">Back</button>
-        <button class="btn primary" (click)="step.set(2)">Next</button>
+        <button class="btn" (click)="goTo('restore')">Back</button>
+        <button class="btn primary" (click)="goTo('accounts')">Next</button>
       </div>
     </section>
   }
 
-  @if (step() === 2) {
+  @if (step() === 'accounts') {
     <section class="step">
-      <h2>2. Accounts</h2>
+      <h2>{{ stepNumber('accounts') }}. Accounts</h2>
       <p>Add where your money is. You can always add more later in Settings.</p>
 
       <div class="account-form">
@@ -129,15 +151,15 @@
       }
 
       <div class="nav-buttons">
-        <button class="btn" (click)="step.set(1)">Back</button>
-        <button class="btn primary" (click)="step.set(3)">Next</button>
+        <button class="btn" (click)="goTo('currency')">Back</button>
+        <button class="btn primary" (click)="goTo('categories')">Next</button>
       </div>
     </section>
   }
 
-  @if (step() === 3) {
+  @if (step() === 'categories') {
     <section class="step">
-      <h2>3. Categories</h2>
+      <h2>{{ stepNumber('categories') }}. Categories</h2>
       <p>Edit, add, or remove categories to match your needs.</p>
 
       @if (errorMessage()) {
@@ -186,7 +208,7 @@
       <button class="btn" (click)="addCategory()">+ Add Category</button>
 
       <div class="nav-buttons">
-        <button class="btn" (click)="step.set(2)">Back</button>
+        <button class="btn" (click)="goTo('accounts')">Back</button>
         <button class="btn primary" [disabled]="!canProceedFromCategories()" (click)="completeOnboarding()">Start Tracking</button>
       </div>
     </section>
