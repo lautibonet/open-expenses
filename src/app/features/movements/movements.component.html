@@ -31,7 +31,10 @@
         }
       </select>
     }
-    <button class="btn" (click)="openTransferForm()">+ Transfer</button>
+    <button class="btn" (click)="openTransferForm()" title="Shortcut: T">+ Transfer</button>
+    <button class="btn small" (click)="toggleSort()">
+      {{ sortDir() === 'desc' ? 'Newest first' : 'Oldest first' }}
+    </button>
     <span class="visually-hidden" aria-live="polite">{{ scopeAnnouncement() }}</span>
     <span class="visually-hidden" aria-live="polite">{{ movementAnnouncement() }}</span>
   </div>
@@ -178,6 +181,15 @@
 
   <div class="filter-bar">
     <label>
+      Search
+      <input
+        type="search"
+        [ngModel]="searchQuery()"
+        (ngModelChange)="searchQuery.set($event)"
+        placeholder="Category, account, note, tag…"
+      />
+    </label>
+    <label>
       Category
       <select [ngModel]="filterCategory()" (ngModelChange)="filterCategory.set(+$event || null)">
         <option [value]="0">All categories</option>
@@ -231,9 +243,15 @@
             </tr>
           </thead>
           <tbody>
-            @for (item of filteredMovements(); track $index) {
-              @if (isTransaction(item)) {
-                @let txn = getTransactionData(item);
+            @for (row of movementView(); track trackKey(row)) {
+              @if (row.kind === 'group') {
+                <tr class="month-group-row">
+                  <td colspan="7">{{ row.label }}</td>
+                </tr>
+              } @else {
+                @let item = row.item;
+                @if (isTransaction(item)) {
+                  @let txn = getTransactionData(item);
                 <tr>
                   <td [ngClass]="['arrow', getDirectionArrowClass(item)]">
                     {{ getDirectionArrow(txn, 'transaction') }}
@@ -312,6 +330,7 @@
                     }
                   </td>
                 </tr>
+                }
               }
             }
           </tbody>
