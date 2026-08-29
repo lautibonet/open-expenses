@@ -120,6 +120,59 @@ describe('OnboardingComponent', () => {
     expect((await db.profile.get(1))!.language).toBe('es');
   });
 
+  it('prefills the categories in the browser language', async () => {
+    stubNavigator('es-ES');
+    await createComponent();
+
+    const names = component.categories().map(c => c.name);
+    expect(names).toContain('Comida');
+    expect(names).toContain('Transporte');
+    expect(names).not.toContain('Food');
+  });
+
+  it('re-applies the chosen Language to untouched default categories', async () => {
+    expect(component.categories().map(c => c.name)).toContain('Food');
+
+    await component.onLanguageChange('es');
+
+    const names = component.categories().map(c => c.name);
+    expect(names).toContain('Comida');
+    expect(names).not.toContain('Food');
+  });
+
+  it('keeps user-renamed categories when the language changes', async () => {
+    component.updateCategoryField(0, 'name', 'Groceries');
+
+    await component.onLanguageChange('es');
+
+    const names = component.categories().map(c => c.name);
+    expect(names).toContain('Groceries');
+    expect(names).toContain('Transporte');
+  });
+
+  it('seeds Spanish category names into the database when completing onboarding in Spanish', async () => {
+    vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    await component.onLanguageChange('es');
+
+    await component.completeOnboarding();
+
+    const cats = await db.categories.toArray();
+    expect(cats.length).toBe(9);
+    expect(cats.map(c => c.name)).toContain('Comida');
+    expect(cats.map(c => c.name)).not.toContain('Food');
+  });
+
+  it('seeds English category names into the database when completing onboarding in English', async () => {
+    vi.spyOn(router, 'navigate').mockResolvedValue(true);
+
+    await component.completeOnboarding();
+
+    const cats = await db.categories.toArray();
+    expect(cats.length).toBe(9);
+    expect(cats.map(c => c.name)).toContain('Food');
+    expect(cats.map(c => c.name)).not.toContain('Comida');
+  });
+
   it('restores from cloud: connects, restores, and goes to the dashboard', async () => {
     const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
 

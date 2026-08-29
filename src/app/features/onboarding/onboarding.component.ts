@@ -9,7 +9,7 @@ import { LanguageService } from '../../core/services/language.service';
 import { NoBackupFoundError } from '../../backup/drive-backup-provider';
 import { SUPPORTED_CURRENCIES } from '../../core/constants/currencies';
 import { CategoryType } from '../../core/models/category.model';
-import { isLanguage, LANGUAGES, detectBrowserLanguage } from '../../core/types/language.type';
+import { isLanguage, LANGUAGES, detectBrowserLanguage, Language } from '../../core/types/language.type';
 
 const STEPS = ['language', 'restore', 'currency', 'accounts', 'categories'] as const;
 
@@ -18,6 +18,7 @@ type Step = (typeof STEPS)[number];
 interface EditableCategory {
   name: string;
   type: CategoryType;
+  defaultKey?: string;
 }
 
 @Component({
@@ -47,7 +48,11 @@ export class OnboardingComponent {
   accountBalance = signal(0);
   accounts = signal<{ name: string; currency: string; balance: number }[]>([]);
   categories = signal<EditableCategory[]>(
-    CategoryService.DEFAULT_CATEGORIES.map(c => ({ name: c.name, type: c.type })),
+    CategoryService.defaultCategories(detectBrowserLanguage()).map(c => ({
+      name: c.name,
+      type: c.type,
+      defaultKey: c.key,
+    })),
   );
   errorMessage = signal('');
 
@@ -62,7 +67,18 @@ export class OnboardingComponent {
   async onLanguageChange(value: string): Promise<void> {
     if (!isLanguage(value)) return;
     this.language.set(value);
+    this.refreshDefaultCategoryNames(value);
     await this.languageService.setLanguage(value);
+  }
+
+  private refreshDefaultCategoryNames(language: Language): void {
+    this.categories.update(cats =>
+      cats.map(c =>
+        c.defaultKey
+          ? { ...c, name: CategoryService.defaultCategoryName(c.defaultKey, language) }
+          : c,
+      ),
+    );
   }
 
   startFresh(): void {
@@ -140,7 +156,12 @@ export class OnboardingComponent {
 
   updateCategoryField<K extends keyof EditableCategory>(index: number, field: K, value: EditableCategory[K]): void {
     this.categories.update(cats =>
-      cats.map((c, i) => (i === index ? { ...c, [field]: value } : c)),
+      cats.map((c, i) => {
+        if (i !== index) return c;
+        const next = { ...c, [field]: value };
+        if (field === 'name') delete next.defaultKey;
+        return next;
+      }),
     );
   }
 
