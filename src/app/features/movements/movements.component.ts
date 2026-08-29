@@ -21,7 +21,6 @@ import {
   getCurrentYear,
   getPeriodYear,
   isAllTime,
-  scopeLabel,
   scopeOptionsFromMovements,
 } from '../../core/types/period.type';
 import { LanguageService } from '../../core/services/language.service';
@@ -345,9 +344,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
 
   private async setScope(scope: PeriodScope): Promise<void> {
     this.scope.set(scope);
-    this.scopeAnnouncement.set(
-      scopeLabel(scope, (m) => this.language.monthName(m)),
-    );
+    this.scopeAnnouncement.set(this.language.scopeLabel(scope));
     await this.refresh();
     await this.applyScopeOptions();
   }
@@ -489,8 +486,8 @@ export class MovementsComponent implements OnInit, OnDestroy {
     } catch (e: unknown) {
       const msg =
         e instanceof OfflineError
-          ? 'You are offline. Enter the exchange rate manually.'
-          : 'Could not fetch rate. Enter it manually below.';
+          ? this.language.t('movements.error.offlineRate')
+          : this.language.t('movements.error.rateFetch');
       this.transferExchangeRateState.update((s) => ({ ...s, error: msg }));
     } finally {
       this.transferExchangeRateState.update((s) => ({ ...s, loading: false }));
@@ -540,7 +537,11 @@ export class MovementsComponent implements OnInit, OnDestroy {
       this.cancelForm();
       await this.refresh();
       await this.applyScopeOptions();
-      this.movementAnnouncement.set(wasEdit ? 'Transfer updated' : 'Transfer saved');
+      this.movementAnnouncement.set(
+        wasEdit
+          ? this.language.t('movements.announcement.transferUpdated')
+          : this.language.t('movements.announcement.transferSaved'),
+      );
     } catch (e: unknown) {
       this.setTransferError(e);
     } finally {
@@ -552,23 +553,21 @@ export class MovementsComponent implements OnInit, OnDestroy {
     const raw = e instanceof Error ? e.message : String(e);
     const known: Record<string, string> = {
       'Source and destination accounts must be different':
-        'Choose two different accounts for this transfer.',
-      'Amount must be positive': 'Enter an amount greater than zero.',
-      'Source amount must be positive': 'Enter an amount greater than zero.',
-      'Exchange rate must be positive': 'Enter an exchange rate greater than zero.',
-      'Source account not found': 'That account no longer exists. Pick another and try again.',
-      'Destination account not found':
-        'That account no longer exists. Pick another and try again.',
+        this.language.t('movements.error.differentAccounts'),
+      'Amount must be positive': this.language.t('movements.error.amountPositive'),
+      'Source amount must be positive': this.language.t('movements.error.amountPositive'),
+      'Exchange rate must be positive': this.language.t('movements.error.ratePositive'),
+      'Source account not found': this.language.t('movements.error.accountMissing'),
+      'Destination account not found': this.language.t('movements.error.accountMissing'),
     };
     this.errorMessage.set(
-      known[raw] ?? 'The transfer could not be saved. Check the form and try again.',
+      known[raw] ?? this.language.t('movements.error.saveFailed'),
     );
     this.errorDetail.set(raw);
   }
 
   async onSaveTransaction(payload: TransactionFormPayload): Promise<void> {
-    try {
-      if (payload.id != null) {
+    try {      if (payload.id != null) {
         await this.transactionService.update(payload.id, {
           accountId: payload.accountId,
           categoryId: payload.categoryId,
@@ -598,8 +597,18 @@ export class MovementsComponent implements OnInit, OnDestroy {
       await this.applyScopeOptions();
       this.quickAddCard()?.markSaved(payload.id != null);
     } catch (e: unknown) {
-      this.quickAddCard()?.markFailed(e instanceof Error ? e.message : 'Failed to save');
+      this.quickAddCard()?.markFailed(this.setTransactionError(e));
     }
+  }
+
+  private setTransactionError(e: unknown): string {
+    const raw = e instanceof Error ? e.message : String(e);
+    const known: Record<string, string> = {
+      'Amount must be positive': this.language.t('movements.error.amountPositive'),
+      'Account not found': this.language.t('movements.error.accountMissing'),
+      'Category not found': this.language.t('quickAdd.error.categoryMissing'),
+    };
+    return known[raw] ?? this.language.t('quickAdd.error.failedToSave');
   }
 
   onCancelEdit(): void {
@@ -610,11 +619,18 @@ export class MovementsComponent implements OnInit, OnDestroy {
     if (item.type === 'transaction') {
       const txn = item.data as Transaction;
       const amount = this.formatTransactionDisplayAmount(txn);
-      return `Delete ${amount} in ${this.getAccountName(txn.accountId)}?`;
+      return this.language.t('movements.deleteTransactionConfirm', {
+        amount,
+        account: this.getAccountName(txn.accountId),
+      });
     }
     const tr = item.data as Transfer;
     const amount = this.formatTransferDisplayAmount(tr);
-    return `Delete ${amount} transfer from ${this.getAccountName(tr.sourceAccountId)} to ${this.getAccountName(tr.destinationAccountId)}?`;
+    return this.language.t('movements.deleteTransferConfirm', {
+      amount,
+      source: this.getAccountName(tr.sourceAccountId),
+      destination: this.getAccountName(tr.destinationAccountId),
+    });
   }
 
   undoDeleteLabel(pending: PendingDelete): string {
@@ -622,7 +638,9 @@ export class MovementsComponent implements OnInit, OnDestroy {
       pending.item.type === 'transaction'
         ? this.formatTransactionDisplayAmount(pending.snapshot as Transaction)
         : this.formatTransferDisplayAmount(pending.snapshot as Transfer);
-    return pending.item.type === 'transaction' ? `${amount} transaction` : `${amount} transfer`;
+    return pending.item.type === 'transaction'
+      ? this.language.t('movements.deletedTransaction', { amount })
+      : this.language.t('movements.deletedTransfer', { amount });
   }
 
   requestDelete(item: MovementItem): void {
@@ -702,11 +720,14 @@ export class MovementsComponent implements OnInit, OnDestroy {
   }
 
   getAccountName(id: number): string {
-    return this.accounts().find((a) => a.id === id)?.name ?? 'Unknown';
+    return this.accounts().find((a) => a.id === id)?.name ?? this.language.t('movements.unknown');
   }
 
   getCategoryName(id: number): string {
-    return this.allCategoriesForNameResolution().find((c) => c.id === id)?.name ?? 'Unknown';
+    return (
+      this.allCategoriesForNameResolution().find((c) => c.id === id)?.name ??
+      this.language.t('movements.unknown')
+    );
   }
 
   formatMoney(amount: number): string {
@@ -714,7 +735,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
   }
 
   scopeLabelText(): string {
-    return scopeLabel(this.scope(), (m) => this.language.monthName(m));
+    return this.language.scopeLabel(this.scope());
   }
 
   periodLabel(period: number | string): string {

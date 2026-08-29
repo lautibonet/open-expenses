@@ -232,7 +232,11 @@ export class QuickAddCardComponent implements OnInit, AfterViewInit {
     this.editingId.set(null);
     this.resetFormForNew();
     this.resetRate();
-    this.announcement.set(wasEdit ? 'Transaction updated' : 'Transaction saved');
+    this.announcement.set(
+      this.language.t(
+        wasEdit ? 'quickAdd.announcement.updated' : 'quickAdd.announcement.saved',
+      ),
+    );
   }
 
   markFailed(message: string): void {
@@ -366,8 +370,8 @@ export class QuickAddCardComponent implements OnInit, AfterViewInit {
     } catch (e: unknown) {
       const msg =
         e instanceof OfflineError
-          ? 'You are offline. Enter the exchange rate manually.'
-          : 'Could not fetch the rate. Enter it manually.';
+          ? this.language.t('quickAdd.error.offlineRate')
+          : this.language.t('quickAdd.error.rateFetch');
       this.rateState.update((s) => ({ ...s, error: msg }));
       this.form.update((f) => ({ ...f, exchangeRate: null, baseCurrencyAmount: null }));
     } finally {

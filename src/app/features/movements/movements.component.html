@@ -12,28 +12,34 @@
     <select
       [ngModel]="scopeYearValue()"
       (ngModelChange)="onScopeYearChange($event)"
-      aria-label="Scope year"
+      [attr.aria-label]="language.t('scope.yearAria')"
     >
       @for (yr of scopeYears(); track yr) {
         <option [ngValue]="yr">{{ yr }}</option>
       }
 
-      <option [ngValue]="'all-time'">All time</option>
+      <option [ngValue]="'all-time'">{{ language.t('scope.allTime') }}</option>
     </select>
     @if (scope().kind !== 'all-time') {
       <select
         [ngModel]="scopePeriod()"
         (ngModelChange)="onScopeMonthChange($event)"
-        aria-label="Scope month"
+        [attr.aria-label]="language.t('scope.monthAria')"
       >
         @for (month of scopeMonths(); track month) {
           <option [ngValue]="month">{{ language.monthName(month) }}</option>
         }
       </select>
     }
-    <button class="btn" (click)="openTransferForm()" title="Shortcut: T">+ Transfer</button>
+    <button class="btn" (click)="openTransferForm()" [title]="language.t('movements.transferShortcut')">
+      {{ language.t('movements.addTransfer') }}
+    </button>
     <button class="btn small" (click)="toggleSort()">
-      {{ sortDir() === 'desc' ? 'Newest first' : 'Oldest first' }}
+      {{
+        sortDir() === 'desc'
+          ? language.t('movements.sortNewest')
+          : language.t('movements.sortOldest')
+      }}
     </button>
     <span class="visually-hidden" aria-live="polite">{{ scopeAnnouncement() }}</span>
     <span class="visually-hidden" aria-live="polite">{{ movementAnnouncement() }}</span>
@@ -41,15 +47,17 @@
 
   @if (showForm() === 'transfer') {
     <div class="form-card">
-      <h3 #transferHeading tabindex="-1">{{ editingId() ? 'Edit' : 'New' }} Transfer</h3>
+      <h3 #transferHeading tabindex="-1">
+        {{ editingId() ? language.t('movements.editTransferTitle') : language.t('movements.newTransferTitle') }}
+      </h3>
       @if (accounts().length < 2) {
         <p class="form-hint">
-          Transfers move money between two accounts. Add a second account in Settings first.
+          {{ language.t('movements.transferNeedsTwoAccounts') }}
         </p>
       }
       <div class="form-grid">
         <label>
-          From
+          {{ language.t('movements.from') }}
           <select
             [ngModel]="trForm().sourceAccountId"
             (ngModelChange)="onTransferSourceChange(+$event)"
@@ -60,7 +68,7 @@
           </select>
         </label>
         <label>
-          To
+          {{ language.t('movements.to') }}
           <select
             [ngModel]="trForm().destAccountId"
             (ngModelChange)="
@@ -73,7 +81,7 @@
           </select>
         </label>
         <label>
-          Amount ({{ getTransferSourceCurrency() }})
+          {{ language.t('movements.amountWithCurrency', { currency: getTransferSourceCurrency() }) }}
           <input
             type="number"
             min="0.01"
@@ -85,7 +93,7 @@
           />
         </label>
         <label>
-          Date
+          {{ language.t('movements.date') }}
           <input
             type="date"
             [ngModel]="trForm().date"
@@ -93,7 +101,7 @@
           />
         </label>
         <label>
-          Period
+          {{ language.t('movements.period') }}
           <select
             [ngModel]="trForm().period"
             (ngModelChange)="trForm.update((f) => ({ ...f, period: $event }))"
@@ -104,7 +112,7 @@
           </select>
         </label>
         <label>
-          Year
+          {{ language.t('movements.year') }}
           <select
             [ngModel]="trForm().year"
             (ngModelChange)="trForm.update((f) => ({ ...f, year: +$event }))"
@@ -115,7 +123,7 @@
           </select>
         </label>
         <label>
-          Note
+          {{ language.t('movements.note') }}
           <input
             type="text"
             [ngModel]="trForm().note"
@@ -126,17 +134,21 @@
 
       @if (isTransferForeignCurrency()) {
         <div class="exchange-rate-section">
-          <h4>Exchange Rate</h4>
+          <h4>{{ language.t('movements.exchangeRate') }}</h4>
           @if (transferExchangeRateState().loading) {
-            <p class="rate-status">Fetching rate...</p>
+            <p class="rate-status">{{ language.t('movements.fetchingRate') }}</p>
           }
           @if (transferExchangeRateState().error) {
             <p class="rate-error">{{ transferExchangeRateState().error }}</p>
           }
           <div class="exchange-rate-grid">
             <label>
-              Exchange Rate ({{ getTransferSourceCurrency() }} &rarr;
-              {{ getTransferDestCurrency() }})
+              {{
+                language.t('movements.exchangeRatePair', {
+                  from: getTransferSourceCurrency(),
+                  to: getTransferDestCurrency(),
+                })
+              }}
               <input
                 type="number"
                 step="0.0001"
@@ -148,7 +160,7 @@
               />
             </label>
             <label>
-              {{ getTransferDestCurrency() }} Amount
+              {{ language.t('movements.destAmount', { currency: getTransferDestCurrency() }) }}
               <input
                 type="number"
                 [ngModel]="trForm().destinationAmount"
@@ -158,10 +170,14 @@
           </div>
           @if (transferExchangeRateState().rate !== null) {
             <p class="rate-source">
-              Suggested rate: 1 {{ getTransferSourceCurrency() }} =
-              {{ transferExchangeRateState().rate }} {{ getTransferDestCurrency() }} ({{
-                transferExchangeRateState().date
-              }})
+              {{
+                language.t('movements.suggestedRate', {
+                  from: getTransferSourceCurrency(),
+                  rate: transferExchangeRateState().rate!,
+                  to: getTransferDestCurrency(),
+                  date: transferExchangeRateState().date,
+                })
+              }}
             </p>
           }
         </div>
@@ -171,9 +187,9 @@
         <p class="error" [title]="errorDetail()">{{ errorMessage() }}</p>
       }
       <div class="form-actions">
-        <button class="btn" (click)="cancelForm()">Cancel</button>
+        <button class="btn" (click)="cancelForm()">{{ language.t('movements.cancel') }}</button>
         <button class="btn primary" (click)="saveTransfer()" [disabled]="!canSubmitTransfer()">
-          Save
+          {{ language.t('movements.save') }}
         </button>
       </div>
     </div>
@@ -181,27 +197,27 @@
 
   <div class="filter-bar">
     <label>
-      Search
+      {{ language.t('movements.search') }}
       <input
         type="search"
         [ngModel]="searchQuery()"
         (ngModelChange)="searchQuery.set($event)"
-        placeholder="Category, account, note…"
+        [placeholder]="language.t('movements.searchPlaceholder')"
       />
     </label>
     <label>
-      Category
+      {{ language.t('movements.category') }}
       <select [ngModel]="filterCategory()" (ngModelChange)="filterCategory.set(+$event || null)">
-        <option [value]="0">All categories</option>
+        <option [value]="0">{{ language.t('movements.allCategories') }}</option>
         @for (cat of categories(); track cat.id) {
           <option [value]="cat.id">{{ cat.name }}</option>
         }
       </select>
     </label>
     <label>
-      Account
+      {{ language.t('movements.account') }}
       <select [ngModel]="filterAccount()" (ngModelChange)="filterAccount.set(+$event || null)">
-        <option [value]="0">All accounts</option>
+        <option [value]="0">{{ language.t('movements.allAccounts') }}</option>
         @for (acc of accounts(); track acc.id) {
           <option [value]="acc.id">{{ acc.name }}</option>
         }
@@ -209,9 +225,9 @@
     </label>
     @if (activeFilterCount() > 0) {
       <span class="filter-badge"
-        >{{ activeFilterCount() }}<span class="visually-hidden"> filters active</span></span
+        >{{ activeFilterCount() }}<span class="visually-hidden">{{ language.t('movements.filtersActive') }}</span></span
       >
-      <button class="btn small" (click)="clearFilters()">Clear filters</button>
+      <button class="btn small" (click)="clearFilters()">{{ language.t('movements.clearFilters') }}</button>
     }
   </div>
 
@@ -220,16 +236,16 @@
       <div class="table-scroll">
         <table>
           <caption class="visually-hidden">
-            Movements for {{ scopeLabelText() }}
+            {{ language.t('movements.tableCaption', { scope: scopeLabelText() }) }}
           </caption>
           <thead>
             <tr>
-              <th scope="col">Type</th>
-              <th scope="col">Date</th>
-              <th scope="col">Category / Transfer</th>
-              <th scope="col">Amount</th>
-              <th scope="col">Account</th>
-              <th scope="col">Actions</th>
+              <th scope="col">{{ language.t('movements.colType') }}</th>
+              <th scope="col">{{ language.t('movements.colDate') }}</th>
+              <th scope="col">{{ language.t('movements.colCategoryTransfer') }}</th>
+              <th scope="col">{{ language.t('movements.colAmount') }}</th>
+              <th scope="col">{{ language.t('movements.colAccount') }}</th>
+              <th scope="col">{{ language.t('movements.colActions') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -261,19 +277,27 @@
                   </td>
                   <td>{{ getAccountName(txn.accountId) }}</td>
                   <td>
-                    <button class="btn small" (click)="editTransaction.set(txn)">Edit</button>
+                    <button class="btn small" (click)="editTransaction.set(txn)">
+                      {{ language.t('movements.edit') }}
+                    </button>
                     @if (confirmingDelete() === item) {
                       <span
                         class="delete-confirm"
                         aria-live="polite"
-                        aria-label="Confirm transaction deletion"
+                        [attr.aria-label]="language.t('movements.confirmTransactionDeletionAria')"
                       >
                         {{ deleteConfirmationLabel(confirmingDelete()!) }}
                       </span>
-                      <button class="btn small danger" (click)="confirmDelete()">Delete</button>
-                      <button class="btn small" (click)="cancelDelete()">Cancel</button>
+                      <button class="btn small danger" (click)="confirmDelete()">
+                        {{ language.t('movements.delete') }}
+                      </button>
+                      <button class="btn small" (click)="cancelDelete()">
+                        {{ language.t('movements.cancel') }}
+                      </button>
                     } @else {
-                      <button class="btn small danger" (click)="requestDelete(item)">Delete</button>
+                      <button class="btn small danger" (click)="requestDelete(item)">
+                        {{ language.t('movements.delete') }}
+                      </button>
                     }
                   </td>
                 </tr>
@@ -297,19 +321,27 @@
                     }
                   </td>
                   <td>
-                    <button class="btn small" (click)="openTransferForm(tr.id!)">Edit</button>
+                    <button class="btn small" (click)="openTransferForm(tr.id!)">
+                      {{ language.t('movements.edit') }}
+                    </button>
                     @if (confirmingDelete() === item) {
                       <span
                         class="delete-confirm"
                         aria-live="polite"
-                        aria-label="Confirm transfer deletion"
+                        [attr.aria-label]="language.t('movements.confirmTransferDeletionAria')"
                       >
                         {{ deleteConfirmationLabel(confirmingDelete()!) }}
                       </span>
-                      <button class="btn small danger" (click)="confirmDelete()">Delete</button>
-                      <button class="btn small" (click)="cancelDelete()">Cancel</button>
+                      <button class="btn small danger" (click)="confirmDelete()">
+                        {{ language.t('movements.delete') }}
+                      </button>
+                      <button class="btn small" (click)="cancelDelete()">
+                        {{ language.t('movements.cancel') }}
+                      </button>
                     } @else {
-                      <button class="btn small danger" (click)="requestDelete(item)">Delete</button>
+                      <button class="btn small danger" (click)="requestDelete(item)">
+                        {{ language.t('movements.delete') }}
+                      </button>
                     }
                   </td>
                 </tr>
@@ -322,14 +354,14 @@
     } @else {
       @if (activeFilterCount() > 0) {
         <p class="empty">
-          No movements match your filters in {{ scopeLabelText() }}.
-          <button class="btn small" (click)="clearFilters()">Clear filters</button>
+          {{ language.t('movements.noMatchFilters', { scope: scopeLabelText() }) }}
+          <button class="btn small" (click)="clearFilters()">{{ language.t('movements.clearFilters') }}</button>
         </p>
       } @else {
         <p class="empty">
-          No movements for {{ scopeLabelText() }}.
+          {{ language.t('movements.noneForScope', { scope: scopeLabelText() }) }}
           @if (accounts().length > 0 && categories().length > 0) {
-            Use the quick-add card above to record one.
+            {{ language.t('movements.useQuickAdd') }}
           }
         </p>
       }
@@ -346,8 +378,8 @@
       (focusin)="pauseUndo()"
       (focusout)="resumeUndo()"
     >
-      <span class="undo-message"> Deleted {{ undoDeleteLabel(pending) }} </span>
-      <button class="btn small" (click)="undoDelete()">Undo</button>
+      <span class="undo-message"> {{ undoDeleteLabel(pending) }} </span>
+      <button class="btn small" (click)="undoDelete()">{{ language.t('movements.undo') }}</button>
     </div>
   }
 </div>

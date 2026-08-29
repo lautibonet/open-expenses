@@ -17,7 +17,6 @@ import {
   getPeriodYear,
   isAllTime,
   isMonthNumber,
-  scopeLabel,
   scopeOptionsFromMovements,
 } from '../../core/types/period.type';
 import { Transaction } from '../../core/models/transaction.model';
@@ -181,9 +180,7 @@ export class DashboardComponent implements OnInit {
 
   private async setScope(scope: PeriodScope): Promise<void> {
     this.scope.set(scope);
-    this.scopeAnnouncement.set(
-      scopeLabel(scope, (m) => this.language.monthName(m)),
-    );
+    this.scopeAnnouncement.set(this.language.scopeLabel(scope));
     await Promise.all([this.refresh(), this.refreshAverages()]);
     await this.applyScopeOptions();
   }
@@ -201,7 +198,7 @@ export class DashboardComponent implements OnInit {
   }
 
   scopeLabelText(): string {
-    return scopeLabel(this.scope(), (m) => this.language.monthName(m));
+    return this.language.scopeLabel(this.scope());
   }
 
   scopePeriod(): number | null {

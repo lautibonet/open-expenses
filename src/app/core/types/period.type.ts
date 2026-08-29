@@ -67,16 +67,6 @@ export function isAllTime(scope: PeriodScope): scope is AllTimeScope {
   return scope.kind === 'all-time';
 }
 
-export function scopeLabel(
-  scope: PeriodScope,
-  monthLabel: (m: MonthNumber) => string | number = (m) => m,
-): string {
-  if (scope.kind === 'all-time') {
-    return 'All time';
-  }
-  return `${monthLabel(scope.period)} ${scope.year}`;
-}
-
 export function yearsFromData(
   movements: ScopeAwareMovement[],
   options: { includeCurrentYear?: boolean } = {},
