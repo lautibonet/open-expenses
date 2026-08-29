@@ -42,6 +42,10 @@ interface MovementItem {
   data: Transaction | Transfer;
 }
 
+type MovementViewRow =
+  | { kind: 'group'; key: string; label: string }
+  | { kind: 'movement'; item: MovementItem };
+
 interface PendingDelete {
   item: MovementItem;
   snapshot: Transaction | Transfer;
@@ -64,6 +68,7 @@ interface TransferForm {
   imports: [FormsModule, DatePipe, NgClass, QuickAddCardComponent],
   templateUrl: './movements.component.html',
   styleUrl: './movements.component.scss',
+  host: { '(document:keydown)': 'onDocKeydown($event)' },
 })
 export class MovementsComponent implements OnInit, OnDestroy {
   private transactionService = inject(TransactionService);
@@ -137,8 +142,29 @@ export class MovementsComponent implements OnInit, OnDestroy {
   filterCategory = signal<number | null>(null);
   filterAccount = signal<number | null>(null);
   filterTag = signal<string | null>(null);
+  searchQuery = signal('');
+  sortDir = signal<'desc' | 'asc'>('desc');
 
   quickAddCard = viewChild(QuickAddCardComponent);
+
+  onDocKeydown(e: KeyboardEvent): void {
+    if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return;
+    const target = e.target as HTMLElement | null;
+    if (
+      target &&
+      (target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.tagName === 'SELECT' ||
+        target.isContentEditable)
+    ) {
+      return;
+    }
+    if (e.key === 't' || e.key === 'T') {
+      this.openTransferForm();
+    } else if (e.key === 'n' || e.key === 'N') {
+      this.quickAddCard()?.focusAmount();
+    }
+  }
   transferHeading = viewChild<ElementRef<HTMLHeadingElement>>('transferHeading');
 
   private focusTransferForm = effect(() => {
@@ -164,9 +190,10 @@ export class MovementsComponent implements OnInit, OnDestroy {
     const cat = this.filterCategory();
     const acc = this.filterAccount();
     const tag = this.filterTag();
+    const query = this.searchQuery().trim().toLowerCase();
     const items = this.movements();
 
-    if (cat === null && acc === null && tag === null) {
+    if (cat === null && acc === null && tag === null && !query) {
       return items;
     }
 
@@ -193,8 +220,30 @@ export class MovementsComponent implements OnInit, OnDestroy {
           return false;
         }
       }
+      if (query && !this.matchesSearch(item, query)) return false;
       return true;
     });
+  });
+
+  movementView = computed<MovementViewRow[]>(() => {
+    const items =
+      this.sortDir() === 'asc' ? [...this.filteredMovements()].reverse() : this.filteredMovements();
+
+    if (!isAllTime(this.scope())) {
+      return items.map((item) => ({ kind: 'movement' as const, item }));
+    }
+
+    const rows: MovementViewRow[] = [];
+    const seen = new Set<string>();
+    for (const item of items) {
+      const key = `${item.data.year}-${item.data.period}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        rows.push({ kind: 'group', key, label: `${item.data.period} ${item.data.year}` });
+      }
+      rows.push({ kind: 'movement', item });
+    }
+    return rows;
   });
 
   activeFilterCount = computed(() => {
@@ -202,8 +251,37 @@ export class MovementsComponent implements OnInit, OnDestroy {
     if (this.filterCategory() !== null) count++;
     if (this.filterAccount() !== null) count++;
     if (this.filterTag() !== null) count++;
+    if (this.searchQuery().trim()) count++;
     return count;
   });
+
+  toggleSort(): void {
+    this.sortDir.update((d) => (d === 'desc' ? 'asc' : 'desc'));
+  }
+
+  trackKey(row: MovementViewRow): string {
+    return row.kind === 'group' ? `group:${row.key}` : `${row.item.type}:${row.item.data.id}`;
+  }
+
+  private matchesSearch(item: MovementItem, query: string): boolean {
+    if (item.type === 'transaction') {
+      const txn = item.data as Transaction;
+      const haystack = [
+        this.getCategoryName(txn.categoryId),
+        this.getAccountName(txn.accountId),
+        txn.note,
+        ...txn.tags,
+      ];
+      return haystack.some((part) => part?.toLowerCase().includes(query));
+    }
+    const tr = item.data as Transfer;
+    const haystack = [
+      this.getAccountName(tr.sourceAccountId),
+      this.getAccountName(tr.destinationAccountId),
+      tr.note,
+    ];
+    return haystack.some((part) => part?.toLowerCase().includes(query));
+  }
 
   async ngOnInit(): Promise<void> {
     this.baseCurrency.set(await this.profileService.getBaseCurrency());
@@ -354,6 +432,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
     this.filterCategory.set(null);
     this.filterAccount.set(null);
     this.filterTag.set(null);
+    this.searchQuery.set('');
   }
 
   onTransferSourceChange(sourceId: number): void {

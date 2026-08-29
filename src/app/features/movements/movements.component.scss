@@ -122,11 +122,22 @@
   label {
     @extend %stacked-label;
 
-    select {
+    select,
+    input {
       @extend %field;
       margin-top: 0.25rem;
     }
   }
+}
+
+.month-group-row td {
+  padding-top: 1rem;
+  font-size: var(--type-label);
+  font-weight: 500;
+  color: var(--muted-slate);
+  letter-spacing: var(--tracking-micro);
+  line-height: var(--leading-label);
+  background: var(--paper-white);
 }
 
 .filter-badge {
