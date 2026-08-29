@@ -28,9 +28,9 @@ An open-source, privacy-first personal finance tool that requires zero server, z
 
 ## Capabilities and Constraints
 
-- **Three tabs**: Stats (read-only summary), Movements (unified chronological list + CRUD), Settings (accounts, categories, tags, base currency, backup).
+- **Three tabs**: Stats (read-only summary), Movements (unified chronological list + CRUD), Settings (accounts, categories, base currency, backup).
 - **Multi-currency**: accounts can hold different currencies; amounts converted via Frankfurter API (ECB rates) at transaction/transfer time, with user confirm or manual override.
-- **Data model**: Transactions and Transfers are structurally separate; Periods are month-name text fields plus year on movements; Tags are freeform text extracted from transactions, not a separate table.
+- **Data model**: Transactions and Transfers are structurally separate; Periods are month-name text fields plus year on movements.
 - **Money safety**: integer minor units or Dinero.js; amounts always positive; category type determines income/expense effect.
 - **Local persistence**: IndexedDB via Dexie.js with schema versioning.
 - **Backup**: full JSON snapshot, manual-only, to Google Drive (OAuth, drive.file scope only) or downloaded file.
@@ -46,7 +46,7 @@ An open-source, privacy-first personal finance tool that requires zero server, z
 ## Evidence on Hand
 
 - Fully functional Angular 21 app with working features across all three tabs.
-- Complete spec at `docs/spec.md` with 66 user stories and implementation decisions.
+- Complete spec at `docs/spec.md` with 59 user stories and implementation decisions.
 - Domain glossary at `CONTEXT.md`.
 - 7 architectural decision records in `docs/adr/`.
 - Component-scoped SCSS over a global token layer in `styles.scss` (colors, type, radii, spacing, elevation), with shared style patterns extracted into `src/app/shared/styles/_patterns.scss`; the design system is documented at `DESIGN.md`.

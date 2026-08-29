@@ -5,7 +5,7 @@
 
 ## Problem Statement
 
-The user currently tracks personal finances in a manually maintained spreadsheet. It has real limitations: internal transfers between the user's own accounts require two error-prone rows instead of one clean movement, one account (in USD) has to be manually converted to EUR on every entry, the period concept is manually tagged but nothing automates or validates it, and nothing enforces consistency (category names, account references). Reusable tagging for grouping transactions is not possible.
+The user currently tracks personal finances in a manually maintained spreadsheet. It has real limitations: internal transfers between the user's own accounts require two error-prone rows instead of one clean movement, one account (in USD) has to be manually converted to EUR on every entry, the period concept is manually assigned but nothing automates or validates it, and nothing enforces consistency (category names, account references).
 
 Separately, the user doesn't currently have a finished, polished project on their GitHub portfolio, and would rather ship one small, complete, genuinely-used app than a large multi-tier system left partially built.
 
@@ -13,7 +13,7 @@ Separately, the user doesn't currently have a finished, polished project on thei
 
 A single Angular application, deployed as a static site with no backend and no traditional account system. All data — accounts, categories, transactions, transfers, exchange rates — is stored locally in the browser via IndexedDB, giving instant, fully offline-capable reads and writes with zero network dependency for day-to-day use.
 
-The app has three tabs: **Dashboard** (read-only summary with period totals, per-category breakdown, yearly averages, and per-account balances), **Movements** (unified chronological list of transactions and transfers with filtering), and **Settings** (account/category/tag management, base currency, Backup card offering download/restore-from-file/restore-from-cloud), plus a persistent backup banner.
+The app has three tabs: **Dashboard** (read-only summary with period totals, per-category breakdown, yearly averages, and per-account balances), **Movements** (unified chronological list of transactions and transfers with filtering), and **Settings** (account/category management, base currency, Backup card offering download/restore-from-file/restore-from-cloud), plus a persistent backup banner.
 
 Backup is an optional, manual-only feature. The user authenticates with Google only to enable cloud backup of the full dataset, which is snapshotted as JSON and uploaded — always triggered by the user, never automatically — to a file the app itself owns in the user's Google Drive, using the most restrictive scope available (the app can only ever see files it created, never the user's broader Drive). This gives off-device backup and the ability to restore onto a new device or browser, without the user ever creating a password or the developer ever running or paying for a server.
 
@@ -47,78 +47,68 @@ Exchange rate lookups happen directly from the client against a free, key-less p
 16. As a user, I want to edit or deactivate a category, so I can keep my category list relevant over time.
 17. As a user, I want the app to ship with default categories that I can customize during onboarding, so I have a useful starting point.
 
-### Tag
-
-18. As a user, I want to apply freeform, reusable text labels (tags) to transactions for extra grouping, so I can filter and organize beyond categories.
-19. As a user, I want multiple tags per transaction, so a single transaction can belong to multiple groupings (e.g. "vacation" and "food").
-20. As a user, I want type-ahead auto-completion when entering tags, so I reuse existing tags consistently instead of creating duplicates.
-21. As a user, I want tags to coexist with categories — category is mandatory, tags are optional — so I have both structured classification and freeform labeling.
-22. As a user, I want to rename a tag inline when editing a transaction, so I can fix typos without a dedicated management screen.
-23. As a user, I want unused tags to naturally disappear (or be cleanable), so my tag list doesn't accumulate stale entries.
-
 ### Transaction (income/expense)
 
-24. As a user, I want to record a transaction with an account, a category, an amount, a date, a period (month name), and optional tags, so I can log income and expenses.
-25. As a user, I want the amount I enter to always be positive, with the category's type determining whether it's added or subtracted, so I never have to think about signs.
-26. As a user, I want to select a period from a dropdown of month names (January through December) when entering a transaction, so I can tag it to the correct reporting period.
-27. As a user, I want to edit an existing transaction's account, category, amount, date, period, or tags, so I can correct mistakes.
-28. As a user, I want to permanently delete a transaction, so I can remove entries made by mistake.
-29. As a user, I want to record a transaction with a future date (e.g. a subscription I know is coming), so I can plan ahead, not just log the past.
+18. As a user, I want to record a transaction with an account, a category, an amount, a date, and a period (month name), so I can log income and expenses.
+19. As a user, I want the amount I enter to always be positive, with the category's type determining whether it's added or subtracted, so I never have to think about signs.
+20. As a user, I want to select a period from a dropdown of month names (January through December) when entering a transaction, so I can assign it to the correct reporting period.
+21. As a user, I want to edit an existing transaction's account, category, amount, date, or period, so I can correct mistakes.
+22. As a user, I want to permanently delete a transaction, so I can remove entries made by mistake.
+23. As a user, I want to record a transaction with a future date (e.g. a subscription I know is coming), so I can plan ahead, not just log the past.
 
 ### Transfer
 
-30. As a user, I want to record a transfer between two of my own accounts (source and destination), with an amount, date, period, and optional note, so I can track moving money between my accounts.
-31. As a user, I want a transfer to never count as income or expense in any report, so moving my own money around never distorts my totals.
-32. As a user, I want to be blocked from creating a transfer where source and destination are the same account, so I can't create a meaningless movement.
-33. As a user, I want to edit all fields of a transfer (source, destination, amount, date, period, note), so I can correct mistakes.
-34. As a user, I want to permanently delete a transfer, so I can remove entries made by mistake.
+24. As a user, I want to record a transfer between two of my own accounts (source and destination), with an amount, date, period, and optional note, so I can track moving money between my accounts.
+25. As a user, I want a transfer to never count as income or expense in any report, so moving my own money around never distorts my totals.
+26. As a user, I want to be blocked from creating a transfer where source and destination are the same account, so I can't create a meaningless movement.
+27. As a user, I want to edit all fields of a transfer (source, destination, amount, date, period, note), so I can correct mistakes.
+28. As a user, I want to permanently delete a transfer, so I can remove entries made by mistake.
 
 ### Movements (unified view)
 
-35. As a user, I want a single Movements tab that shows both transactions and transfers in chronological order, so I see a plain timeline of all financial events.
-36. As a user, I want transfers to display as compact single rows (e.g. "Transfer: Account A → Account B, amount, date"), so the list stays scannable.
-37. As a user, I want two distinct add buttons ("+ Transaction" and "+ Transfer") on the Movements tab, so I go directly to the right form without a type-picking step.
-38. As a user, I want the Movements tab to default to the current period (month), so I see recent activity immediately.
-39. As a user, I want a period dropdown to switch between months, so I can browse any period's movements.
-40. As a user, I want to filter movements by category, account, and tags, so I can find specific entries quickly.
-41. As a user, I want movements sorted newest-first by default, so the most recent activity is always at the top.
+29. As a user, I want a single Movements tab that shows both transactions and transfers in chronological order, so I see a plain timeline of all financial events.
+30. As a user, I want transfers to display as compact single rows (e.g. "Transfer: Account A → Account B, amount, date"), so the list stays scannable.
+31. As a user, I want two distinct add buttons ("+ Transaction" and "+ Transfer") on the Movements tab, so I go directly to the right form without a type-picking step.
+32. As a user, I want the Movements tab to default to the current period (month), so I see recent activity immediately.
+33. As a user, I want a period dropdown to switch between months, so I can browse any period's movements.
+34. As a user, I want to filter movements by category and account, so I can find specific entries quickly.
+35. As a user, I want movements sorted newest-first by default, so the most recent activity is always at the top.
 
 ### Dashboard
 
-42. As a user, I want a dedicated Dashboard tab showing a read-only summary of my finances, so I can review my spending at a glance.
-43. As a user, I want the Dashboard to show period totals (income, expenses, net) for the selected period, so I know how the current month went.
-44. As a user, I want the Dashboard to show a per-category expense breakdown for the selected period, so I see where my money went.
-45. As a user, I want the Dashboard to show average monthly income, average monthly expenses, and average monthly savings computed over all periods of the current year (excluding empty periods), so I have a meaningful trend view.
-46. As a user, I want the Dashboard to show each account's current balance (initial balance plus all transactions and transfers), so I know where I stand.
-47. As a user, I want the Dashboard to show a historical period-end balance table (rows = accounts, columns = periods, cells = balance at end of each period), so I can track how balances evolve over time.
-48. As a user, I want a year selector (dropdown or arrows) at the top of the Dashboard, so I can view past years' data.
-49. As a user, I want the Dashboard to be a single scrollable screen with card layout, so all summary information is in one place.
+36. As a user, I want a dedicated Dashboard tab showing a read-only summary of my finances, so I can review my spending at a glance.
+37. As a user, I want the Dashboard to show period totals (income, expenses, net) for the selected period, so I know how the current month went.
+38. As a user, I want the Dashboard to show a per-category expense breakdown for the selected period, so I see where my money went.
+39. As a user, I want the Dashboard to show average monthly income, average monthly expenses, and average monthly savings computed over all periods of the current year (excluding empty periods), so I have a meaningful trend view.
+40. As a user, I want the Dashboard to show each account's current balance (initial balance plus all transactions and transfers), so I know where I stand.
+41. As a user, I want the Dashboard to show a historical period-end balance table (rows = accounts, columns = periods, cells = balance at end of each period), so I can track how balances evolve over time.
+42. As a user, I want a year selector (dropdown or arrows) at the top of the Dashboard, so I can view past years' data.
+43. As a user, I want the Dashboard to be a single scrollable screen with card layout, so all summary information is in one place.
 
 ### Multi-currency / Exchange Rate
 
-50. As a user, I want to set a base currency for reports, so I have one consistent currency to view my overall finances in, even though my accounts are in different currencies.
-51. As a user, when entering a transaction in a non-base-currency account, I want the app to suggest a current exchange rate, so I don't have to look it up manually.
-52. As a user, I want to confirm or override the suggested rate before it's applied, so I stay in control of the conversion.
-53. As a user, if the exchange rate API fails, I want to manually type a rate as a fallback, so I can still save the transaction offline.
-54. As a user, I want both the foreign amount and the base-currency equivalent stored per transaction, so I have an audit trail of the conversion.
+44. As a user, I want to set a base currency for reports, so I have one consistent currency to view my overall finances in, even though my accounts are in different currencies.
+45. As a user, when entering a transaction in a non-base-currency account, I want the app to suggest a current exchange rate, so I don't have to look it up manually.
+46. As a user, I want to confirm or override the suggested rate before it's applied, so I stay in control of the conversion.
+47. As a user, if the exchange rate API fails, I want to manually type a rate as a fallback, so I can still save the transaction offline.
+48. As a user, I want both the foreign amount and the base-currency equivalent stored per transaction, so I have an audit trail of the conversion.
 
 ### Settings
 
-55. As a user, I want a Settings tab where I can manage my accounts (create, edit, deactivate), so I can keep my account list current.
-56. As a user, I want a Settings tab where I can manage my categories (create, edit, deactivate), so I can keep my category list relevant.
-57. As a user, I want a Settings tab where I can view and rename my tags, so I can maintain tag quality without leaving the app.
-58. As a user, I want a Settings tab where I can change my base currency setting, so I can adjust my reporting currency if needed.
+49. As a user, I want a Settings tab where I can manage my accounts (create, edit, deactivate), so I can keep my account list current.
+50. As a user, I want a Settings tab where I can manage my categories (create, edit, deactivate), so I can keep my category list relevant.
+51. As a user, I want a Settings tab where I can change my base currency setting, so I can adjust my reporting currency if needed.
 
 ### Backup & restore
 
-59. As a user, I want a persistent backup banner that shows the backup method (Google Drive) and the last backup time, so I have a single, always-present trigger to back up when I choose.
-60. As a user, I want to tap the backup banner to back up my data to my own Google Drive on demand, so my data isn't only ever on one device — and only when I decide to.
-61. As a user, I want backup to be optional and manual-only, never triggered automatically, so backup never gets in the way of using the app fully locally.
-62. As a user, I want the app to only ever access files it created in my Drive, not my whole Drive, so I'm not granting more access than the feature actually needs.
-63. As a user, I want the Settings Backup card to offer download backup file, restore from file (upload), and restore from cloud, so I can move my data onto a new device or browser without starting from scratch.
-64. As a user, I want the banner to reflect an offline state, so I know when a backup can't reach the cloud and can try again later.
-65. As a user, I want the app to work fully locally without ever connecting Google, so backup stays optional, never a requirement to use the app.
-66. As a user, I want restoring my data — from cloud or from an uploaded file — to always overwrite the full local dataset and never itself trigger a new backup, so restore is a clean, predictable operation.
+52. As a user, I want a persistent backup banner that shows the backup method (Google Drive) and the last backup time, so I have a single, always-present trigger to back up when I choose.
+53. As a user, I want to tap the backup banner to back up my data to my own Google Drive on demand, so my data isn't only ever on one device — and only when I decide to.
+54. As a user, I want backup to be optional and manual-only, never triggered automatically, so backup never gets in the way of using the app fully locally.
+55. As a user, I want the app to only ever access files it created in my Drive, not my whole Drive, so I'm not granting more access than the feature actually needs.
+56. As a user, I want the Settings Backup card to offer download backup file, restore from file (upload), and restore from cloud, so I can move my data onto a new device or browser without starting from scratch.
+57. As a user, I want the banner to reflect an offline state, so I know when a backup can't reach the cloud and can try again later.
+58. As a user, I want the app to work fully locally without ever connecting Google, so backup stays optional, never a requirement to use the app.
+59. As a user, I want restoring my data — from cloud or from an uploaded file — to always overwrite the full local dataset and never itself trigger a new backup, so restore is a clean, predictable operation.
 
 ## Implementation Decisions
 
@@ -138,9 +128,6 @@ Exchange rate lookups happen directly from the client against a free, key-less p
 **Data model — Periods are a text field, not an entity**
 - Period is a month name (January through December) stored as a text field on both Transactions and Transfers, together with the year of the Period the movement belongs to. Not a separate entity with its own table. No automated period engine (see ADR-0003). Reporting uses the stored year, not the movement's date; new movements default to the current year and legacy movements fall back to their date's year (see ADR-0007).
 
-**Data model — Tags are extracted, not a separate table**
-- Tags are freeform text strings stored per-transaction. Existing tags are discovered by scanning all transactions for unique tag strings. No separate Tags table. Rename = find-and-replace across transactions.
-
 **Data model — No Transfer category**
 - The original spec's auto-created Transfer-type category is dropped entirely. Transfers are structurally separate from Transactions and never reference categories (see grilling decision).
 
@@ -158,7 +145,7 @@ Exchange rate lookups happen directly from the client against a free, key-less p
 - Unified chronological list of Transactions and Transfers, interleaved by date.
 - Two distinct add buttons: "+ Transaction" and "+ Transfer".
 - Default view: current period (month) and current year. Period and year dropdowns to switch.
-- Filters: category, account, tags. Sort: newest-first.
+- Filters: category and account. Sort: newest-first.
 - Transfers display as compact single rows.
 
 **Dashboard**
@@ -169,7 +156,6 @@ Exchange rate lookups happen directly from the client against a free, key-less p
 **Settings**
 - Account management (CRUD, deactivate).
 - Category management (CRUD, deactivate).
-- Tag management (view, rename inline — no dedicated screen).
 - Base currency setting.
 - Backup banner (persistent trigger with method + last-backup time) and Settings Backup card (download backup file / restore from file / restore from cloud).
 
@@ -205,7 +191,7 @@ Exchange rate lookups happen directly from the client against a free, key-less p
 ## Testing Decisions
 
 - A good test asserts on the resulting Dexie state after an operation, and on thrown or returned domain errors — not on internal call sequences between services.
-- **Unit tests**: for service-layer business rules — duplicate name rejection, self-transfer rejection, positive-amount validation, currency immutability, tag coexistence with categories. Run against a real in-memory IndexedDB implementation (e.g. fake-indexeddb) rather than a fully mocked data layer.
+- **Unit tests**: for service-layer business rules — duplicate name rejection, self-transfer rejection, positive-amount validation, currency immutability. Run against a real in-memory IndexedDB implementation (e.g. fake-indexeddb) rather than a fully mocked data layer.
 - **Integration/E2E tests**: full user flows in a real browser — onboarding wizard end-to-end (including the optional restore first step), creating a transaction and seeing it reflected in the Movements list, Dashboard period switching, manual backup via the banner and backup-to-restore round trip (mocked Drive API in CI), and the Settings Backup card's download/restore-from-file/restore-from-cloud actions.
 - Suggested module coverage: onboarding flow, AccountService, CategoryService, TransactionService, TransferService, ExchangeRateService (mocking the Frankfurter call), DriveBackupService (mocking Drive API and OAuth).
 
@@ -218,12 +204,11 @@ Exchange rate lookups happen directly from the client against a free, key-less p
 - Broad public distribution of the app — designed for the author's personal use and as a portfolio piece.
 - Automated data migration/import tooling from the original spreadsheet.
 - Recurring transactions, search across transactions, CSV/PDF export — potential post-MVP features.
-- Dedicated tag management screen — tags managed inline when editing transactions.
 - Account type field (bank, cash, credit card, etc.) — accounts have name, currency, and initial balance only.
 - Charts or visualizations on the Dashboard — table layout for period-end balances.
 
 ## Further Notes
 
-- This spec supersedes the earlier v2 spec (docs/original-spec/open-expense-tracker-original-spec.md). Domain rules about Transaction/Transfer separation carry over; the period model, tag system, navigation structure, and Dashboard scope are new decisions from the grilling session.
+- This spec supersedes the earlier v2 spec (docs/original-spec/open-expense-tracker-original-spec.md). Domain rules about Transaction/Transfer separation carry over; the period model, navigation structure, and Dashboard scope are new decisions from the grilling session.
 - The primary motivation: having a fully-developed, lightweight, actually-finished app for a currently-empty GitHub portfolio matters more than demonstrating a complete multi-tier stack.
 - Domain glossary is maintained in CONTEXT.md. Architectural decisions are recorded in docs/adr/ (0001 through 0006).

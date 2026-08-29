@@ -5,7 +5,7 @@ A personal expense tracking app that replaces a manually maintained spreadsheet.
 ## Language
 
 **Transaction**:
-A recorded movement of money classified as Income or Expense, linked to an account, a category, an amount, a date, a period (month name), and optional tags.
+A recorded movement of money classified as Income or Expense, linked to an account, a category, an amount, a date, and a period (month name).
 _Avoid_: Entry, record, line item
 
 **Transfer**:
@@ -19,10 +19,6 @@ _Avoid_: Wallet, bank account, source
 **Category**:
 A mandatory classification label applied to every Transaction, marked as either Income or Expense. Flat list, no hierarchy. Pre-populated with defaults during onboarding.
 _Avoid_: Type, group, classification
-
-**Tag**:
-A freeform, reusable text label applied optionally to Transactions for extra grouping. Multiple tags per transaction. Extracted from existing transactions (no separate table).
-_Avoid_: Label, keyword, marker
 
 **Period**:
 A month name (January through December) assigned to a Transaction or Transfer to group it for reporting, together with the year of the Period the movement belongs to. Not a separate entity — a month text field plus a `year` on the movement. Reporting (Stats year filter, period totals, yearly averages) uses the stored year, not the movement's date; dates are purely informational. New movements default to the current year; pre-existing movements without a stored year fall back to their date's year.
