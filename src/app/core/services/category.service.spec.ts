@@ -79,10 +79,21 @@ describe('CategoryService', () => {
     expect(updated!.active).toBe(true);
   });
 
-  it('should seed default categories', async () => {
+  it('should seed default categories in English by default', async () => {
     await service.seedDefaults();
     const all = await service.getAll();
     expect(all.length).toBe(9);
+    expect(all.map(c => c.name)).toContain('Food');
+    expect(all.map(c => c.name)).toContain('Payroll');
+  });
+
+  it('should seed default categories in Spanish', async () => {
+    await service.seedDefaults('es');
+    const all = await service.getAll();
+    expect(all.length).toBe(9);
+    expect(all.map(c => c.name)).toContain('Comida');
+    expect(all.map(c => c.name)).toContain('Transporte');
+    expect(all.map(c => c.name)).not.toContain('Food');
   });
 
   it('should not re-seed if categories exist', async () => {

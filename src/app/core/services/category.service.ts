@@ -1,22 +1,38 @@
 import { Injectable } from '@angular/core';
 import { db } from '../db/database';
 import { Category, CategoryType } from '../models/category.model';
+import { DEFAULT_LANGUAGE, Language } from '../types/language.type';
+import { translate } from '../translations/translations';
 
-const DEFAULT_CATEGORIES: { name: string; type: CategoryType }[] = [
-  { name: 'Food', type: 'Expense' },
-  { name: 'Transport', type: 'Expense' },
-  { name: 'Housing', type: 'Expense' },
-  { name: 'Subscriptions', type: 'Expense' },
-  { name: 'Leisure', type: 'Expense' },
-  { name: 'Misc', type: 'Expense' },
-  { name: 'Payroll', type: 'Income' },
-  { name: 'Second-hand Sale', type: 'Income' },
-  { name: 'Refund', type: 'Income' },
+const DEFAULT_CATEGORIES: { key: string; type: CategoryType }[] = [
+  { key: 'food', type: 'Expense' },
+  { key: 'transport', type: 'Expense' },
+  { key: 'housing', type: 'Expense' },
+  { key: 'subscriptions', type: 'Expense' },
+  { key: 'leisure', type: 'Expense' },
+  { key: 'misc', type: 'Expense' },
+  { key: 'payroll', type: 'Income' },
+  { key: 'secondHandSale', type: 'Income' },
+  { key: 'refund', type: 'Income' },
 ];
+
+function categoryName(key: string, language: Language): string {
+  return translate(language, `category.${key}`);
+}
 
 @Injectable({ providedIn: 'root' })
 export class CategoryService {
-  static readonly DEFAULT_CATEGORIES = DEFAULT_CATEGORIES;
+  static defaultCategories(language: Language): { key: string; name: string; type: CategoryType }[] {
+    return DEFAULT_CATEGORIES.map(c => ({
+      key: c.key,
+      name: categoryName(c.key, language),
+      type: c.type,
+    }));
+  }
+
+  static defaultCategoryName(key: string, language: Language): string {
+    return categoryName(key, language);
+  }
 
   async create(name: string, type: CategoryType): Promise<Category> {
     const trimmedName = name.trim();
@@ -85,11 +101,11 @@ export class CategoryService {
     return db.categories.get(id);
   }
 
-  async seedDefaults(): Promise<void> {
+  async seedDefaults(language: Language = DEFAULT_LANGUAGE): Promise<void> {
     const count = await db.categories.count();
     if (count > 0) return;
 
-    for (const cat of DEFAULT_CATEGORIES) {
+    for (const cat of CategoryService.defaultCategories(language)) {
       await this.create(cat.name, cat.type);
     }
   }

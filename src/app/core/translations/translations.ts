@@ -38,6 +38,15 @@ const en: Record<string, string> = {
   'settings.failedAddCategory': 'Failed to add category',
   'settings.failedUpdateCategoryName': 'Failed to update category name',
   'settings.failedUpdateCurrency': 'Failed to update currency',
+  'category.food': 'Food',
+  'category.transport': 'Transport',
+  'category.housing': 'Housing',
+  'category.subscriptions': 'Subscriptions',
+  'category.leisure': 'Leisure',
+  'category.misc': 'Misc',
+  'category.payroll': 'Payroll',
+  'category.secondHandSale': 'Second-hand Sale',
+  'category.refund': 'Refund',
 };
 
 const es: Record<string, string> = {
@@ -78,6 +87,15 @@ const es: Record<string, string> = {
   'settings.failedAddCategory': 'Error al añadir categoría',
   'settings.failedUpdateCategoryName': 'Error al actualizar el nombre de la categoría',
   'settings.failedUpdateCurrency': 'Error al actualizar la moneda',
+  'category.food': 'Comida',
+  'category.transport': 'Transporte',
+  'category.housing': 'Vivienda',
+  'category.subscriptions': 'Suscripciones',
+  'category.leisure': 'Ocio',
+  'category.misc': 'Varios',
+  'category.payroll': 'Nómina',
+  'category.secondHandSale': 'Venta de segunda mano',
+  'category.refund': 'Reembolso',
 };
 
 export const TRANSLATIONS: Record<Language, Record<string, string>> = { en, es };
