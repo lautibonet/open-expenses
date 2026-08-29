@@ -146,6 +146,9 @@ export class DashboardComponent implements OnInit {
   }
 
   async onScopeYearChange(value: number | 'all-time'): Promise<void> {
+    if (typeof value === 'string' && value !== 'all-time') {
+      value = Number(value);
+    }
     if (value === 'all-time') {
       await this.setScope({ kind: 'all-time' });
       return;

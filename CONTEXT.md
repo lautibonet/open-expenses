@@ -28,6 +28,10 @@ _Avoid_: Label, keyword, marker
 A month name (January through December) assigned to a Transaction or Transfer to group it for reporting, together with the year of the Period the movement belongs to. Not a separate entity — a month text field plus a `year` on the movement. Reporting (Stats year filter, period totals, yearly averages) uses the stored year, not the movement's date; dates are purely informational. New movements default to the current year; pre-existing movements without a stored year fall back to their date's year.
 _Avoid_: Cycle, fiscal period, date range
 
+**Scope**:
+The reporting window chosen on the Stats and Movements screens: either a single Period (a month together with its year) or All Time. Filtering by Scope always uses the stored Period year, never the movement's date. Under All Time the month dimension disappears and only the year selector remains.
+_Avoid_: Filter, range, timeframe, selection
+
 **Base Currency**:
 The single currency in which the Stats total balance and all period totals/averages are reported. Set during onboarding. Accounts may hold different currencies; amounts are converted using exchange rates recorded at transaction/transfer time.
 _Avoid_: Report currency, display currency
