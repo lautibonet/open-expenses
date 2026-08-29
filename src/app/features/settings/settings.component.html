@@ -170,8 +170,8 @@
         class="input small"
         [attr.aria-label]="language.t('settings.categoryTypeAria')"
       >
-        <option value="Expense">Expense</option>
-        <option value="Income">Income</option>
+        <option value="expense">{{ language.t('type.expense') }}</option>
+        <option value="income">{{ language.t('type.income') }}</option>
       </select>
       <button class="btn primary" (click)="addCategory()">
         {{ language.t('settings.add') }}
@@ -209,7 +209,7 @@
                 </span>
               }
             </td>
-            <td>{{ cat.type }}</td>
+            <td>{{ language.categoryTypeLabel(cat.type) }}</td>
             <td>
               {{ cat.active ? language.t('settings.active') : language.t('settings.inactive') }}
             </td>

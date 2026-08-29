@@ -11,10 +11,10 @@ import { OfflineError } from '../../core/models/offline-error';
 import { Transaction } from '../../core/models/transaction.model';
 import { Transfer } from '../../core/models/transfer.model';
 import { Account } from '../../core/models/account.model';
-import { Category } from '../../core/models/category.model';
+import { Category, isIncomeCategory } from '../../core/models/category.model';
 import {
-  MONTHS,
-  MonthName,
+  MONTH_NUMBERS,
+  MonthNumber,
   PeriodScope,
   defaultScope,
   getCurrentPeriod,
@@ -58,7 +58,7 @@ interface TransferForm {
   destinationAmount: number;
   exchangeRate: number;
   date: string;
-  period: string;
+  period: MonthNumber;
   year: number;
   note: string;
 }
@@ -77,14 +77,14 @@ export class MovementsComponent implements OnInit, OnDestroy {
   private categoryService = inject(CategoryService);
   private profileService = inject(ProfileService);
   private exchangeRateService = inject(ExchangeRateService);
-  private languageService = inject(LanguageService);
+  language = inject(LanguageService);
 
   scope = signal<PeriodScope>(defaultScope());
   scopeYears = signal<number[]>([]);
-  scopeMonths = signal<string[]>([]);
+  scopeMonths = signal<MonthNumber[]>([]);
   scopeAnnouncement = signal('');
   movementAnnouncement = signal('');
-  months = MONTHS;
+  months = MONTH_NUMBERS;
   years = Array.from({ length: 10 }, (_, i) => getCurrentYear() - i);
   accounts = signal<Account[]>([]);
   categories = signal<Category[]>([]);
@@ -230,7 +230,11 @@ export class MovementsComponent implements OnInit, OnDestroy {
       const key = `${item.data.year}-${item.data.period}`;
       if (!seen.has(key)) {
         seen.add(key);
-        rows.push({ kind: 'group', key, label: `${item.data.period} ${item.data.year}` });
+        rows.push({
+          kind: 'group',
+          key,
+          label: `${this.periodLabel(item.data.period)} ${item.data.year}`,
+        });
       }
       rows.push({ kind: 'movement', item });
     }
@@ -332,21 +336,23 @@ export class MovementsComponent implements OnInit, OnDestroy {
     await this.setScope({ kind: 'month', period, year: value });
   }
 
-  async onScopeMonthChange(period: string): Promise<void> {
+  async onScopeMonthChange(period: number): Promise<void> {
     const current = this.scope();
     if (current.kind === 'month') {
-      await this.setScope({ ...current, period: period as MonthName });
+      await this.setScope({ ...current, period: period as MonthNumber });
     }
   }
 
   private async setScope(scope: PeriodScope): Promise<void> {
     this.scope.set(scope);
-    this.scopeAnnouncement.set(scopeLabel(scope));
+    this.scopeAnnouncement.set(
+      scopeLabel(scope, (m) => this.language.monthName(m)),
+    );
     await this.refresh();
     await this.applyScopeOptions();
   }
 
-  private formPeriodYear(): { period: MonthName; year: number } {
+  private formPeriodYear(): { period: MonthNumber; year: number } {
     const s = this.scope();
     if (!isAllTime(s)) {
       return { period: s.period, year: s.year };
@@ -704,16 +710,20 @@ export class MovementsComponent implements OnInit, OnDestroy {
   }
 
   formatMoney(amount: number): string {
-    return this.languageService.formatMoney(amount, this.baseCurrency());
+    return this.language.formatMoney(amount, this.baseCurrency());
   }
 
   scopeLabelText(): string {
-    return scopeLabel(this.scope());
+    return scopeLabel(this.scope(), (m) => this.language.monthName(m));
   }
 
-  scopePeriod(): string {
+  periodLabel(period: number | string): string {
+    return this.language.periodLabel(period);
+  }
+
+  scopePeriod(): number | null {
     const s = this.scope();
-    return !isAllTime(s) ? s.period : '';
+    return !isAllTime(s) ? s.period : null;
   }
 
   scopeYearValue(): number | 'all-time' {
@@ -727,9 +737,8 @@ export class MovementsComponent implements OnInit, OnDestroy {
   }
 
   isIncomeTransaction(txn: Transaction): boolean {
-    return (
-      this.allCategoriesForNameResolution().find((c) => c.id === txn.categoryId)?.type === 'Income'
-    );
+    const type = this.allCategoriesForNameResolution().find((c) => c.id === txn.categoryId)?.type;
+    return isIncomeCategory(type);
   }
 
   isForeignCurrencyTransaction(txn: Transaction): boolean {
@@ -744,12 +753,12 @@ export class MovementsComponent implements OnInit, OnDestroy {
   formatTransactionDisplayAmount(txn: Transaction): string {
     if (this.isForeignCurrencyTransaction(txn) && txn.baseCurrencyAmount !== null) {
       const sourceCurrency = this.getTransactionSourceCurrency(txn);
-      const sourceFormatted = this.languageService.formatMoney(txn.amount, sourceCurrency);
-      const baseFormatted = this.languageService.formatMoney(txn.baseCurrencyAmount, this.baseCurrency());
+      const sourceFormatted = this.language.formatMoney(txn.amount, sourceCurrency);
+      const baseFormatted = this.language.formatMoney(txn.baseCurrencyAmount, this.baseCurrency());
       return `${sourceFormatted} → ${baseFormatted}`;
     }
     if (this.isForeignCurrencyTransaction(txn)) {
-      return this.languageService.formatMoney(txn.amount, this.getTransactionSourceCurrency(txn));
+      return this.language.formatMoney(txn.amount, this.getTransactionSourceCurrency(txn));
     }
     return this.formatMoney(txn.amount);
   }
@@ -759,8 +768,8 @@ export class MovementsComponent implements OnInit, OnDestroy {
     const destCurrency = this.getAccountCurrency(tr.destinationAccountId);
     const isCrossCurrency = sourceCurrency !== destCurrency;
     if (isCrossCurrency) {
-      const sourceFormatted = this.languageService.formatMoney(tr.sourceAmount, sourceCurrency);
-      const destFormatted = this.languageService.formatMoney(tr.destinationAmount, destCurrency);
+      const sourceFormatted = this.language.formatMoney(tr.sourceAmount, sourceCurrency);
+      const destFormatted = this.language.formatMoney(tr.destinationAmount, destCurrency);
       return `${sourceFormatted} → ${destFormatted}`;
     }
     return this.formatMoney(tr.sourceAmount);

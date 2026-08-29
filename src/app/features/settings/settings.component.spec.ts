@@ -28,7 +28,7 @@ describe('SettingsComponent - inline editing', () => {
 
     const account = await accountService.create('Cash', 'EUR', 100000);
     accountId = account.id!;
-    const category = await categoryService.create('Food', 'Expense');
+    const category = await categoryService.create('Food', 'expense');
     categoryId = category.id!;
     await component.ngOnInit();
   });
@@ -131,7 +131,7 @@ describe('SettingsComponent - inline editing', () => {
   });
 
   it('should validate category name is unique', async () => {
-    await categoryService.create('Transport', 'Expense');
+    await categoryService.create('Transport', 'expense');
     component.startEditCategoryName(categoryId, 'Food');
     component.editingCategoryName.set({ id: categoryId, value: 'Transport' });
     await component.saveCategoryName();
@@ -219,7 +219,7 @@ describe('SettingsComponent - no tag affordances', () => {
     categoryService = TestBed.inject(CategoryService);
 
     await accountService.create('Cash', 'EUR', 100000);
-    await categoryService.create('Food', 'Expense');
+    await categoryService.create('Food', 'expense');
     await component.ngOnInit();
     fixture.detectChanges();
   });

@@ -6,6 +6,7 @@ import { BackupProvider } from '../../backup/backup-provider';
 import { DriveBackupProvider } from '../../backup/drive-backup-provider';
 import {
   BackupSnapshot,
+  NewerBackupVersionError,
   createSnapshot,
   isBackupSnapshotShape,
   overwriteLocalDb,
@@ -52,9 +53,13 @@ export class DriveBackupService {
   }
 
   private setAndRethrow(fallbackKey: string, e: unknown): never {
-    const message = e instanceof Error ? e.message : this.languageService.t(fallbackKey);
+    const message = e instanceof NewerBackupVersionError
+      ? this.languageService.t('backup.error.newerVersion')
+      : e instanceof Error
+        ? e.message
+        : this.languageService.t(fallbackKey);
     this.error.set(message);
-    throw e;
+    throw e instanceof NewerBackupVersionError ? new Error(message) : e;
   }
 
   async connect(): Promise<void> {

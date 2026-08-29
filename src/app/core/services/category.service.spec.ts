@@ -17,62 +17,75 @@ describe('CategoryService', () => {
   });
 
   it('should create a category', async () => {
-    const category = await service.create('Food', 'Expense');
+    const category = await service.create('Food', 'expense');
     expect(category.id).toBeDefined();
     expect(category.name).toBe('Food');
-    expect(category.type).toBe('Expense');
+    expect(category.type).toBe('expense');
     expect(category.active).toBe(true);
   });
 
   it('should create income category', async () => {
-    const category = await service.create('Payroll', 'Income');
-    expect(category.type).toBe('Income');
+    const category = await service.create('Payroll', 'income');
+    expect(category.type).toBe('income');
   });
 
   it('should trim category name', async () => {
-    const category = await service.create('  Transport  ', 'Expense');
+    const category = await service.create('  Transport  ', 'expense');
     expect(category.name).toBe('Transport');
   });
 
   it('should reject empty name', async () => {
-    await expect(service.create('', 'Expense'))
+    await expect(service.create('', 'expense'))
       .rejects.toThrow('Category name is required');
   });
 
   it('should reject duplicate names', async () => {
-    await service.create('Food', 'Expense');
-    await expect(service.create('Food', 'Income'))
+    await service.create('Food', 'expense');
+    await expect(service.create('Food', 'income'))
       .rejects.toThrow('Category name must be unique');
   });
 
   it('should update category name', async () => {
-    const category = await service.create('Food', 'Expense');
+    const category = await service.create('Food', 'expense');
     const updated = await service.update(category.id!, { name: 'Groceries' });
     expect(updated.name).toBe('Groceries');
   });
 
   it('should update category type', async () => {
-    const category = await service.create('Misc', 'Expense');
-    const updated = await service.update(category.id!, { type: 'Income' });
-    expect(updated.type).toBe('Income');
+    const category = await service.create('Misc', 'expense');
+    const updated = await service.update(category.id!, { type: 'income' });
+    expect(updated.type).toBe('income');
+  });
+
+  it('should reject an unknown category type on create', async () => {
+    await expect(service.create('Food', 'checking' as never))
+      .rejects.toThrow('Category type must be income or expense');
+  });
+
+  it('should reject an unknown category type on update', async () => {
+    const category = await service.create('Food', 'expense');
+    await expect(service.update(category.id!, { type: 'Checking' as never }))
+      .rejects.toThrow('Category type must be income or expense');
+    const reloaded = await service.getById(category.id!);
+    expect(reloaded!.type).toBe('expense');
   });
 
   it('should reject duplicate name on update', async () => {
-    await service.create('Food', 'Expense');
-    const transport = await service.create('Transport', 'Expense');
+    await service.create('Food', 'expense');
+    const transport = await service.create('Transport', 'expense');
     await expect(service.update(transport.id!, { name: 'Food' }))
       .rejects.toThrow('Category name must be unique');
   });
 
   it('should deactivate a category', async () => {
-    const category = await service.create('Food', 'Expense');
+    const category = await service.create('Food', 'expense');
     await service.setActive(category.id!, false);
     const updated = await service.getById(category.id!);
     expect(updated!.active).toBe(false);
   });
 
   it('should reactivate a category', async () => {
-    const category = await service.create('Food', 'Expense');
+    const category = await service.create('Food', 'expense');
     await service.setActive(category.id!, false);
     await service.setActive(category.id!, true);
     const updated = await service.getById(category.id!);
@@ -97,15 +110,15 @@ describe('CategoryService', () => {
   });
 
   it('should not re-seed if categories exist', async () => {
-    await service.create('Custom', 'Expense');
+    await service.create('Custom', 'expense');
     await service.seedDefaults();
     const all = await service.getAll();
     expect(all.length).toBe(1);
   });
 
   it('should get active categories', async () => {
-    const food = await service.create('Food', 'Expense');
-    await service.create('Transport', 'Expense');
+    const food = await service.create('Food', 'expense');
+    await service.create('Transport', 'expense');
     await service.setActive(food.id!, false);
     const active = await service.getActive();
     expect(active.length).toBe(1);

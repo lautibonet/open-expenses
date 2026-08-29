@@ -1,9 +1,10 @@
 import Dexie, { type Table } from 'dexie';
 import { Account } from '../models/account.model';
-import { Category } from '../models/category.model';
+import { Category, categoryTypeFromLegacy } from '../models/category.model';
 import { Transaction } from '../models/transaction.model';
 import { Transfer } from '../models/transfer.model';
 import { Profile } from '../models/profile.model';
+import { getPeriodYear, monthNumberFromName } from '../types/period.type';
 
 interface LegacyTransfer {
   id?: number;
@@ -16,7 +17,24 @@ interface LegacyTransfer {
   createdAt: Date;
 }
 
-import { getPeriodYear } from '../types/period.type';
+/**
+ * Locale-neutral storage (ADR 0009): Period becomes an integer month 1-12 and
+ * category type becomes the lowercase code `income`/`expense`. Values that
+ * cannot be recognized are left untouched so nothing is destroyed by the
+ * migration; unrecognized periods simply stay invisible to Scope filters.
+ *
+ * Returns the month number for a stored period, or null when the value is
+ * already locale-neutral-unknown and must be left untouched.
+ */
+function toMonthNumber(period: unknown): number | null {
+  if (typeof period === 'number') {
+    return Number.isInteger(period) && period >= 1 && period <= 12 ? period : null;
+  }
+  if (typeof period === 'string') {
+    return monthNumberFromName(period);
+  }
+  return null;
+}
 
 export class AppDatabase extends Dexie {
   accounts!: Table<Account>;
@@ -82,6 +100,30 @@ export class AppDatabase extends Dexie {
       transactions: '++id, accountId, categoryId, date, period, year',
       transfers: '++id, sourceAccountId, destinationAccountId, date, period, year',
       profile: 'id',
+    });
+    this.version(5).stores({
+      accounts: '++id, name, currency, active',
+      categories: '++id, name, type, active',
+      transactions: '++id, accountId, categoryId, date, period, year',
+      transfers: '++id, sourceAccountId, destinationAccountId, date, period, year',
+      profile: 'id',
+    }).upgrade(async tx => {
+      const categories = await tx.table('categories').toArray();
+      for (const c of categories) {
+        const type = categoryTypeFromLegacy((c as Category).type);
+        if (type !== null && type !== c.type) {
+          await tx.table('categories').update(c.id!, { type });
+        }
+      }
+      for (const tableName of ['transactions', 'transfers'] as const) {
+        const movements = await tx.table(tableName).toArray();
+        for (const m of movements) {
+          const period = toMonthNumber(m.period);
+          if (period !== null && period !== m.period) {
+            await tx.table(tableName).update(m.id!, { period });
+          }
+        }
+      }
     });
   }
 }

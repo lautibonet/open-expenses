@@ -1,7 +1,14 @@
 import { Injectable } from '@angular/core';
 import { db } from '../db/database';
 import { Transfer } from '../models/transfer.model';
-import { PeriodScope, getCurrentYear, getPeriodYear, isValidYear } from '../types/period.type';
+import {
+  PERIOD_ERROR,
+  PeriodScope,
+  getCurrentYear,
+  getPeriodYear,
+  isValidPeriod,
+  isValidYear,
+} from '../types/period.type';
 
 @Injectable({ providedIn: 'root' })
 export class TransferService {
@@ -10,7 +17,7 @@ export class TransferService {
     destinationAccountId: number,
     amount: number,
     date: Date,
-    period: string,
+    period: number,
     note: string = '',
     exchangeRate: number = 1,
     year: number = getCurrentYear(),
@@ -21,8 +28,8 @@ export class TransferService {
     if (amount <= 0) {
       throw new Error('Amount must be positive');
     }
-    if (!period) {
-      throw new Error('Period is required');
+    if (!isValidPeriod(period)) {
+      throw new Error(PERIOD_ERROR);
     }
     if (exchangeRate <= 0) {
       throw new Error('Exchange rate must be positive');
@@ -96,6 +103,10 @@ export class TransferService {
       throw new Error('Year must be a valid 4-digit year');
     }
 
+    if (changes.period !== undefined && !isValidPeriod(changes.period)) {
+      throw new Error(PERIOD_ERROR);
+    }
+
     const newDestinationAccountId = changes.destinationAccountId ?? existing.destinationAccountId;
     const newSourceAccountId = changes.sourceAccountId ?? existing.sourceAccountId;
     const sourceAccount = await db.accounts.get(newSourceAccountId);
@@ -141,8 +152,8 @@ export class TransferService {
     return db.transfers.toArray();
   }
 
-  async getByPeriod(period: string, year?: number): Promise<Transfer[]> {
-    const transfers = await db.transfers.where('period').equals(period).toArray();
+  async getByPeriod(period: number, year?: number): Promise<Transfer[]> {
+    const transfers = await db.transfers.where('period').equals(period as any).toArray();
     if (year === undefined) {
       return transfers;
     }

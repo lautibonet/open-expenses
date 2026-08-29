@@ -11,7 +11,7 @@ function makeAccount(id: number, name: string, currency: string): Account {
   return { id, name, currency, initialBalance: 0, active: true, createdAt: new Date() };
 }
 
-function makeCategory(id: number, name: string, type: 'Income' | 'Expense'): Category {
+function makeCategory(id: number, name: string, type: 'income' | 'expense'): Category {
   return { id, name, type, active: true, createdAt: new Date() };
 }
 
@@ -22,8 +22,8 @@ describe('QuickAddCardComponent', () => {
 
   const eurAccount = makeAccount(1, 'Cash', 'EUR');
   const usdAccount = makeAccount(2, 'Dollars', 'USD');
-  const food = makeCategory(10, 'Food', 'Expense');
-  const payroll = makeCategory(11, 'Payroll', 'Income');
+  const food = makeCategory(10, 'Food', 'expense');
+  const payroll = makeCategory(11, 'Payroll', 'income');
 
   beforeEach(async () => {
     localStorage.clear();
@@ -203,7 +203,7 @@ describe('QuickAddCardComponent', () => {
       categoryId: 11,
       amount: 120,
       date: new Date('2026-03-10'),
-      period: 'March',
+      period: 3,
       year: 2026,
       note: 'flight',
       exchangeRate: 1.1,
@@ -227,7 +227,7 @@ describe('QuickAddCardComponent', () => {
       categoryId: 10,
       amount: 120,
       date: new Date('2026-03-10'),
-      period: 'March',
+      period: 3,
       year: 2026,
       note: '',
       exchangeRate: null,
@@ -355,7 +355,7 @@ describe('QuickAddCardComponent', () => {
       categoryId: 11,
       amount: 120,
       date: new Date('2026-03-10'),
-      period: 'March',
+      period: 3,
       year: 2026,
       note: 'flight',
       exchangeRate: 1.1,

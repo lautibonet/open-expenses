@@ -27,7 +27,7 @@
         aria-label="Scope month"
       >
         @for (month of scopeMonths(); track month) {
-          <option [value]="month">{{ month }}</option>
+          <option [ngValue]="month">{{ language.monthName(month) }}</option>
         }
       </select>
     }
@@ -99,7 +99,7 @@
             (ngModelChange)="trForm.update((f) => ({ ...f, period: $event }))"
           >
             @for (month of months; track month) {
-              <option [value]="month">{{ month }}</option>
+              <option [ngValue]="month">{{ language.monthName(month) }}</option>
             }
           </select>
         </label>

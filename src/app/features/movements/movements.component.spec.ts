@@ -9,7 +9,7 @@ import { ExchangeRateService } from '../../core/services/exchange-rate.service';
 import { db } from '../../core/db/database';
 import { Transaction } from '../../core/models/transaction.model';
 import { Transfer } from '../../core/models/transfer.model';
-import { defaultScope, getCurrentPeriod, getCurrentYear } from '../../core/types/period.type';
+import { MONTH_NAMES, defaultScope, getCurrentPeriod, getCurrentYear } from '../../core/types/period.type';
 
 describe('MovementsComponent - filtering', () => {
   let fixture: ComponentFixture<MovementsComponent>;
@@ -41,9 +41,9 @@ describe('MovementsComponent - filtering', () => {
     accountId1 = acc1.id!;
     const acc2 = await accountService.create('Card', 'EUR', 50000);
     accountId2 = acc2.id!;
-    const cat1 = await categoryService.create('Food', 'Expense');
+    const cat1 = await categoryService.create('Food', 'expense');
     categoryId1 = cat1.id!;
-    const cat2 = await categoryService.create('Transport', 'Expense');
+    const cat2 = await categoryService.create('Transport', 'expense');
     categoryId2 = cat2.id!;
   });
 
@@ -155,7 +155,7 @@ describe('MovementsComponent - no tag affordances', () => {
 
     const account = await accountService.create('Cash', 'EUR', 100000);
     accountId = account.id!;
-    const category = await categoryService.create('Food', 'Expense');
+    const category = await categoryService.create('Food', 'expense');
     categoryId = category.id!;
   });
 
@@ -341,9 +341,9 @@ describe('MovementsComponent - category deactivation and income sign', () => {
 
     const account = await accountService.create('Cash', 'EUR', 100000);
     accountId = account.id!;
-    const expenseCat = await categoryService.create('Food', 'Expense');
+    const expenseCat = await categoryService.create('Food', 'expense');
     expenseCategoryId = expenseCat.id!;
-    const incomeCat = await categoryService.create('Payroll', 'Income');
+    const incomeCat = await categoryService.create('Payroll', 'income');
     incomeCategoryId = incomeCat.id!;
   });
 
@@ -593,9 +593,9 @@ describe('MovementsComponent - direction arrows and display amounts', () => {
     eurAccountId = eurAcc.id!;
     const usdAcc = await accountService.create('Cash USD', 'USD', 50000);
     usdAccountId = usdAcc.id!;
-    const expenseCat = await categoryService.create('Food', 'Expense');
+    const expenseCat = await categoryService.create('Food', 'expense');
     expenseCategoryId = expenseCat.id!;
-    const incomeCat = await categoryService.create('Payroll', 'Income');
+    const incomeCat = await categoryService.create('Payroll', 'income');
     incomeCategoryId = incomeCat.id!;
   });
 
@@ -797,7 +797,7 @@ describe('MovementsComponent - period year', () => {
 
     const account = await accountService.create('Cash', 'EUR', 100000);
     accountId = account.id!;
-    const category = await categoryService.create('Food', 'Expense');
+    const category = await categoryService.create('Food', 'expense');
     categoryId = category.id!;
   });
 
@@ -841,7 +841,7 @@ describe('MovementsComponent - period year', () => {
       categoryId,
       amount: 500,
       date: '2025-12-22',
-      period: 'January',
+      period: 1,
       year: 2026,
       exchangeRate: null,
       baseCurrencyAmount: null,
@@ -863,7 +863,7 @@ describe('MovementsComponent - period year', () => {
       sourceAmount: 500,
       destinationAmount: 500,
       date: '2025-12-22',
-      period: 'January',
+      period: 1,
       year: 2026,
     }));
     await component.saveTransfer();
@@ -880,7 +880,7 @@ describe('MovementsComponent - period year', () => {
       acc2.id!,
       500,
       new Date('2025-12-22'),
-      'January',
+      1,
       'savings',
       1,
       2026,
@@ -917,7 +917,7 @@ describe('MovementsComponent - transaction note', () => {
 
     const account = await accountService.create('Cash', 'EUR', 100000);
     accountId = account.id!;
-    const category = await categoryService.create('Food', 'Expense');
+    const category = await categoryService.create('Food', 'expense');
     categoryId = category.id!;
   });
 
@@ -933,7 +933,7 @@ describe('MovementsComponent - transaction note', () => {
       categoryId,
       amount: 500,
       date: '2026-01-15',
-      period: 'January',
+      period: 1,
       year: getCurrentYear(),
       note: 'Weekly groceries',
       exchangeRate: null,
@@ -951,7 +951,7 @@ describe('MovementsComponent - transaction note', () => {
       categoryId,
       1500,
       new Date('2026-01-15'),
-      'January',
+      1,
     );
     await component.ngOnInit();
     await component.onSaveTransaction({
@@ -960,7 +960,7 @@ describe('MovementsComponent - transaction note', () => {
       categoryId,
       amount: 1500,
       date: '2026-01-15',
-      period: 'January',
+      period: 1,
       year: getCurrentYear(),
       note: 'Updated note',
       exchangeRate: null,
@@ -1019,7 +1019,7 @@ describe('MovementsComponent - shared scope', () => {
 
     const account = await accountService.create('Cash', 'EUR', 100000);
     accountId = account.id!;
-    const category = await categoryService.create('Food', 'Expense');
+    const category = await categoryService.create('Food', 'expense');
     categoryId = category.id!;
   });
 
@@ -1038,7 +1038,7 @@ describe('MovementsComponent - shared scope', () => {
       categoryId,
       100,
       new Date('2012-01-15'),
-      'January',
+      1,
       null,
       null,
       2012,
@@ -1048,7 +1048,7 @@ describe('MovementsComponent - shared scope', () => {
       categoryId,
       200,
       new Date('2016-01-15'),
-      'January',
+      1,
       null,
       null,
       2016,
@@ -1067,7 +1067,7 @@ describe('MovementsComponent - shared scope', () => {
       categoryId,
       100,
       new Date('2026-03-15'),
-      'March',
+      3,
       null,
       null,
       2026,
@@ -1077,15 +1077,15 @@ describe('MovementsComponent - shared scope', () => {
       categoryId,
       200,
       new Date('2026-07-15'),
-      'July',
+      7,
       null,
       null,
       2026,
     );
     await component.ngOnInit();
 
-    expect(component.scopeMonths()).toContain('March');
-    expect(component.scopeMonths()).toContain('July');
+    expect(component.scopeMonths()).toContain(3);
+    expect(component.scopeMonths()).toContain(7);
   });
 
   it('should show movements from every period when All time is chosen', async () => {
@@ -1094,7 +1094,7 @@ describe('MovementsComponent - shared scope', () => {
       categoryId,
       100,
       new Date('2012-01-15'),
-      'January',
+      1,
       null,
       null,
       2012,
@@ -1104,7 +1104,7 @@ describe('MovementsComponent - shared scope', () => {
       categoryId,
       200,
       new Date('2016-05-15'),
-      'May',
+      5,
       null,
       null,
       2016,
@@ -1124,7 +1124,7 @@ describe('MovementsComponent - shared scope', () => {
       categoryId,
       100,
       new Date(`${oldYear}-01-15`),
-      'January',
+      1,
       null,
       null,
       oldYear,
@@ -1163,7 +1163,7 @@ describe('MovementsComponent - shared scope', () => {
       categoryId,
       100,
       new Date(`${year}-01-15`),
-      'January',
+      1,
       null,
       null,
       year,
@@ -1173,15 +1173,15 @@ describe('MovementsComponent - shared scope', () => {
       categoryId,
       200,
       new Date(`${year}-02-15`),
-      'February',
+      2,
       null,
       null,
       year,
     );
     await component.ngOnInit();
 
-    await component.onScopeMonthChange('January');
-    expect(component.scope()).toEqual({ kind: 'month', period: 'January', year });
+    await component.onScopeMonthChange(1);
+    expect(component.scope()).toEqual({ kind: 'month', period: 1, year });
     expect(component.movements().length).toBe(1);
   });
 
@@ -1194,12 +1194,14 @@ describe('MovementsComponent - shared scope', () => {
 
     const period = getCurrentPeriod();
     await component.onScopeYearChange(getCurrentYear());
-    expect(component.scopeAnnouncement()).toBe(`${period} ${getCurrentYear()}`);
+    expect(component.scopeAnnouncement()).toBe(`${MONTH_NAMES[period - 1]} ${getCurrentYear()}`);
   });
 
   it('should title a heading with the All time label', async () => {
     await component.ngOnInit();
-    expect(component.scopeLabelText()).toBe(`${getCurrentPeriod()} ${getCurrentYear()}`);
+    expect(component.scopeLabelText()).toBe(
+      `${MONTH_NAMES[getCurrentPeriod() - 1]} ${getCurrentYear()}`,
+    );
     await component.onScopeYearChange('all-time');
     expect(component.scopeLabelText()).toBe('All time');
   });
@@ -1231,7 +1233,7 @@ describe('MovementsComponent - contextual delete confirmation and undo', () => {
 
     const account = await accountService.create('Cash', 'EUR', 100000);
     accountId = account.id!;
-    const category = await categoryService.create('Food', 'Expense');
+    const category = await categoryService.create('Food', 'expense');
     categoryId = category.id!;
   });
 
@@ -1415,7 +1417,7 @@ describe('MovementsComponent - assistive tech', () => {
     accountId = account.id!;
     const account2 = await accountService.create('Savings', 'EUR', 50000);
     accountId2 = account2.id!;
-    const category = await categoryService.create('Food', 'Expense');
+    const category = await categoryService.create('Food', 'expense');
     categoryId = category.id!;
   });
 
@@ -1525,7 +1527,7 @@ describe('MovementsComponent - quick-add integration', () => {
 
     const account = await accountService.create('Cash', 'EUR', 100000);
     accountId = account.id!;
-    const category = await categoryService.create('Food', 'Expense');
+    const category = await categoryService.create('Food', 'expense');
     categoryId = category.id!;
   });
 

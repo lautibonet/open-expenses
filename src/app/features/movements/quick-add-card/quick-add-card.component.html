@@ -132,7 +132,7 @@
             aria-label="Period"
           >
             @for (month of months; track month) {
-              <option [value]="month">{{ month }}</option>
+              <option [ngValue]="month">{{ language.monthName(month) }}</option>
             }
           </select>
         </label>

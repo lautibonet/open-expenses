@@ -214,7 +214,7 @@ describe('DriveBackupService', () => {
       await connectAsTestUser(service);
 
       await accountService.create('Cash', 'EUR', 10000);
-      await categoryService.create('Food', 'Expense');
+      await categoryService.create('Food', 'expense');
 
       const urls: string[] = [];
       vi.stubGlobal(
@@ -299,7 +299,7 @@ describe('DriveBackupService', () => {
 
       const snapshot: BackupSnapshot = {
         accounts: [{ id: 1, name: 'Restored Cash', currency: 'EUR', initialBalance: 5000, active: true, createdAt: new Date().toISOString() }],
-        categories: [{ id: 1, name: 'Food', type: 'Expense', active: true, createdAt: new Date().toISOString() }],
+        categories: [{ id: 1, name: 'Food', type: 'expense', active: true, createdAt: new Date().toISOString() }],
         transactions: [],
         transfers: [],
         profile: [{ id: 1, baseCurrency: 'EUR', onboardingCompleted: true, lastBackupAt: null }],
@@ -342,6 +342,58 @@ describe('DriveBackupService', () => {
 
       expect(backupSpy).not.toHaveBeenCalled();
     });
+
+    it('migrates a legacy cloud snapshot to locale-neutral storage', async () => {
+      await connectAsTestUser(service);
+
+      mockFetchByUrl({
+        [FOLDER_SEARCH]: () => ({ files: [{ id: 'folder-1' }] }),
+        [FILE_SEARCH]: () => ({ files: [{ id: 'backup-file-id' }] }),
+        [MEDIA_DOWNLOAD]: () => ({
+          accounts: [],
+          categories: [{ id: 1, name: 'Food', type: 'Expense', active: true, createdAt: new Date().toISOString() }],
+          transactions: [
+            {
+              id: 1, accountId: 1, categoryId: 1, amount: 100,
+              date: '2026-01-15T00:00:00.000Z', period: 'January', year: 2026,
+              exchangeRate: null, baseCurrencyAmount: null, note: '',
+              createdAt: new Date().toISOString(),
+            },
+          ],
+          transfers: [],
+          profile: [],
+          exportedAt: new Date().toISOString(),
+        }),
+      });
+
+      await service.restore();
+
+      const categories = await db.categories.toArray();
+      const transactions = await db.transactions.toArray();
+      expect(categories[0].type).toBe('expense');
+      expect(transactions[0].period).toBe(1);
+    });
+
+    it('rejects a newer-version cloud snapshot with a clear message', async () => {
+      await connectAsTestUser(service);
+
+      mockFetchByUrl({
+        [FOLDER_SEARCH]: () => ({ files: [{ id: 'folder-1' }] }),
+        [FILE_SEARCH]: () => ({ files: [{ id: 'backup-file-id' }] }),
+        [MEDIA_DOWNLOAD]: () => ({
+          schemaVersion: 999,
+          accounts: [],
+          categories: [],
+          transactions: [],
+          transfers: [],
+          profile: [],
+          exportedAt: new Date().toISOString(),
+        }),
+      });
+
+      await expect(service.restore()).rejects.toThrow(/update the app first/i);
+      expect(service.error()).toMatch(/update the app first/i);
+    });
   });
 
   describe('restoreFromFile', () => {
@@ -381,6 +433,47 @@ describe('DriveBackupService', () => {
       });
 
       await expect(service.restoreFromFile(file)).rejects.toThrow();
+    });
+
+    it('restores a legacy backup file and migrates it to locale-neutral storage', async () => {
+      const legacy = {
+        accounts: [],
+        categories: [{ id: 1, name: 'Payroll', type: 'Income', active: true, createdAt: new Date().toISOString() }],
+        transactions: [],
+        transfers: [
+          {
+            id: 1, sourceAccountId: 1, destinationAccountId: 1,
+            sourceAmount: 100, destinationAmount: 100, exchangeRate: 1, baseCurrencyAmount: 100,
+            date: '2026-02-01T00:00:00.000Z', period: 'February', year: 2026,
+            note: '', createdAt: new Date().toISOString(),
+          },
+        ],
+        profile: [],
+        exportedAt: new Date().toISOString(),
+      };
+      const file = new File([JSON.stringify(legacy)], 'backup.json', { type: 'application/json' });
+
+      await service.restoreFromFile(file);
+
+      const categories = await db.categories.toArray();
+      const transfers = await db.transfers.toArray();
+      expect(categories[0].type).toBe('income');
+      expect(transfers[0].period).toBe(2);
+    });
+
+    it('rejects a newer-version backup file with a clear message', async () => {
+      const newer = {
+        schemaVersion: 999,
+        accounts: [],
+        categories: [],
+        transactions: [],
+        transfers: [],
+        profile: [],
+        exportedAt: new Date().toISOString(),
+      };
+      const file = new File([JSON.stringify(newer)], 'backup.json', { type: 'application/json' });
+
+      await expect(service.restoreFromFile(file)).rejects.toThrow(/update the app first/i);
     });
 
     it('should not trigger a new backup when restoring from a file', async () => {
