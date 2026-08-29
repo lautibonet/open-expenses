@@ -152,7 +152,7 @@ A second sanctioned sub-ramp for signal strips that destroy or report failure �
 **Display Font:** none — no webfont is loaded anywhere.
 **Body Font:** a declared system stack, `system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif`, set once on `body` and inherited by every control; loads zero webfonts.
 
-**Character:** The system deliberately does no typographic expression. There is no font pairing, no display face, no custom tracking — hierarchy is produced entirely by size and weight on the neutral ramp. The type is the ink of the register: flat, legible, and interchangeable, which is the honest consequence of a utility-first tool that loads no webfont.
+**Character:** The system deliberately does no typographic expression. There is no font pairing and no display face; the only sanctioned letter-spacing is the micro-tracking (`--tracking-micro`, 0.01em) applied to labels, table headers, and tags. Hierarchy is produced entirely by size and weight on the neutral ramp. The type is the ink of the register: flat, legible, and interchangeable, which is the honest consequence of a utility-first tool that loads no webfont.
 
 ### Hierarchy
 - **Headline** (600, 1.1rem): Card titles (`h2` inside cards).

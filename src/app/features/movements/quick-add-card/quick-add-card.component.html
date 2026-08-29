@@ -49,8 +49,8 @@
       </label>
 
       <div class="compact-actions">
-        <button type="submit" class="record" [disabled]="!canSubmit()">Record</button>
-        <button type="button" class="more" (click)="expandForm()">More options</button>
+        <button type="submit" class="btn primary" [disabled]="!canSubmit()">Record</button>
+        <button type="button" class="btn small" (click)="expandForm()">More options</button>
       </div>
 
       @if (isForeignCurrency() && rateState().loading) {
@@ -208,8 +208,8 @@
       <span class="visually-hidden" aria-live="polite">{{ announcement() }}</span>
 
       <div class="form-actions">
-        <button type="button" class="material-btn" (click)="cancelExpand()">Cancel</button>
-        <button type="submit" class="record" [disabled]="saving()">Save</button>
+        <button type="button" class="btn" (click)="cancelExpand()">Cancel</button>
+        <button type="submit" class="btn primary" [disabled]="saving()">Save</button>
       </div>
     </form>
   }
