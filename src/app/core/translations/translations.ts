@@ -1,13 +1,15 @@
 import { Language } from '../types/language.type';
 
+const APP_NAME = 'Open Expenses';
+
 const en: Record<string, string> = {
-  'app.title': 'Open Expenses',
+  'app.title': APP_NAME,
   'shell.skipToContent': 'Skip to content',
   'shell.primaryNavAria': 'Primary',
   'shell.movements': 'Movements',
   'shell.stats': 'Stats',
   'shell.settings': 'Settings',
-  'install.prompt': 'Install Open Expenses for quick access',
+  'install.prompt': `Install ${APP_NAME} for quick access`,
   'install.action': 'Install',
   'install.dismiss': 'Dismiss',
   'backup.card.title': 'Backup',
@@ -56,7 +58,7 @@ const en: Record<string, string> = {
     'This backup was created by a newer version of the app. Update the app first, then restore.',
   'backup.error.oauth.cancelled': 'Google sign-in was cancelled — try again when you are ready.',
   'backup.error.oauth.denied':
-    'Google sign-in was declined — Open Expenses needs Drive access to back up.',
+    `Google sign-in was declined — ${APP_NAME} needs Drive access to back up.`,
   'backup.error.oauth.popupBlocked':
     'Google sign-in could not open — allow popups for this site and try again.',
   'backup.error.oauth.loadFailed':
@@ -236,7 +238,7 @@ const en: Record<string, string> = {
   'category.payroll': 'Payroll',
   'category.secondHandSale': 'Second-hand Sale',
   'category.refund': 'Refund',
-  'onboarding.title': 'Welcome to Open Expenses',
+  'onboarding.title': `Welcome to ${APP_NAME}`,
   'onboarding.subtitle': 'Set up your expense tracker in a few steps',
   'onboarding.language.title': 'Language',
   'onboarding.language.description': 'Choose the language you want to use across the app.',
@@ -246,7 +248,7 @@ const en: Record<string, string> = {
   'onboarding.startTracking': 'Start Tracking',
   'onboarding.restore.title': 'Restore a previous backup?',
   'onboarding.restore.description':
-    "If you've used Open Expenses before, you can pick up where you left off by restoring an existing backup — from the cloud or from a file you saved. Otherwise, start fresh.",
+    `If you've used ${APP_NAME} before, you can pick up where you left off by restoring an existing backup — from the cloud or from a file you saved. Otherwise, start fresh.`,
   'onboarding.restore.startFresh': 'Start fresh',
   'onboarding.restore.restoring': 'Restoring…',
   'onboarding.restore.noBackupFound':
@@ -279,13 +281,13 @@ const en: Record<string, string> = {
 };
 
 const es: Record<string, string> = {
-  'app.title': 'Gastos Abiertos',
+  'app.title': APP_NAME,
   'shell.skipToContent': 'Saltar al contenido',
   'shell.primaryNavAria': 'Principal',
   'shell.movements': 'Movimientos',
   'shell.stats': 'Estadísticas',
   'shell.settings': 'Ajustes',
-  'install.prompt': 'Instala Gastos Abiertos para acceder rápidamente',
+  'install.prompt': `Instala ${APP_NAME} para acceder rápidamente`,
   'install.action': 'Instalar',
   'install.dismiss': 'Descartar',
   'backup.card.title': 'Copia de seguridad',
@@ -335,7 +337,7 @@ const es: Record<string, string> = {
   'backup.error.oauth.cancelled':
     'El inicio de sesión con Google se canceló — inténtalo de nuevo cuando quieras.',
   'backup.error.oauth.denied':
-    'Se denegó el inicio de sesión con Google — Gastos Abiertos necesita acceso a Drive para hacer copias.',
+    `Se denegó el inicio de sesión con Google — ${APP_NAME} necesita acceso a Drive para hacer copias.`,
   'backup.error.oauth.popupBlocked':
     'El inicio de sesión con Google no pudo abrirse — permite las ventanas emergentes para este sitio e inténtalo de nuevo.',
   'backup.error.oauth.loadFailed':
@@ -515,7 +517,7 @@ const es: Record<string, string> = {
   'category.payroll': 'Nómina',
   'category.secondHandSale': 'Venta de segunda mano',
   'category.refund': 'Reembolso',
-  'onboarding.title': 'Bienvenido a Gastos Abiertos',
+  'onboarding.title': `Bienvenido a ${APP_NAME}`,
   'onboarding.subtitle': 'Configura tu control de gastos en unos pocos pasos',
   'onboarding.language.title': 'Idioma',
   'onboarding.language.description': 'Elige el idioma que quieres usar en toda la aplicación.',
@@ -525,7 +527,7 @@ const es: Record<string, string> = {
   'onboarding.startTracking': 'Empezar a registrar',
   'onboarding.restore.title': '¿Restaurar una copia de seguridad anterior?',
   'onboarding.restore.description':
-    'Si has usado Gastos Abiertos antes, puedes continuar donde lo dejaste restaurando una copia de seguridad existente — desde la nube o desde un archivo que hayas guardado. De lo contrario, empieza de cero.',
+    `Si has usado ${APP_NAME} antes, puedes continuar donde lo dejaste restaurando una copia de seguridad existente — desde la nube o desde un archivo que hayas guardado. De lo contrario, empieza de cero.`,
   'onboarding.restore.startFresh': 'Empezar de cero',
   'onboarding.restore.restoring': 'Restaurando…',
   'onboarding.restore.noBackupFound':

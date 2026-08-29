@@ -53,8 +53,12 @@ A read-only summary screen showing a total balance in base currency (sum of all 
 _Avoid_: overview, summary page
 
 **Language**:
-The user's preferred display language (English or Spanish). Chosen during Onboarding, changeable in Settings, and included in a Backup so a Restore reproduces the original device's language. Governs all displayed words and the formatting of dates, numbers, and currency amounts.
+The user's preferred display language (English or Spanish). Chosen during Onboarding, changeable in Settings, and included in a Backup so a Restore reproduces the original device's language. Governs all displayed words except the App Name, and the formatting of dates, numbers, and currency amounts.
 _Avoid_: locale, i18n, translation setting
+
+**App Name**:
+"Open Expenses" — the product's brand name. Rendered identically in every Language and never translated; the sole exception to Language governing all displayed words.
+_Avoid_: localized name, translated title
 
 **Onboarding**:
 The first-run flow that collects language, base currency, initial accounts, and initial categories before the app is usable. Its first step asks the preferred Language; the second asks whether to restore a Backup from a cloud provider or from an uploaded file, before the wizard itself runs. Restoring a Backup overwrites the chosen Language with the Backup's.
