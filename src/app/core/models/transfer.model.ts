@@ -1,3 +1,5 @@
+import { MonthNumber } from '../types/period.type';
+
 export interface Transfer {
   id?: number;
   sourceAccountId: number;
@@ -7,7 +9,7 @@ export interface Transfer {
   exchangeRate: number;
   baseCurrencyAmount: number;
   date: Date;
-  period: string;
+  period: MonthNumber;
   year: number;
   note: string;
   createdAt: Date;

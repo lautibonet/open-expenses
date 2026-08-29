@@ -171,4 +171,49 @@ describe('LanguageService', () => {
       expect(service.formatNumber(1234567.89)).toBe('1.234.567,89');
     });
   });
+
+  describe('locale-neutral value labels', () => {
+    it('renders month numbers in the active language', async () => {
+      await seedProfile('en');
+      await service.init();
+      expect(service.monthName(1)).toBe('January');
+      expect(service.monthName(12)).toBe('December');
+
+      await service.setLanguage('es');
+      expect(service.monthName(1)).toBe('Enero');
+      expect(service.monthName(12)).toBe('Diciembre');
+    });
+
+    it('renders stored locale-neutral periods in the active language', async () => {
+      await seedProfile('es');
+      await service.init();
+      expect(service.periodLabel(3)).toBe('Marzo');
+
+      await service.setLanguage('en');
+      expect(service.periodLabel(3)).toBe('March');
+    });
+
+    it('leaves unrecognized stored periods visible as raw values', async () => {
+      await seedProfile('en');
+      await service.init();
+      expect(service.periodLabel('Enero')).toBe('Enero');
+    });
+
+    it('renders category type codes in the active language', async () => {
+      await seedProfile('en');
+      await service.init();
+      expect(service.categoryTypeLabel('income')).toBe('Income');
+      expect(service.categoryTypeLabel('expense')).toBe('Expense');
+
+      await service.setLanguage('es');
+      expect(service.categoryTypeLabel('income')).toBe('Ingreso');
+      expect(service.categoryTypeLabel('expense')).toBe('Gasto');
+    });
+
+    it('guards against unknown category type values by showing them raw', async () => {
+      await seedProfile('en');
+      await service.init();
+      expect(service.categoryTypeLabel('checking')).toBe('checking');
+    });
+  });
 });

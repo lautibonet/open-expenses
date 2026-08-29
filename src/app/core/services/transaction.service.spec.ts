@@ -22,7 +22,7 @@ describe('TransactionService', () => {
 
     const account = await accountService.create('Cash', 'EUR', 100000);
     accountId = account.id!;
-    const category = await categoryService.create('Food', 'Expense');
+    const category = await categoryService.create('Food', 'expense');
     categoryId = category.id!;
   });
 
@@ -32,17 +32,17 @@ describe('TransactionService', () => {
 
   it('should create a transaction', async () => {
     const t = await transactionService.create(
-      accountId, categoryId, 1500, new Date('2026-01-15'), 'January',
+      accountId, categoryId, 1500, new Date('2026-01-15'), 1,
     );
     expect(t.id).toBeDefined();
     expect(t.amount).toBe(1500);
-    expect(t.period).toBe('January');
+    expect(t.period).toBe(1);
     expect('tags' in t).toBe(false);
   });
 
   it('should create transaction with note', async () => {
     const t = await transactionService.create(
-      accountId, categoryId, 1500, new Date('2026-01-15'), 'January', null, null,
+      accountId, categoryId, 1500, new Date('2026-01-15'), 1, null, null,
       getCurrentYear(), 'Dinner with friends',
     );
     expect(t.note).toBe('Dinner with friends');
@@ -50,14 +50,14 @@ describe('TransactionService', () => {
 
   it('should default the note to empty string', async () => {
     const t = await transactionService.create(
-      accountId, categoryId, 1500, new Date('2026-01-15'), 'January',
+      accountId, categoryId, 1500, new Date('2026-01-15'), 1,
     );
     expect(t.note).toBe('');
   });
 
   it('should update the note on a transaction', async () => {
     const t = await transactionService.create(
-      accountId, categoryId, 1500, new Date('2026-01-15'), 'January',
+      accountId, categoryId, 1500, new Date('2026-01-15'), 1,
     );
     const updated = await transactionService.update(t.id!, { note: 'Updated note' });
     expect(updated.note).toBe('Updated note');
@@ -65,46 +65,52 @@ describe('TransactionService', () => {
 
   it('should reject zero amount', async () => {
     await expect(
-      transactionService.create(accountId, categoryId, 0, new Date(), 'January'),
+      transactionService.create(accountId, categoryId, 0, new Date(), 1),
     ).rejects.toThrow('Amount must be positive');
   });
 
   it('should reject negative amount', async () => {
     await expect(
-      transactionService.create(accountId, categoryId, -100, new Date(), 'January'),
+      transactionService.create(accountId, categoryId, -100, new Date(), 1),
     ).rejects.toThrow('Amount must be positive');
   });
 
-  it('should reject missing period', async () => {
+  it('should reject an out-of-range period', async () => {
     await expect(
-      transactionService.create(accountId, categoryId, 100, new Date(), ''),
-    ).rejects.toThrow('Period is required');
+      transactionService.create(accountId, categoryId, 100, new Date(), 0),
+    ).rejects.toThrow('Period must be a month between 1 and 12');
+  });
+
+  it('should reject a non-integer period', async () => {
+    await expect(
+      transactionService.create(accountId, categoryId, 100, new Date(), 1.5),
+    ).rejects.toThrow('Period must be a month between 1 and 12');
   });
 
   it('should reject invalid account', async () => {
     await expect(
-      transactionService.create(999, categoryId, 100, new Date(), 'January'),
+      transactionService.create(999, categoryId, 100, new Date(), 1),
     ).rejects.toThrow('Account not found');
   });
 
   it('should reject invalid category', async () => {
     await expect(
-      transactionService.create(accountId, 999, 100, new Date(), 'January'),
+      transactionService.create(accountId, 999, 100, new Date(), 1),
     ).rejects.toThrow('Category not found');
   });
 
   it('should update a transaction', async () => {
     const t = await transactionService.create(
-      accountId, categoryId, 1500, new Date('2026-01-15'), 'January',
+      accountId, categoryId, 1500, new Date('2026-01-15'), 1,
     );
-    const updated = await transactionService.update(t.id!, { amount: 2000, period: 'February' });
+    const updated = await transactionService.update(t.id!, { amount: 2000, period: 2 });
     expect(updated.amount).toBe(2000);
-    expect(updated.period).toBe('February');
+    expect(updated.period).toBe(2);
   });
 
   it('should reject invalid update amount', async () => {
     const t = await transactionService.create(
-      accountId, categoryId, 1500, new Date('2026-01-15'), 'January',
+      accountId, categoryId, 1500, new Date('2026-01-15'), 1,
     );
     await expect(
       transactionService.update(t.id!, { amount: 0 }),
@@ -113,7 +119,7 @@ describe('TransactionService', () => {
 
   it('should delete a transaction', async () => {
     const t = await transactionService.create(
-      accountId, categoryId, 1500, new Date('2026-01-15'), 'January',
+      accountId, categoryId, 1500, new Date('2026-01-15'), 1,
     );
     await transactionService.delete(t.id!);
     const found = await transactionService.getById(t.id!);
@@ -122,7 +128,7 @@ describe('TransactionService', () => {
 
   it('should restore a deleted transaction with its original id and fields', async () => {
     const t = await transactionService.create(
-      accountId, categoryId, 1500, new Date('2026-01-15'), 'January',
+      accountId, categoryId, 1500, new Date('2026-01-15'), 1,
       1.08, 1620, getCurrentYear(), 'Dinner',
     );
     const snapshot = { ...t };
@@ -146,7 +152,7 @@ describe('TransactionService', () => {
 
   it('should reject restoring a transaction that still exists', async () => {
     const t = await transactionService.create(
-      accountId, categoryId, 1500, new Date('2026-01-15'), 'January',
+      accountId, categoryId, 1500, new Date('2026-01-15'), 1,
     );
     await expect(
       transactionService.restore(t),
@@ -154,77 +160,77 @@ describe('TransactionService', () => {
   });
 
   it('should get transactions by period', async () => {
-    await transactionService.create(accountId, categoryId, 100, new Date(), 'January');
-    await transactionService.create(accountId, categoryId, 200, new Date(), 'February');
-    const jan = await transactionService.getByPeriod('January');
+    await transactionService.create(accountId, categoryId, 100, new Date(), 1);
+    await transactionService.create(accountId, categoryId, 200, new Date(), 2);
+    const jan = await transactionService.getByPeriod(1);
     expect(jan.length).toBe(1);
   });
 
   it('should store exchange rate and base currency amount', async () => {
     const t = await transactionService.create(
-      accountId, categoryId, 1500, new Date(), 'January', 1.08, 1620,
+      accountId, categoryId, 1500, new Date(), 1, 1.08, 1620,
     );
     expect(t.exchangeRate).toBe(1.08);
     expect(t.baseCurrencyAmount).toBe(1620);
   });
 
   it('should default the period year to the current year', async () => {
-    const t = await transactionService.create(accountId, categoryId, 100, new Date('2025-12-22'), 'January');
+    const t = await transactionService.create(accountId, categoryId, 100, new Date('2025-12-22'), 1);
     expect(t.year).toBe(getCurrentYear());
   });
 
   it('should store an explicit period year different from the date year', async () => {
     const t = await transactionService.create(
-      accountId, categoryId, 100, new Date('2025-12-22'), 'January', null, null, 2026,
+      accountId, categoryId, 100, new Date('2025-12-22'), 1, null, null, 2026,
     );
     expect(t.date.getFullYear()).toBe(2025);
     expect(t.year).toBe(2026);
   });
 
   it('should filter transactions by period and year', async () => {
-    await transactionService.create(accountId, categoryId, 100, new Date('2025-12-22'), 'January', null, null, 2026);
-    await transactionService.create(accountId, categoryId, 200, new Date('2024-12-22'), 'January', null, null, 2025);
-    await transactionService.create(accountId, categoryId, 300, new Date('2026-02-10'), 'February', null, null, 2026);
+    await transactionService.create(accountId, categoryId, 100, new Date('2025-12-22'), 1, null, null, 2026);
+    await transactionService.create(accountId, categoryId, 200, new Date('2024-12-22'), 1, null, null, 2025);
+    await transactionService.create(accountId, categoryId, 300, new Date('2026-02-10'), 2, null, null, 2026);
 
-    const jan26 = await transactionService.getByPeriod('January', 2026);
+    const jan26 = await transactionService.getByPeriod(1, 2026);
     expect(jan26.length).toBe(1);
     expect(jan26[0].amount).toBe(100);
 
-    const janAll = await transactionService.getByPeriod('January');
+    const janAll = await transactionService.getByPeriod(1);
     expect(janAll.length).toBe(2);
   });
 
   it('should get transactions for a month scope by period and year', async () => {
-    await transactionService.create(accountId, categoryId, 100, new Date('2025-12-22'), 'January', null, null, 2026);
-    await transactionService.create(accountId, categoryId, 200, new Date('2026-02-10'), 'February', null, null, 2026);
+    await transactionService.create(accountId, categoryId, 100, new Date('2025-12-22'), 1, null, null, 2026);
+    await transactionService.create(accountId, categoryId, 200, new Date('2026-02-10'), 2, null, null, 2026);
 
-    const jan26 = await transactionService.getByScope({ kind: 'month', period: 'January', year: 2026 });
+    const jan26 = await transactionService.getByScope({ kind: 'month', period: 1, year: 2026 });
     expect(jan26.length).toBe(1);
     expect(jan26[0].amount).toBe(100);
   });
 
   it('should get all transactions for the all-time scope', async () => {
-    await transactionService.create(accountId, categoryId, 100, new Date('2010-05-01'), 'May', null, null, 2010);
-    await transactionService.create(accountId, categoryId, 200, new Date('2026-06-01'), 'June', null, null, 2026);
+    await transactionService.create(accountId, categoryId, 100, new Date('2010-05-01'), 5, null, null, 2010);
+    await transactionService.create(accountId, categoryId, 200, new Date('2026-06-01'), 6, null, null, 2026);
 
     const all = await transactionService.getByScope({ kind: 'all-time' });
     expect(all.length).toBe(2);
   });
 
   it('should update the period year', async () => {
-    const t = await transactionService.create(accountId, categoryId, 100, new Date('2025-12-22'), 'January');
+    const t = await transactionService.create(accountId, categoryId, 100, new Date('2025-12-22'), 1);
     const updated = await transactionService.update(t.id!, { year: 2025 });
     expect(updated.year).toBe(2025);
   });
 
   it('should reject an invalid period year on create', async () => {
     await expect(
-      transactionService.create(accountId, categoryId, 100, new Date(), 'January', null, null, 22),
+      transactionService.create(accountId, categoryId, 100, new Date(), 1, null, null, 22),
     ).rejects.toThrow('Year must be a valid 4-digit year');
   });
 
   it('should reject an invalid period year on update', async () => {
-    const t = await transactionService.create(accountId, categoryId, 100, new Date(), 'January');
+    const t = await transactionService.create(accountId, categoryId, 100, new Date(), 1);
     await expect(
       transactionService.update(t.id!, { year: 22 }),
     ).rejects.toThrow('Year must be a valid 4-digit year');

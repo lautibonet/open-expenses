@@ -1,20 +1,26 @@
 import { Injectable } from '@angular/core';
 import { db } from '../db/database';
-import { Category, CategoryType } from '../models/category.model';
+import { Category, CategoryType, isCategoryType } from '../models/category.model';
 import { DEFAULT_LANGUAGE, Language } from '../types/language.type';
 import { translate } from '../translations/translations';
 
 const DEFAULT_CATEGORIES: { key: string; type: CategoryType }[] = [
-  { key: 'food', type: 'Expense' },
-  { key: 'transport', type: 'Expense' },
-  { key: 'housing', type: 'Expense' },
-  { key: 'subscriptions', type: 'Expense' },
-  { key: 'leisure', type: 'Expense' },
-  { key: 'misc', type: 'Expense' },
-  { key: 'payroll', type: 'Income' },
-  { key: 'secondHandSale', type: 'Income' },
-  { key: 'refund', type: 'Income' },
+  { key: 'food', type: 'expense' },
+  { key: 'transport', type: 'expense' },
+  { key: 'housing', type: 'expense' },
+  { key: 'subscriptions', type: 'expense' },
+  { key: 'leisure', type: 'expense' },
+  { key: 'misc', type: 'expense' },
+  { key: 'payroll', type: 'income' },
+  { key: 'secondHandSale', type: 'income' },
+  { key: 'refund', type: 'income' },
 ];
+
+function assertCategoryType(type: CategoryType): void {
+  if (!isCategoryType(type)) {
+    throw new Error('Category type must be income or expense');
+  }
+}
 
 function categoryName(key: string, language: Language): string {
   return translate(language, `category.${key}`);
@@ -35,6 +41,7 @@ export class CategoryService {
   }
 
   async create(name: string, type: CategoryType): Promise<Category> {
+    assertCategoryType(type);
     const trimmedName = name.trim();
     if (!trimmedName) {
       throw new Error('Category name is required');
@@ -57,6 +64,9 @@ export class CategoryService {
   }
 
   async update(id: number, changes: { name?: string; type?: CategoryType }): Promise<Category> {
+    if (changes.type !== undefined) {
+      assertCategoryType(changes.type);
+    }
     const category = await db.categories.get(id);
     if (!category) {
       throw new Error('Category not found');

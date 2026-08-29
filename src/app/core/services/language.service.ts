@@ -6,6 +6,8 @@ import {
   detectBrowserLanguage,
   isLanguage,
 } from '../types/language.type';
+import { isCategoryType } from '../models/category.model';
+import { isMonthNumber } from '../types/period.type';
 import { translate } from '../translations/translations';
 import { formatDateIn, formatMoneyIn, formatNumberIn } from '../format/format';
 
@@ -40,6 +42,18 @@ export class LanguageService {
 
   t(key: string, params?: Record<string, string | number>): string {
     return translate(this.activeLanguage(), key, params);
+  }
+
+  monthName(period: number): string {
+    return this.t(`month.${period}`);
+  }
+
+  periodLabel(period: number | string): string {
+    return isMonthNumber(period) ? this.monthName(period) : String(period);
+  }
+
+  categoryTypeLabel(type: string): string {
+    return isCategoryType(type) ? this.t(`type.${type}`) : String(type);
   }
 
   formatMoney(amount: number, currency: string): string {

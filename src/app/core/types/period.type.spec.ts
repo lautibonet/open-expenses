@@ -1,12 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import {
-  MONTHS,
+  MONTH_NAMES,
+  MONTH_NUMBERS,
   defaultScope,
   getCurrentPeriod,
   getCurrentYear,
   getPeriodYear,
   isAllTime,
+  isMonthNumber,
+  isValidPeriod,
   isValidYear,
+  monthNumberFromName,
   monthsFromData,
   scopeLabel,
   scopeOptionsFromMovements,
@@ -14,6 +18,62 @@ import {
 } from './period.type';
 
 describe('period.type - scope helpers', () => {
+  describe('MONTH_NUMBERS', () => {
+    it('should list the months 1 through 12 in calendar order', () => {
+      expect(MONTH_NUMBERS).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
+    });
+
+    it('should keep the canonical English names for legacy mapping', () => {
+      expect(MONTH_NAMES[0]).toBe('January');
+      expect(MONTH_NAMES[11]).toBe('December');
+      expect(MONTH_NAMES).toHaveLength(12);
+    });
+  });
+
+  describe('isMonthNumber / isValidPeriod', () => {
+    it('should accept integers 1 through 12', () => {
+      for (const m of MONTH_NUMBERS) {
+        expect(isMonthNumber(m)).toBe(true);
+        expect(isValidPeriod(m)).toBe(true);
+      }
+    });
+
+    it('should reject out-of-range numbers, non-integers and non-numbers', () => {
+      expect(isMonthNumber(0)).toBe(false);
+      expect(isMonthNumber(13)).toBe(false);
+      expect(isMonthNumber(6.5)).toBe(false);
+      expect(isMonthNumber('6')).toBe(false);
+      expect(isMonthNumber(null)).toBe(false);
+      expect(isValidPeriod('January')).toBe(false);
+    });
+  });
+
+  describe('monthNumberFromName', () => {
+    it('maps canonical English month names to their month numbers', () => {
+      expect(monthNumberFromName('January')).toBe(1);
+      expect(monthNumberFromName('December')).toBe(12);
+    });
+
+    it('maps case-insensitively', () => {
+      expect(monthNumberFromName('august')).toBe(8);
+      expect(monthNumberFromName('AUGUST')).toBe(8);
+    });
+
+    it('returns null for unrecognized values', () => {
+      expect(monthNumberFromName('Enero')).toBeNull();
+      expect(monthNumberFromName('NotAMonth')).toBeNull();
+      expect(monthNumberFromName('')).toBeNull();
+    });
+  });
+
+  describe('getCurrentPeriod', () => {
+    it('should return the current month as a number 1-12', () => {
+      const expected = new Date().getMonth() + 1;
+      expect(getCurrentPeriod()).toBe(expected);
+      expect(isMonthNumber(getCurrentPeriod())).toBe(true);
+    });
+  });
+
   describe('defaultScope', () => {
     it('should default to the current month and year', () => {
       expect(defaultScope()).toEqual({
@@ -30,13 +90,18 @@ describe('period.type - scope helpers', () => {
     });
 
     it('should be false for a month scope', () => {
-      expect(isAllTime({ kind: 'month', period: 'January', year: 2026 })).toBe(false);
+      expect(isAllTime({ kind: 'month', period: 1, year: 2026 })).toBe(false);
     });
   });
 
   describe('scopeLabel', () => {
-    it('should label a month scope with period and year', () => {
-      expect(scopeLabel({ kind: 'month', period: 'August', year: 2026 })).toBe('August 2026');
+    it('should label a month scope with the raw month number by default', () => {
+      expect(scopeLabel({ kind: 'month', period: 8, year: 2026 })).toBe('8 2026');
+    });
+
+    it('should use the provided month labeler for display', () => {
+      const label = scopeLabel({ kind: 'month', period: 8, year: 2026 }, (m) => MONTH_NAMES[m - 1]);
+      expect(label).toBe('August 2026');
     });
 
     it('should label the all-time scope', () => {
@@ -47,12 +112,12 @@ describe('period.type - scope helpers', () => {
   describe('scopeOptionsFromMovements', () => {
     it('should derive both years and months from a single pass over the data', () => {
       const movements = [
-        { period: 'January', year: 2012, date: '2012-01-01' },
-        { period: 'March', year: 2015, date: '2015-03-01' },
+        { period: 1, year: 2012, date: '2012-01-01' },
+        { period: 3, year: 2015, date: '2015-03-01' },
       ];
       const options = scopeOptionsFromMovements(movements as any);
       expect(options.years).toEqual([2012, 2015, getCurrentYear()]);
-      expect(options.months).toEqual(['January', 'March', getCurrentPeriod()]);
+      expect(options.months).toEqual([1, 3, getCurrentPeriod()]);
     });
 
     it('should yield empty year list and only the current month when no data', () => {
@@ -75,29 +140,27 @@ describe('period.type - scope helpers', () => {
   describe('yearsFromData', () => {
     it('should derive distinct years from the data', () => {
       const movements = [
-        { period: 'January', year: 2020, date: '2020-01-01' },
-        { period: 'February', year: 2024, date: '2024-02-01' },
-        { period: 'March', year: 2020, date: '2020-03-01' },
+        { period: 1, year: 2020, date: '2020-01-01' },
+        { period: 2, year: 2024, date: '2024-02-01' },
+        { period: 3, year: 2020, date: '2020-03-01' },
       ];
       expect(yearsFromData(movements as any)).toEqual([2020, 2024, getCurrentYear()]);
     });
 
     it('should sort years ascending', () => {
       const movements = [
-        { period: 'January', year: 2026, date: '2026-01-01' },
-        { period: 'January', year: 2015, date: '2015-01-01' },
-        { period: 'January', year: 2020, date: '2020-01-01' },
+        { period: 1, year: 2026, date: '2026-01-01' },
+        { period: 1, year: 2015, date: '2015-01-01' },
+        { period: 1, year: 2020, date: '2020-01-01' },
       ];
       const years = yearsFromData(movements as any, { includeCurrentYear: false });
       expect(years).toEqual([2015, 2020, 2026]);
-      expect(years).toContain(2015);
-      expect(years).toContain(2026);
     });
 
     it('should not include years outside the data range', () => {
       const movements = [
-        { period: 'January', year: 2012, date: '2012-01-01' },
-        { period: 'January', year: 2013, date: '2013-01-01' },
+        { period: 1, year: 2012, date: '2012-01-01' },
+        { period: 1, year: 2013, date: '2013-01-01' },
       ];
       const years = yearsFromData(movements as any, { includeCurrentYear: false });
       expect(years).toEqual([2012, 2013]);
@@ -114,7 +177,7 @@ describe('period.type - scope helpers', () => {
     });
 
     it('should include legacy movements via their date year', () => {
-      const movements = [{ period: 'January', date: '2016-01-01' }];
+      const movements = [{ period: 1, date: '2016-01-01' }];
       expect(yearsFromData(movements as any, { includeCurrentYear: false })).toEqual([2016]);
     });
   });
@@ -122,35 +185,37 @@ describe('period.type - scope helpers', () => {
   describe('monthsFromData', () => {
     it('should derive the months present in the data in canonical order', () => {
       const movements = [
-        { period: 'May', year: 2026, date: '2026-05-01' },
-        { period: 'January', year: 2026, date: '2026-01-01' },
-        { period: 'March', year: 2026, date: '2026-03-01' },
+        { period: 5, year: 2026, date: '2026-05-01' },
+        { period: 1, year: 2026, date: '2026-01-01' },
+        { period: 3, year: 2026, date: '2026-03-01' },
       ];
       const months = monthsFromData(movements as any, { includeCurrentPeriod: false });
-      expect(months).toEqual(['January', 'March', 'May']);
+      expect(months).toEqual([1, 3, 5]);
     });
 
     it('should return empty when no period data exists and current period is excluded', () => {
       expect(monthsFromData([] as any, { includeCurrentPeriod: false })).toEqual([]);
     });
 
-    it('should ignore unrecognised month names', () => {
+    it('should ignore unrecognized period values', () => {
       const movements = [
-        { period: 'January', year: 2026, date: '2026-01-01' },
-        { period: 'NotAMonth', year: 2026, date: '2026-01-01' },
+        { period: 1, year: 2026, date: '2026-01-01' },
+        { period: 'Enero', year: 2026, date: '2026-01-01' },
+        { period: 13, year: 2026, date: '2026-01-01' },
+        { period: 0, year: 2026, date: '2026-01-01' },
       ];
       const months = monthsFromData(movements as any, { includeCurrentPeriod: false });
-      expect(months).toEqual(['January']);
+      expect(months).toEqual([1]);
     });
 
-    it('should always return months from the canonical MONTHS list', () => {
+    it('should always return months from the canonical MONTH_NUMBERS list', () => {
       const movements = [
-        { period: 'January', year: 2026, date: '2026-01-01' },
-        { period: 'December', year: 2026, date: '2026-12-01' },
+        { period: 1, year: 2026, date: '2026-01-01' },
+        { period: 12, year: 2026, date: '2026-12-01' },
       ];
       const months = monthsFromData(movements as any);
       for (const m of months) {
-        expect(MONTHS).toContain(m);
+        expect(MONTH_NUMBERS).toContain(m);
       }
     });
 

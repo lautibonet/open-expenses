@@ -17,11 +17,13 @@ import { Category } from '../../../core/models/category.model';
 import { Transaction } from '../../../core/models/transaction.model';
 import { ExchangeRateService } from '../../../core/services/exchange-rate.service';
 import { OfflineError } from '../../../core/models/offline-error';
+import { LanguageService } from '../../../core/services/language.service';
 import {
   getCurrentPeriod,
   getCurrentYear,
-  MONTHS,
-  MonthName,
+  isMonthNumber,
+  MONTH_NUMBERS,
+  MonthNumber,
 } from '../../../core/types/period.type';
 
 export interface TransactionFormPayload {
@@ -30,7 +32,7 @@ export interface TransactionFormPayload {
   categoryId: number;
   amount: number;
   date: string;
-  period: string;
+  period: MonthNumber;
   year: number;
   exchangeRate: number | null;
   baseCurrencyAmount: number | null;
@@ -56,7 +58,7 @@ interface TransactionFormState {
   categoryId: number;
   amount: number;
   date: string;
-  period: MonthName;
+  period: MonthNumber;
   year: number;
   note: string;
   exchangeRate: number | null;
@@ -89,6 +91,7 @@ function defaultFormState(accountId = 0, categoryId = 0): TransactionFormState {
 })
 export class QuickAddCardComponent implements OnInit, AfterViewInit {
   private exchangeRateService = inject(ExchangeRateService);
+  language = inject(LanguageService);
 
   private selectionInitialized = false;
   private editApplyEffect = effect(() => this.handleEditInput(this.editTransaction()));
@@ -123,7 +126,7 @@ export class QuickAddCardComponent implements OnInit, AfterViewInit {
     );
   }
 
-  months = MONTHS;
+  months = MONTH_NUMBERS;
   years = Array.from({ length: 10 }, (_, i) => getCurrentYear() - i);
 
   mode = signal<'compact' | 'expanded'>('compact');
@@ -318,7 +321,7 @@ export class QuickAddCardComponent implements OnInit, AfterViewInit {
       categoryId: t.categoryId,
       amount: t.amount,
       date: new Date(t.date).toISOString().split('T')[0],
-      period: (t.period as MonthName) || getCurrentPeriod(),
+      period: isMonthNumber(t.period) ? t.period : getCurrentPeriod(),
       year: t.year || getCurrentYear(),
       note: t.note ?? '',
       exchangeRate: t.exchangeRate,

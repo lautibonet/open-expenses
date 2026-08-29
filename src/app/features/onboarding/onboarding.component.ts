@@ -32,7 +32,7 @@ export class OnboardingComponent {
   private accountService = inject(AccountService);
   private categoryService = inject(CategoryService);
   private driveBackupService = inject(DriveBackupService);
-  private languageService = inject(LanguageService);
+  languageService = inject(LanguageService);
   private router = inject(Router);
 
   supportedCurrencies = SUPPORTED_CURRENCIES;
@@ -166,7 +166,7 @@ export class OnboardingComponent {
   }
 
   addCategory(): void {
-    this.categories.update(cats => [...cats, { name: '', type: 'Expense' }]);
+    this.categories.update(cats => [...cats, { name: '', type: 'expense' }]);
   }
 
   removeCategory(index: number): void {

@@ -6,7 +6,7 @@ import { ProfileService } from '../../core/services/profile.service';
 import { LanguageService } from '../../core/services/language.service';
 import { SUPPORTED_CURRENCIES } from '../../core/constants/currencies';
 import { Account } from '../../core/models/account.model';
-import { Category } from '../../core/models/category.model';
+import { Category, CategoryType } from '../../core/models/category.model';
 import { BackupCardComponent } from './backup-card/backup-card.component';
 import { LanguageCardComponent } from './language-card/language-card.component';
 
@@ -31,7 +31,7 @@ export class SettingsComponent implements OnInit {
   newAccountCurrency = signal('EUR');
   newAccountBalance = signal(0);
   newCategoryName = signal('');
-  newCategoryType = signal<'Income' | 'Expense'>('Expense');
+  newCategoryType = signal<CategoryType>('expense');
   errorMessage = signal('');
   successMessage = signal('');
   editingAccountBalance = signal<{ id: number; value: number } | null>(null);

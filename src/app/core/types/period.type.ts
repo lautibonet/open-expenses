@@ -1,12 +1,29 @@
-export const MONTHS = [
+export const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
 ] as const;
 
-export type MonthName = (typeof MONTHS)[number];
+export type MonthNumber = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
 
-export function getCurrentPeriod(): MonthName {
-  return MONTHS[new Date().getMonth()];
+export const MONTH_NUMBERS: MonthNumber[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+
+export function isMonthNumber(value: unknown): value is MonthNumber {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 12;
+}
+
+export const isValidPeriod = isMonthNumber;
+
+export const PERIOD_ERROR = 'Period must be a month between 1 and 12';
+
+export function monthNumberFromName(name: string): MonthNumber | null {
+  const index = MONTH_NAMES.findIndex(
+    (m) => m.toLowerCase() === name.trim().toLowerCase(),
+  );
+  return index === -1 ? null : (index + 1 as MonthNumber);
+}
+
+export function getCurrentPeriod(): MonthNumber {
+  return (new Date().getMonth() + 1) as MonthNumber;
 }
 
 export function getCurrentYear(): number {
@@ -26,7 +43,7 @@ export function getPeriodYear(movement: { year?: number; date: Date | string }):
 
 export interface MonthScope {
   kind: 'month';
-  period: MonthName;
+  period: MonthNumber;
   year: number;
 }
 
@@ -37,7 +54,7 @@ export interface AllTimeScope {
 export type PeriodScope = MonthScope | AllTimeScope;
 
 export type ScopeAwareMovement = {
-  period: string;
+  period: number | string;
   year?: number;
   date: Date | string;
 };
@@ -50,11 +67,14 @@ export function isAllTime(scope: PeriodScope): scope is AllTimeScope {
   return scope.kind === 'all-time';
 }
 
-export function scopeLabel(scope: PeriodScope): string {
+export function scopeLabel(
+  scope: PeriodScope,
+  monthLabel: (m: MonthNumber) => string | number = (m) => m,
+): string {
   if (scope.kind === 'all-time') {
     return 'All time';
   }
-  return `${scope.period} ${scope.year}`;
+  return `${monthLabel(scope.period)} ${scope.year}`;
 }
 
 export function yearsFromData(
@@ -74,17 +94,17 @@ export function yearsFromData(
 export function monthsFromData(
   movements: ScopeAwareMovement[],
   options: { includeCurrentPeriod?: boolean } = {},
-): MonthName[] {
-  const present = new Set(movements.map(m => m.period));
+): MonthNumber[] {
+  const present = new Set(movements.map(m => m.period).filter(isMonthNumber));
   if (options.includeCurrentPeriod !== false) {
     present.add(getCurrentPeriod());
   }
-  return MONTHS.filter(m => present.has(m));
+  return MONTH_NUMBERS.filter(m => present.has(m));
 }
 
 export interface ScopeOptions {
   years: number[];
-  months: MonthName[];
+  months: MonthNumber[];
 }
 
 export function scopeOptionsFromMovements(movements: ScopeAwareMovement[]): ScopeOptions {

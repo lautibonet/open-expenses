@@ -5,7 +5,7 @@ A personal expense tracking app that replaces a manually maintained spreadsheet.
 ## Language
 
 **Transaction**:
-A recorded movement of money classified as Income or Expense, linked to an account, a category, an amount, a date, and a period (month name).
+A recorded movement of money classified as Income or Expense, linked to an account, a category, an amount, a date, and a period (month number 1-12).
 _Avoid_: Entry, record, line item
 
 **Transfer**:
