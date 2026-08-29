@@ -507,4 +507,36 @@ describe('DashboardComponent - shared scope', () => {
     expect(component.totalExpenses()).toBe(500);
     expect(component.netIncome()).toBe(2500);
   });
+
+  it('should keep a numeric year scope when switching from All time back to a year', async () => {
+    const acc = await accountService.create('Cash', 'EUR', 0);
+    const incomeCat = await categoryService.create('Payroll', 'Income');
+    const year = getCurrentYear();
+    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(), getCurrentPeriod());
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const yearSelect = fixture.nativeElement.querySelector('select[aria-label="Scope year"]') as HTMLSelectElement;
+    const flush = () => new Promise<void>(resolve => setTimeout(resolve, 10));
+
+    const allTimeOption = Array.from(yearSelect.options).find(o => o.textContent?.trim() === 'All time')!;
+    yearSelect.value = allTimeOption.value;
+    yearSelect.dispatchEvent(new Event('change'));
+    await flush();
+    fixture.detectChanges();
+    expect(component.scope().kind).toBe('all-time');
+    expect(component.totalIncome()).toBe(3000);
+
+    const yearOption = Array.from(yearSelect.options).find(o => o.textContent?.trim() === String(year))!;
+    yearSelect.value = yearOption.value;
+    yearSelect.dispatchEvent(new Event('change'));
+    await flush();
+    fixture.detectChanges();
+
+    expect(component.scope()).toEqual({ kind: 'month', period: getCurrentPeriod(), year });
+    expect(component.totalIncome()).toBe(3000);
+    expect(component.totalExpenses()).toBe(0);
+    expect(component.netIncome()).toBe(3000);
+  });
 });

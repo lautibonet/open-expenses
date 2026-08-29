@@ -16,9 +16,10 @@
       aria-label="Scope year"
     >
       @for (yr of scopeYears(); track yr) {
-        <option [value]="yr">{{ yr }}</option>
+        <option [ngValue]="yr">{{ yr }}</option>
       }
-      <option [value]="'all-time'">All time</option>
+
+      <option [ngValue]="'all-time'">All time</option>
     </select>
     @if (scope().kind !== 'all-time') {
       <select
