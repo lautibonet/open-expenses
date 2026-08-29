@@ -160,3 +160,71 @@ describe('SettingsComponent - account deactivation confirmation', () => {
     expect(account?.active).toBe(true);
   });
 });
+
+describe('SettingsComponent - no tag affordances', () => {
+  let fixture: ComponentFixture<SettingsComponent>;
+  let component: SettingsComponent;
+  let accountService: AccountService;
+  let categoryService: CategoryService;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    await TestBed.configureTestingModule({
+      imports: [SettingsComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(SettingsComponent);
+    component = fixture.componentInstance;
+    accountService = TestBed.inject(AccountService);
+    categoryService = TestBed.inject(CategoryService);
+
+    await accountService.create('Cash', 'EUR', 100000);
+    await categoryService.create('Food', 'Expense');
+    await component.ngOnInit();
+    fixture.detectChanges();
+  });
+
+  afterEach(async () => {
+    await db.delete();
+  });
+
+  it('renders no Tags card among the settings cards', () => {
+    const headings = Array.from(
+      fixture.nativeElement.querySelectorAll('h2') as NodeListOf<HTMLElement>,
+    ).map(h => h.textContent!.trim());
+    expect(headings).not.toContain('Tags');
+  });
+
+  it('renders no tag management controls', () => {
+    const text: string = fixture.nativeElement.textContent;
+    expect(text).not.toContain('Rename');
+    expect(text).not.toContain('Delete');
+    expect(text).not.toContain('No tags yet');
+    expect(text).not.toContain('transaction(s)?');
+  });
+
+  it('renders no tag list markup', () => {
+    const el: HTMLElement = fixture.nativeElement;
+    for (const cls of ['tag-list', 'tag-name', 'tag-count', 'tag-delete-confirm']) {
+      expect(el.querySelectorAll(`.${cls}`).length).toBe(0);
+    }
+  });
+
+  it('exposes no tag rename/delete/count flows', () => {
+    const api = component as unknown as Record<string, unknown>;
+    for (const member of [
+      'tagCounts',
+      'editingTag',
+      'startEditTag',
+      'saveTagRename',
+      'cancelEditTag',
+      'tagToDelete',
+      'confirmDeleteTag',
+      'deleteTag',
+      'cancelDeleteTag',
+    ]) {
+      expect(api[member]).toBeUndefined();
+    }
+  });
+});
