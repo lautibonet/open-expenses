@@ -1,17 +1,17 @@
 <div class="onboarding">
-  <h1>Welcome to Open Expenses</h1>
-  <p class="subtitle">Set up your expense tracker in a few steps</p>
+  <h1>{{ languageService.t('onboarding.title') }}</h1>
+  <p class="subtitle">{{ languageService.t('onboarding.subtitle') }}</p>
 
   @if (step() === 'language') {
     <section class="step">
-      <h2>{{ stepNumber('language') }}. Language</h2>
-      <p>Choose the language you want to use across the app.</p>
+      <h2>{{ stepNumber('language') }}. {{ languageService.t('onboarding.language.title') }}</h2>
+      <p>{{ languageService.t('onboarding.language.description') }}</p>
 
       <select
         [ngModel]="language()"
         (ngModelChange)="onLanguageChange($event)"
         class="input"
-        aria-label="Language"
+        [attr.aria-label]="languageService.t('onboarding.language.aria')"
       >
         @for (option of languages; track option.code) {
           <option [value]="option.code">{{ option.label }}</option>
@@ -19,19 +19,15 @@
       </select>
 
       <div class="nav-buttons">
-        <button class="btn primary" (click)="goTo('restore')">Next</button>
+        <button class="btn primary" (click)="goTo('restore')">{{ languageService.t('onboarding.next') }}</button>
       </div>
     </section>
   }
 
   @if (step() === 'restore') {
     <section class="step">
-      <h2>{{ stepNumber('restore') }}. Restore a previous backup?</h2>
-      <p>
-        If you've used Open Expenses before, you can pick up where you left off by
-        restoring an existing backup — from the cloud or from a file you saved.
-        Otherwise, start fresh.
-      </p>
+      <h2>{{ stepNumber('restore') }}. {{ languageService.t('onboarding.restore.title') }}</h2>
+      <p>{{ languageService.t('onboarding.restore.description') }}</p>
 
       <div class="restore-options">
         <button
@@ -40,7 +36,7 @@
           [disabled]="isRestoring()"
           (click)="restoreFromCloud()"
         >
-          Restore from {{ backupMethod }}
+          {{ languageService.t('backup.card.restoreFrom', { method: backupMethod }) }}
         </button>
 
         <input
@@ -56,7 +52,7 @@
           [disabled]="isRestoring()"
           (click)="fileInput.click()"
         >
-          Upload backup file
+          {{ languageService.t('backup.card.restoreFromFile') }}
         </button>
 
         <button
@@ -65,12 +61,12 @@
           [disabled]="isRestoring()"
           (click)="startFresh()"
         >
-          Start fresh
+          {{ languageService.t('onboarding.restore.startFresh') }}
         </button>
       </div>
 
       @if (isRestoring()) {
-        <p class="info">Restoring…</p>
+        <p class="info">{{ languageService.t('onboarding.restore.restoring') }}</p>
       }
       @if (noBackupMessage()) {
         <p class="info">{{ noBackupMessage() }}</p>
@@ -83,43 +79,43 @@
 
   @if (step() === 'currency') {
     <section class="step">
-      <h2>{{ stepNumber('currency') }}. Base Currency</h2>
-      <p>This is the currency your Stats totals will be reported in.</p>
+      <h2>{{ stepNumber('currency') }}. {{ languageService.t('onboarding.currency.title') }}</h2>
+      <p>{{ languageService.t('onboarding.currency.description') }}</p>
       <select
         [ngModel]="baseCurrency()"
         (ngModelChange)="baseCurrency.set($event)"
         class="input"
-        aria-label="Base currency"
+        [attr.aria-label]="languageService.t('onboarding.currency.aria')"
       >
         @for (currency of supportedCurrencies; track currency) {
           <option [value]="currency">{{ currency }}</option>
         }
       </select>
       <div class="nav-buttons">
-        <button class="btn" (click)="goTo('restore')">Back</button>
-        <button class="btn primary" (click)="goTo('accounts')">Next</button>
+        <button class="btn" (click)="goTo('restore')">{{ languageService.t('onboarding.back') }}</button>
+        <button class="btn primary" (click)="goTo('accounts')">{{ languageService.t('onboarding.next') }}</button>
       </div>
     </section>
   }
 
   @if (step() === 'accounts') {
     <section class="step">
-      <h2>{{ stepNumber('accounts') }}. Accounts</h2>
-      <p>Add where your money is. You can always add more later in Settings.</p>
+      <h2>{{ stepNumber('accounts') }}. {{ languageService.t('onboarding.accounts.title') }}</h2>
+      <p>{{ languageService.t('onboarding.accounts.description') }}</p>
 
       <div class="account-form">
         <input
           type="text"
           [ngModel]="accountName()"
           (ngModelChange)="accountName.set($event)"
-          placeholder="Account name"
+          [placeholder]="languageService.t('onboarding.accounts.namePlaceholder')"
           class="input"
         />
         <select
           [ngModel]="accountCurrency()"
           (ngModelChange)="accountCurrency.set($event)"
           class="input small"
-          aria-label="Account currency"
+          [attr.aria-label]="languageService.t('onboarding.accounts.currencyAria')"
         >
           @for (currency of supportedCurrencies; track currency) {
             <option [value]="currency">{{ currency }}</option>
@@ -129,10 +125,10 @@
           type="number"
           [ngModel]="accountBalance()"
           (ngModelChange)="accountBalance.set($event)"
-          placeholder="Initial balance"
+          [placeholder]="languageService.t('onboarding.accounts.balancePlaceholder')"
           class="input small"
         />
-        <button class="btn" (click)="addAccount()">Add</button>
+        <button class="btn" (click)="addAccount()">{{ languageService.t('onboarding.accounts.add') }}</button>
       </div>
 
       @if (errorMessage()) {
@@ -144,23 +140,23 @@
           @for (account of accounts(); track $index) {
             <li>
               {{ account.name }} ({{ account.currency }}) — {{ account.balance }}
-              <button class="btn small" (click)="removeAccount($index)">Remove</button>
+              <button class="btn small" (click)="removeAccount($index)">{{ languageService.t('onboarding.accounts.remove') }}</button>
             </li>
           }
         </ul>
       }
 
       <div class="nav-buttons">
-        <button class="btn" (click)="goTo('currency')">Back</button>
-        <button class="btn primary" (click)="goTo('categories')">Next</button>
+        <button class="btn" (click)="goTo('currency')">{{ languageService.t('onboarding.back') }}</button>
+        <button class="btn primary" (click)="goTo('categories')">{{ languageService.t('onboarding.next') }}</button>
       </div>
     </section>
   }
 
   @if (step() === 'categories') {
     <section class="step">
-      <h2>{{ stepNumber('categories') }}. Categories</h2>
-      <p>Edit, add, or remove categories to match your needs.</p>
+      <h2>{{ stepNumber('categories') }}. {{ languageService.t('onboarding.categories.title') }}</h2>
+      <p>{{ languageService.t('onboarding.categories.description') }}</p>
 
       @if (errorMessage()) {
         <p class="error">{{ errorMessage() }}</p>
@@ -169,9 +165,9 @@
       <table class="category-table">
         <thead>
           <tr>
-            <th>Name</th>
-            <th>Type</th>
-            <th>Actions</th>
+            <th>{{ languageService.t('onboarding.categories.nameHeader') }}</th>
+            <th>{{ languageService.t('onboarding.categories.typeHeader') }}</th>
+            <th>{{ languageService.t('onboarding.categories.actionsHeader') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -182,7 +178,7 @@
                   type="text"
                   [ngModel]="cat.name"
                   (ngModelChange)="updateCategoryField($index, 'name', $event)"
-                  placeholder="Category name"
+                  [placeholder]="languageService.t('onboarding.categories.namePlaceholder')"
                   class="input"
                 />
               </td>
@@ -191,25 +187,25 @@
                   [ngModel]="cat.type"
                   (ngModelChange)="updateCategoryField($index, 'type', $event)"
                   class="input"
-                  aria-label="Category type"
+                  [attr.aria-label]="languageService.t('onboarding.categories.typeAria')"
                 >
                   <option value="expense">{{ languageService.t('type.expense') }}</option>
                   <option value="income">{{ languageService.t('type.income') }}</option>
                 </select>
               </td>
               <td>
-                <button class="btn small" (click)="removeCategory($index)">Delete</button>
+                <button class="btn small" (click)="removeCategory($index)">{{ languageService.t('onboarding.categories.delete') }}</button>
               </td>
             </tr>
           }
         </tbody>
       </table>
 
-      <button class="btn" (click)="addCategory()">+ Add Category</button>
+      <button class="btn" (click)="addCategory()">{{ languageService.t('onboarding.categories.addCategory') }}</button>
 
       <div class="nav-buttons">
-        <button class="btn" (click)="goTo('accounts')">Back</button>
-        <button class="btn primary" [disabled]="!canProceedFromCategories()" (click)="completeOnboarding()">Start Tracking</button>
+        <button class="btn" (click)="goTo('accounts')">{{ languageService.t('onboarding.back') }}</button>
+        <button class="btn primary" [disabled]="!canProceedFromCategories()" (click)="completeOnboarding()">{{ languageService.t('onboarding.startTracking') }}</button>
       </div>
     </section>
   }
