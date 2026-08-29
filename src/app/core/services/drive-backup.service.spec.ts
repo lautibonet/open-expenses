@@ -6,6 +6,7 @@ import { AccountService } from './account.service';
 import { CategoryService } from './category.service';
 import { TransactionService } from './transaction.service';
 import { TransferService } from './transfer.service';
+import { LanguageService } from './language.service';
 import { db } from '../db/database';
 import { BackupSnapshot } from '../../backup/backup-snapshot';
 
@@ -535,6 +536,28 @@ describe('DriveBackupService', () => {
       await service.restoreFromSnapshot(snapshot);
 
       expect(service.lastBackupAt()).toBeNull();
+    });
+
+    it('applies the language of the restored backup', async () => {
+      const languageService = TestBed.inject(LanguageService);
+      await languageService.init();
+      expect(languageService.activeLanguage()).toBe('en');
+
+      const snapshot: BackupSnapshot = {
+        accounts: [],
+        categories: [],
+        transactions: [],
+        transfers: [],
+        profile: [
+          { id: 1, baseCurrency: 'EUR', language: 'es', onboardingCompleted: true, lastBackupAt: null },
+        ],
+        exportedAt: '2026-08-27T00:00:00.000Z',
+      };
+
+      await service.restoreFromSnapshot(snapshot);
+
+      expect(languageService.activeLanguage()).toBe('es');
+      expect((await db.profile.get(1))!.language).toBe('es');
     });
   });
 

@@ -1,0 +1,97 @@
+import { Language } from '../types/language.type';
+
+const en: Record<string, string> = {
+  'settings.title': 'Settings',
+  'settings.language': 'Language',
+  'settings.languageAria': 'Language',
+  'settings.baseCurrency': 'Base Currency',
+  'settings.baseCurrencyAria': 'Base currency',
+  'settings.accounts': 'Accounts',
+  'settings.categories': 'Categories',
+  'settings.name': 'Name',
+  'settings.currency': 'Currency',
+  'settings.openingBalance': 'Opening Balance',
+  'settings.initialBalance': 'Initial balance',
+  'settings.status': 'Status',
+  'settings.type': 'Type',
+  'settings.active': 'Active',
+  'settings.inactive': 'Inactive',
+  'settings.add': 'Add',
+  'settings.update': 'Update',
+  'settings.save': 'Save',
+  'settings.cancel': 'Cancel',
+  'settings.confirm': 'Confirm',
+  'settings.deactivate': 'Deactivate',
+  'settings.reactivate': 'Reactivate',
+  'settings.deactivateAccountConfirm': 'Deactivate {name}?',
+  'settings.thisAccount': 'this account',
+  'settings.accountCurrencyAria': 'Account currency',
+  'settings.categoryTypeAria': 'Category type',
+  'settings.accountDeactivationAria': 'Confirm account deactivation',
+  'settings.currencyUpdated': 'Currency updated',
+  'settings.accountNameUpdated': 'Account name updated',
+  'settings.accountBalanceUpdated': 'Account balance updated',
+  'settings.categoryNameUpdated': 'Category name updated',
+  'settings.failedAddAccount': 'Failed to add account',
+  'settings.failedUpdateAccountName': 'Failed to update account name',
+  'settings.failedUpdateAccountBalance': 'Failed to update account balance',
+  'settings.failedAddCategory': 'Failed to add category',
+  'settings.failedUpdateCategoryName': 'Failed to update category name',
+  'settings.failedUpdateCurrency': 'Failed to update currency',
+};
+
+const es: Record<string, string> = {
+  'settings.title': 'Ajustes',
+  'settings.language': 'Idioma',
+  'settings.languageAria': 'Idioma',
+  'settings.baseCurrency': 'Moneda base',
+  'settings.baseCurrencyAria': 'Moneda base',
+  'settings.accounts': 'Cuentas',
+  'settings.categories': 'Categorías',
+  'settings.name': 'Nombre',
+  'settings.currency': 'Moneda',
+  'settings.openingBalance': 'Saldo inicial',
+  'settings.initialBalance': 'Saldo inicial',
+  'settings.status': 'Estado',
+  'settings.type': 'Tipo',
+  'settings.active': 'Activa',
+  'settings.inactive': 'Inactiva',
+  'settings.add': 'Añadir',
+  'settings.update': 'Actualizar',
+  'settings.save': 'Guardar',
+  'settings.cancel': 'Cancelar',
+  'settings.confirm': 'Confirmar',
+  'settings.deactivate': 'Desactivar',
+  'settings.reactivate': 'Reactivar',
+  'settings.deactivateAccountConfirm': '¿Desactivar {name}?',
+  'settings.thisAccount': 'esta cuenta',
+  'settings.accountCurrencyAria': 'Moneda de la cuenta',
+  'settings.categoryTypeAria': 'Tipo de categoría',
+  'settings.accountDeactivationAria': 'Confirmar desactivación de cuenta',
+  'settings.currencyUpdated': 'Moneda actualizada',
+  'settings.accountNameUpdated': 'Nombre de cuenta actualizado',
+  'settings.accountBalanceUpdated': 'Saldo de cuenta actualizado',
+  'settings.categoryNameUpdated': 'Nombre de categoría actualizado',
+  'settings.failedAddAccount': 'Error al añadir cuenta',
+  'settings.failedUpdateAccountName': 'Error al actualizar el nombre de la cuenta',
+  'settings.failedUpdateAccountBalance': 'Error al actualizar el saldo de la cuenta',
+  'settings.failedAddCategory': 'Error al añadir categoría',
+  'settings.failedUpdateCategoryName': 'Error al actualizar el nombre de la categoría',
+  'settings.failedUpdateCurrency': 'Error al actualizar la moneda',
+};
+
+export const TRANSLATIONS: Record<Language, Record<string, string>> = { en, es };
+
+export function translate(
+  language: Language,
+  key: string,
+  params?: Record<string, string | number>,
+): string {
+  let text = TRANSLATIONS[language][key] ?? TRANSLATIONS.en[key] ?? key;
+  if (params) {
+    for (const [name, value] of Object.entries(params)) {
+      text = text.replace(`{${name}}`, String(value));
+    }
+  }
+  return text;
+}

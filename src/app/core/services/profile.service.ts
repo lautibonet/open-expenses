@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { db } from '../db/database';
 import { Profile } from '../models/profile.model';
+import { DEFAULT_LANGUAGE, Language } from '../types/language.type';
 
 @Injectable({ providedIn: 'root' })
 export class ProfileService {
@@ -15,17 +16,22 @@ export class ProfileService {
     return profile?.onboardingCompleted ?? false;
   }
 
-  async completeOnboarding(baseCurrency: string): Promise<Profile> {
+  async completeOnboarding(
+    baseCurrency: string,
+    language: Language = DEFAULT_LANGUAGE,
+  ): Promise<Profile> {
     let profile = await this.get();
     if (profile) {
       await db.profile.update(this.PROFILE_ID, {
         baseCurrency: baseCurrency.toUpperCase(),
+        language,
         onboardingCompleted: true,
       });
     } else {
       profile = {
         id: this.PROFILE_ID,
         baseCurrency: baseCurrency.toUpperCase(),
+        language,
         onboardingCompleted: true,
         lastBackupAt: null,
       };
@@ -49,5 +55,14 @@ export class ProfileService {
   async getBaseCurrency(): Promise<string> {
     const profile = await this.get();
     return profile?.baseCurrency ?? 'EUR';
+  }
+
+  async updateLanguage(language: Language): Promise<void> {
+    await db.profile.update(this.PROFILE_ID, { language });
+  }
+
+  async getLanguage(): Promise<Language> {
+    const profile = await this.get();
+    return profile?.language ?? DEFAULT_LANGUAGE;
   }
 }

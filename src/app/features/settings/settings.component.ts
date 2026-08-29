@@ -3,14 +3,16 @@ import { FormsModule } from '@angular/forms';
 import { AccountService } from '../../core/services/account.service';
 import { CategoryService } from '../../core/services/category.service';
 import { ProfileService } from '../../core/services/profile.service';
+import { LanguageService } from '../../core/services/language.service';
 import { SUPPORTED_CURRENCIES } from '../../core/constants/currencies';
 import { Account } from '../../core/models/account.model';
 import { Category } from '../../core/models/category.model';
 import { BackupCardComponent } from './backup-card/backup-card.component';
+import { LanguageCardComponent } from './language-card/language-card.component';
 
 @Component({
   selector: 'app-settings',
-  imports: [FormsModule, BackupCardComponent],
+  imports: [FormsModule, BackupCardComponent, LanguageCardComponent],
   templateUrl: './settings.component.html',
   styleUrl: './settings.component.scss',
 })
@@ -18,6 +20,7 @@ export class SettingsComponent implements OnInit {
   private accountService = inject(AccountService);
   private categoryService = inject(CategoryService);
   private profileService = inject(ProfileService);
+  language = inject(LanguageService);
 
   supportedCurrencies = SUPPORTED_CURRENCIES;
   accounts = signal<Account[]>([]);
@@ -48,13 +51,19 @@ export class SettingsComponent implements OnInit {
 
   async addAccount(): Promise<void> {
     try {
-      await this.accountService.create(this.newAccountName(), this.newAccountCurrency(), this.newAccountBalance());
+      await this.accountService.create(
+        this.newAccountName(),
+        this.newAccountCurrency(),
+        this.newAccountBalance(),
+      );
       this.newAccountName.set('');
       this.newAccountBalance.set(0);
       this.errorMessage.set('');
       await this.refresh();
     } catch (e: unknown) {
-      this.errorMessage.set(e instanceof Error ? e.message : 'Failed to add account');
+      this.errorMessage.set(
+        e instanceof Error ? e.message : this.language.t('settings.failedAddAccount'),
+      );
     }
   }
 
@@ -72,10 +81,12 @@ export class SettingsComponent implements OnInit {
     try {
       await this.accountService.update(editing.id, { name: editing.value });
       this.editingAccountName.set(null);
-      this.showSuccess('Account name updated');
+      this.showSuccess(this.language.t('settings.accountNameUpdated'));
       await this.refresh();
     } catch (e: unknown) {
-      this.errorMessage.set(e instanceof Error ? e.message : 'Failed to update account name');
+      this.errorMessage.set(
+        e instanceof Error ? e.message : this.language.t('settings.failedUpdateAccountName'),
+      );
     }
   }
 
@@ -93,16 +104,18 @@ export class SettingsComponent implements OnInit {
     try {
       await this.accountService.update(editing.id, { initialBalance: editing.value });
       this.editingAccountBalance.set(null);
-      this.showSuccess('Account balance updated');
+      this.showSuccess(this.language.t('settings.accountBalanceUpdated'));
       await this.refresh();
     } catch (e: unknown) {
-      this.errorMessage.set(e instanceof Error ? e.message : 'Failed to update account balance');
+      this.errorMessage.set(
+        e instanceof Error ? e.message : this.language.t('settings.failedUpdateAccountBalance'),
+      );
     }
   }
 
   deactivationConfirmationLabel(id: number): string {
-    const name = this.accounts().find(a => a.id === id)?.name ?? 'this account';
-    return `Deactivate ${name}?`;
+    const name = this.accounts().find(a => a.id === id)?.name ?? this.language.t('settings.thisAccount');
+    return this.language.t('settings.deactivateAccountConfirm', { name });
   }
 
   requestDeactivate(id: number): void {
@@ -133,7 +146,9 @@ export class SettingsComponent implements OnInit {
       this.errorMessage.set('');
       await this.refresh();
     } catch (e: unknown) {
-      this.errorMessage.set(e instanceof Error ? e.message : 'Failed to add category');
+      this.errorMessage.set(
+        e instanceof Error ? e.message : this.language.t('settings.failedAddCategory'),
+      );
     }
   }
 
@@ -151,10 +166,12 @@ export class SettingsComponent implements OnInit {
     try {
       await this.categoryService.update(editing.id, { name: editing.value });
       this.editingCategoryName.set(null);
-      this.showSuccess('Category name updated');
+      this.showSuccess(this.language.t('settings.categoryNameUpdated'));
       await this.refresh();
     } catch (e: unknown) {
-      this.errorMessage.set(e instanceof Error ? e.message : 'Failed to update category name');
+      this.errorMessage.set(
+        e instanceof Error ? e.message : this.language.t('settings.failedUpdateCategoryName'),
+      );
     }
   }
 
@@ -172,9 +189,11 @@ export class SettingsComponent implements OnInit {
     try {
       this.errorMessage.set('');
       await this.profileService.updateBaseCurrency(this.baseCurrency());
-      this.showSuccess('Currency updated');
+      this.showSuccess(this.language.t('settings.currencyUpdated'));
     } catch (e: unknown) {
-      this.errorMessage.set(e instanceof Error ? e.message : 'Failed to update currency');
+      this.errorMessage.set(
+        e instanceof Error ? e.message : this.language.t('settings.failedUpdateCurrency'),
+      );
     }
   }
 
