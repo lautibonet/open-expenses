@@ -3,7 +3,6 @@
     [accounts]="accounts()"
     [categories]="categories()"
     [baseCurrency]="baseCurrency()"
-    [allTags]="allTags()"
     [editTransaction]="editTransaction()"
     (save)="onSaveTransaction($event)"
     (cancelEdit)="onCancelEdit()"
@@ -187,7 +186,7 @@
         type="search"
         [ngModel]="searchQuery()"
         (ngModelChange)="searchQuery.set($event)"
-        placeholder="Category, account, note, tag…"
+        placeholder="Category, account, note…"
       />
     </label>
     <label>
@@ -205,15 +204,6 @@
         <option [value]="0">All accounts</option>
         @for (acc of accounts(); track acc.id) {
           <option [value]="acc.id">{{ acc.name }}</option>
-        }
-      </select>
-    </label>
-    <label>
-      Tag
-      <select [ngModel]="filterTag()" (ngModelChange)="filterTag.set($event || null)">
-        <option [value]="">All tags</option>
-        @for (tag of allTags(); track tag) {
-          <option [value]="tag">{{ tag }}</option>
         }
       </select>
     </label>
@@ -239,7 +229,6 @@
               <th scope="col">Category / Transfer</th>
               <th scope="col">Amount</th>
               <th scope="col">Account</th>
-              <th scope="col">Tags</th>
               <th scope="col">Actions</th>
             </tr>
           </thead>
@@ -247,7 +236,7 @@
             @for (row of movementView(); track trackKey(row)) {
               @if (row.kind === 'group') {
                 <tr class="month-group-row">
-                  <td colspan="7">{{ row.label }}</td>
+                  <td colspan="6">{{ row.label }}</td>
                 </tr>
               } @else {
                 @let item = row.item;
@@ -271,13 +260,6 @@
                     {{ formatTransactionDisplayAmount(txn) }}
                   </td>
                   <td>{{ getAccountName(txn.accountId) }}</td>
-                  <td>
-                    @if (txn.tags.length > 0) {
-                      @for (tag of txn.tags; track tag) {
-                        <span class="tag">{{ tag }}</span>
-                      }
-                    }
-                  </td>
                   <td>
                     <button class="btn small" (click)="editTransaction.set(txn)">Edit</button>
                     @if (confirmingDelete() === item) {
@@ -309,7 +291,7 @@
                   <td class="amount-cell">
                     {{ formatTransferDisplayAmount(tr) }}
                   </td>
-                  <td colspan="2">
+                  <td>
                     @if (tr.note) {
                       <span class="note">{{ tr.note }}</span>
                     }

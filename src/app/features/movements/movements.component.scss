@@ -195,17 +195,6 @@
   overflow-x: auto;
 }
 
-.tag {
-  background: var(--ink-tint);
-  color: var(--ledger-ink);
-  padding: 0.125rem 0.375rem;
-  border-radius: var(--radius-tag);
-  font-size: var(--type-tag);
-  font-weight: 500;
-  letter-spacing: var(--tracking-micro);
-  line-height: var(--leading-tight);
-}
-
 .note {
   font-style: italic;
 }

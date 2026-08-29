@@ -76,6 +76,13 @@ export class AppDatabase extends Dexie {
         }
       }
     });
+    this.version(4).stores({
+      accounts: '++id, name, currency, active',
+      categories: '++id, name, type, active',
+      transactions: '++id, accountId, categoryId, date, period, year',
+      transfers: '++id, sourceAccountId, destinationAccountId, date, period, year',
+      profile: 'id',
+    });
   }
 }
 

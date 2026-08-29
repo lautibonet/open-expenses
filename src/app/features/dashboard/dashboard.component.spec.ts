@@ -75,7 +75,7 @@ describe('DashboardComponent', () => {
   it('should include a Dec-dated movement in the January report of its period year', async () => {
     const acc = await accountService.create('Cash', 'EUR', 0);
     const incomeCat = await categoryService.create('Payroll', 'Income');
-    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date('2025-12-22'), 'January', [], null, null, 2026);
+    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date('2025-12-22'), 'January', null, null, 2026);
 
     await component.ngOnInit();
     await component.onScopeYearChange(2026);
@@ -87,7 +87,7 @@ describe('DashboardComponent', () => {
   it('should exclude a Dec-dated movement from the date year report', async () => {
     const acc = await accountService.create('Cash', 'EUR', 0);
     const incomeCat = await categoryService.create('Payroll', 'Income');
-    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date('2025-12-22'), 'January', [], null, null, 2026);
+    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date('2025-12-22'), 'January', null, null, 2026);
 
     await component.ngOnInit();
     await component.onScopeYearChange(2025);
@@ -179,7 +179,7 @@ describe('DashboardComponent', () => {
     it('should compute yearly averages against the period year, not the date year', async () => {
       const acc = await accountService.create('Cash', 'EUR', 0);
       const incomeCat = await categoryService.create('Payroll', 'Income');
-      await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date('2025-12-22'), 'January', [], null, null, 2026);
+      await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date('2025-12-22'), 'January', null, null, 2026);
 
       await component.ngOnInit();
       await component.onScopeYearChange(2026);
@@ -190,7 +190,7 @@ describe('DashboardComponent', () => {
     it('should exclude a Dec-dated movement from yearly averages of its date year', async () => {
       const acc = await accountService.create('Cash', 'EUR', 0);
       const incomeCat = await categoryService.create('Payroll', 'Income');
-      await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date('2025-12-22'), 'January', [], null, null, 2026);
+      await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date('2025-12-22'), 'January', null, null, 2026);
 
       await component.ngOnInit();
       await component.onScopeYearChange(2025);
@@ -367,8 +367,8 @@ describe('DashboardComponent - shared scope', () => {
   it('should derive year options from the data range, not a fixed window', async () => {
     const acc = await accountService.create('Cash', 'EUR', 0);
     const incomeCat = await categoryService.create('Payroll', 'Income');
-    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date('2012-01-15'), 'January', [], null, null, 2012);
-    await transactionService.create(acc.id!, incomeCat.id!, 5000, new Date('2016-03-15'), 'March', [], null, null, 2016);
+    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date('2012-01-15'), 'January', null, null, 2012);
+    await transactionService.create(acc.id!, incomeCat.id!, 5000, new Date('2016-03-15'), 'March', null, null, 2016);
 
     await component.ngOnInit();
 
@@ -390,7 +390,7 @@ describe('DashboardComponent - shared scope', () => {
   it('should compute All time totals across every period present in the data', async () => {
     const acc = await accountService.create('Cash', 'EUR', 0);
     const incomeCat = await categoryService.create('Payroll', 'Income');
-    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date('2012-01-15'), 'January', [], null, null, 2012);
+    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date('2012-01-15'), 'January', null, null, 2012);
     await transactionService.create(acc.id!, incomeCat.id!, 4000, new Date('2026-03-15'), 'March');
 
     await component.ngOnInit();
@@ -406,7 +406,7 @@ describe('DashboardComponent - shared scope', () => {
     const acc = await accountService.create('Cash', 'EUR', 0);
     const incomeCat = await categoryService.create('Payroll', 'Income');
     const oldYear = getCurrentYear() - 20;
-    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(`${oldYear}-01-15`), 'January', [], null, null, oldYear);
+    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(`${oldYear}-01-15`), 'January', null, null, oldYear);
 
     await component.ngOnInit();
     await component.onScopeYearChange('all-time');
@@ -497,7 +497,7 @@ describe('DashboardComponent - shared scope', () => {
     const incomeCat = await categoryService.create('Payroll', 'Income');
     const expenseCat = await categoryService.create('Food', 'Expense');
 
-    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date('2012-01-15'), 'January', [], null, null, 2012);
+    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date('2012-01-15'), 'January', null, null, 2012);
     await transactionService.create(acc.id!, expenseCat.id!, 500, new Date('2026-03-15'), 'March');
 
     await component.ngOnInit();

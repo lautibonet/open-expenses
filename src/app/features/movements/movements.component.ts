@@ -90,7 +90,6 @@ export class MovementsComponent implements OnInit, OnDestroy {
   allCategoriesForNameResolution = signal<Category[]>([]);
   movements = signal<MovementItem[]>([]);
   baseCurrency = signal('EUR');
-  allTags = signal<string[]>([]);
 
   showForm = signal<'none' | 'transfer'>('none');
   editingId = signal<number | null>(null);
@@ -141,7 +140,6 @@ export class MovementsComponent implements OnInit, OnDestroy {
 
   filterCategory = signal<number | null>(null);
   filterAccount = signal<number | null>(null);
-  filterTag = signal<string | null>(null);
   searchQuery = signal('');
   sortDir = signal<'desc' | 'asc'>('desc');
 
@@ -189,11 +187,10 @@ export class MovementsComponent implements OnInit, OnDestroy {
   filteredMovements = computed(() => {
     const cat = this.filterCategory();
     const acc = this.filterAccount();
-    const tag = this.filterTag();
     const query = this.searchQuery().trim().toLowerCase();
     const items = this.movements();
 
-    if (cat === null && acc === null && tag === null && !query) {
+    if (cat === null && acc === null && !query) {
       return items;
     }
 
@@ -211,13 +208,6 @@ export class MovementsComponent implements OnInit, OnDestroy {
         } else {
           const tr = item.data as Transfer;
           if (tr.sourceAccountId !== acc && tr.destinationAccountId !== acc) return false;
-        }
-      }
-      if (tag !== null) {
-        if (item.type === 'transaction') {
-          if (!(item.data as Transaction).tags.includes(tag)) return false;
-        } else {
-          return false;
         }
       }
       if (query && !this.matchesSearch(item, query)) return false;
@@ -250,7 +240,6 @@ export class MovementsComponent implements OnInit, OnDestroy {
     let count = 0;
     if (this.filterCategory() !== null) count++;
     if (this.filterAccount() !== null) count++;
-    if (this.filterTag() !== null) count++;
     if (this.searchQuery().trim()) count++;
     return count;
   });
@@ -270,7 +259,6 @@ export class MovementsComponent implements OnInit, OnDestroy {
         this.getCategoryName(txn.categoryId),
         this.getAccountName(txn.accountId),
         txn.note,
-        ...txn.tags,
       ];
       return haystack.some((part) => part?.toLowerCase().includes(query));
     }
@@ -288,7 +276,6 @@ export class MovementsComponent implements OnInit, OnDestroy {
     this.accounts.set(await this.accountService.getActive());
     this.categories.set(await this.categoryService.getActive());
     this.allCategoriesForNameResolution.set(await this.categoryService.getAll());
-    await this.refreshTags();
     if (this.accounts().length > 0) {
       const first = this.accounts()[0].id!;
       const second = this.accounts()[1]?.id;
@@ -366,10 +353,6 @@ export class MovementsComponent implements OnInit, OnDestroy {
     return { period: getCurrentPeriod(), year: getCurrentYear() };
   }
 
-  private async refreshTags(): Promise<void> {
-    this.allTags.set(await this.transactionService.getAllTags());
-  }
-
   openTransferForm(id?: number): void {
     this.showForm.set('transfer');
     this.editingId.set(id ?? null);
@@ -434,7 +417,6 @@ export class MovementsComponent implements OnInit, OnDestroy {
   clearFilters(): void {
     this.filterCategory.set(null);
     this.filterAccount.set(null);
-    this.filterTag.set(null);
     this.searchQuery.set('');
   }
 
@@ -587,7 +569,6 @@ export class MovementsComponent implements OnInit, OnDestroy {
           date: new Date(payload.date),
           period: payload.period,
           year: payload.year,
-          tags: payload.tags,
           exchangeRate: payload.exchangeRate,
           baseCurrencyAmount: payload.baseCurrencyAmount,
           note: payload.note,
@@ -599,7 +580,6 @@ export class MovementsComponent implements OnInit, OnDestroy {
           payload.amount,
           new Date(payload.date),
           payload.period,
-          payload.tags,
           payload.exchangeRate,
           payload.baseCurrencyAmount,
           payload.year,
@@ -609,7 +589,6 @@ export class MovementsComponent implements OnInit, OnDestroy {
       this.editTransaction.set(null);
       await this.refresh();
       await this.applyScopeOptions();
-      await this.refreshTags();
       this.quickAddCard()?.markSaved(payload.id != null);
     } catch (e: unknown) {
       this.quickAddCard()?.markFailed(e instanceof Error ? e.message : 'Failed to save');

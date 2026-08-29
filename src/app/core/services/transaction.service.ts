@@ -11,7 +11,6 @@ export class TransactionService {
     amount: number,
     date: Date,
     period: string,
-    tags: string[] = [],
     exchangeRate: number | null = null,
     baseCurrencyAmount: number | null = null,
     year: number = getCurrentYear(),
@@ -37,10 +36,6 @@ export class TransactionService {
       throw new Error('Category not found');
     }
 
-    const cleanedTags = tags
-      .map(t => t.trim().toLowerCase())
-      .filter(t => t.length > 0);
-
     const transaction: Transaction = {
       accountId,
       categoryId,
@@ -48,7 +43,6 @@ export class TransactionService {
       date,
       period,
       year,
-      tags: cleanedTags,
       exchangeRate,
       baseCurrencyAmount,
       note,
@@ -74,12 +68,6 @@ export class TransactionService {
 
     if (changes.year !== undefined && !isValidYear(changes.year)) {
       throw new Error('Year must be a valid 4-digit year');
-    }
-
-    if (changes.tags !== undefined) {
-      changes.tags = changes.tags
-        .map(t => t.trim().toLowerCase())
-        .filter(t => t.length > 0);
     }
 
     await db.transactions.update(id, changes);
@@ -136,63 +124,5 @@ export class TransactionService {
 
   async getById(id: number): Promise<Transaction | undefined> {
     return db.transactions.get(id);
-  }
-
-  async getAllTags(): Promise<string[]> {
-    const transactions = await db.transactions.toArray();
-    const tagSet = new Set<string>();
-    for (const t of transactions) {
-      for (const tag of t.tags) {
-        tagSet.add(tag);
-      }
-    }
-    return Array.from(tagSet).sort();
-  }
-
-  async getTagCounts(): Promise<{ tag: string; count: number }[]> {
-    const transactions = await db.transactions.toArray();
-    const counts = new Map<string, number>();
-    for (const t of transactions) {
-      for (const tag of t.tags) {
-        counts.set(tag, (counts.get(tag) ?? 0) + 1);
-      }
-    }
-    return Array.from(counts.entries())
-      .map(([tag, count]) => ({ tag, count }))
-      .sort((a, b) => a.tag.localeCompare(b.tag));
-  }
-
-  async deleteTag(tagName: string): Promise<void> {
-    const cleaned = tagName.trim().toLowerCase();
-    if (!cleaned) {
-      throw new Error('Tag name cannot be empty');
-    }
-
-    const allTransactions = await db.transactions.toArray();
-    for (const t of allTransactions) {
-      if (t.tags.includes(cleaned)) {
-        const updatedTags = t.tags.filter(tag => tag !== cleaned);
-        await db.transactions.update(t.id!, { tags: updatedTags });
-      }
-    }
-  }
-
-  async renameTag(oldName: string, newName: string): Promise<void> {
-    const cleanedOld = oldName.trim().toLowerCase();
-    const cleanedNew = newName.trim().toLowerCase();
-    if (!cleanedOld || !cleanedNew) {
-      throw new Error('Tag names cannot be empty');
-    }
-    if (cleanedOld === cleanedNew) {
-      return;
-    }
-
-    const allTransactions = await db.transactions.toArray();
-    for (const t of allTransactions) {
-      if (t.tags.includes(cleanedOld)) {
-        const updatedTags = t.tags.map(tag => (tag === cleanedOld ? cleanedNew : tag));
-        await db.transactions.update(t.id!, { tags: updatedTags });
-      }
-    }
   }
 }
