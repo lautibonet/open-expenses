@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { QuickAddCardComponent } from './quick-add-card.component';
 import { ExchangeRateService } from '../../../core/services/exchange-rate.service';
+import { LanguageService } from '../../../core/services/language.service';
 import { Account } from '../../../core/models/account.model';
 import { Category } from '../../../core/models/category.model';
 import { Transaction } from '../../../core/models/transaction.model';
@@ -373,5 +374,79 @@ describe('QuickAddCardComponent', () => {
 
     expect(saved.id).toBe(7);
     expect(saved).not.toHaveProperty('tags');
+  });
+});
+describe('QuickAddCardComponent - translations', () => {
+  let fixture: ComponentFixture<QuickAddCardComponent>;
+  let component: QuickAddCardComponent;
+
+  beforeEach(async () => {
+    localStorage.clear();
+    const exchangeRateService = {
+      getRate: vi.fn().mockResolvedValue({ rate: 1.08, from: 'USD', to: 'EUR', date: '2026-08-26' }),
+    };
+    await TestBed.configureTestingModule({
+      imports: [QuickAddCardComponent],
+      providers: [{ provide: ExchangeRateService, useValue: exchangeRateService }],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(QuickAddCardComponent);
+    component = fixture.componentInstance;
+    fixture.componentRef.setInput('accounts', []);
+    fixture.componentRef.setInput('categories', []);
+    fixture.componentRef.setInput('baseCurrency', 'EUR');
+  });
+
+  afterEach(() => {
+    localStorage.clear();
+  });
+
+  it('shows the empty state in Spanish when there are no accounts', async () => {
+    await TestBed.inject(LanguageService).setLanguage('es');
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain(
+      'Aún no hay cuentas. Añade una en Ajustes para empezar a registrar.',
+    );
+  });
+
+  it('renders the compact form in Spanish when the active Language is Spanish', async () => {
+    const now = new Date();
+    const accounts: Account[] = [
+      { id: 1, name: 'Cash', currency: 'EUR', initialBalance: 0, active: true, createdAt: now },
+    ];
+    const categories: Category[] = [
+      { id: 10, name: 'Food', type: 'expense', active: true, createdAt: now },
+    ];
+    fixture.componentRef.setInput('accounts', accounts);
+    fixture.componentRef.setInput('categories', categories);
+    await TestBed.inject(LanguageService).setLanguage('es');
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const text = fixture.nativeElement.textContent;
+    expect(text).toContain('Importe');
+    expect(text).toContain('Cuenta');
+    expect(text).toContain('Categoría');
+    expect(text).toContain('Registrar');
+    expect(text).toContain('Más opciones');
+  });
+
+  it('re-renders in Spanish immediately when the Language changes after render', async () => {
+    const now = new Date();
+    fixture.componentRef.setInput('accounts', [
+      { id: 1, name: 'Cash', currency: 'EUR', initialBalance: 0, active: true, createdAt: now } as Account,
+    ]);
+    fixture.componentRef.setInput('categories', [
+      { id: 10, name: 'Food', type: 'expense', active: true, createdAt: now } as Category,
+    ]);
+    await component.ngOnInit();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Record');
+
+    await TestBed.inject(LanguageService).setLanguage('es');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Registrar');
   });
 });

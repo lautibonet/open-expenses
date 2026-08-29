@@ -1,12 +1,12 @@
 <div class="quick-add" [class.expanded]="mode() !== 'compact'">
   @if (accounts().length === 0) {
-    <p class="empty-state">No accounts yet. Add one in Settings to start recording.</p>
+    <p class="empty-state">{{ language.t('quickAdd.noAccounts') }}</p>
   } @else if (categories().length === 0) {
-    <p class="empty-state">No categories yet. Add one in Settings to start recording.</p>
+    <p class="empty-state">{{ language.t('quickAdd.noCategories') }}</p>
   } @else if (mode() === 'compact') {
     <form class="quick-add-form compact" (ngSubmit)="onSubmit()">
       <label class="amount-field">
-        <span class="label-text">Amount</span>
+        <span class="label-text">{{ language.t('quickAdd.amount') }}</span>
         <input
           #amountInput
           type="number"
@@ -16,17 +16,17 @@
           [ngModel]="form().amount"
           (ngModelChange)="onAmountChange(+$event || 0)"
           name="quick-amount"
-          aria-label="Amount"
+          [attr.aria-label]="language.t('quickAdd.amount')"
         />
       </label>
 
       <label>
-        <span class="label-text">Account</span>
+        <span class="label-text">{{ language.t('quickAdd.account') }}</span>
         <select
           [ngModel]="form().accountId"
           (ngModelChange)="onAccountChange(+$event)"
           name="quick-account"
-          aria-label="Account"
+          [attr.aria-label]="language.t('quickAdd.account')"
         >
           @for (acc of accounts(); track acc.id) {
             <option [value]="acc.id">{{ acc.name }} ({{ acc.currency }})</option>
@@ -35,12 +35,12 @@
       </label>
 
       <label>
-        <span class="label-text">Category</span>
+        <span class="label-text">{{ language.t('quickAdd.category') }}</span>
         <select
           [ngModel]="form().categoryId"
           (ngModelChange)="onCategoryChange(+$event)"
           name="quick-category"
-          aria-label="Category"
+          [attr.aria-label]="language.t('quickAdd.category')"
         >
           @for (cat of categories(); track cat.id) {
             <option [value]="cat.id">{{ cat.name }}</option>
@@ -49,12 +49,16 @@
       </label>
 
       <div class="compact-actions">
-        <button type="submit" class="btn primary" [disabled]="!canSubmit()">Record</button>
-        <button type="button" class="btn small" (click)="expandForm()">More options</button>
+        <button type="submit" class="btn primary" [disabled]="!canSubmit()">
+          {{ language.t('quickAdd.record') }}
+        </button>
+        <button type="button" class="btn small" (click)="expandForm()">
+          {{ language.t('quickAdd.moreOptions') }}
+        </button>
       </div>
 
       @if (isForeignCurrency() && rateState().loading) {
-        <p class="rate-status">Fetching rate...</p>
+        <p class="rate-status">{{ language.t('quickAdd.fetchingRate') }}</p>
       }
       @if (isForeignCurrency() && rateState().error) {
         <p class="rate-error">{{ rateState().error }}</p>
@@ -66,11 +70,17 @@
     </form>
   } @else {
     <form class="quick-add-form expanded" (ngSubmit)="onSubmitForm()">
-      <h3 #editHeading tabindex="-1">{{ editingId() ? 'Edit' : 'New' }} Transaction</h3>
+      <h3 #editHeading tabindex="-1">
+        {{
+          editingId()
+            ? language.t('quickAdd.editTransactionTitle')
+            : language.t('quickAdd.newTransactionTitle')
+        }}
+      </h3>
 
       <div class="form-grid">
         <label>
-          Account
+          {{ language.t('quickAdd.account') }}
           <select
             [ngModel]="form().accountId"
             (ngModelChange)="onAccountChange(+$event)"
@@ -82,54 +92,56 @@
           </select>
         </label>
         <label>
-          Category
+          {{ language.t('quickAdd.category') }}
           <select
             [ngModel]="form().categoryId"
             (ngModelChange)="onCategoryChange(+$event)"
             name="expand-category"
           >
             @for (cat of categories(); track cat.id) {
-              <option [value]="cat.id">{{ cat.name }} ({{ cat.type }})</option>
+              <option [value]="cat.id">
+                {{ cat.name }} ({{ language.categoryTypeLabel(cat.type) }})
+              </option>
             }
           </select>
         </label>
         <label>
-          Amount
+          {{ language.t('quickAdd.amount') }}
           <input
             type="number"
             [ngModel]="form().amount"
             (ngModelChange)="onAmountChange(+$event || 0); onAmountOrRateChange()"
             name="expand-amount"
-            aria-label="Amount"
+            [attr.aria-label]="language.t('quickAdd.amount')"
           />
         </label>
         <label>
-          Note
+          {{ language.t('quickAdd.note') }}
           <input
             type="text"
             [ngModel]="form().note"
             (ngModelChange)="form.update((f) => ({ ...f, note: $event }))"
             name="expand-note"
-            aria-label="Note"
+            [attr.aria-label]="language.t('quickAdd.note')"
           />
         </label>
         <label>
-          Date
+          {{ language.t('quickAdd.date') }}
           <input
             type="date"
             [ngModel]="form().date"
             (ngModelChange)="onDateChange($event)"
             name="expand-date"
-            aria-label="Date"
+            [attr.aria-label]="language.t('quickAdd.date')"
           />
         </label>
         <label>
-          Period
+          {{ language.t('quickAdd.period') }}
           <select
             [ngModel]="form().period"
             (ngModelChange)="form.update((f) => ({ ...f, period: $event }))"
             name="expand-period"
-            aria-label="Period"
+            [attr.aria-label]="language.t('quickAdd.period')"
           >
             @for (month of months; track month) {
               <option [ngValue]="month">{{ language.monthName(month) }}</option>
@@ -137,12 +149,12 @@
           </select>
         </label>
         <label>
-          Year
+          {{ language.t('quickAdd.year') }}
           <select
             [ngModel]="form().year"
             (ngModelChange)="form.update((f) => ({ ...f, year: +$event }))"
             name="expand-year"
-            aria-label="Year"
+            [attr.aria-label]="language.t('quickAdd.year')"
           >
             @for (yr of years; track yr) {
               <option [value]="yr">{{ yr }}</option>
@@ -153,16 +165,21 @@
 
       @if (isForeignCurrency()) {
         <div class="exchange-rate-section">
-          <h4>Exchange Rate</h4>
+          <h4>{{ language.t('quickAdd.exchangeRate') }}</h4>
           @if (rateState().loading) {
-            <p class="rate-status">Fetching rate...</p>
+            <p class="rate-status">{{ language.t('quickAdd.fetchingRate') }}</p>
           }
           @if (rateState().error) {
             <p class="rate-error">{{ rateState().error }}</p>
           }
           <div class="exchange-rate-grid">
             <label>
-              Exchange Rate ({{ getAccountCurrency(form().accountId) }} &rarr; {{ baseCurrency() }})
+              {{
+                language.t('quickAdd.exchangeRatePair', {
+                  from: getAccountCurrency(form().accountId),
+                  to: baseCurrency(),
+                })
+              }}
               <input
                 type="number"
                 step="0.0001"
@@ -171,25 +188,31 @@
                   form.update((f) => ({ ...f, exchangeRate: +$event })); onAmountOrRateChange()
                 "
                 name="expand-rate"
-                aria-label="Exchange rate"
+                [attr.aria-label]="language.t('quickAdd.exchangeRateAria')"
               />
             </label>
             <label>
-              {{ baseCurrency() }} Equivalent
+              {{ language.t('quickAdd.equivalent', { currency: baseCurrency() }) }}
               <input
                 type="number"
                 [ngModel]="form().baseCurrencyAmount"
                 readonly
                 class="readonly"
                 name="expand-equiv"
-                aria-label="{{ baseCurrency() }} equivalent"
+                [attr.aria-label]="language.t('quickAdd.equivalentAria', { currency: baseCurrency() })"
               />
             </label>
           </div>
           @if (rateState().rate !== null) {
             <p class="rate-source">
-              Suggested rate: 1 {{ getAccountCurrency(form().accountId) }} = {{ rateState().rate }}
-              {{ baseCurrency() }} ({{ rateState().date }})
+              {{
+                language.t('quickAdd.suggestedRate', {
+                  from: getAccountCurrency(form().accountId),
+                  rate: rateState().rate!,
+                  to: baseCurrency(),
+                  date: rateState().date,
+                })
+              }}
             </p>
           }
         </div>
@@ -200,8 +223,12 @@
       <span class="visually-hidden" aria-live="polite">{{ announcement() }}</span>
 
       <div class="form-actions">
-        <button type="button" class="btn" (click)="cancelExpand()">Cancel</button>
-        <button type="submit" class="btn primary" [disabled]="saving()">Save</button>
+        <button type="button" class="btn" (click)="cancelExpand()">
+          {{ language.t('quickAdd.cancel') }}
+        </button>
+        <button type="submit" class="btn primary" [disabled]="saving()">
+          {{ language.t('quickAdd.save') }}
+        </button>
       </div>
     </form>
   }

@@ -6,6 +6,7 @@ import { AccountService } from '../../core/services/account.service';
 import { CategoryService } from '../../core/services/category.service';
 import { ProfileService } from '../../core/services/profile.service';
 import { ExchangeRateService } from '../../core/services/exchange-rate.service';
+import { LanguageService } from '../../core/services/language.service';
 import { db } from '../../core/db/database';
 import { Transaction } from '../../core/models/transaction.model';
 import { Transfer } from '../../core/models/transfer.model';
@@ -1600,5 +1601,69 @@ describe('MovementsComponent - quick-add integration', () => {
     component.onCancelEdit();
 
     expect(component.editTransaction()).toBeNull();
+  });
+});
+
+describe('MovementsComponent - translations', () => {
+  let fixture: ComponentFixture<MovementsComponent>;
+  let component: MovementsComponent;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    await TestBed.configureTestingModule({
+      imports: [MovementsComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(MovementsComponent);
+    component = fixture.componentInstance;
+  });
+
+  afterEach(async () => {
+    await new Promise<void>(resolve => setTimeout(resolve, 10));
+    await db.delete();
+  });
+
+  it('renders in Spanish when the active Language is Spanish', async () => {
+    await TestBed.inject(LanguageService).setLanguage('es');
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const text = fixture.nativeElement.textContent;
+    expect(text).toContain('+ Transferencia');
+    expect(text).toContain('Más recientes primero');
+    expect(text).toContain('No hay movimientos de');
+    expect(fixture.nativeElement.querySelector('[aria-label="Ámbito: año"]')).toBeTruthy();
+  });
+
+  it('re-renders in Spanish immediately when the Language changes after render', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Newest first');
+
+    await TestBed.inject(LanguageService).setLanguage('es');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Más recientes primero');
+  });
+
+  it('shows transfer validation errors in the active Language', async () => {
+    const accountService = TestBed.inject(AccountService);
+    const acc = await accountService.create('Cash', 'EUR', 100000);
+    await component.ngOnInit();
+
+    await TestBed.inject(LanguageService).setLanguage('es');
+    component.openTransferForm();
+    component.trForm.update((f) => ({
+      ...f,
+      sourceAccountId: acc.id!,
+      destAccountId: 9999,
+      sourceAmount: 10,
+    }));
+
+    await component.saveTransfer();
+
+    expect(component.errorMessage()).toBe(
+      'Esa cuenta ya no existe. Elige otra e inténtalo de nuevo.',
+    );
   });
 });

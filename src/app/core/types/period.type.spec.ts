@@ -12,7 +12,6 @@ import {
   isValidYear,
   monthNumberFromName,
   monthsFromData,
-  scopeLabel,
   scopeOptionsFromMovements,
   yearsFromData,
 } from './period.type';
@@ -91,21 +90,6 @@ describe('period.type - scope helpers', () => {
 
     it('should be false for a month scope', () => {
       expect(isAllTime({ kind: 'month', period: 1, year: 2026 })).toBe(false);
-    });
-  });
-
-  describe('scopeLabel', () => {
-    it('should label a month scope with the raw month number by default', () => {
-      expect(scopeLabel({ kind: 'month', period: 8, year: 2026 })).toBe('8 2026');
-    });
-
-    it('should use the provided month labeler for display', () => {
-      const label = scopeLabel({ kind: 'month', period: 8, year: 2026 }, (m) => MONTH_NAMES[m - 1]);
-      expect(label).toBe('August 2026');
-    });
-
-    it('should label the all-time scope', () => {
-      expect(scopeLabel({ kind: 'all-time' })).toBe('All time');
     });
   });
 

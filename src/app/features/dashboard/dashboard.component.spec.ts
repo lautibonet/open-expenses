@@ -7,6 +7,7 @@ import { CategoryService } from '../../core/services/category.service';
 import { ProfileService } from '../../core/services/profile.service';
 import { ExchangeRateService } from '../../core/services/exchange-rate.service';
 import { NetworkService } from '../../core/services/network.service';
+import { LanguageService } from '../../core/services/language.service';
 import { db } from '../../core/db/database';
 import { MONTH_NAMES, defaultScope, getCurrentPeriod, getCurrentYear } from '../../core/types/period.type';
 
@@ -540,5 +541,53 @@ describe('DashboardComponent - shared scope', () => {
     expect(component.totalIncome()).toBe(3000);
     expect(component.totalExpenses()).toBe(0);
     expect(component.netIncome()).toBe(3000);
+  });
+});
+
+describe('DashboardComponent - translations', () => {
+  let fixture: ComponentFixture<DashboardComponent>;
+  let component: DashboardComponent;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    await TestBed.configureTestingModule({
+      imports: [DashboardComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(DashboardComponent);
+    component = fixture.componentInstance;
+  });
+
+  afterEach(async () => {
+    await new Promise<void>(resolve => setTimeout(resolve, 10));
+    await db.delete();
+  });
+
+  it('renders in Spanish when the active Language is Spanish', async () => {
+    await TestBed.inject(LanguageService).setLanguage('es');
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const text = fixture.nativeElement.textContent;
+    expect(text).toContain('Estadísticas');
+    expect(text).toContain('Totales de');
+    expect(text).toContain('Ingresos');
+    expect(text).toContain('Gastos');
+    expect(text).toContain('Saldo total de');
+    expect(text).toContain('Saldos de cuentas de');
+    expect(text).toContain('Medias mensuales de');
+    expect(text).toContain('Todo el periodo');
+    expect(fixture.nativeElement.querySelector('[aria-label="Ámbito: año"]')).toBeTruthy();
+  });
+
+  it('re-renders in Spanish immediately when the Language changes after render', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('h1')?.textContent?.trim()).toBe('Stats');
+
+    await TestBed.inject(LanguageService).setLanguage('es');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('h1')?.textContent?.trim()).toBe('Estadísticas');
   });
 });
