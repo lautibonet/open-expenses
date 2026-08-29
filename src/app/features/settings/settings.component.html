@@ -61,7 +61,22 @@
       <tbody>
         @for (acc of accounts(); track acc.id) {
           <tr [class.inactive]="!acc.active">
-            <td>{{ acc.name }}</td>
+            <td>
+              @if (editingAccountName()?.id === acc.id) {
+                <input
+                  type="text"
+                  [ngModel]="editingAccountName()!.value"
+                  (ngModelChange)="editingAccountName.set({ id: acc.id!, value: $event })"
+                  class="input"
+                />
+                <button class="btn small primary" (click)="saveAccountName()">Save</button>
+                <button class="btn small" (click)="cancelEditAccountName()">Cancel</button>
+              } @else {
+                <span (click)="startEditAccountName(acc.id!, acc.name)" class="editable">
+                  {{ acc.name }}
+                </span>
+              }
+            </td>
             <td>{{ acc.currency }}</td>
             <td>
               @if (editingAccountBalance()?.id === acc.id) {

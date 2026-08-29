@@ -63,6 +63,43 @@ describe('SettingsComponent - inline editing', () => {
     expect(component.editingAccountBalance()).not.toBeNull();
   });
 
+  it('should start editing account name', () => {
+    component.startEditAccountName(accountId, 'Cash');
+    expect(component.editingAccountName()).toEqual({ id: accountId, value: 'Cash' });
+  });
+
+  it('should cancel editing account name', () => {
+    component.startEditAccountName(accountId, 'Cash');
+    component.cancelEditAccountName();
+    expect(component.editingAccountName()).toBeNull();
+  });
+
+  it('should save account name', async () => {
+    component.startEditAccountName(accountId, 'Cash');
+    component.editingAccountName.set({ id: accountId, value: 'Wallet' });
+    await component.saveAccountName();
+    expect(component.editingAccountName()).toBeNull();
+    const updated = await accountService.getById(accountId);
+    expect(updated?.name).toBe('Wallet');
+  });
+
+  it('should validate account name is required', async () => {
+    component.startEditAccountName(accountId, 'Cash');
+    component.editingAccountName.set({ id: accountId, value: '' });
+    await component.saveAccountName();
+    expect(component.errorMessage()).toContain('required');
+    expect(component.editingAccountName()).not.toBeNull();
+  });
+
+  it('should validate account name is unique', async () => {
+    await accountService.create('Bank', 'EUR', 0);
+    component.startEditAccountName(accountId, 'Cash');
+    component.editingAccountName.set({ id: accountId, value: 'Bank' });
+    await component.saveAccountName();
+    expect(component.errorMessage()).toContain('unique');
+    expect(component.editingAccountName()).not.toBeNull();
+  });
+
   it('should start editing category name', () => {
     component.startEditCategoryName(categoryId, 'Food');
     expect(component.editingCategoryName()).toEqual({ id: categoryId, value: 'Food' });

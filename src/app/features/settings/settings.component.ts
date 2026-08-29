@@ -32,6 +32,7 @@ export class SettingsComponent implements OnInit {
   errorMessage = signal('');
   successMessage = signal('');
   editingAccountBalance = signal<{ id: number; value: number } | null>(null);
+  editingAccountName = signal<{ id: number; value: string } | null>(null);
   editingCategoryName = signal<{ id: number; value: string } | null>(null);
   confirmingDeactivate = signal<number | null>(null);
 
@@ -54,6 +55,27 @@ export class SettingsComponent implements OnInit {
       await this.refresh();
     } catch (e: unknown) {
       this.errorMessage.set(e instanceof Error ? e.message : 'Failed to add account');
+    }
+  }
+
+  startEditAccountName(id: number, value: string): void {
+    this.editingAccountName.set({ id, value });
+  }
+
+  cancelEditAccountName(): void {
+    this.editingAccountName.set(null);
+  }
+
+  async saveAccountName(): Promise<void> {
+    const editing = this.editingAccountName();
+    if (!editing) return;
+    try {
+      await this.accountService.update(editing.id, { name: editing.value });
+      this.editingAccountName.set(null);
+      this.showSuccess('Account name updated');
+      await this.refresh();
+    } catch (e: unknown) {
+      this.errorMessage.set(e instanceof Error ? e.message : 'Failed to update account name');
     }
   }
 
