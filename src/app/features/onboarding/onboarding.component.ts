@@ -116,9 +116,11 @@ export class OnboardingComponent {
       this.router.navigate(['/dashboard']);
     } catch (e: unknown) {
       if (e instanceof NoBackupFoundError) {
-        this.noBackupMessage.set('No backup was found in the cloud. You can start fresh instead.');
+        this.noBackupMessage.set(this.languageService.t('onboarding.restore.noBackupFound'));
       } else {
-        this.errorMessage.set(e instanceof Error ? e.message : 'Restore failed');
+        this.errorMessage.set(
+          e instanceof Error ? e.message : this.languageService.t('backup.error.restoreFailed'),
+        );
       }
     } finally {
       this.isRestoring.set(false);
@@ -127,14 +129,14 @@ export class OnboardingComponent {
 
   addAccount(): void {
     if (!this.accountName()) {
-      this.errorMessage.set('Account name is required');
+      this.errorMessage.set(this.languageService.t('onboarding.accounts.nameRequired'));
       return;
     }
     const exists = this.accounts().some(
       a => a.name.toLowerCase() === this.accountName().toLowerCase(),
     );
     if (exists) {
-      this.errorMessage.set('Account name already added');
+      this.errorMessage.set(this.languageService.t('onboarding.accounts.nameExists'));
       return;
     }
     this.accounts.update(accs => [
@@ -179,13 +181,13 @@ export class OnboardingComponent {
 
   async completeOnboarding(): Promise<void> {
     if (!this.canProceedFromCategories()) {
-      this.errorMessage.set('At least one category is required');
+      this.errorMessage.set(this.languageService.t('onboarding.categories.minRequired'));
       return;
     }
 
     const emptyCategory = this.categories().find(c => !c.name.trim());
     if (emptyCategory) {
-      this.errorMessage.set('All categories must have a name');
+      this.errorMessage.set(this.languageService.t('onboarding.categories.namesRequired'));
       return;
     }
 
@@ -200,7 +202,9 @@ export class OnboardingComponent {
       }
       this.router.navigate(['/dashboard']);
     } catch (e: unknown) {
-      this.errorMessage.set(e instanceof Error ? e.message : 'Failed to complete onboarding');
+      this.errorMessage.set(
+        e instanceof Error ? e.message : this.languageService.t('onboarding.completionFailed'),
+      );
     }
   }
 }

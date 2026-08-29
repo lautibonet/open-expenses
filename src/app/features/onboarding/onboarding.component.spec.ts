@@ -72,8 +72,20 @@ describe('OnboardingComponent', () => {
 
     const text = fixture.nativeElement.textContent as string;
     expect(text).toContain('Restore from Google Drive');
-    expect(text).toContain('Upload backup file');
+    expect(text).toContain('Restore from file');
     expect(text).toContain('Start fresh');
+  });
+
+  it('renders the following steps in the chosen language immediately', async () => {
+    await component.onLanguageChange('es');
+    fixture.detectChanges();
+
+    component.goTo('currency');
+    fixture.detectChanges();
+
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).toContain('Moneda base');
+    expect(text).not.toContain('Base Currency');
   });
 
   it('shows the base currency step when starting fresh', () => {
