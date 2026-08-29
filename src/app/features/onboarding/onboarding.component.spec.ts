@@ -2,8 +2,13 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { OnboardingComponent } from './onboarding.component';
 import { DriveBackupService } from '../../core/services/drive-backup.service';
+import { LanguageService } from '../../core/services/language.service';
 import { NoBackupFoundError } from '../../backup/drive-backup-provider';
 import { db } from '../../core/db/database';
+
+function stubNavigator(language: string): void {
+  vi.stubGlobal('navigator', { language, languages: [language] });
+}
 
 describe('OnboardingComponent', () => {
   let fixture: ComponentFixture<OnboardingComponent>;
@@ -36,17 +41,35 @@ describe('OnboardingComponent', () => {
     }).compileComponents();
 
     router = TestBed.inject(Router);
+    stubNavigator('en-GB');
+    await createComponent();
+  });
+
+  async function createComponent(): Promise<void> {
     fixture = TestBed.createComponent(OnboardingComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
-  });
+  }
 
   afterEach(async () => {
+    vi.unstubAllGlobals();
     await db.delete();
   });
 
-  it('starts on the restore step offering cloud, file, and start fresh', () => {
-    expect(component.step()).toBe(0);
+  it('starts on the language step preselected from the browser language', async () => {
+    stubNavigator('es-ES');
+    await createComponent();
+
+    expect(component.step()).toBe('language');
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).toContain('Language');
+    expect(component.language()).toBe('es');
+  });
+
+  it('offers the restore step after the language step', () => {
+    component.goTo('restore');
+    fixture.detectChanges();
+
     const text = fixture.nativeElement.textContent as string;
     expect(text).toContain('Restore from Google Drive');
     expect(text).toContain('Upload backup file');
@@ -57,8 +80,44 @@ describe('OnboardingComponent', () => {
     component.startFresh();
     fixture.detectChanges();
 
-    expect(component.step()).toBe(1);
+    expect(component.step()).toBe('currency');
     expect(fixture.nativeElement.textContent).toContain('Base Currency');
+  });
+
+  it('derives step numbers from the named steps instead of hard-coding them', () => {
+    component.goTo('currency');
+
+    expect(component.stepNumber('language')).toBe(1);
+    expect(component.stepNumber('restore')).toBe(2);
+    expect(component.stepNumber('currency')).toBe(3);
+    expect(component.stepNumber('accounts')).toBe(4);
+    expect(component.stepNumber('categories')).toBe(5);
+  });
+
+  it('walks the whole flow in order: language, restore, currency, accounts, categories', () => {
+    expect(component.step()).toBe('language');
+
+    component.goTo('restore');
+    component.startFresh();
+    expect(component.step()).toBe('currency');
+
+    component.goTo('accounts');
+    expect(component.step()).toBe('accounts');
+
+    component.goTo('categories');
+    expect(component.step()).toBe('categories');
+
+    component.goTo('accounts');
+    expect(component.step()).toBe('accounts');
+  });
+
+  it('persists the chosen language to the profile when completing onboarding', async () => {
+    vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    component.onLanguageChange('es');
+
+    await component.completeOnboarding();
+
+    expect((await db.profile.get(1))!.language).toBe('es');
   });
 
   it('restores from cloud: connects, restores, and goes to the dashboard', async () => {
@@ -72,13 +131,14 @@ describe('OnboardingComponent', () => {
   });
 
   it('stays on the restore step with a clear message when no cloud backup exists', async () => {
+    component.goTo('restore');
     driveBackupService.restore.mockRejectedValue(new NoBackupFoundError());
     const navigate = vi.spyOn(router, 'navigate');
 
     await component.restoreFromCloud();
     fixture.detectChanges();
 
-    expect(component.step()).toBe(0);
+    expect(component.step()).toBe('restore');
     expect(component.noBackupMessage()).toContain('No backup');
     expect(navigate).not.toHaveBeenCalled();
   });
@@ -123,5 +183,57 @@ describe('OnboardingComponent', () => {
 
     expect(component.errorMessage()).toBe('Invalid backup file');
     expect(navigate).not.toHaveBeenCalled();
+  });
+});
+
+describe('OnboardingComponent restore language override', () => {
+  let fixture: ComponentFixture<OnboardingComponent>;
+  let component: OnboardingComponent;
+  let router: Router;
+  let languageService: LanguageService;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+
+    await TestBed.configureTestingModule({
+      imports: [OnboardingComponent],
+      providers: [provideRouter([])],
+    }).compileComponents();
+
+    router = TestBed.inject(Router);
+    languageService = TestBed.inject(LanguageService);
+    fixture = TestBed.createComponent(OnboardingComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+  });
+
+  afterEach(async () => {
+    await db.delete();
+  });
+
+  it('applies the backup language over the one chosen during onboarding', async () => {
+    component.onLanguageChange('en');
+    expect(languageService.activeLanguage()).toBe('en');
+
+    const snapshot = {
+      accounts: [],
+      categories: [],
+      transactions: [],
+      transfers: [],
+      profile: [
+        { id: 1, baseCurrency: 'EUR', language: 'es', onboardingCompleted: true, lastBackupAt: null },
+      ],
+      exportedAt: new Date().toISOString(),
+    };
+    const file = new File([JSON.stringify(snapshot)], 'backup.json', {
+      type: 'application/json',
+    });
+    vi.spyOn(router, 'navigate').mockResolvedValue(true);
+
+    await component.restoreFromFile(file);
+
+    expect((await db.profile.get(1))!.language).toBe('es');
+    expect(languageService.activeLanguage()).toBe('es');
   });
 });

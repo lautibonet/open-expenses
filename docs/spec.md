@@ -24,7 +24,7 @@ Exchange rate lookups happen directly from the client against a free, key-less p
 ### Local-first usage & onboarding
 
 1. As a user, I want to open the app and start using it immediately, without registering or logging in, so there's no friction between deciding to track an expense and actually recording it.
-2. As a first-time user, I want to complete a short onboarding flow that opens with an optional restore step (restore from cloud, upload a backup file, or start fresh) before setting base currency, initial accounts, and reviewing default categories — so my data has meaningful context from day one, and I can pick up on a new device without starting from scratch.
+2. As a first-time user, I want to complete a short onboarding flow that opens with a language step (preselected from my browser language), then an optional restore step (restore from cloud, upload a backup file, or start fresh — a restore applies the backup's language over my choice) before setting base currency, initial accounts, and reviewing default categories — so my data has meaningful context from day one, and I can pick up on a new device without starting from scratch.
 3. As a first-time user, I want the app to ship with pre-populated default categories (Expense: Food, Transport, Housing, Subscriptions, Leisure, Misc; Income: Payroll, Second-hand Sale, Refund) that I can review and edit during onboarding, so I don't have to create everything from scratch.
 4. As a returning user, I want the app to remember that I've already completed onboarding, so I land directly on my data instead of being asked to set up again.
 5. As a user, I want the app to work fully offline, so I can log a transaction with no signal.
@@ -132,7 +132,7 @@ Exchange rate lookups happen directly from the client against a free, key-less p
 - The original spec's auto-created Transfer-type category is dropped entirely. Transfers are structurally separate from Transactions and never reference categories (see grilling decision).
 
 **Onboarding**
-- On app start, check for a local profile record (base currency, onboardingCompleted flag). If absent, show the onboarding wizard. The first step offers an optional restore (restore from cloud or upload a backup file, or start fresh); when declined, proceed to set base currency, create initial accounts, review/edit pre-populated default categories. No pay-day rule configuration (periods are manually selected month names).
+- On app start, check for a local profile record (language, base currency, onboardingCompleted flag). If absent, show the onboarding wizard. The first step asks the preferred Language (preselected from the browser language); the second offers an optional restore (restore from cloud or upload a backup file, or start fresh — restoring applies the backup's language over the selected one); when declined, proceed to set base currency, create initial accounts, review/edit pre-populated default categories. No pay-day rule configuration (periods are manually selected month names).
 
 **Default categories**
 - Expense: Food, Transport, Housing, Subscriptions, Leisure, Misc
