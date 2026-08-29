@@ -36,7 +36,10 @@ export class DriveBackupService {
   private accessToken: string | null = null;
 
   constructor() {
-    this.provider = new DriveBackupProvider(() => this.accessToken);
+    this.provider = new DriveBackupProvider(
+      () => this.accessToken,
+      (key) => this.languageService.t(key),
+    );
     this.loadStoredState();
   }
 
@@ -48,11 +51,17 @@ export class DriveBackupService {
     this.error.set(null);
   }
 
+  private setAndRethrow(fallbackKey: string, e: unknown): never {
+    const message = e instanceof Error ? e.message : this.languageService.t(fallbackKey);
+    this.error.set(message);
+    throw e;
+  }
+
   async connect(): Promise<void> {
     this.error.set(null);
 
     if (!this.networkService.isOnline()) {
-      const msg = 'Cannot connect while offline';
+      const msg = this.languageService.t('backup.error.offlineConnect');
       this.error.set(msg);
       throw new Error(msg);
     }
@@ -99,7 +108,7 @@ export class DriveBackupService {
 
   async backupNow(): Promise<void> {
     if (!this.networkService.isOnline()) {
-      throw new Error('Cannot backup while offline');
+      throw new Error(this.languageService.t('backup.error.offlineBackup'));
     }
 
     if (this.isBackingUp()) {
@@ -121,9 +130,7 @@ export class DriveBackupService {
       this.lastBackupAt.set(now);
       await this.profileService.updateLastBackupAt(now);
     } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : 'Backup failed';
-      this.error.set(message);
-      throw e;
+      this.setAndRethrow('backup.error.backupFailed', e);
     } finally {
       this.isBackingUp.set(false);
     }
@@ -131,11 +138,11 @@ export class DriveBackupService {
 
   async restore(): Promise<void> {
     if (!this.accessToken) {
-      throw new Error('Not connected');
+      throw new Error(this.languageService.t('backup.error.notConnected'));
     }
 
     if (!this.networkService.isOnline()) {
-      throw new Error('Cannot restore while offline');
+      throw new Error(this.languageService.t('backup.error.offlineRestore'));
     }
 
     this.isBackingUp.set(true);
@@ -146,9 +153,7 @@ export class DriveBackupService {
       await overwriteLocalDb(snapshot);
       await this.languageService.applyFromProfile();
     } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : 'Restore failed';
-      this.error.set(message);
-      throw e;
+      this.setAndRethrow('backup.error.restoreFailed', e);
     } finally {
       this.isBackingUp.set(false);
     }
@@ -156,11 +161,11 @@ export class DriveBackupService {
 
   async getCloudSnapshot(): Promise<BackupSnapshot> {
     if (!this.networkService.isOnline()) {
-      throw new Error('Cannot restore while offline');
+      throw new Error(this.languageService.t('backup.error.offlineRestore'));
     }
 
     if (this.isBackingUp()) {
-      throw new Error('Backup already in progress');
+      throw new Error(this.languageService.t('backup.error.alreadyInProgress'));
     }
 
     this.isBackingUp.set(true);
@@ -173,9 +178,7 @@ export class DriveBackupService {
 
       return await this.provider.downloadSnapshot();
     } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : 'Restore failed';
-      this.error.set(message);
-      throw e;
+      this.setAndRethrow('backup.error.restoreFailed', e);
     } finally {
       this.isBackingUp.set(false);
     }
@@ -188,11 +191,11 @@ export class DriveBackupService {
     try {
       snapshot = parseSnapshot(json);
     } catch {
-      throw new Error('Invalid backup file');
+      throw new Error(this.languageService.t('backup.error.invalidFile'));
     }
 
     if (!isBackupSnapshotShape(snapshot)) {
-      throw new Error('Invalid backup file');
+      throw new Error(this.languageService.t('backup.error.invalidFile'));
     }
 
     return snapshot;
@@ -206,9 +209,7 @@ export class DriveBackupService {
       await overwriteLocalDb(snapshot);
       await this.languageService.applyFromProfile();
     } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : 'Restore failed';
-      this.error.set(message);
-      throw e;
+      this.setAndRethrow('backup.error.restoreFailed', e);
     } finally {
       this.isBackingUp.set(false);
     }
@@ -271,7 +272,7 @@ export class DriveBackupService {
       const script = document.createElement('script');
       script.src = 'https://accounts.google.com/gsi/client';
       script.onload = () => resolve();
-      script.onerror = () => reject(new Error('Failed to load Google Identity Services'));
+      script.onerror = () => reject(new Error(this.languageService.t('backup.error.loadIdentity')));
       document.head.appendChild(script);
     });
   }

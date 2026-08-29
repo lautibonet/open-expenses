@@ -1,7 +1,8 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { InstallPromptComponent } from '../install-prompt/install-prompt.component';
 import { BackupBannerComponent } from '../backup-banner/backup-banner.component';
+import { LanguageService } from '../../../core/services/language.service';
 
 @Component({
   selector: 'app-shell',
@@ -10,6 +11,8 @@ import { BackupBannerComponent } from '../backup-banner/backup-banner.component'
   styleUrl: './shell.component.scss',
 })
 export class ShellComponent {
+  language = inject(LanguageService);
+
   skipToContent(event: MouseEvent): void {
     event.preventDefault();
     document.getElementById('main-content')?.focus();

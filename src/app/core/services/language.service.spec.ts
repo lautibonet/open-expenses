@@ -89,6 +89,15 @@ describe('LanguageService', () => {
       await service.setLanguage('en');
       expect(document.documentElement.getAttribute('lang')).toBe('en');
     });
+
+    it('keeps the document title in sync', async () => {
+      await seedProfile('en');
+      await service.init();
+      expect(document.title).toBe('Open Expenses');
+
+      await service.setLanguage('es');
+      expect(document.title).toBe('Gastos Abiertos');
+    });
   });
 
   describe('applyFromProfile', () => {

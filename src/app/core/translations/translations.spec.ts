@@ -34,4 +34,97 @@ describe('translations', () => {
   it('keeps both dictionaries in sync', () => {
     expect(Object.keys(TRANSLATIONS.es).sort()).toEqual(Object.keys(TRANSLATIONS.en).sort());
   });
+
+  it('covers the shell navigation keys', () => {
+    for (const key of [
+      'shell.skipToContent',
+      'shell.primaryNavAria',
+      'shell.movements',
+      'shell.stats',
+      'shell.settings',
+    ]) {
+      expect(TRANSLATIONS.en[key]).toBeTruthy();
+      expect(TRANSLATIONS.es[key]).toBeTruthy();
+    }
+  });
+
+  it('covers the backup card keys', () => {
+    for (const key of [
+      'backup.card.title',
+      'backup.card.description',
+      'backup.card.download',
+      'backup.card.restoreFromFile',
+      'backup.card.restoreFrom',
+      'backup.card.working',
+      'backup.card.backupFromLabel',
+      'backup.card.replacesAllData',
+      'backup.card.restoreData',
+      'backup.card.cancel',
+      'backup.fileDownloaded',
+      'backup.card.downloadFailed',
+      'backup.noCloudBackup',
+      'backup.restoredOk',
+    ]) {
+      expect(TRANSLATIONS.en[key]).toBeTruthy();
+      expect(TRANSLATIONS.es[key]).toBeTruthy();
+    }
+  });
+
+  it('covers the backup banner keys', () => {
+    for (const key of [
+      'backup.banner.ariaLabel',
+      'backup.banner.methodBackup',
+      'backup.banner.lastBackup',
+      'backup.banner.backUp',
+      'backup.banner.backingUp',
+      'backup.banner.offline',
+      'backup.banner.dismiss',
+      'backup.banner.never',
+      'backup.relative.justNow',
+    ]) {
+      expect(TRANSLATIONS.en[key]).toBeTruthy();
+      expect(TRANSLATIONS.es[key]).toBeTruthy();
+    }
+  });
+
+  it('covers the install prompt keys', () => {
+    for (const key of ['install.prompt', 'install.action', 'install.dismiss']) {
+      expect(TRANSLATIONS.en[key]).toBeTruthy();
+      expect(TRANSLATIONS.es[key]).toBeTruthy();
+    }
+  });
+
+  it('covers the app metadata keys', () => {
+    expect(TRANSLATIONS.en['app.title']).toBeTruthy();
+    expect(TRANSLATIONS.es['app.title']).toBeTruthy();
+  });
+
+  it('covers the backup service error keys', () => {
+    for (const key of [
+      'backup.error.offlineConnect',
+      'backup.error.offlineBackup',
+      'backup.error.offlineRestore',
+      'backup.error.notConnected',
+      'backup.error.alreadyInProgress',
+      'backup.error.backupFailed',
+      'backup.error.restoreFailed',
+      'backup.error.invalidFile',
+      'backup.error.noBackupFound',
+      'backup.error.createFolder',
+      'backup.error.download',
+      'backup.error.createFile',
+      'backup.error.updateFile',
+      'backup.error.searchDrive',
+      'backup.error.loadIdentity',
+      'backup.error.driveUnreachable',
+      'backup.error.unexpected',
+      'backup.error.oauth.cancelled',
+      'backup.error.oauth.denied',
+      'backup.error.oauth.popupBlocked',
+      'backup.error.oauth.loadFailed',
+    ]) {
+      expect(TRANSLATIONS.en[key]).toBeTruthy();
+      expect(TRANSLATIONS.es[key]).toBeTruthy();
+    }
+  });
 });

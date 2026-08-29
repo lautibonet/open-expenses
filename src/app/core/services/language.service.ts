@@ -57,5 +57,6 @@ export class LanguageService {
   private apply(language: Language): void {
     this.activeLanguage.set(language);
     document.documentElement.lang = language;
+    document.title = translate(language, 'app.title');
   }
 }

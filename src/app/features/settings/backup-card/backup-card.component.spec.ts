@@ -3,6 +3,7 @@ import { BackupCardComponent } from './backup-card.component';
 import { DriveBackupService } from '../../../core/services/drive-backup.service';
 import { ProfileService } from '../../../core/services/profile.service';
 import { AccountService } from '../../../core/services/account.service';
+import { LanguageService } from '../../../core/services/language.service';
 import { db } from '../../../core/db/database';
 import { BackupSnapshot } from '../../../backup/backup-snapshot';
 import { NoBackupFoundError } from '../../../backup/drive-backup-provider';
@@ -57,6 +58,25 @@ describe('BackupCardComponent', () => {
     expect(text).toContain('Download backup file');
     expect(text).toContain('Restore from file');
     expect(text).toContain('Restore from Google Drive');
+  });
+
+  it('renders in Spanish with a locale-formatted backup date', async () => {
+    await TestBed.inject(LanguageService).setLanguage('es');
+
+    const snapshot = sampleSnapshot();
+    snapshot.exportedAt = '2026-08-27T12:00:00.000Z';
+    const file = new File([JSON.stringify(snapshot)], 'open-expenses-backup.json', {
+      type: 'application/json',
+    });
+    await component.onFileSelected({ target: { files: [file] } } as unknown as Event);
+    fixture.detectChanges();
+
+    const text = fixture.nativeElement.textContent;
+    expect(text).toContain('Copia de seguridad');
+    expect(text).toContain('Restaurar desde archivo');
+    expect(text).toContain('Restaurar desde Google Drive');
+    expect(text).toContain('Esto reemplaza todos los datos actuales.');
+    expect(component.backupDate()).toContain('ago 2026');
   });
 
   it('downloads the current snapshot as a file', async () => {

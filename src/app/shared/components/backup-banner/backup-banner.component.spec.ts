@@ -3,6 +3,7 @@ import { BackupBannerComponent } from './backup-banner.component';
 import { DriveBackupService } from '../../../core/services/drive-backup.service';
 import { NetworkService } from '../../../core/services/network.service';
 import { ProfileService } from '../../../core/services/profile.service';
+import { LanguageService } from '../../../core/services/language.service';
 import { db } from '../../../core/db/database';
 
 describe('BackupBannerComponent', () => {
@@ -48,6 +49,20 @@ describe('BackupBannerComponent', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain('5 minutes ago');
+  });
+
+  it('renders in Spanish when the active language is Spanish', async () => {
+    await TestBed.inject(LanguageService).setLanguage('es');
+    driveBackupService.lastBackupAt.set(new Date(Date.now() - 5 * 60 * 1000));
+    fixture.detectChanges();
+
+    const text = fixture.nativeElement.textContent;
+    expect(text).toContain('Copia de Google Drive');
+    expect(text).toContain('Última copia: hace 5 minutos');
+    expect(text).toContain('Hacer copia');
+
+    const strip = fixture.nativeElement.querySelector('.backup-banner') as HTMLElement;
+    expect(strip.getAttribute('aria-label')).toBe('Estado de la copia');
   });
 
   it('backs up when tapped', async () => {

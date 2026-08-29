@@ -1,14 +1,15 @@
 import { Component, inject } from '@angular/core';
 import { PwaInstallService } from '../../../core/services/pwa-install.service';
+import { LanguageService } from '../../../core/services/language.service';
 
 @Component({
   selector: 'app-install-prompt',
   template: `
     @if (pwaInstall.canInstall()) {
       <div class="install-banner">
-        <span>Install Open Expenses for quick access</span>
-        <button class="btn primary small" (click)="install()">Install</button>
-        <button class="btn small" (click)="dismiss()">Dismiss</button>
+        <span>{{ language.t('install.prompt') }}</span>
+        <button class="btn primary small" (click)="install()">{{ language.t('install.action') }}</button>
+        <button class="btn small" (click)="dismiss()">{{ language.t('install.dismiss') }}</button>
       </div>
     }
   `,
@@ -83,6 +84,7 @@ import { PwaInstallService } from '../../../core/services/pwa-install.service';
 })
 export class InstallPromptComponent {
   pwaInstall = inject(PwaInstallService);
+  language = inject(LanguageService);
 
   async install(): Promise<void> {
     await this.pwaInstall.install();
