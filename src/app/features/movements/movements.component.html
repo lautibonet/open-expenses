@@ -34,13 +34,6 @@
     <button class="btn" (click)="openTransferForm()" [title]="language.t('movements.transferShortcut')">
       {{ language.t('movements.addTransfer') }}
     </button>
-    <button class="btn small" (click)="toggleSort()">
-      {{
-        sortDir() === 'desc'
-          ? language.t('movements.sortNewest')
-          : language.t('movements.sortOldest')
-      }}
-    </button>
     <span class="visually-hidden" aria-live="polite">{{ scopeAnnouncement() }}</span>
     <span class="visually-hidden" aria-live="polite">{{ movementAnnouncement() }}</span>
   </div>
@@ -241,7 +234,12 @@
           <thead>
             <tr>
               <th scope="col">{{ language.t('movements.colType') }}</th>
-              <th scope="col">{{ language.t('movements.colDate') }}</th>
+              <th scope="col" [attr.aria-sort]="sortDir() === 'desc' ? 'descending' : 'ascending'">
+                <button type="button" class="th-sort" (click)="toggleSort()" [attr.aria-label]="language.t('movements.sortByDateAria')">
+                  {{ language.t('movements.colDate') }}
+                  <span class="sort-indicator" aria-hidden="true">{{ sortDir() === 'desc' ? '↓' : '↑' }}</span>
+                </button>
+              </th>
               <th scope="col">{{ language.t('movements.colCategoryTransfer') }}</th>
               <th scope="col">{{ language.t('movements.colAmount') }}</th>
               <th scope="col">{{ language.t('movements.colAccount') }}</th>

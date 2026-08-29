@@ -219,7 +219,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
     const items =
       this.sortDir() === 'asc' ? [...this.filteredMovements()].reverse() : this.filteredMovements();
 
-    if (!isAllTime(this.scope())) {
+    if (!isAllTime(this.scope()) || this.sortDir() === 'asc') {
       return items.map((item) => ({ kind: 'movement' as const, item }));
     }
 

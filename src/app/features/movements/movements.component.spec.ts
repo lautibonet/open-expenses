@@ -1631,7 +1631,6 @@ describe('MovementsComponent - translations', () => {
 
     const text = fixture.nativeElement.textContent;
     expect(text).toContain('+ Transferencia');
-    expect(text).toContain('Más recientes primero');
     expect(text).toContain('No hay movimientos de');
     expect(fixture.nativeElement.querySelector('[aria-label="Ámbito: año"]')).toBeTruthy();
   });
@@ -1639,11 +1638,11 @@ describe('MovementsComponent - translations', () => {
   it('re-renders in Spanish immediately when the Language changes after render', async () => {
     await component.ngOnInit();
     fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Newest first');
+    expect(fixture.nativeElement.textContent).toContain('No movements for');
 
     await TestBed.inject(LanguageService).setLanguage('es');
     fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Más recientes primero');
+    expect(fixture.nativeElement.textContent).toContain('No hay movimientos de');
   });
 
   it('shows transfer validation errors in the active Language', async () => {
@@ -1665,5 +1664,92 @@ describe('MovementsComponent - translations', () => {
     expect(component.errorMessage()).toBe(
       'Esa cuenta ya no existe. Elige otra e inténtalo de nuevo.',
     );
+  });
+});
+
+describe('MovementsComponent - date header sorting', () => {
+  let fixture: ComponentFixture<MovementsComponent>;
+  let component: MovementsComponent;
+  let transactionService: TransactionService;
+  let accountId: number;
+  let categoryId: number;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    await TestBed.configureTestingModule({
+      imports: [MovementsComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(MovementsComponent);
+    component = fixture.componentInstance;
+    transactionService = TestBed.inject(TransactionService);
+
+    const acc = await TestBed.inject(AccountService).create('Cash', 'EUR', 100000);
+    accountId = acc.id!;
+    const cat = await TestBed.inject(CategoryService).create('Food', 'expense');
+    categoryId = cat.id!;
+  });
+
+  afterEach(async () => {
+    await db.delete();
+  });
+
+  async function seedDatedTransactions(): Promise<void> {
+    const year = getCurrentYear();
+    await transactionService.create(accountId, categoryId, 100, new Date(`${year}-01-05`), 1, null, null, year);
+    await transactionService.create(accountId, categoryId, 200, new Date(`${year}-03-10`), 3, null, null, year);
+    await transactionService.create(accountId, categoryId, 300, new Date(`${year}-02-20`), 2, null, null, year);
+    await component.ngOnInit();
+    await component.onScopeYearChange('all-time');
+  }
+
+  function movementAmounts(): number[] {
+    return component
+      .movementView()
+      .filter((r) => r.kind === 'movement')
+      .map((r) => (r.item.data as Transaction).amount);
+  }
+
+  it('groups movements by month in All time while newest first (default)', async () => {
+    await seedDatedTransactions();
+    const rows = component.movementView();
+    expect(rows[0].kind).toBe('group');
+    expect(rows.some((r) => r.kind === 'group')).toBe(true);
+    expect(movementAmounts()).toEqual([200, 300, 100]);
+  });
+
+  it('orders oldest first and drops month groups after clicking the date header', async () => {
+    await seedDatedTransactions();
+    component.toggleSort();
+    expect(component.sortDir()).toBe('asc');
+    expect(component.movementView().some((r) => r.kind === 'group')).toBe(false);
+    expect(movementAmounts()).toEqual([100, 300, 200]);
+  });
+
+  it('returns to newest first with month groups after a second click', async () => {
+    await seedDatedTransactions();
+    component.toggleSort();
+    component.toggleSort();
+    expect(component.sortDir()).toBe('desc');
+    expect(component.movementView()[0].kind).toBe('group');
+    expect(movementAmounts()).toEqual([200, 300, 100]);
+  });
+
+  it('reflects the sort direction via aria-sort and the header button', async () => {
+    await seedDatedTransactions();
+    fixture.detectChanges();
+    const th = fixture.nativeElement.querySelector('th[aria-sort]') as HTMLElement;
+    const button = th.querySelector('button') as HTMLButtonElement;
+    expect(th.getAttribute('aria-sort')).toBe('descending');
+    expect(button.textContent).toContain('Date');
+
+    button.click();
+    fixture.detectChanges();
+    expect(th.getAttribute('aria-sort')).toBe('ascending');
+
+    button.click();
+    fixture.detectChanges();
+    expect(th.getAttribute('aria-sort')).toBe('descending');
   });
 });
