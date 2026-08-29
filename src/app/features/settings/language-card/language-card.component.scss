@@ -1,3 +1,5 @@
+@use '../../../shared/styles/patterns' as *;
+
 .card {
   background: var(--paper-white);
   border: 1px solid var(--hairline-graphite);
@@ -30,4 +32,26 @@
   &.small {
     width: 100px;
   }
+}
+
+.btn {
+  @extend %btn-base;
+
+  &.primary {
+    @extend %btn-primary;
+  }
+
+  &.small {
+    @extend %btn-small;
+  }
+}
+
+.success {
+  color: var(--ledger-green);
+  margin: 0.75rem 0;
+}
+
+.error {
+  color: var(--officers-red);
+  margin: 0.75rem 0;
 }
