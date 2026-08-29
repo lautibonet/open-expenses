@@ -1,14 +1,16 @@
-<a class="skip-link" href="#main-content" (click)="skipToContent($event)">Skip to content</a>
+<a class="skip-link" href="#main-content" (click)="skipToContent($event)">{{
+  language.t('shell.skipToContent')
+}}</a>
 <app-install-prompt />
 <app-backup-banner />
-<nav class="tab-bar" aria-label="Primary">
+<nav class="tab-bar" [attr.aria-label]="language.t('shell.primaryNavAria')">
   <a
     routerLink="/movements"
     routerLinkActive="active"
     #movementsTab="routerLinkActive"
     class="tab"
     [attr.aria-current]="movementsTab.isActive ? 'page' : null"
-    >Movements</a
+    >{{ language.t('shell.movements') }}</a
   >
   <a
     routerLink="/dashboard"
@@ -16,7 +18,7 @@
     #statsTab="routerLinkActive"
     class="tab"
     [attr.aria-current]="statsTab.isActive ? 'page' : null"
-    >Stats</a
+    >{{ language.t('shell.stats') }}</a
   >
   <a
     routerLink="/settings"
@@ -24,7 +26,7 @@
     #settingsTab="routerLinkActive"
     class="tab"
     [attr.aria-current]="settingsTab.isActive ? 'page' : null"
-    >Settings</a
+    >{{ language.t('shell.settings') }}</a
   >
 </nav>
 <main class="content" id="main-content" tabindex="-1">

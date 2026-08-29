@@ -1,5 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { DriveBackupService } from '../../../core/services/drive-backup.service';
+import { LanguageService } from '../../../core/services/language.service';
 import { NoBackupFoundError } from '../../../backup/drive-backup-provider';
 import { BackupSnapshot, createSnapshot, stringifySnapshot } from '../../../backup/backup-snapshot';
 
@@ -12,6 +13,7 @@ const BACKUP_FILE_NAME = 'open-expenses-backup.json';
 })
 export class BackupCardComponent {
   private backupService = inject(DriveBackupService);
+  language = inject(LanguageService);
 
   method = this.backupService.method;
   pendingRestore = signal<BackupSnapshot | null>(null);
@@ -22,7 +24,7 @@ export class BackupCardComponent {
   backupDate = computed(() => {
     const pending = this.pendingRestore();
     if (!pending) return '';
-    return new Date(pending.exportedAt).toLocaleString('en-GB', {
+    return this.language.formatDate(new Date(pending.exportedAt), {
       day: 'numeric',
       month: 'short',
       year: 'numeric',
@@ -44,9 +46,11 @@ export class BackupCardComponent {
       anchor.download = BACKUP_FILE_NAME;
       anchor.click();
       URL.revokeObjectURL(url);
-      this.message.set('Backup file downloaded');
+      this.message.set(this.language.t('backup.fileDownloaded'));
     } catch (e: unknown) {
-      this.errorMessage.set(e instanceof Error ? e.message : 'Failed to download backup file');
+      this.errorMessage.set(
+        e instanceof Error ? e.message : this.language.t('backup.card.downloadFailed'),
+      );
     } finally {
       this.isBusy.set(false);
     }
@@ -64,7 +68,9 @@ export class BackupCardComponent {
       this.message.set('');
     } catch (e: unknown) {
       this.pendingRestore.set(null);
-      this.errorMessage.set(e instanceof Error ? e.message : 'Invalid backup file');
+      this.errorMessage.set(
+        e instanceof Error ? e.message : this.language.t('backup.error.invalidFile'),
+      );
     } finally {
       input.value = '';
     }
@@ -81,9 +87,11 @@ export class BackupCardComponent {
       this.pendingRestore.set(snapshot);
     } catch (e: unknown) {
       if (e instanceof NoBackupFoundError) {
-        this.errorMessage.set('No backup was found in the cloud.');
+        this.errorMessage.set(this.language.t('backup.noCloudBackup'));
       } else {
-        this.errorMessage.set(e instanceof Error ? e.message : 'Restore failed');
+        this.errorMessage.set(
+          e instanceof Error ? e.message : this.language.t('backup.error.restoreFailed'),
+        );
       }
     } finally {
       this.isBusy.set(false);
@@ -100,9 +108,11 @@ export class BackupCardComponent {
     try {
       await this.backupService.restoreFromSnapshot(snapshot);
       this.pendingRestore.set(null);
-      this.message.set('Data restored. The backup has replaced your current data.');
+      this.message.set(this.language.t('backup.restoredOk'));
     } catch (e: unknown) {
-      this.errorMessage.set(e instanceof Error ? e.message : 'Restore failed');
+      this.errorMessage.set(
+        e instanceof Error ? e.message : this.language.t('backup.error.restoreFailed'),
+      );
     } finally {
       this.isBusy.set(false);
     }
