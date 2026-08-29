@@ -310,4 +310,68 @@ describe('QuickAddCardComponent', () => {
     component.form.update((f) => ({ ...f, amount: 30 }));
     expect(component.canSubmit()).toBe(true);
   });
+
+  function tagControls(root: HTMLElement): Element[] {
+    return Array.from(root.querySelectorAll('input, select')).filter((el) => {
+      const name = el.getAttribute('name') ?? '';
+      const label = el.getAttribute('aria-label') ?? '';
+      return name.toLowerCase().includes('tag') || label.toLowerCase().includes('tag');
+    });
+  }
+
+  it('collects no tags in the compact form or its payload', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelectorAll('.tag')).toHaveLength(0);
+    expect(tagControls(fixture.nativeElement)).toHaveLength(0);
+    component.form.update((f) => ({ ...f, amount: 25 }));
+    let saved: any;
+    component.save.subscribe((data) => (saved = data));
+    component.onSubmit();
+
+    expect(saved).not.toHaveProperty('tags');
+  });
+
+  it('collects no tags in the expanded form or its payload', async () => {
+    await component.ngOnInit();
+    component.expandForm();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelectorAll('.tag')).toHaveLength(0);
+    expect(tagControls(fixture.nativeElement)).toHaveLength(0);
+    component.form.update((f) => ({ ...f, amount: 25 }));
+    let saved: any;
+    component.save.subscribe((data) => (saved = data));
+    component.onSubmitForm();
+
+    expect(saved).not.toHaveProperty('tags');
+  });
+
+  it('pre-fills an edit without tags and emits a payload without them', async () => {
+    const txn: Transaction = {
+      id: 7,
+      accountId: 2,
+      categoryId: 11,
+      amount: 120,
+      date: new Date('2026-03-10'),
+      period: 'March',
+      year: 2026,
+      note: 'flight',
+      exchangeRate: 1.1,
+      baseCurrencyAmount: 132,
+      createdAt: new Date(),
+    };
+    fixture.componentRef.setInput('editTransaction', txn);
+    fixture.detectChanges();
+
+    expect(component.mode()).toBe('expanded');
+    expect(tagControls(fixture.nativeElement)).toHaveLength(0);
+    let saved: any;
+    component.save.subscribe((data) => (saved = data));
+    component.onSubmitForm();
+
+    expect(saved.id).toBe(7);
+    expect(saved).not.toHaveProperty('tags');
+  });
 });

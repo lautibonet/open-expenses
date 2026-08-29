@@ -131,6 +131,98 @@ describe('MovementsComponent - filtering', () => {
   });
 });
 
+describe('MovementsComponent - no tag affordances', () => {
+  let fixture: ComponentFixture<MovementsComponent>;
+  let component: MovementsComponent;
+  let transactionService: TransactionService;
+  let accountService: AccountService;
+  let categoryService: CategoryService;
+  let accountId: number;
+  let categoryId: number;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    await TestBed.configureTestingModule({
+      imports: [MovementsComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(MovementsComponent);
+    component = fixture.componentInstance;
+    transactionService = TestBed.inject(TransactionService);
+    accountService = TestBed.inject(AccountService);
+    categoryService = TestBed.inject(CategoryService);
+
+    const account = await accountService.create('Cash', 'EUR', 100000);
+    accountId = account.id!;
+    const category = await categoryService.create('Food', 'Expense');
+    categoryId = category.id!;
+  });
+
+  afterEach(async () => {
+    await db.delete();
+  });
+
+  it('renders no tag chips on transaction rows', async () => {
+    await transactionService.create(
+      accountId,
+      categoryId,
+      500,
+      new Date(),
+      getCurrentPeriod(),
+    );
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelectorAll('.tag').length).toBe(0);
+    expect(fixture.nativeElement.querySelectorAll('.tags').length).toBe(0);
+  });
+
+  it('offers no All tags filter in the filter bar', async () => {
+    await transactionService.create(
+      accountId,
+      categoryId,
+      500,
+      new Date(),
+      getCurrentPeriod(),
+    );
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).not.toContain('All tags');
+  });
+
+  it('counts only category, account, and search as active filters', async () => {
+    await component.ngOnInit();
+    component.filterCategory.set(categoryId);
+    component.filterAccount.set(accountId);
+    component.searchQuery.set('cash');
+
+    expect(component.activeFilterCount()).toBe(3);
+  });
+
+  it('matches search against note text', async () => {
+    await transactionService.create(
+      accountId,
+      categoryId,
+      500,
+      new Date(),
+      getCurrentPeriod(),
+      null,
+      null,
+      getCurrentYear(),
+      'Coffee beans',
+    );
+    await component.ngOnInit();
+
+    component.searchQuery.set('beans');
+    expect(component.filteredMovements().length).toBe(1);
+
+    component.searchQuery.set('nothing-matches-this');
+    expect(component.filteredMovements().length).toBe(0);
+  });
+});
+
 describe('MovementsComponent - self-transfer guard', () => {
   let fixture: ComponentFixture<MovementsComponent>;
   let component: MovementsComponent;
