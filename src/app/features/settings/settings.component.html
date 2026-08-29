@@ -1,5 +1,5 @@
 <div class="settings">
-  <h1>Settings</h1>
+  <h1>{{ language.t('settings.title') }}</h1>
 
   @if (errorMessage()) {
     <p class="error">{{ errorMessage() }}</p>
@@ -8,38 +8,42 @@
     <p class="success">{{ successMessage() }}</p>
   }
 
+  <app-language-card />
+
   <section class="card">
-    <h2>Base Currency</h2>
+    <h2>{{ language.t('settings.baseCurrency') }}</h2>
     <div class="inline-form">
       <select
         [ngModel]="baseCurrency()"
         (ngModelChange)="baseCurrency.set($event)"
         class="input small"
-        aria-label="Base currency"
+        [attr.aria-label]="language.t('settings.baseCurrencyAria')"
       >
         @for (currency of supportedCurrencies; track currency) {
           <option [value]="currency">{{ currency }}</option>
         }
       </select>
-      <button class="btn primary" (click)="updateBaseCurrency()">Update</button>
+      <button class="btn primary" (click)="updateBaseCurrency()">
+        {{ language.t('settings.update') }}
+      </button>
     </div>
   </section>
 
   <section class="card">
-    <h2>Accounts</h2>
+    <h2>{{ language.t('settings.accounts') }}</h2>
     <div class="inline-form">
       <input
         type="text"
         [ngModel]="newAccountName()"
         (ngModelChange)="newAccountName.set($event)"
-        placeholder="Name"
+        [placeholder]="language.t('settings.name')"
         class="input"
       />
       <select
         [ngModel]="newAccountCurrency()"
         (ngModelChange)="newAccountCurrency.set($event)"
         class="input small"
-        aria-label="Account currency"
+        [attr.aria-label]="language.t('settings.accountCurrencyAria')"
       >
         @for (currency of supportedCurrencies; track currency) {
           <option [value]="currency">{{ currency }}</option>
@@ -49,14 +53,22 @@
         type="number"
         [ngModel]="newAccountBalance()"
         (ngModelChange)="newAccountBalance.set($event)"
-        placeholder="Initial balance"
+        [placeholder]="language.t('settings.initialBalance')"
         class="input small"
       />
-      <button class="btn primary" (click)="addAccount()">Add</button>
+      <button class="btn primary" (click)="addAccount()">
+        {{ language.t('settings.add') }}
+      </button>
     </div>
     <table>
       <thead>
-        <tr><th>Name</th><th>Currency</th><th>Opening Balance</th><th>Status</th><th></th></tr>
+        <tr>
+          <th>{{ language.t('settings.name') }}</th>
+          <th>{{ language.t('settings.currency') }}</th>
+          <th>{{ language.t('settings.openingBalance') }}</th>
+          <th>{{ language.t('settings.status') }}</th>
+          <th></th>
+        </tr>
       </thead>
       <tbody>
         @for (acc of accounts(); track acc.id) {
@@ -69,8 +81,12 @@
                   (ngModelChange)="editingAccountName.set({ id: acc.id!, value: $event })"
                   class="input"
                 />
-                <button class="btn small primary" (click)="saveAccountName()">Save</button>
-                <button class="btn small" (click)="cancelEditAccountName()">Cancel</button>
+                <button class="btn small primary" (click)="saveAccountName()">
+                  {{ language.t('settings.save') }}
+                </button>
+                <button class="btn small" (click)="cancelEditAccountName()">
+                  {{ language.t('settings.cancel') }}
+                </button>
               } @else {
                 <span (click)="startEditAccountName(acc.id!, acc.name)" class="editable">
                   {{ acc.name }}
@@ -86,15 +102,24 @@
                   (ngModelChange)="editingAccountBalance.set({ id: acc.id!, value: $event })"
                   class="input small"
                 />
-                <button class="btn small primary" (click)="saveAccountBalance()">Save</button>
-                <button class="btn small" (click)="cancelEditAccountBalance()">Cancel</button>
+                <button class="btn small primary" (click)="saveAccountBalance()">
+                  {{ language.t('settings.save') }}
+                </button>
+                <button class="btn small" (click)="cancelEditAccountBalance()">
+                  {{ language.t('settings.cancel') }}
+                </button>
               } @else {
-                <span (click)="startEditAccountBalance(acc.id!, acc.initialBalance)" class="editable">
+                <span
+                  (click)="startEditAccountBalance(acc.id!, acc.initialBalance)"
+                  class="editable"
+                >
                   {{ acc.initialBalance }}
                 </span>
               }
             </td>
-            <td>{{ acc.active ? 'Active' : 'Inactive' }}</td>
+            <td>
+              {{ acc.active ? language.t('settings.active') : language.t('settings.inactive') }}
+            </td>
             <td>
               @if (acc.active) {
                 @if (confirmingDeactivate() === acc.id) {
@@ -102,17 +127,25 @@
                     class="delete-confirm"
                     role="alert"
                     aria-live="polite"
-                    aria-label="Confirm account deactivation"
+                    [attr.aria-label]="language.t('settings.accountDeactivationAria')"
                   >
                     {{ deactivationConfirmationLabel(acc.id!) }}
                   </span>
-                  <button class="btn small danger" (click)="confirmDeactivate()">Confirm</button>
-                  <button class="btn small" (click)="cancelDeactivate()">Cancel</button>
+                  <button class="btn small danger" (click)="confirmDeactivate()">
+                    {{ language.t('settings.confirm') }}
+                  </button>
+                  <button class="btn small" (click)="cancelDeactivate()">
+                    {{ language.t('settings.cancel') }}
+                  </button>
                 } @else {
-                  <button class="btn small" (click)="requestDeactivate(acc.id!)">Deactivate</button>
+                  <button class="btn small" (click)="requestDeactivate(acc.id!)">
+                    {{ language.t('settings.deactivate') }}
+                  </button>
                 }
               } @else {
-                <button class="btn small" (click)="reactivateAccount(acc.id!)">Reactivate</button>
+                <button class="btn small" (click)="reactivateAccount(acc.id!)">
+                  {{ language.t('settings.reactivate') }}
+                </button>
               }
             </td>
           </tr>
@@ -122,29 +155,36 @@
   </section>
 
   <section class="card">
-    <h2>Categories</h2>
+    <h2>{{ language.t('settings.categories') }}</h2>
     <div class="inline-form">
       <input
         type="text"
         [ngModel]="newCategoryName()"
         (ngModelChange)="newCategoryName.set($event)"
-        placeholder="Name"
+        [placeholder]="language.t('settings.name')"
         class="input"
       />
       <select
         [ngModel]="newCategoryType()"
         (ngModelChange)="newCategoryType.set($event)"
         class="input small"
-        aria-label="Category type"
+        [attr.aria-label]="language.t('settings.categoryTypeAria')"
       >
         <option value="Expense">Expense</option>
         <option value="Income">Income</option>
       </select>
-      <button class="btn primary" (click)="addCategory()">Add</button>
+      <button class="btn primary" (click)="addCategory()">
+        {{ language.t('settings.add') }}
+      </button>
     </div>
     <table>
       <thead>
-        <tr><th>Name</th><th>Type</th><th>Status</th><th></th></tr>
+        <tr>
+          <th>{{ language.t('settings.name') }}</th>
+          <th>{{ language.t('settings.type') }}</th>
+          <th>{{ language.t('settings.status') }}</th>
+          <th></th>
+        </tr>
       </thead>
       <tbody>
         @for (cat of categories(); track cat.id) {
@@ -157,8 +197,12 @@
                   (ngModelChange)="editingCategoryName.set({ id: cat.id!, value: $event })"
                   class="input"
                 />
-                <button class="btn small primary" (click)="saveCategoryName()">Save</button>
-                <button class="btn small" (click)="cancelEditCategoryName()">Cancel</button>
+                <button class="btn small primary" (click)="saveCategoryName()">
+                  {{ language.t('settings.save') }}
+                </button>
+                <button class="btn small" (click)="cancelEditCategoryName()">
+                  {{ language.t('settings.cancel') }}
+                </button>
               } @else {
                 <span (click)="startEditCategoryName(cat.id!, cat.name)" class="editable">
                   {{ cat.name }}
@@ -166,12 +210,18 @@
               }
             </td>
             <td>{{ cat.type }}</td>
-            <td>{{ cat.active ? 'Active' : 'Inactive' }}</td>
+            <td>
+              {{ cat.active ? language.t('settings.active') : language.t('settings.inactive') }}
+            </td>
             <td>
               @if (cat.active) {
-                <button class="btn small" (click)="deactivateCategory(cat.id!)">Deactivate</button>
+                <button class="btn small" (click)="deactivateCategory(cat.id!)">
+                  {{ language.t('settings.deactivate') }}
+                </button>
               } @else {
-                <button class="btn small" (click)="reactivateCategory(cat.id!)">Reactivate</button>
+                <button class="btn small" (click)="reactivateCategory(cat.id!)">
+                  {{ language.t('settings.reactivate') }}
+                </button>
               }
             </td>
           </tr>

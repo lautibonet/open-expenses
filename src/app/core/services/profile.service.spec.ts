@@ -57,4 +57,38 @@ describe('ProfileService', () => {
     const completed = await service.isOnboardingCompleted();
     expect(completed).toBe(true);
   });
+
+  describe('language', () => {
+    it('should default to English when no profile exists', async () => {
+      expect(await service.getLanguage()).toBe('en');
+    });
+
+    it('should default to English when completing onboarding without a language', async () => {
+      await service.completeOnboarding('EUR');
+      expect((await service.get())!.language).toBe('en');
+    });
+
+    it('should store the chosen language when completing onboarding', async () => {
+      await service.completeOnboarding('EUR', 'es');
+      expect((await service.get())!.language).toBe('es');
+      expect(await service.getLanguage()).toBe('es');
+    });
+
+    it('should update the language on the profile', async () => {
+      await service.completeOnboarding('EUR', 'en');
+      await service.updateLanguage('es');
+      expect((await service.get())!.language).toBe('es');
+      expect(await service.getLanguage()).toBe('es');
+    });
+
+    it('should default to English for an existing profile without a stored language', async () => {
+      await db.profile.add({
+        id: 1,
+        baseCurrency: 'EUR',
+        onboardingCompleted: true,
+        lastBackupAt: null,
+      } as never);
+      expect(await service.getLanguage()).toBe('en');
+    });
+  });
 });

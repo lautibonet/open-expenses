@@ -24,7 +24,7 @@ import {
   scopeLabel,
   scopeOptionsFromMovements,
 } from '../../core/types/period.type';
-import { formatMoney } from '../../core/types/money';
+import { LanguageService } from '../../core/services/language.service';
 import {
   QuickAddCardComponent,
   TransactionFormPayload,
@@ -77,6 +77,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
   private categoryService = inject(CategoryService);
   private profileService = inject(ProfileService);
   private exchangeRateService = inject(ExchangeRateService);
+  private languageService = inject(LanguageService);
 
   scope = signal<PeriodScope>(defaultScope());
   scopeYears = signal<number[]>([]);
@@ -703,7 +704,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
   }
 
   formatMoney(amount: number): string {
-    return formatMoney(amount, this.baseCurrency());
+    return this.languageService.formatMoney(amount, this.baseCurrency());
   }
 
   scopeLabelText(): string {
@@ -743,12 +744,12 @@ export class MovementsComponent implements OnInit, OnDestroy {
   formatTransactionDisplayAmount(txn: Transaction): string {
     if (this.isForeignCurrencyTransaction(txn) && txn.baseCurrencyAmount !== null) {
       const sourceCurrency = this.getTransactionSourceCurrency(txn);
-      const sourceFormatted = formatMoney(txn.amount, sourceCurrency);
-      const baseFormatted = formatMoney(txn.baseCurrencyAmount, this.baseCurrency());
+      const sourceFormatted = this.languageService.formatMoney(txn.amount, sourceCurrency);
+      const baseFormatted = this.languageService.formatMoney(txn.baseCurrencyAmount, this.baseCurrency());
       return `${sourceFormatted} → ${baseFormatted}`;
     }
     if (this.isForeignCurrencyTransaction(txn)) {
-      return formatMoney(txn.amount, this.getTransactionSourceCurrency(txn));
+      return this.languageService.formatMoney(txn.amount, this.getTransactionSourceCurrency(txn));
     }
     return this.formatMoney(txn.amount);
   }
@@ -758,8 +759,8 @@ export class MovementsComponent implements OnInit, OnDestroy {
     const destCurrency = this.getAccountCurrency(tr.destinationAccountId);
     const isCrossCurrency = sourceCurrency !== destCurrency;
     if (isCrossCurrency) {
-      const sourceFormatted = formatMoney(tr.sourceAmount, sourceCurrency);
-      const destFormatted = formatMoney(tr.destinationAmount, destCurrency);
+      const sourceFormatted = this.languageService.formatMoney(tr.sourceAmount, sourceCurrency);
+      const destFormatted = this.languageService.formatMoney(tr.destinationAmount, destCurrency);
       return `${sourceFormatted} → ${destFormatted}`;
     }
     return this.formatMoney(tr.sourceAmount);

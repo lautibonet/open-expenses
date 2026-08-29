@@ -7,8 +7,8 @@ import { CategoryService } from '../../core/services/category.service';
 import { ProfileService } from '../../core/services/profile.service';
 import { ExchangeRateService } from '../../core/services/exchange-rate.service';
 import { NetworkService } from '../../core/services/network.service';
+import { LanguageService } from '../../core/services/language.service';
 import { MonthName, PeriodScope, defaultScope, getCurrentPeriod, getPeriodYear, isAllTime, scopeLabel, scopeOptionsFromMovements } from '../../core/types/period.type';
-import { formatMoney } from '../../core/types/money';
 import { Transaction } from '../../core/models/transaction.model';
 import { Transfer } from '../../core/models/transfer.model';
 import { Account } from '../../core/models/account.model';
@@ -28,6 +28,7 @@ export class DashboardComponent implements OnInit {
   private profileService = inject(ProfileService);
   private exchangeRateService = inject(ExchangeRateService);
   private networkService = inject(NetworkService);
+  private languageService = inject(LanguageService);
 
   scope = signal<PeriodScope>(defaultScope());
   scopeYears = signal<number[]>([]);
@@ -295,10 +296,10 @@ export class DashboardComponent implements OnInit {
   }
 
   formatMoney(amount: number): string {
-    return formatMoney(amount, this.baseCurrency());
+    return this.languageService.formatMoney(amount, this.baseCurrency());
   }
 
   formatAccountBalance(amount: number, currency: string): string {
-    return formatMoney(amount, currency);
+    return this.languageService.formatMoney(amount, currency);
   }
 }

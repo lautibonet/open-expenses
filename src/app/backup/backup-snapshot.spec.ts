@@ -66,7 +66,7 @@ describe('backup-snapshot', () => {
     it('captures every table plus an exportedAt timestamp', async () => {
       await db.accounts.add({ name: 'Cash', currency: 'EUR', initialBalance: 0, active: true, createdAt: new Date() });
       await db.categories.add({ name: 'Food', type: 'Expense', active: true, createdAt: new Date() });
-      await db.profile.add({ id: 1, baseCurrency: 'EUR', onboardingCompleted: true, lastBackupAt: null });
+      await db.profile.add({ id: 1, baseCurrency: 'EUR', language: 'en', onboardingCompleted: true, lastBackupAt: null });
 
       const snapshot = await createSnapshot();
 
@@ -76,6 +76,17 @@ describe('backup-snapshot', () => {
       expect(snapshot.transactions).toEqual([]);
       expect(snapshot.transfers).toEqual([]);
       expect(snapshot.exportedAt).toBeTruthy();
+    });
+
+    it('round-trips the profile language through backup and restore', async () => {
+      await db.profile.add({ id: 1, baseCurrency: 'EUR', language: 'es', onboardingCompleted: true, lastBackupAt: null });
+
+      const snapshot = await createSnapshot();
+      const restored = parseSnapshot(stringifySnapshot(snapshot));
+      await overwriteLocalDb(restored);
+
+      const profile = await db.profile.get(1);
+      expect(profile?.language).toBe('es');
     });
   });
 

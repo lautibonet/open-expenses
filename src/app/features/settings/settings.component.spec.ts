@@ -2,6 +2,8 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { SettingsComponent } from './settings.component';
 import { AccountService } from '../../core/services/account.service';
 import { CategoryService } from '../../core/services/category.service';
+import { ProfileService } from '../../core/services/profile.service';
+import { LanguageService } from '../../core/services/language.service';
 import { db } from '../../core/db/database';
 
 describe('SettingsComponent - inline editing', () => {
@@ -229,7 +231,7 @@ describe('SettingsComponent - no tag affordances', () => {
   it('renders no Tags card among the settings cards', () => {
     const headings = Array.from(
       fixture.nativeElement.querySelectorAll('h2') as NodeListOf<HTMLElement>,
-    ).map(h => h.textContent!.trim());
+    ).map((h) => h.textContent!.trim());
     expect(headings).not.toContain('Tags');
   });
 
@@ -263,5 +265,74 @@ describe('SettingsComponent - no tag affordances', () => {
     ]) {
       expect(api[member]).toBeUndefined();
     }
+  });
+});
+
+describe('SettingsComponent - language card', () => {
+  let fixture: ComponentFixture<SettingsComponent>;
+  let component: SettingsComponent;
+  let profileService: ProfileService;
+  let languageService: LanguageService;
+
+  const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 10));
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    await TestBed.configureTestingModule({
+      imports: [SettingsComponent],
+    }).compileComponents();
+
+    profileService = TestBed.inject(ProfileService);
+    languageService = TestBed.inject(LanguageService);
+    await profileService.completeOnboarding('EUR', 'en');
+    await languageService.init();
+
+    fixture = TestBed.createComponent(SettingsComponent);
+    component = fixture.componentInstance;
+    await component.ngOnInit();
+    fixture.detectChanges();
+  });
+
+  afterEach(async () => {
+    await db.delete();
+  });
+
+  function languageSelect(): HTMLSelectElement {
+    return fixture.nativeElement.querySelector('select[aria-label="Language"]');
+  }
+
+  it('renders a Language card offering both languages in their own language', () => {
+    const headings = Array.from(
+      fixture.nativeElement.querySelectorAll('h2') as NodeListOf<HTMLElement>,
+    ).map((h) => h.textContent!.trim());
+    expect(headings).toContain('Language');
+
+    const options = Array.from(languageSelect().options).map((o) => o.textContent!.trim());
+    expect(options).toEqual(['English', 'Español']);
+    expect(languageSelect().value).toBe('en');
+  });
+
+  it('switches the Settings screen to Spanish immediately, without reload', async () => {
+    languageSelect().value = 'es';
+    languageSelect().dispatchEvent(new Event('change'));
+    await flush();
+    fixture.detectChanges();
+
+    const title = fixture.nativeElement.querySelector('h1');
+    expect(title.textContent!.trim()).toBe('Ajustes');
+    expect(languageService.activeLanguage()).toBe('es');
+    expect(document.documentElement.getAttribute('lang')).toBe('es');
+    expect((await profileService.get())!.language).toBe('es');
+  });
+
+  it('keeps the choice across reloads', async () => {
+    languageSelect().value = 'es';
+    languageSelect().dispatchEvent(new Event('change'));
+    await flush();
+
+    await languageService.init();
+
+    expect(languageService.activeLanguage()).toBe('es');
   });
 });

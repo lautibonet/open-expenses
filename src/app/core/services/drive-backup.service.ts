@@ -1,6 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { ProfileService } from './profile.service';
 import { NetworkService } from './network.service';
+import { LanguageService } from './language.service';
 import { BackupProvider } from '../../backup/backup-provider';
 import { DriveBackupProvider } from '../../backup/drive-backup-provider';
 import {
@@ -23,6 +24,7 @@ export class DriveBackupService {
 
   private profileService = inject(ProfileService);
   private networkService = inject(NetworkService);
+  private languageService = inject(LanguageService);
 
   private provider: BackupProvider;
 
@@ -142,6 +144,7 @@ export class DriveBackupService {
     try {
       const snapshot = await this.provider.downloadSnapshot();
       await overwriteLocalDb(snapshot);
+      await this.languageService.applyFromProfile();
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : 'Restore failed';
       this.error.set(message);
@@ -201,6 +204,7 @@ export class DriveBackupService {
 
     try {
       await overwriteLocalDb(snapshot);
+      await this.languageService.applyFromProfile();
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : 'Restore failed';
       this.error.set(message);

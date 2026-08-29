@@ -1,0 +1,15 @@
+<section class="card">
+  <h2>{{ language.t('settings.language') }}</h2>
+  <div class="inline-form">
+    <select
+      [ngModel]="language.activeLanguage()"
+      (ngModelChange)="onLanguageChange($event)"
+      class="input small"
+      [attr.aria-label]="language.t('settings.languageAria')"
+    >
+      @for (option of languages; track option.code) {
+        <option [value]="option.code">{{ option.label }}</option>
+      }
+    </select>
+  </div>
+</section>

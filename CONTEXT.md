@@ -21,7 +21,7 @@ A mandatory classification label applied to every Transaction, marked as either 
 _Avoid_: Type, group, classification
 
 **Period**:
-A month name (January through December) assigned to a Transaction or Transfer to group it for reporting, together with the year of the Period the movement belongs to. Not a separate entity — a month text field plus a `year` on the movement. Reporting (Stats year filter, period totals, yearly averages) uses the stored year, not the movement's date; dates are purely informational. New movements default to the current year; pre-existing movements without a stored year fall back to their date's year.
+A calendar month (January through December) assigned to a Transaction or Transfer to group it for reporting, together with the year of the Period the movement belongs to. Months are stored locale-independently and displayed in the active Language. Not a separate entity — a month text field plus a `year` on the movement. Reporting (Stats year filter, period totals, yearly averages) uses the stored year, not the movement's date; dates are purely informational. New movements default to the current year; pre-existing movements without a stored year fall back to their date's year.
 _Avoid_: Cycle, fiscal period, date range
 
 **Scope**:
@@ -52,8 +52,12 @@ _Avoid_: Quick entry, mini form, inline add
 A read-only summary screen showing a total balance in base currency (sum of all account balances, non-base converted using latest rate), period totals, per-category expense breakdown, yearly averages, and per-account balances (current and period-end). Reached via the `/dashboard` route.
 _Avoid_: overview, summary page
 
+**Language**:
+The user's preferred display language (English or Spanish). Chosen during Onboarding, changeable in Settings, and included in a Backup so a Restore reproduces the original device's language. Governs all displayed words and the formatting of dates, numbers, and currency amounts.
+_Avoid_: locale, i18n, translation setting
+
 **Onboarding**:
-The first-run flow that collects base currency, initial accounts, and initial categories before the app is usable. Its first step asks whether to restore a Backup from a cloud provider or from an uploaded file, before the wizard itself runs.
+The first-run flow that collects language, base currency, initial accounts, and initial categories before the app is usable. Its first step asks the preferred Language; the second asks whether to restore a Backup from a cloud provider or from an uploaded file, before the wizard itself runs. Restoring a Backup overwrites the chosen Language with the Backup's.
 _Avoid_: Setup, wizard, first-time flow
 
 **Backup**:
