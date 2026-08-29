@@ -103,12 +103,6 @@
   margin-top: 0.75rem;
 }
 
-.movement-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
 .filter-bar {
   display: flex;
   gap: 0.75rem;
@@ -156,17 +150,6 @@
   margin-bottom: 0.25rem;
 }
 
-.movement-item {
-  padding: 0.75rem;
-  border: 1px solid var(--hairline-graphite);
-  border-radius: var(--radius-md);
-  background: var(--paper-white);
-
-  &.transfer {
-    background: var(--mist-paper);
-  }
-}
-
 .movement-table {
   width: 100%;
   border-collapse: collapse;
@@ -212,57 +195,6 @@
   overflow-x: auto;
 }
 
-.movement-main {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-
-  .category {
-    font-weight: 500;
-    line-height: var(--leading-body);
-  }
-
-  .type-label {
-    font-size: var(--type-tag);
-    letter-spacing: var(--tracking-micro);
-    background: var(--hairline-graphite);
-    color: var(--body-ink);
-    padding: 0.125rem 0.375rem;
-    border-radius: var(--radius-tag);
-    font-weight: 500;
-  }
-
-  .transfer-detail {
-    color: var(--body-ink);
-  }
-
-  .amount {
-    margin-left: auto;
-    font-weight: 600;
-    line-height: var(--leading-tight);
-    font-variant-numeric: tabular-nums;
-
-    &.expense {
-      color: var(--officers-red);
-    }
-  }
-}
-
-.movement-meta {
-  display: flex;
-  gap: 0.75rem;
-  margin-top: 0.25rem;
-  font-size: 0.8rem;
-  color: var(--muted-slate);
-  letter-spacing: var(--tracking-micro);
-  line-height: var(--leading-label);
-}
-
-.tags {
-  display: flex;
-  gap: 0.25rem;
-}
-
 .tag {
   background: var(--ink-tint);
   color: var(--ledger-ink);
@@ -272,12 +204,6 @@
   font-weight: 500;
   letter-spacing: var(--tracking-micro);
   line-height: var(--leading-tight);
-}
-
-.movement-actions {
-  margin-top: 0.5rem;
-  display: flex;
-  gap: 0.25rem;
 }
 
 .note {

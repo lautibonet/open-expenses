@@ -47,52 +47,15 @@ label {
   align-items: center;
 }
 
-.record {
-  padding: 0.5rem 1rem;
-  border: 1px solid var(--ledger-ink);
-  border-radius: var(--radius-sm);
-  background: var(--ledger-ink);
-  color: var(--paper-white);
-  cursor: pointer;
-  font-size: var(--type-body);
-  font-weight: 600;
+.btn {
+  @extend %btn-base;
 
-  &:hover:not(:disabled) {
-    background: var(--ink-well-blue);
-    border-color: var(--ink-well-blue);
+  &.primary {
+    @extend %btn-primary;
   }
 
-  &:disabled {
-    opacity: 0.6;
-    cursor: default;
-  }
-}
-
-.more {
-  padding: 0.5rem 0.75rem;
-  border: 1px solid var(--edge-graphite);
-  border-radius: var(--radius-sm);
-  background: var(--paper-white);
-  color: var(--body-ink);
-  cursor: pointer;
-  font-size: var(--type-caption);
-
-  &:hover {
-    background: var(--silvered-paper);
-  }
-}
-
-.material-btn {
-  padding: 0.5rem 1rem;
-  border: 1px solid var(--edge-graphite);
-  border-radius: var(--radius-sm);
-  background: var(--paper-white);
-  color: var(--body-ink);
-  cursor: pointer;
-  font-size: var(--type-body);
-
-  &:hover {
-    background: var(--silvered-paper);
+  &.small {
+    @extend %btn-small;
   }
 }
 
