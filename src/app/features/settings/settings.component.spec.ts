@@ -313,9 +313,18 @@ describe('SettingsComponent - language card', () => {
     expect(languageSelect().value).toBe('en');
   });
 
-  it('switches the Settings screen to Spanish immediately, without reload', async () => {
+  it('switches to Spanish only after clicking Update, without reload', async () => {
     languageSelect().value = 'es';
     languageSelect().dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+
+    expect(languageService.activeLanguage()).toBe('en');
+    expect((await profileService.get())!.language).toBe('en');
+
+    const updateButton = Array.from(
+      fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>,
+    ).find((b) => b.textContent!.trim() === 'Update');
+    updateButton!.click();
     await flush();
     fixture.detectChanges();
 
@@ -329,6 +338,10 @@ describe('SettingsComponent - language card', () => {
   it('keeps the choice across reloads', async () => {
     languageSelect().value = 'es';
     languageSelect().dispatchEvent(new Event('change'));
+    const updateButton = Array.from(
+      fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>,
+    ).find((b) => b.textContent!.trim() === 'Update');
+    updateButton!.click();
     await flush();
 
     await languageService.init();
