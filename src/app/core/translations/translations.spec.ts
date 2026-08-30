@@ -226,18 +226,16 @@ describe('translations', () => {
   it('covers the stats keys', () => {
     for (const key of [
       'stats.title',
-      'stats.totals',
+      'stats.subtitle',
       'stats.expensesByCategory',
-      'stats.colCategory',
-      'stats.colAmount',
       'stats.totalBalance',
       'stats.allAccounts',
       'stats.conversionWarning',
       'stats.accountBalances',
-      'stats.colAccount',
-      'stats.colCurrency',
-      'stats.colBalance',
-      'stats.monthlyAverages',
+      'stats.avgIncome',
+      'stats.avgExpenses',
+      'stats.netAverage',
+      'stats.savingsRate',
     ]) {
       expect(TRANSLATIONS.en[key]).toBeTruthy();
       expect(TRANSLATIONS.es[key]).toBeTruthy();

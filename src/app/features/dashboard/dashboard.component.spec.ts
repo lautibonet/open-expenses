@@ -11,6 +11,16 @@ import { LanguageService } from '../../core/services/language.service';
 import { db } from '../../core/db/database';
 import { MONTH_NAMES, defaultScope, getCurrentPeriod, getCurrentYear } from '../../core/types/period.type';
 
+/** Keep the Dexie connection open for the whole file and just clear the
+ * tables between tests. Closing/recreating the db (delete + open) aborts
+ * whatever component chain Angular's change detection started but the test
+ * never awaited (ngOnInit is also invoked by the first detectChanges), and
+ * that abort surfaces as an unhandled DatabaseClosedError. */
+async function resetDb(): Promise<void> {
+  await db.open();
+  await Promise.all(db.tables.map(t => t.clear()));
+}
+
 describe('DashboardComponent', () => {
   let fixture: ComponentFixture<DashboardComponent>;
   let component: DashboardComponent;
@@ -19,8 +29,7 @@ describe('DashboardComponent', () => {
   let transactionService: TransactionService;
 
   beforeEach(async () => {
-    await db.delete();
-    await db.open();
+    await resetDb();
     await TestBed.configureTestingModule({
       imports: [DashboardComponent],
     }).compileComponents();
@@ -34,7 +43,7 @@ describe('DashboardComponent', () => {
 
   afterEach(async () => {
     await new Promise<void>(resolve => setTimeout(resolve, 10));
-    await db.delete();
+    await resetDb();
   });
 
   it('titles the surface Stats, not Dashboard', async () => {
@@ -342,8 +351,7 @@ describe('DashboardComponent - shared scope', () => {
   let transactionService: TransactionService;
 
   beforeEach(async () => {
-    await db.delete();
-    await db.open();
+    await resetDb();
     await TestBed.configureTestingModule({
       imports: [DashboardComponent],
     }).compileComponents();
@@ -357,7 +365,7 @@ describe('DashboardComponent - shared scope', () => {
 
   afterEach(async () => {
     await new Promise<void>(resolve => setTimeout(resolve, 10));
-    await db.delete();
+    await resetDb();
   });
 
   it('should default to the current month scope', async () => {
@@ -473,26 +481,66 @@ describe('DashboardComponent - shared scope', () => {
     expect(headings.length).toBe(1);
   });
 
-  it('should color Net with the information ink, not income or expense green', async () => {
+  it('renders the Net Average as the inverted savings KPI card', async () => {
     const acc = await accountService.create('Cash', 'EUR', 0);
     const incomeCat = await categoryService.create('Payroll', 'income');
+    const expenseCat = await categoryService.create('Food', 'expense');
 
+    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(), getCurrentPeriod());
+    await transactionService.create(acc.id!, expenseCat.id!, 500, new Date(), getCurrentPeriod());
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const net = fixture.nativeElement.querySelector('.kpi-card.kpi-net .value');
+    expect(net).toBeTruthy();
+    expect(net.textContent).toContain(component.formatMoney(component.avgMonthlySavings()));
+    expect(component.avgMonthlySavings()).toBe(2500);
+  });
+
+  it('renders the KPI row as three cards: avg income, avg expense, net average', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const cards = fixture.nativeElement.querySelectorAll('.kpi-row .kpi-card');
+    expect(cards.length).toBe(3);
+    expect(fixture.nativeElement.querySelector('.kpi-card.kpi-income .value')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.kpi-card.kpi-expense .value')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.kpi-card.kpi-net .value')).toBeTruthy();
+  });
+
+  it('hides the savings rate when there is no income', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.kpi-net .savings-rate')).toBeNull();
+  });
+
+  it('shows the savings rate in the net average card when there is income', async () => {
+    const acc = await accountService.create('Cash', 'EUR', 0);
+    const incomeCat = await categoryService.create('Payroll', 'income');
     await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(), getCurrentPeriod());
 
     await component.ngOnInit();
     fixture.detectChanges();
-
-    const net = fixture.nativeElement.querySelector('.stat .value.information');
-    expect(net).toBeTruthy();
-    expect(component.netIncome()).toBe(3000);
+    expect(fixture.nativeElement.querySelector('.kpi-net .savings-rate')).toBeTruthy();
   });
 
-  it('should color Avg Monthly Savings with the information ink, not income or expense green', async () => {
-    await component.ngOnInit();
-    fixture.detectChanges();
+  it('computes the savings rate from the existing monthly averages', async () => {
+    const acc = await accountService.create('Cash', 'EUR', 0);
+    const incomeCat = await categoryService.create('Payroll', 'income');
+    const expenseCat = await categoryService.create('Food', 'expense');
 
-    const savingsValues = fixture.nativeElement.querySelectorAll('.stat .value.information');
-    expect(savingsValues.length).toBeGreaterThanOrEqual(1);
+    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(), getCurrentPeriod());
+    await transactionService.create(acc.id!, expenseCat.id!, 500, new Date(), getCurrentPeriod());
+
+    await component.ngOnInit();
+
+    expect(component.savingsRate()).toBe(83);
+  });
+
+  it('returns a null savings rate when there is no income', async () => {
+    await component.ngOnInit();
+    expect(component.savingsRate()).toBeNull();
   });
 
   it('should compute all-time balances across every period present in the data', async () => {
@@ -544,13 +592,213 @@ describe('DashboardComponent - shared scope', () => {
   });
 });
 
+describe('DashboardComponent - page header, scope stepper and restyled cards', () => {
+  let fixture: ComponentFixture<DashboardComponent>;
+  let component: DashboardComponent;
+  let accountService: AccountService;
+  let categoryService: CategoryService;
+  let transactionService: TransactionService;
+  let networkService: NetworkService;
+
+  beforeEach(async () => {
+    await resetDb();
+    await TestBed.configureTestingModule({
+      imports: [DashboardComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(DashboardComponent);
+    component = fixture.componentInstance;
+    accountService = TestBed.inject(AccountService);
+    categoryService = TestBed.inject(CategoryService);
+    transactionService = TestBed.inject(TransactionService);
+    networkService = TestBed.inject(NetworkService);
+  });
+
+  afterEach(async () => {
+    await new Promise<void>(resolve => setTimeout(resolve, 10));
+    await resetDb();
+  });
+
+  async function scopeTo(period: number, year: number): Promise<void> {
+    await component.onScopeYearChange(year);
+    await component.onScopeMonthChange(period);
+  }
+
+  it('renders the display headline with its subtitle', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const h1 = fixture.nativeElement.querySelector('.page-header h1');
+    expect(h1).toBeTruthy();
+    expect(h1.textContent.trim()).toBe('Stats');
+
+    const subtitle = fixture.nativeElement.querySelector('.page-header .subtitle');
+    expect(subtitle.textContent.trim()).toBe('Your averages, expenses and balances at a glance.');
+  });
+
+  it('keeps accessible names on the year and month scope selects', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('select[aria-label="Scope year"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('select[aria-label="Scope month"]')).toBeTruthy();
+  });
+
+  it('steps the month via the stepper without touching the year', async () => {
+    const year = getCurrentYear();
+    await component.ngOnInit();
+    await scopeTo(6, year);
+
+    await component.stepScopeMonth(1);
+    expect(component.scope()).toEqual({ kind: 'month', period: 7, year });
+
+    await component.stepScopeMonth(-1);
+    await component.stepScopeMonth(-1);
+    expect(component.scope()).toEqual({ kind: 'month', period: 5, year });
+  });
+
+  it('disables the stepper at the calendar edges', async () => {
+    await component.ngOnInit();
+    await scopeTo(1, getCurrentYear());
+    expect(component.canStepMonth(-1)).toBe(false);
+    expect(component.canStepMonth(1)).toBe(true);
+
+    await scopeTo(12, getCurrentYear());
+    expect(component.canStepMonth(-1)).toBe(true);
+    expect(component.canStepMonth(1)).toBe(false);
+  });
+
+  it('cannot step months while All Time is active', async () => {
+    await component.ngOnInit();
+    await component.onScopeYearChange('all-time');
+
+    expect(component.canStepMonth(-1)).toBe(false);
+    expect(component.canStepMonth(1)).toBe(false);
+
+    await component.stepScopeMonth(1);
+    expect(component.scope().kind).toBe('all-time');
+  });
+
+  it('toggles All Time from the scope control and back to the current month', async () => {
+    await component.ngOnInit();
+
+    await component.toggleAllTime();
+    expect(component.scope()).toEqual({ kind: 'all-time' });
+
+    await component.toggleAllTime();
+    expect(component.scope()).toEqual(defaultScope());
+  });
+
+  it('refreshes averages when stepping the scope, keeping the year-average semantics', async () => {
+    const acc = await accountService.create('Cash', 'EUR', 0);
+    const incomeCat = await categoryService.create('Payroll', 'income');
+    const year = getCurrentYear();
+
+    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(`${year}-01-15`), 1);
+    await transactionService.create(acc.id!, incomeCat.id!, 6000, new Date(`${year}-02-15`), 2);
+
+    await component.ngOnInit();
+    await scopeTo(1, year);
+    expect(component.avgMonthlyIncome()).toBe(4500);
+
+    await component.stepScopeMonth(1);
+    expect(component.scope()).toEqual({ kind: 'month', period: 2, year });
+    expect(component.avgMonthlyIncome()).toBe(4500);
+  });
+
+  it('renders category totals as pure CSS horizontal bars', async () => {
+    const acc = await accountService.create('Cash', 'EUR', 100000);
+    const food = await categoryService.create('Food', 'expense');
+    const rent = await categoryService.create('Rent', 'expense');
+    const period = getCurrentPeriod();
+
+    await transactionService.create(acc.id!, rent.id!, 1500, new Date(), period);
+    await transactionService.create(acc.id!, food.id!, 500, new Date(), period);
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const tracks = fixture.nativeElement.querySelectorAll('.category-bar-row .bar-track');
+    const fills = fixture.nativeElement.querySelectorAll('.category-bar-row .bar-fill');
+    expect(tracks.length).toBe(2);
+    expect(fills.length).toBe(2);
+
+    // Largest category first, bar at 100%; the second at its relative share.
+    expect(fills[0].style.width).toBe('100%');
+    expect(Number.parseFloat(fills[1].style.width)).toBeCloseTo(33.33, 1);
+
+    // No chart dependency: bars are plain divs.
+    expect(fixture.nativeElement.querySelector('canvas')).toBeNull();
+  });
+
+  it('computes category bar widths relative to the largest category', async () => {
+    await component.categoryBreakdown.set([
+      { name: 'Rent', total: 1500 },
+      { name: 'Food', total: 500 },
+    ]);
+
+    expect(component.categoryBarWidth(1500)).toBe(100);
+    expect(component.categoryBarWidth(500)).toBeCloseTo(33.33, 2);
+  });
+
+  it('shows negative account balances on error tiles', async () => {
+    await accountService.create('Cash', 'EUR', 100000);
+    const credit = await accountService.create('Credit Card', 'EUR', 0);
+    const expenseCat = await categoryService.create('Card Spend', 'expense');
+    await transactionService.create(credit.id!, expenseCat.id!, 124000, new Date(), getCurrentPeriod());
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const rows = fixture.nativeElement.querySelectorAll('.balance-row');
+    expect(rows.length).toBe(2);
+
+    const negative = fixture.nativeElement.querySelectorAll('.balance-row.negative');
+    expect(negative.length).toBe(1);
+    expect(negative[0].querySelector('.balance-tile')).toBeTruthy();
+    expect(negative[0].textContent).toContain('Credit Card');
+    expect(component.accountBalances().find(b => b.account.id === credit.id)!.balance).toBeLessThan(0);
+  });
+
+  it('keeps positive balances off the error tiles', async () => {
+    await accountService.create('Cash', 'EUR', 100000);
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelectorAll('.balance-row').length).toBe(1);
+    expect(fixture.nativeElement.querySelector('.balance-row.negative')).toBeNull();
+  });
+
+  it('renders the conversion-failure warning on the error ramp when offline', async () => {
+    await accountService.create('Cash', 'EUR', 100000);
+    await accountService.create('USD Account', 'USD', 50000);
+    networkService.isOnline.set(false);
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const warning = fixture.nativeElement.querySelector('.conversion-warning');
+    expect(warning).toBeTruthy();
+    expect(warning.textContent).toContain('EUR');
+  });
+
+  it('hides the conversion warning when every account is in base currency', async () => {
+    await accountService.create('Cash', 'EUR', 100000);
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.conversion-warning')).toBeNull();
+  });
+});
+
 describe('DashboardComponent - translations', () => {
   let fixture: ComponentFixture<DashboardComponent>;
   let component: DashboardComponent;
 
   beforeEach(async () => {
-    await db.delete();
-    await db.open();
+    await resetDb();
     await TestBed.configureTestingModule({
       imports: [DashboardComponent],
     }).compileComponents();
@@ -561,22 +809,26 @@ describe('DashboardComponent - translations', () => {
 
   afterEach(async () => {
     await new Promise<void>(resolve => setTimeout(resolve, 10));
-    await db.delete();
+    await resetDb();
   });
 
   it('renders in Spanish when the active Language is Spanish', async () => {
+    const acc = await TestBed.inject(AccountService).create('Cash', 'EUR', 100000);
+    const cat = await TestBed.inject(CategoryService).create('Comida', 'expense');
+    await TestBed.inject(TransactionService).create(acc.id!, cat.id!, 500, new Date(), getCurrentPeriod());
+
     await TestBed.inject(LanguageService).setLanguage('es');
     await component.ngOnInit();
     fixture.detectChanges();
 
     const text = fixture.nativeElement.textContent;
     expect(text).toContain('Estadísticas');
-    expect(text).toContain('Totales de');
-    expect(text).toContain('Ingresos');
-    expect(text).toContain('Gastos');
+    expect(text).toContain('Gastos de');
+    expect(text).toContain('Media de ingresos');
+    expect(text).toContain('Media de gastos');
+    expect(text).toContain('Media neta');
     expect(text).toContain('Saldo total de');
     expect(text).toContain('Saldos de cuentas de');
-    expect(text).toContain('Medias mensuales de');
     expect(text).toContain('Todo el periodo');
     expect(fixture.nativeElement.querySelector('[aria-label="Ámbito: año"]')).toBeTruthy();
   });

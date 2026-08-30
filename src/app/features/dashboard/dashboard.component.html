@@ -1,82 +1,117 @@
 <div class="dashboard">
-  <h1>{{ language.t('stats.title') }}</h1>
-  <div class="controls">
-    <select
-      [ngModel]="scopeYearValue()"
-      (ngModelChange)="onScopeYearChange($event)"
-      [attr.aria-label]="language.t('scope.yearAria')"
-    >
-      @for (yr of scopeYears(); track yr) {
-        <option [ngValue]="yr">{{ yr }}</option>
-      }
-      <option [ngValue]="'all-time'">{{ language.t('scope.allTime') }}</option>
-    </select>
-    @if (scope().kind !== 'all-time') {
-      <select
-        [ngModel]="scopePeriod()"
-        (ngModelChange)="onScopeMonthChange($event)"
-        [attr.aria-label]="language.t('scope.monthAria')"
-      >
-        @for (month of scopeMonths(); track month) {
-          <option [ngValue]="month">{{ language.monthName(month) }}</option>
-        }
-      </select>
-    }
-    <span class="visually-hidden" aria-live="polite">{{ scopeAnnouncement() }}</span>
-  </div>
+  <header class="page-header">
+    <div class="headline">
+      <h1>{{ language.t('stats.title') }}</h1>
+      <p class="subtitle">{{ language.t('stats.subtitle') }}</p>
+    </div>
 
-  <section class="card">
-    <h2>{{ language.t('stats.totals', { scope: scopeLabelText() }) }}</h2>
-    <div class="totals">
-      <div class="stat">
-        <span class="label">{{ language.t('stats.income') }}</span>
-        <span class="value income">{{ formatMoney(totalIncome()) }}</span>
+    <div class="scope-control" role="group" [attr.aria-label]="language.t('scope.groupAria')">
+      <div class="scope-stepper">
+        <button
+          type="button"
+          class="step-btn"
+          (click)="stepScopeMonth(-1)"
+          [disabled]="!canStepMonth(-1)"
+          [attr.aria-label]="language.t('scope.prevMonthAria')"
+        >
+          <svg aria-hidden="true" viewBox="0 0 12 12" focusable="false">
+            <path d="M8 1 3 6l5 5" fill="none" stroke="currentColor" stroke-width="1.5" />
+          </svg>
+        </button>
+        <div class="scope-selects">
+          @if (scope().kind !== 'all-time') {
+            <select
+              [ngModel]="scopePeriod()"
+              (ngModelChange)="onScopeMonthChange($event)"
+              [attr.aria-label]="language.t('scope.monthAria')"
+            >
+              @for (month of scopeMonths(); track month) {
+                <option [ngValue]="month">{{ language.monthName(month) }}</option>
+              }
+            </select>
+          }
+          <select
+            [ngModel]="scopeYearValue()"
+            (ngModelChange)="onScopeYearChange($event)"
+            [attr.aria-label]="language.t('scope.yearAria')"
+          >
+            @for (yr of scopeYears(); track yr) {
+              <option [ngValue]="yr">{{ yr }}</option>
+            }
+            <option [ngValue]="'all-time'">{{ language.t('scope.allTime') }}</option>
+          </select>
+        </div>
+        <button
+          type="button"
+          class="step-btn"
+          (click)="stepScopeMonth(1)"
+          [disabled]="!canStepMonth(1)"
+          [attr.aria-label]="language.t('scope.nextMonthAria')"
+        >
+          <svg aria-hidden="true" viewBox="0 0 12 12" focusable="false">
+            <path d="m4 1 5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.5" />
+          </svg>
+        </button>
       </div>
-      <div class="stat">
-        <span class="label">{{ language.t('stats.expenses') }}</span>
-        <span class="value expense">{{ formatMoney(totalExpenses()) }}</span>
-      </div>
-      <div class="stat">
-        <span class="label">{{ language.t('stats.net') }}</span>
-        <span class="value information">
-          {{ formatMoney(netIncome()) }}
-        </span>
-      </div>
+      <button
+        type="button"
+        class="all-time-btn"
+        [class.active]="isAllTimeScope()"
+        [attr.aria-pressed]="isAllTimeScope()"
+        (click)="toggleAllTime()"
+      >
+        {{ language.t('scope.allTime') }}
+      </button>
+    </div>
+
+    <span class="visually-hidden" aria-live="polite">{{ scopeAnnouncement() }}</span>
+  </header>
+
+  <section class="kpi-row" [attr.aria-label]="language.t('stats.title')">
+    <div class="kpi-card kpi-income">
+      <span class="label">{{ language.t('stats.avgIncome') }}</span>
+      <span class="value">{{ formatMoney(avgMonthlyIncome()) }}</span>
+    </div>
+    <div class="kpi-card kpi-expense">
+      <span class="label">{{ language.t('stats.avgExpenses') }}</span>
+      <span class="value">{{ formatMoney(avgMonthlyExpenses()) }}</span>
+    </div>
+    <div class="kpi-card kpi-net">
+      <span class="label">{{ language.t('stats.netAverage') }}</span>
+      <span class="value">{{ formatMoney(avgMonthlySavings()) }}</span>
+      @if (savingsRate(); as rate) {
+        <span class="savings-rate">{{ language.t('stats.savingsRate', { rate }) }}</span>
+      }
     </div>
   </section>
 
   @if (categoryBreakdown().length > 0) {
     <section class="card">
       <h2>{{ language.t('stats.expensesByCategory', { scope: scopeLabelText() }) }}</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>{{ language.t('stats.colCategory') }}</th>
-            <th>{{ language.t('stats.colAmount') }}</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (item of categoryBreakdown(); track item.name) {
-            <tr>
-              <td>{{ item.name }}</td>
-              <td>{{ formatMoney(item.total) }}</td>
-            </tr>
-          }
-        </tbody>
-      </table>
+      <ul class="category-bars">
+        @for (item of categoryBreakdown(); track item.name) {
+          <li class="category-bar-row">
+            <div class="bar-head">
+              <span class="cat-name">{{ item.name }}</span>
+              <span class="cat-amount">{{ formatMoney(item.total) }}</span>
+            </div>
+            <div class="bar-track" aria-hidden="true">
+              <div class="bar-fill" [style.width.%]="categoryBarWidth(item.total)"></div>
+            </div>
+          </li>
+        }
+      </ul>
     </section>
   }
 
   <section class="card">
     <h2>{{ language.t('stats.totalBalance', { scope: scopeLabelText() }) }}</h2>
-    <div class="totals">
-      <div class="stat">
-        <span class="label">{{ language.t('stats.allAccounts', { currency: baseCurrency() }) }}</span>
-        <span class="value">{{ formatMoney(totalBalanceBaseCurrency()) }}</span>
-      </div>
+    <div class="stat">
+      <span class="label">{{ language.t('stats.allAccounts', { currency: baseCurrency() }) }}</span>
+      <span class="value">{{ formatMoney(totalBalanceBaseCurrency()) }}</span>
     </div>
     @if (conversionFailed()) {
-      <div class="conversion-warning">
+      <div class="conversion-warning" role="alert">
         {{ language.t('stats.conversionWarning', { currency: baseCurrency() }) }}
       </div>
     }
@@ -84,43 +119,17 @@
 
   <section class="card">
     <h2>{{ language.t('stats.accountBalances', { scope: scopeLabelText() }) }}</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>{{ language.t('stats.colAccount') }}</th>
-          <th>{{ language.t('stats.colCurrency') }}</th>
-          <th>{{ language.t('stats.colBalance') }}</th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (item of accountBalances(); track item.account.id) {
-          <tr>
-            <td>{{ item.account.name }}</td>
-            <td>{{ item.account.currency }}</td>
-            <td>{{ formatAccountBalance(item.balance, item.account.currency) }}</td>
-          </tr>
-        }
-      </tbody>
-    </table>
-  </section>
-
-  <section class="card">
-    <h2>{{ language.t('stats.monthlyAverages', { scope: scopeLabelText() }) }}</h2>
-    <div class="totals">
-      <div class="stat">
-        <span class="label">{{ language.t('stats.avgIncome') }}</span>
-        <span class="value income">{{ formatMoney(avgMonthlyIncome()) }}</span>
-      </div>
-      <div class="stat">
-        <span class="label">{{ language.t('stats.avgExpenses') }}</span>
-        <span class="value expense">{{ formatMoney(avgMonthlyExpenses()) }}</span>
-      </div>
-      <div class="stat">
-        <span class="label">{{ language.t('stats.avgSavings') }}</span>
-        <span class="value information">
-          {{ formatMoney(avgMonthlySavings()) }}
-        </span>
-      </div>
-    </div>
+    <ul class="balance-list">
+      @for (item of accountBalances(); track item.account.id) {
+        <li class="balance-row" [class.negative]="item.balance < 0">
+          <span class="balance-tile" aria-hidden="true">{{ item.account.currency }}</span>
+          <div class="balance-meta">
+            <span class="account-name">{{ item.account.name }}</span>
+            <span class="account-currency">{{ item.account.currency }}</span>
+          </div>
+          <span class="balance-amount">{{ formatAccountBalance(item.balance, item.account.currency) }}</span>
+        </li>
+      }
+    </ul>
   </section>
 </div>

@@ -2,101 +2,238 @@
 
 .dashboard {
   padding-bottom: 1rem;
-
-  h1 {
-    font-size: var(--type-title);
-    font-weight: 600;
-    line-height: var(--leading-headline);
-    margin-bottom: 1rem;
-  }
 }
 
-.controls {
-  display: flex;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-
-  select {
-    @extend %field;
-  }
+.page-header {
+  @extend %page-header;
 }
 
-.card {
+.scope-control {
+  @extend %scope-control;
+}
+
+.scope-stepper {
+  @extend %scope-stepper;
+}
+
+.all-time-btn {
+  @extend %all-time-btn;
+}
+
+/* KPI row: the design's three summary cards. Income keeps a primary-blue
+   stripe, expense an error-red stripe, and the net average is the inverted
+   solid-ink card. */
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+}
+
+.kpi-card {
   background: var(--surface-lowest);
   border: var(--border-hard);
-  border-radius: var(--radius-lg);
-  padding: 1rem;
-  margin-bottom: 1rem;
-
-  h2 {
-    font-size: var(--type-headline);
-    font-weight: 600;
-    line-height: var(--leading-headline);
-    margin-bottom: 0.75rem;
-  }
-}
-
-.totals {
-  display: flex;
-  gap: 2rem;
-}
-
-.stat {
+  padding: var(--space-md) var(--space-lg);
   display: flex;
   flex-direction: column;
+  gap: var(--space-sm);
 
   .label {
     @extend %caps-label-muted;
   }
 
   .value {
-    font-size: 1.25rem;
-    font-weight: 600;
-    line-height: var(--leading-tight);
+    @extend %mono-data;
 
-    &.income {
-      color: var(--primary);
+    font-size: var(--type-headline);
+    font-weight: 700;
+    color: var(--on-surface);
+  }
+
+  &.kpi-income {
+    border-left: var(--stripe-income);
+  }
+
+  &.kpi-expense {
+    border-left: var(--stripe-expense);
+  }
+
+  &.kpi-net {
+    background: var(--on-surface);
+    border-color: var(--on-surface);
+
+    .label {
+      color: var(--surface-dim);
     }
 
-    &.expense {
-      color: var(--error);
+    .value {
+      color: var(--surface-lowest);
     }
 
-    &.information {
-      color: var(--primary);
+    .savings-rate {
+      @extend %mono-data;
+
+      color: var(--surface-container-highest);
     }
   }
 }
 
-table {
-  width: 100%;
-  border-collapse: collapse;
+.card {
+  background: var(--surface-lowest);
+  border: var(--border-hard);
+  padding: var(--space-md) var(--space-lg);
+  margin-bottom: var(--space-lg);
 
-  th,
-  td {
-    padding: 0.5rem;
-    text-align: left;
-    border-bottom: 1px solid var(--surface-container-low);
+  h2 {
+    @extend %card-header;
+  }
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+
+  .label {
+    @extend %caps-label-muted;
   }
 
-  th {
-    @extend %caps-label-muted;
+  .value {
+    @extend %mono-data;
+
+    font-size: var(--type-title);
+    font-weight: 600;
+    color: var(--on-surface);
+  }
+}
+
+/* Category bars: pure CSS horizontal fills on a gray track — no chart lib. */
+.category-bars {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.category-bar-row {
+  .bar-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-md);
+    margin-bottom: var(--space-xs);
+  }
+
+  .cat-name {
+    font-size: var(--type-body);
+    color: var(--on-surface);
+  }
+
+  .cat-amount {
+    @extend %mono-data;
+
+    font-weight: 500;
+  }
+
+  .bar-track {
+    height: 0.75rem;
+    background: var(--surface-container-high);
+    border: 1px solid var(--outline-variant);
+  }
+
+  .bar-fill {
+    height: 100%;
+    background: var(--on-surface);
   }
 }
 
 .conversion-warning {
-  margin-top: 0.75rem;
-  padding: 0.5rem 0.75rem;
+  @extend %caps-label-muted;
+
+  margin-top: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
   background: var(--error-container);
   border: 1px solid var(--on-error-container);
-  border-radius: var(--radius-md);
-  font-size: 0.8rem;
   color: var(--on-error-container);
 }
 
-@media (max-width: 560px) {
-  .totals {
-    flex-wrap: wrap;
-    gap: var(--space-lg);
+/* Account balances: bordered list; negative balances sit on the
+   error-container tile with error ink on the amount. */
+.balance-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.balance-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-sm) 0;
+
+  & + .balance-row {
+    border-top: 1px solid var(--surface-container-low);
+  }
+}
+
+.balance-tile {
+  @extend %mono-data;
+
+  display: grid;
+  place-items: center;
+  min-width: 2.5rem;
+  height: 2.5rem;
+  padding: 0 var(--space-xs);
+  background: var(--surface-container-high);
+  border: var(--border-hard);
+  color: var(--on-surface);
+}
+
+.balance-meta {
+  display: flex;
+  flex-direction: column;
+
+  .account-name {
+    font-size: var(--type-body);
+    font-weight: 600;
+    color: var(--on-surface);
+  }
+
+  .account-currency {
+    @extend %caps-label-muted;
+  }
+}
+
+.balance-amount {
+  @extend %mono-data;
+
+  margin-left: auto;
+  font-weight: 600;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.balance-row.negative {
+  .balance-tile {
+    background: var(--error-container);
+    border-color: var(--on-error-container);
+    color: var(--on-error-container);
+  }
+
+  .balance-amount {
+    color: var(--error);
+  }
+}
+
+@media (max-width: 768px) {
+  .page-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .kpi-row {
+    grid-template-columns: 1fr;
   }
 }
