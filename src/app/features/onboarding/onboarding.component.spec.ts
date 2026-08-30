@@ -123,6 +123,77 @@ describe('OnboardingComponent', () => {
     expect(component.step()).toBe('accounts');
   });
 
+  it('reflects the wizard state in the step tab bar', () => {
+    component.goTo('currency');
+    fixture.detectChanges();
+
+    const tabs = Array.from(
+      fixture.nativeElement.querySelectorAll('.step-tab'),
+    ) as HTMLElement[];
+    expect(tabs.length).toBe(5);
+    expect(tabs[0].classList).toContain('completed');
+    expect(tabs[1].classList).toContain('completed');
+    expect(tabs[2].classList).toContain('current');
+    expect(tabs[2].getAttribute('aria-current')).toBe('step');
+    expect(tabs[3].classList).not.toContain('completed');
+    expect(tabs[3].classList).not.toContain('current');
+    expect(tabs[4].classList).not.toContain('completed');
+    expect(tabs[4].classList).not.toContain('current');
+  });
+
+  it('offers the featured currency tiles and marks the selection', () => {
+    component.startFresh();
+    fixture.detectChanges();
+
+    const tiles = Array.from(
+      fixture.nativeElement.querySelectorAll('.select-tile'),
+    ) as HTMLElement[];
+    const codes = tiles.map(t => t.querySelector('.tile-code')!.textContent!.trim());
+    expect(codes).toEqual(['USD', 'EUR', 'GBP', 'JPY']);
+
+    const selected = tiles.find(t => t.classList.contains('selected'));
+    expect(selected!.querySelector('.tile-code')!.textContent!.trim()).toBe('EUR');
+  });
+
+  it('selects a currency tile on click', () => {
+    component.startFresh();
+    fixture.detectChanges();
+
+    const usd = (
+      Array.from(fixture.nativeElement.querySelectorAll('.select-tile')) as HTMLElement[]
+    ).find(t => t.querySelector('.tile-code')!.textContent!.trim() === 'USD')!;
+    usd.click();
+
+    expect(component.baseCurrency()).toBe('USD');
+  });
+
+  it('filters currency tiles from the search field by code or name', () => {
+    component.startFresh();
+    fixture.detectChanges();
+
+    const input = fixture.nativeElement.querySelector('#currency-search') as HTMLInputElement;
+    const codes = (): string[] =>
+      (
+        Array.from(fixture.nativeElement.querySelectorAll('.select-tile')) as HTMLElement[]
+      ).map(t => t.querySelector('.tile-code')!.textContent!.trim());
+
+    input.value = 'swiss';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(codes()).toEqual(['CHF']);
+    expect(fixture.nativeElement.querySelector('#currency-search')).toBeTruthy();
+
+    input.value = 'japan';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(codes()).toEqual(['JPY']);
+
+    input.value = '';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(codes()).toEqual(['USD', 'EUR', 'GBP', 'JPY']);
+  });
+
   it('persists the chosen language to the profile when completing onboarding', async () => {
     vi.spyOn(router, 'navigate').mockResolvedValue(true);
     component.onLanguageChange('es');
