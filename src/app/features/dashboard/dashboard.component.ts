@@ -14,6 +14,7 @@ import {
   PeriodScope,
   defaultScope,
   getCurrentPeriod,
+  getCurrentYear,
   getPeriodYear,
   isAllTime,
   isMonthNumber,
@@ -199,6 +200,44 @@ export class DashboardComponent implements OnInit {
 
   scopeLabelText(): string {
     return this.language.scopeLabel(this.scope());
+  }
+
+  isAllTimeScope(): boolean {
+    return isAllTime(this.scope());
+  }
+
+  canStepMonth(delta: -1 | 1): boolean {
+    const s = this.scope();
+    if (isAllTime(s)) return false;
+    const next = s.period + delta;
+    return next >= 1 && next <= 12;
+  }
+
+  async stepScopeMonth(delta: -1 | 1): Promise<void> {
+    const s = this.scope();
+    if (isAllTime(s) || !this.canStepMonth(delta)) return;
+    await this.onScopeMonthChange(s.period + delta);
+  }
+
+  async toggleAllTime(): Promise<void> {
+    if (isAllTime(this.scope())) {
+      await this.onScopeYearChange(getCurrentYear());
+    } else {
+      await this.onScopeYearChange('all-time');
+    }
+  }
+
+  savingsRate(): number | null {
+    const income = this.avgMonthlyIncome();
+    if (income <= 0) return null;
+    return Math.round((this.avgMonthlySavings() / income) * 100);
+  }
+
+  categoryBarWidth(total: number): number {
+    const breakdown = this.categoryBreakdown();
+    const max = breakdown.length > 0 ? Math.max(...breakdown.map(b => b.total)) : 0;
+    if (max <= 0) return 0;
+    return Math.round((total / max) * 10000) / 100;
   }
 
   scopePeriod(): number | null {
