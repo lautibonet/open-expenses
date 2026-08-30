@@ -1,213 +1,298 @@
-<div class="onboarding">
-  <h1>{{ languageService.t('onboarding.title') }}</h1>
-  <p class="subtitle">{{ languageService.t('onboarding.subtitle') }}</p>
+<div class="screen">
+  <header class="top-bar">
+    <div class="brand">
+      <span class="monogram" aria-hidden="true">O</span>
+      <span class="wordmark">Open Expenses</span>
+    </div>
+    <span class="setup-label">{{ languageService.t('onboarding.setup') }}</span>
+  </header>
 
-  @if (step() === 'language') {
-    <section class="step">
-      <h2>{{ stepNumber('language') }}. {{ languageService.t('onboarding.language.title') }}</h2>
-      <p>{{ languageService.t('onboarding.language.description') }}</p>
-
-      <select
-        [ngModel]="language()"
-        (ngModelChange)="onLanguageChange($event)"
-        class="input"
-        [attr.aria-label]="languageService.t('onboarding.language.aria')"
-      >
-        @for (option of languages; track option.code) {
-          <option [value]="option.code">{{ option.label }}</option>
-        }
-      </select>
-
-      <div class="nav-buttons">
-        <button class="btn primary" (click)="goTo('restore')">{{ languageService.t('onboarding.next') }}</button>
-      </div>
-    </section>
-  }
-
-  @if (step() === 'restore') {
-    <section class="step">
-      <h2>{{ stepNumber('restore') }}. {{ languageService.t('onboarding.restore.title') }}</h2>
-      <p>{{ languageService.t('onboarding.restore.description') }}</p>
-
-      <div class="restore-options">
-        <button
-          type="button"
-          class="btn primary"
-          [disabled]="isRestoring()"
-          (click)="restoreFromCloud()"
+  <div class="wizard">
+    <ol class="step-bar">
+      @for (name of steps; track name; let i = $index) {
+        <li
+          class="step-tab"
+          [class.completed]="i < stepIndex()"
+          [class.current]="name === step()"
+          [attr.aria-current]="name === step() ? 'step' : null"
         >
-          {{ languageService.t('backup.card.restoreFrom', { method: backupMethod }) }}
-        </button>
-
-        <input
-          #fileInput
-          type="file"
-          accept="application/json,.json"
-          class="file-input"
-          (change)="onFileSelected($event)"
-        />
-        <button
-          type="button"
-          class="btn"
-          [disabled]="isRestoring()"
-          (click)="fileInput.click()"
-        >
-          {{ languageService.t('backup.card.restoreFromFile') }}
-        </button>
-
-        <button
-          type="button"
-          class="btn"
-          [disabled]="isRestoring()"
-          (click)="startFresh()"
-        >
-          {{ languageService.t('onboarding.restore.startFresh') }}
-        </button>
-      </div>
-
-      @if (isRestoring()) {
-        <p class="info">{{ languageService.t('onboarding.restore.restoring') }}</p>
+          <span class="step-icon" aria-hidden="true">
+            @if (i < stepIndex()) {
+              <svg viewBox="0 0 16 16" width="14" height="14"><path d="M3 8.5 6.5 12 13 4.5" fill="none" stroke="currentColor" stroke-width="2" /></svg>
+            } @else if (name === step()) {
+              <svg viewBox="0 0 16 16" width="14" height="14"><circle cx="8" cy="8" r="5.5" fill="none" stroke="currentColor" stroke-width="1.5" /><circle cx="8" cy="8" r="2" fill="currentColor" /></svg>
+            } @else {
+              <svg viewBox="0 0 16 16" width="14" height="14"><circle cx="8" cy="8" r="5.5" fill="none" stroke="currentColor" stroke-width="1.5" /></svg>
+            }
+          </span>
+          <span class="step-label">{{ stepNumber(name) }}. {{ languageService.t('onboarding.steps.' + name) }}</span>
+        </li>
       }
-      @if (noBackupMessage()) {
-        <p class="info">{{ noBackupMessage() }}</p>
+    </ol>
+
+    <div class="step-panel">
+      @if (step() === 'language') {
+        <section class="step">
+          <h1 class="step-title">{{ languageService.t('onboarding.language.title') }}</h1>
+          <p class="step-description">{{ languageService.t('onboarding.language.description') }}</p>
+
+          <div class="language-tiles" role="radiogroup" [attr.aria-label]="languageService.t('onboarding.language.aria')">
+            @for (option of languages; track option.code) {
+              <button
+                type="button"
+                role="radio"
+                class="select-tile"
+                [class.selected]="language() === option.code"
+                [attr.aria-checked]="language() === option.code"
+                (click)="onLanguageChange(option.code)"
+              >
+                <span class="tile-head">
+                  <span class="tile-code">{{ option.code.toUpperCase() }}</span>
+                </span>
+                <span class="tile-name">{{ option.label }}</span>
+              </button>
+            }
+          </div>
+
+          <div class="nav-buttons">
+            <button class="btn primary" (click)="goTo('restore')">
+              {{ languageService.t('onboarding.next') }}
+              <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M2 8h11M9 3.5 13.5 8 9 12.5" fill="none" stroke="currentColor" stroke-width="1.5" /></svg>
+            </button>
+          </div>
+        </section>
       }
-      @if (errorMessage()) {
-        <p class="error">{{ errorMessage() }}</p>
-      }
-    </section>
-  }
 
-  @if (step() === 'currency') {
-    <section class="step">
-      <h2>{{ stepNumber('currency') }}. {{ languageService.t('onboarding.currency.title') }}</h2>
-      <p>{{ languageService.t('onboarding.currency.description') }}</p>
-      <select
-        [ngModel]="baseCurrency()"
-        (ngModelChange)="baseCurrency.set($event)"
-        class="input"
-        [attr.aria-label]="languageService.t('onboarding.currency.aria')"
-      >
-        @for (currency of supportedCurrencies; track currency) {
-          <option [value]="currency">{{ currency }}</option>
-        }
-      </select>
-      <div class="nav-buttons">
-        <button class="btn" (click)="goTo('restore')">{{ languageService.t('onboarding.back') }}</button>
-        <button class="btn primary" (click)="goTo('accounts')">{{ languageService.t('onboarding.next') }}</button>
-      </div>
-    </section>
-  }
+      @if (step() === 'restore') {
+        <section class="step">
+          <h1 class="step-title">{{ languageService.t('onboarding.restore.title') }}</h1>
+          <p class="step-description">{{ languageService.t('onboarding.restore.description') }}</p>
 
-  @if (step() === 'accounts') {
-    <section class="step">
-      <h2>{{ stepNumber('accounts') }}. {{ languageService.t('onboarding.accounts.title') }}</h2>
-      <p>{{ languageService.t('onboarding.accounts.description') }}</p>
+          <div class="restore-options">
+            <button
+              type="button"
+              class="btn primary"
+              [disabled]="isRestoring()"
+              (click)="restoreFromCloud()"
+            >
+              {{ languageService.t('backup.card.restoreFrom', { method: backupMethod }) }}
+            </button>
 
-      <div class="account-form">
-        <input
-          type="text"
-          [ngModel]="accountName()"
-          (ngModelChange)="accountName.set($event)"
-          [placeholder]="languageService.t('onboarding.accounts.namePlaceholder')"
-          class="input"
-        />
-        <select
-          [ngModel]="accountCurrency()"
-          (ngModelChange)="accountCurrency.set($event)"
-          class="input small"
-          [attr.aria-label]="languageService.t('onboarding.accounts.currencyAria')"
-        >
-          @for (currency of supportedCurrencies; track currency) {
-            <option [value]="currency">{{ currency }}</option>
+            <input
+              #fileInput
+              type="file"
+              accept="application/json,.json"
+              class="file-input"
+              (change)="onFileSelected($event)"
+            />
+            <button
+              type="button"
+              class="btn"
+              [disabled]="isRestoring()"
+              (click)="fileInput.click()"
+            >
+              {{ languageService.t('backup.card.restoreFromFile') }}
+            </button>
+
+            <button
+              type="button"
+              class="btn"
+              [disabled]="isRestoring()"
+              (click)="startFresh()"
+            >
+              {{ languageService.t('onboarding.restore.startFresh') }}
+            </button>
+          </div>
+
+          @if (isRestoring()) {
+            <p class="info">{{ languageService.t('onboarding.restore.restoring') }}</p>
           }
-        </select>
-        <input
-          type="number"
-          [ngModel]="accountBalance()"
-          (ngModelChange)="accountBalance.set($event)"
-          [placeholder]="languageService.t('onboarding.accounts.balancePlaceholder')"
-          class="input small"
-        />
-        <button class="btn" (click)="addAccount()">{{ languageService.t('onboarding.accounts.add') }}</button>
-      </div>
-
-      @if (errorMessage()) {
-        <p class="error">{{ errorMessage() }}</p>
-      }
-
-      @if (accounts().length > 0) {
-        <ul class="account-list">
-          @for (account of accounts(); track $index) {
-            <li>
-              {{ account.name }} ({{ account.currency }}) —
-              <span class="data-figure">{{ account.balance }}</span>
-              <button class="btn small" (click)="removeAccount($index)">{{ languageService.t('onboarding.accounts.remove') }}</button>
-            </li>
+          @if (noBackupMessage()) {
+            <p class="info">{{ noBackupMessage() }}</p>
           }
-        </ul>
+          @if (errorMessage()) {
+            <p class="error">{{ errorMessage() }}</p>
+          }
+        </section>
       }
 
-      <div class="nav-buttons">
-        <button class="btn" (click)="goTo('currency')">{{ languageService.t('onboarding.back') }}</button>
-        <button class="btn primary" (click)="goTo('categories')">{{ languageService.t('onboarding.next') }}</button>
-      </div>
-    </section>
-  }
+      @if (step() === 'currency') {
+        <section class="step">
+          <h1 class="step-title">{{ languageService.t('onboarding.currency.title') }}</h1>
+          <p class="step-description">{{ languageService.t('onboarding.currency.description') }}</p>
 
-  @if (step() === 'categories') {
-    <section class="step">
-      <h2>{{ stepNumber('categories') }}. {{ languageService.t('onboarding.categories.title') }}</h2>
-      <p>{{ languageService.t('onboarding.categories.description') }}</p>
+          <div class="currency-grid" role="radiogroup" [attr.aria-label]="languageService.t('onboarding.currency.aria')">
+            @for (currency of filteredCurrencies(); track currency) {
+              <button
+                type="button"
+                role="radio"
+                class="select-tile"
+                [class.selected]="baseCurrency() === currency"
+                [attr.aria-checked]="baseCurrency() === currency"
+                (click)="baseCurrency.set(currency)"
+              >
+                <span class="tile-head">
+                  <span class="tile-code">{{ currency }}</span>
+                  <span class="tile-symbol">{{ currencySymbol(currency) }}</span>
+                </span>
+                <span class="tile-name">{{ currencyName(currency) }}</span>
+                <span class="tile-symbol-line">{{ languageService.t('onboarding.currency.symbol') }}: {{ currencySymbol(currency) }}</span>
+              </button>
+            }
 
-      @if (errorMessage()) {
-        <p class="error">{{ errorMessage() }}</p>
-      }
-
-      <table class="category-table">
-        <thead>
-          <tr>
-            <th>{{ languageService.t('onboarding.categories.nameHeader') }}</th>
-            <th>{{ languageService.t('onboarding.categories.typeHeader') }}</th>
-            <th>{{ languageService.t('onboarding.categories.actionsHeader') }}</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (cat of categories(); track $index) {
-            <tr>
-              <td>
+            <div class="currency-search">
+              <label class="search-label" for="currency-search">{{ languageService.t('onboarding.currency.searchLabel') }}</label>
+              <div class="search-field">
+                <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.5" /><path d="m10.5 10.5 3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.5" /></svg>
                 <input
+                  id="currency-search"
                   type="text"
-                  [ngModel]="cat.name"
-                  (ngModelChange)="updateCategoryField($index, 'name', $event)"
-                  [placeholder]="languageService.t('onboarding.categories.namePlaceholder')"
-                  class="input"
+                  [value]="currencyQuery()"
+                  (input)="currencyQuery.set($any($event.target).value)"
+                  [placeholder]="languageService.t('onboarding.currency.searchPlaceholder')"
+                  [attr.aria-label]="languageService.t('onboarding.currency.searchAria')"
                 />
-              </td>
-              <td>
-                <select
-                  [ngModel]="cat.type"
-                  (ngModelChange)="updateCategoryField($index, 'type', $event)"
-                  class="input"
-                  [attr.aria-label]="languageService.t('onboarding.categories.typeAria')"
-                >
-                  <option value="expense">{{ languageService.t('type.expense') }}</option>
-                  <option value="income">{{ languageService.t('type.income') }}</option>
-                </select>
-              </td>
-              <td>
-                <button class="btn small" (click)="removeCategory($index)">{{ languageService.t('onboarding.categories.delete') }}</button>
-              </td>
-            </tr>
+              </div>
+            </div>
+          </div>
+
+          <div class="nav-buttons">
+            <button class="btn" (click)="goTo('restore')">
+              <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M14 8H3M7 3.5 2.5 8 7 12.5" fill="none" stroke="currentColor" stroke-width="1.5" /></svg>
+              {{ languageService.t('onboarding.back') }}
+            </button>
+            <button class="btn primary" (click)="goTo('accounts')">
+              {{ languageService.t('onboarding.next') }}
+              <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M2 8h11M9 3.5 13.5 8 9 12.5" fill="none" stroke="currentColor" stroke-width="1.5" /></svg>
+            </button>
+          </div>
+        </section>
+      }
+
+      @if (step() === 'accounts') {
+        <section class="step">
+          <h1 class="step-title">{{ languageService.t('onboarding.accounts.title') }}</h1>
+          <p class="step-description">{{ languageService.t('onboarding.accounts.description') }}</p>
+
+          <div class="account-form">
+            <input
+              type="text"
+              [ngModel]="accountName()"
+              (ngModelChange)="accountName.set($event)"
+              [placeholder]="languageService.t('onboarding.accounts.namePlaceholder')"
+              class="input"
+            />
+            <select
+              [ngModel]="accountCurrency()"
+              (ngModelChange)="accountCurrency.set($event)"
+              class="input small"
+              [attr.aria-label]="languageService.t('onboarding.accounts.currencyAria')"
+            >
+              @for (currency of supportedCurrencies; track currency) {
+                <option [value]="currency">{{ currency }}</option>
+              }
+            </select>
+            <input
+              type="number"
+              [ngModel]="accountBalance()"
+              (ngModelChange)="accountBalance.set($event)"
+              [placeholder]="languageService.t('onboarding.accounts.balancePlaceholder')"
+              class="input small"
+            />
+            <button class="btn dashed" (click)="addAccount()">{{ languageService.t('onboarding.accounts.add') }}</button>
+          </div>
+
+          @if (errorMessage()) {
+            <p class="error">{{ errorMessage() }}</p>
           }
-        </tbody>
-      </table>
 
-      <button class="btn" (click)="addCategory()">{{ languageService.t('onboarding.categories.addCategory') }}</button>
+          @if (accounts().length > 0) {
+            <ul class="account-list">
+              @for (account of accounts(); track $index) {
+                <li>
+                  {{ account.name }} ({{ account.currency }}) —
+                  <span class="data-figure">{{ account.balance }}</span>
+                  <button class="btn small" (click)="removeAccount($index)">{{ languageService.t('onboarding.accounts.remove') }}</button>
+                </li>
+              }
+            </ul>
+          }
 
-      <div class="nav-buttons">
-        <button class="btn" (click)="goTo('accounts')">{{ languageService.t('onboarding.back') }}</button>
-        <button class="btn primary" [disabled]="!canProceedFromCategories()" (click)="completeOnboarding()">{{ languageService.t('onboarding.startTracking') }}</button>
-      </div>
-    </section>
-  }
+          <div class="nav-buttons">
+            <button class="btn" (click)="goTo('currency')">
+              <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M14 8H3M7 3.5 2.5 8 7 12.5" fill="none" stroke="currentColor" stroke-width="1.5" /></svg>
+              {{ languageService.t('onboarding.back') }}
+            </button>
+            <button class="btn primary" (click)="goTo('categories')">
+              {{ languageService.t('onboarding.next') }}
+              <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M2 8h11M9 3.5 13.5 8 9 12.5" fill="none" stroke="currentColor" stroke-width="1.5" /></svg>
+            </button>
+          </div>
+        </section>
+      }
+
+      @if (step() === 'categories') {
+        <section class="step">
+          <h1 class="step-title">{{ languageService.t('onboarding.categories.title') }}</h1>
+          <p class="step-description">{{ languageService.t('onboarding.categories.description') }}</p>
+
+          @if (errorMessage()) {
+            <p class="error">{{ errorMessage() }}</p>
+          }
+
+          <table class="category-table">
+            <thead>
+              <tr>
+                <th>{{ languageService.t('onboarding.categories.nameHeader') }}</th>
+                <th>{{ languageService.t('onboarding.categories.typeHeader') }}</th>
+                <th>{{ languageService.t('onboarding.categories.actionsHeader') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (cat of categories(); track $index) {
+                <tr>
+                  <td>
+                    <input
+                      type="text"
+                      [ngModel]="cat.name"
+                      (ngModelChange)="updateCategoryField($index, 'name', $event)"
+                      [placeholder]="languageService.t('onboarding.categories.namePlaceholder')"
+                      class="input"
+                    />
+                  </td>
+                  <td>
+                    <select
+                      [ngModel]="cat.type"
+                      (ngModelChange)="updateCategoryField($index, 'type', $event)"
+                      class="input"
+                      [attr.aria-label]="languageService.t('onboarding.categories.typeAria')"
+                    >
+                      <option value="expense">{{ languageService.t('type.expense') }}</option>
+                      <option value="income">{{ languageService.t('type.income') }}</option>
+                    </select>
+                  </td>
+                  <td>
+                    <button class="btn small" (click)="removeCategory($index)">{{ languageService.t('onboarding.categories.delete') }}</button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+
+          <button class="btn dashed" (click)="addCategory()">{{ languageService.t('onboarding.categories.addCategory') }}</button>
+
+          <div class="nav-buttons">
+            <button class="btn" (click)="goTo('accounts')">
+              <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M14 8H3M7 3.5 2.5 8 7 12.5" fill="none" stroke="currentColor" stroke-width="1.5" /></svg>
+              {{ languageService.t('onboarding.back') }}
+            </button>
+            <button class="btn primary" [disabled]="!canProceedFromCategories()" (click)="completeOnboarding()">
+              {{ languageService.t('onboarding.startTracking') }}
+              <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M2 8h11M9 3.5 13.5 8 9 12.5" fill="none" stroke="currentColor" stroke-width="1.5" /></svg>
+            </button>
+          </div>
+        </section>
+      }
+    </div>
+  </div>
 </div>

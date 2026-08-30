@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ProfileService } from '../../core/services/profile.service';
@@ -7,13 +7,15 @@ import { CategoryService } from '../../core/services/category.service';
 import { DriveBackupService } from '../../core/services/drive-backup.service';
 import { LanguageService } from '../../core/services/language.service';
 import { NoBackupFoundError } from '../../backup/drive-backup-provider';
-import { SUPPORTED_CURRENCIES } from '../../core/constants/currencies';
+import { CURRENCY_SYMBOLS, SUPPORTED_CURRENCIES } from '../../core/constants/currencies';
 import { CategoryType } from '../../core/models/category.model';
 import { isLanguage, LANGUAGES, detectBrowserLanguage, Language } from '../../core/types/language.type';
 
 const STEPS = ['language', 'restore', 'currency', 'accounts', 'categories'] as const;
 
 type Step = (typeof STEPS)[number];
+
+const FEATURED_CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY'] as const;
 
 interface EditableCategory {
   name: string;
@@ -37,7 +39,11 @@ export class OnboardingComponent {
 
   supportedCurrencies = SUPPORTED_CURRENCIES;
   languages = LANGUAGES;
+  steps = STEPS;
   step = signal<Step>('language');
+  stepIndex = computed(() => STEPS.indexOf(this.step()));
+  currencyQuery = signal('');
+  filteredCurrencies = computed(() => this.matchingCurrencies(this.currencyQuery()));
   language = signal(detectBrowserLanguage());
   isRestoring = signal(false);
   noBackupMessage = signal('');
@@ -62,6 +68,41 @@ export class OnboardingComponent {
 
   stepNumber(step: Step): number {
     return STEPS.indexOf(step) + 1;
+  }
+
+  currencySymbol(code: string): string {
+    return CURRENCY_SYMBOLS[code as keyof typeof CURRENCY_SYMBOLS] ?? code;
+  }
+
+  currencyName(code: string): string {
+    try {
+      return (
+        this.currencyDisplayNames().of(code) ?? code
+      );
+    } catch {
+      return code;
+    }
+  }
+
+  private currencyDisplayNames(): Intl.DisplayNames {
+    const language = this.languageService.activeLanguage();
+    if (!this.displayNames || this.displayNames.language !== language) {
+      this.displayNames = {
+        language,
+        names: new Intl.DisplayNames([language], { type: 'currency' }),
+      };
+    }
+    return this.displayNames.names;
+  }
+
+  private displayNames?: { language: Language; names: Intl.DisplayNames };
+
+  private matchingCurrencies(query: string): string[] {
+    const q = query.trim().toLowerCase();
+    if (!q) return [...FEATURED_CURRENCIES];
+    return SUPPORTED_CURRENCIES.filter(
+      c => c.toLowerCase().includes(q) || this.currencyName(c).toLowerCase().includes(q),
+    );
   }
 
   async onLanguageChange(value: string): Promise<void> {

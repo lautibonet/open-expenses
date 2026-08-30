@@ -234,8 +234,12 @@ describe('translations', () => {
 
   it('covers the onboarding keys', () => {
     for (const key of [
-      'onboarding.title',
-      'onboarding.subtitle',
+      'onboarding.setup',
+      'onboarding.steps.language',
+      'onboarding.steps.restore',
+      'onboarding.steps.currency',
+      'onboarding.steps.accounts',
+      'onboarding.steps.categories',
       'onboarding.language.title',
       'onboarding.language.description',
       'onboarding.language.aria',
@@ -250,6 +254,10 @@ describe('translations', () => {
       'onboarding.currency.title',
       'onboarding.currency.description',
       'onboarding.currency.aria',
+      'onboarding.currency.searchLabel',
+      'onboarding.currency.searchAria',
+      'onboarding.currency.searchPlaceholder',
+      'onboarding.currency.symbol',
       'onboarding.accounts.title',
       'onboarding.accounts.description',
       'onboarding.accounts.namePlaceholder',
