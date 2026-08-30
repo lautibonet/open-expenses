@@ -1,9 +1,11 @@
+@use '../../shared/styles/patterns' as *;
+
 .dashboard {
   padding-bottom: 1rem;
 
   h1 {
     font-size: var(--type-title);
-    font-weight: 500;
+    font-weight: 600;
     line-height: var(--leading-headline);
     margin-bottom: 1rem;
   }
@@ -15,16 +17,13 @@
   margin-bottom: 1rem;
 
   select {
-    padding: 0.5rem;
-    border: 1px solid var(--edge-graphite);
-    border-radius: var(--radius-sm);
-    font-size: 0.9rem;
+    @extend %field;
   }
 }
 
 .card {
-  background: var(--paper-white);
-  border: 1px solid var(--hairline-graphite);
+  background: var(--surface-lowest);
+  border: var(--border-hard);
   border-radius: var(--radius-lg);
   padding: 1rem;
   margin-bottom: 1rem;
@@ -47,10 +46,7 @@
   flex-direction: column;
 
   .label {
-    font-size: var(--type-label);
-    letter-spacing: var(--tracking-micro);
-    line-height: var(--leading-label);
-    color: var(--muted-slate);
+    @extend %caps-label-muted;
   }
 
   .value {
@@ -59,15 +55,15 @@
     line-height: var(--leading-tight);
 
     &.income {
-      color: var(--ledger-green);
+      color: var(--primary);
     }
 
     &.expense {
-      color: var(--officers-red);
+      color: var(--error);
     }
 
     &.information {
-      color: var(--ledger-ink);
+      color: var(--primary);
     }
   }
 }
@@ -80,26 +76,22 @@ table {
   td {
     padding: 0.5rem;
     text-align: left;
-    border-bottom: 1px solid var(--silvered-paper);
+    border-bottom: 1px solid var(--surface-container-low);
   }
 
   th {
-    font-size: var(--type-label);
-    color: var(--muted-slate);
-    font-weight: 500;
-    letter-spacing: var(--tracking-micro);
-    line-height: var(--leading-label);
+    @extend %caps-label-muted;
   }
 }
 
 .conversion-warning {
   margin-top: 0.75rem;
   padding: 0.5rem 0.75rem;
-  background: var(--amber-surface);
-  border: 1px solid var(--amber-border);
+  background: var(--error-container);
+  border: 1px solid var(--on-error-container);
   border-radius: var(--radius-md);
   font-size: 0.8rem;
-  color: var(--amber-ink);
+  color: var(--on-error-container);
 }
 
 @media (max-width: 560px) {

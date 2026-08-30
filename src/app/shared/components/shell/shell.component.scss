@@ -1,7 +1,7 @@
 .tab-bar {
   display: flex;
-  border-bottom: 1px solid var(--hairline-graphite);
-  background: var(--paper-white);
+  border-bottom: 1px solid var(--outline-variant);
+  background: var(--surface-lowest);
   position: sticky;
   top: 0;
   z-index: 10;
@@ -13,7 +13,7 @@
   padding: 0.75rem 1rem;
   text-align: center;
   text-decoration: none;
-  color: var(--muted-slate);
+  color: var(--on-surface-variant);
   font-weight: 500;
   border-bottom: 2px solid transparent;
   transition:
@@ -21,12 +21,12 @@
     border-color 0.15s;
 
   &:hover {
-    color: var(--body-ink);
+    color: var(--on-surface);
   }
 
   &.active {
-    color: var(--ledger-ink);
-    border-bottom-color: var(--ledger-ink);
+    color: var(--primary);
+    border-bottom-color: var(--primary);
   }
 }
 
@@ -42,9 +42,9 @@
   left: var(--chrome-gutter);
   z-index: 20;
   padding: 0.5rem 1rem;
-  background: var(--paper-white);
-  color: var(--ledger-ink);
-  border: 1px solid var(--hairline-graphite);
+  background: var(--surface-lowest);
+  color: var(--primary);
+  border: 1px solid var(--outline-variant);
   border-top: none;
   text-decoration: none;
   font-weight: 500;

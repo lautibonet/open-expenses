@@ -34,7 +34,7 @@
 .delete-confirm {
   display: inline-block;
   margin-right: 0.375rem;
-  color: var(--officers-red);
+  color: var(--error);
   font-size: 0.8rem;
   font-weight: 500;
 }
@@ -49,20 +49,20 @@
   align-items: center;
   gap: 0.75rem;
   max-width: calc(100% - 2rem);
-  background: var(--paper-white);
-  border: 1px solid var(--hairline-graphite);
+  background: var(--surface-lowest);
+  border: var(--border-hard);
   border-radius: var(--radius-md);
   padding: 0.5rem 0.75rem;
 
   .undo-message {
     font-size: var(--type-caption);
-    color: var(--body-ink);
+    color: var(--on-surface);
   }
 }
 
 .form-card {
-  background: var(--mist-paper);
-  border: 1px solid var(--hairline-graphite);
+  background: var(--background);
+  border: var(--border-hard);
   border-radius: var(--radius-lg);
   padding: 1rem;
   margin-bottom: 1rem;
@@ -78,7 +78,7 @@
 .form-hint {
   margin: 0 0 0.75rem;
   font-size: var(--type-caption);
-  color: var(--muted-slate);
+  color: var(--on-surface-variant);
 }
 
 .form-grid {
@@ -109,8 +109,8 @@
   align-items: flex-end;
   margin-bottom: 1rem;
   padding: 0.75rem;
-  background: var(--mist-paper);
-  border: 1px solid var(--hairline-graphite);
+  background: var(--background);
+  border: var(--border-hard);
   border-radius: var(--radius-md);
 
   label {
@@ -125,13 +125,9 @@
 }
 
 .month-group-row td {
+  @extend %caps-label-muted;
   padding-top: 1rem;
-  font-size: var(--type-label);
-  font-weight: 500;
-  color: var(--muted-slate);
-  letter-spacing: var(--tracking-micro);
-  line-height: var(--leading-label);
-  background: var(--paper-white);
+  background: var(--surface-lowest);
 }
 
 .filter-badge {
@@ -140,8 +136,8 @@
   justify-content: center;
   min-width: 1.5rem;
   height: 1.5rem;
-  background: var(--ledger-ink);
-  color: var(--paper-white);
+  background: var(--primary);
+  color: var(--surface-lowest);
   border-radius: var(--radius-pill);
   font-size: var(--type-tag);
   font-weight: 600;
@@ -155,11 +151,7 @@
   border-collapse: collapse;
 
   th {
-    font-size: var(--type-label);
-    color: var(--muted-slate);
-    font-weight: 500;
-    letter-spacing: var(--tracking-micro);
-    line-height: var(--leading-label);
+    @extend %caps-label-muted;
   }
 
   .th-sort {
@@ -175,7 +167,7 @@
     letter-spacing: inherit;
 
     &:focus-visible {
-      outline: 2px solid var(--ledger-ink);
+      outline: 2px solid var(--primary);
       outline-offset: 2px;
       border-radius: var(--radius-sm);
     }
@@ -190,7 +182,7 @@
   td {
     padding: 0.5rem;
     text-align: left;
-    border-bottom: 1px solid var(--silvered-paper);
+    border-bottom: 1px solid var(--surface-container-low);
   }
 
   td {
@@ -203,16 +195,16 @@
     }
 
     &.income {
-      color: var(--ledger-green);
+      color: var(--primary);
     }
 
     &.expense {
-      color: var(--officers-red);
+      color: var(--error);
     }
   }
 
   tr.transfer-row td {
-    background: var(--mist-paper);
+    background: var(--background);
   }
 }
 
@@ -229,26 +221,26 @@
   text-align: center;
 
   &.arrow-income {
-    color: var(--ledger-green);
+    color: var(--primary);
   }
 
   &.arrow-expense {
-    color: var(--officers-red);
+    color: var(--error);
   }
 
   &.arrow-transfer {
-    color: var(--muted-slate);
+    color: var(--on-surface-variant);
   }
 }
 
 .empty {
   text-align: center;
-  color: var(--muted-slate);
+  color: var(--on-surface-variant);
   padding: 2rem;
 }
 
 .error {
-  color: var(--officers-red);
+  color: var(--error);
   margin: 0.5rem 0;
   font-size: var(--type-caption);
 }
