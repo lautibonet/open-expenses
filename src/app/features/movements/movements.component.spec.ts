@@ -1781,6 +1781,88 @@ describe('MovementsComponent - translations', () => {
   });
 });
 
+describe('MovementsComponent - ledger table styling', () => {
+  let fixture: ComponentFixture<MovementsComponent>;
+  let component: MovementsComponent;
+  let transactionService: TransactionService;
+  let transferService: TransferService;
+  let accountService: AccountService;
+  let categoryService: CategoryService;
+  let accountId: number;
+  let incomeCategoryId: number;
+  let expenseCategoryId: number;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    await TestBed.configureTestingModule({
+      imports: [MovementsComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(MovementsComponent);
+    component = fixture.componentInstance;
+    transactionService = TestBed.inject(TransactionService);
+    transferService = TestBed.inject(TransferService);
+    accountService = TestBed.inject(AccountService);
+    categoryService = TestBed.inject(CategoryService);
+
+    const acc = await accountService.create('Cash', 'EUR', 100000);
+    accountId = acc.id!;
+    const incomeCat = await categoryService.create('Payroll', 'income');
+    incomeCategoryId = incomeCat.id!;
+    const expenseCat = await categoryService.create('Food', 'expense');
+    expenseCategoryId = expenseCat.id!;
+  });
+
+  afterEach(async () => {
+    await db.delete();
+  });
+
+  it('stripes transaction rows by direction with income and expense row classes', async () => {
+    const period = getCurrentPeriod();
+    await transactionService.create(accountId, incomeCategoryId, 3000, new Date(), period);
+    await transactionService.create(accountId, expenseCategoryId, 500, new Date(), period);
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const incomeRow = fixture.nativeElement.querySelector('tr.row-income');
+    expect(incomeRow).toBeTruthy();
+    expect(incomeRow.querySelector('.income')).toBeTruthy();
+
+    const expenseRow = fixture.nativeElement.querySelector('tr.row-expense');
+    expect(expenseRow).toBeTruthy();
+    expect(expenseRow.querySelector('.expense')).toBeTruthy();
+
+    expect(incomeRow.classList.contains('row-expense')).toBe(false);
+    expect(expenseRow.classList.contains('row-income')).toBe(false);
+  });
+
+  it('marks transfer rows for the neutral stripe treatment', async () => {
+    const acc2 = await accountService.create('Savings', 'EUR', 50000);
+    const period = getCurrentPeriod();
+    await transferService.create(accountId, acc2.id!, 100, new Date(), period);
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const transferRow = fixture.nativeElement.querySelector('tr.transfer-row');
+    expect(transferRow).toBeTruthy();
+    expect(transferRow.classList.contains('row-income')).toBe(false);
+    expect(transferRow.classList.contains('row-expense')).toBe(false);
+    expect(transferRow.querySelector('.amount-cell')).toBeTruthy();
+  });
+
+  it('renders the category as a square chip inside the transaction row', async () => {
+    const period = getCurrentPeriod();
+    await transactionService.create(accountId, expenseCategoryId, 500, new Date(), period);
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const chip = fixture.nativeElement.querySelector('tbody .cat-chip');
+    expect(chip).toBeTruthy();
+    expect(chip.textContent.trim()).toBe('Food');
+  });
+});
+
 describe('MovementsComponent - date header sorting', () => {
   let fixture: ComponentFixture<MovementsComponent>;
   let component: MovementsComponent;

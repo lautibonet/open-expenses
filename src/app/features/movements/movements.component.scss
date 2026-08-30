@@ -143,18 +143,18 @@
   left: 50%;
   bottom: 1rem;
   transform: translateX(-50%);
-  z-index: 30;
+  z-index: 60;
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: var(--space-md);
   max-width: calc(100% - 2rem);
   background: var(--surface-lowest);
   border: var(--border-hard);
-  border-radius: var(--radius-md);
-  padding: 0.5rem 0.75rem;
+  padding: var(--space-sm) var(--space-md);
 
   .undo-message {
-    font-size: var(--type-caption);
+    @extend %caps-label;
+
     color: var(--on-surface);
   }
 }
@@ -162,20 +162,21 @@
 .form-card {
   background: var(--background);
   border: var(--border-hard);
-  border-radius: var(--radius-lg);
-  padding: 1rem;
-  margin-bottom: 1rem;
+  padding: var(--space-lg);
+  margin-bottom: var(--space-lg);
 
   h3 {
-    font-size: var(--type-headline);
-    font-weight: 600;
-    line-height: var(--leading-headline);
-    margin-bottom: 0.75rem;
+    @extend %caps-label;
+
+    color: var(--on-surface);
+    margin: 0 0 var(--space-md);
+    padding-bottom: var(--space-sm);
+    border-bottom: var(--border-hard);
   }
 }
 
 .form-hint {
-  margin: 0 0 0.75rem;
+  margin: 0 0 var(--space-md);
   font-size: var(--type-caption);
   color: var(--on-surface-variant);
 }
@@ -183,7 +184,7 @@
 .form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0.75rem;
+  gap: var(--space-md);
 
   label {
     @extend %stacked-label;
@@ -191,15 +192,15 @@
     input,
     select {
       @extend %field;
-      margin-top: 0.25rem;
+      margin-top: var(--space-xs);
     }
   }
 }
 
 .form-actions {
   display: flex;
-  gap: 0.5rem;
-  margin-top: 0.75rem;
+  gap: var(--space-sm);
+  margin-top: var(--space-md);
 }
 
 .filter-bar {
@@ -247,10 +248,23 @@
 
 .movement-table {
   width: 100%;
-  border-collapse: collapse;
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--surface-lowest);
+    border: var(--border-hard);
+  }
 
   th {
     @extend %caps-label-muted;
+    padding: var(--space-sm) var(--space-md);
+    background: var(--surface-container-low);
+    border-bottom: var(--border-hard);
+
+    &.col-amount {
+      text-align: right;
+    }
   }
 
   .th-sort {
@@ -268,7 +282,6 @@
     &:focus-visible {
       outline: 2px solid var(--primary);
       outline-offset: 2px;
-      border-radius: var(--radius-sm);
     }
   }
 
@@ -279,18 +292,42 @@
 
   th,
   td {
-    padding: 0.5rem;
+    padding: var(--space-sm) var(--space-md);
     text-align: left;
     border-bottom: 1px solid var(--surface-container-low);
+  }
+
+  tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  /* 4px directional stripe on every data row's left edge: blue income,
+     red expense, no stripe for transfers and month group headers. */
+  tbody td:first-child {
+    border-left: 4px solid transparent;
+  }
+
+  tbody tr.row-income td:first-child {
+    border-left: var(--stripe-income);
+  }
+
+  tbody tr.row-expense td:first-child {
+    border-left: var(--stripe-expense);
+  }
+
+  tbody tr:not(.month-group-row):hover td {
+    background: var(--row-hover);
   }
 
   td {
     &.income,
     &.expense,
     &.amount-cell {
-      font-family: var(--font-data);
+      @extend %mono-data;
+
       font-weight: 600;
-      font-variant-numeric: tabular-nums;
+      text-align: right;
+      white-space: nowrap;
     }
 
     &.income {
@@ -300,6 +337,20 @@
     &.expense {
       color: var(--error);
     }
+  }
+
+  .cat-chip {
+    @extend %caps-label;
+
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: middle;
+    padding: 2px var(--space-xs);
+    background: var(--surface-container-high);
+    color: var(--on-surface);
   }
 
   tr.transfer-row td {
@@ -351,14 +402,14 @@
 .exchange-rate-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0.75rem;
+  gap: var(--space-md);
 
   label {
     @extend %stacked-label;
 
     input {
       @extend %field;
-      margin-top: 0.25rem;
+      margin-top: var(--space-xs);
 
       &.readonly {
         @extend %readonly-field;
@@ -396,5 +447,11 @@
 
   .filter-bar {
     flex-wrap: wrap;
+  }
+
+  /* Keep the toast clear of the fixed bottom nav bar (MIGRATION.md risk 8):
+     64px nav height + safe-area inset + a small breathing gap. */
+  .undo-toast {
+    bottom: calc(64px + env(safe-area-inset-bottom, 0px) + 0.5rem);
   }
 }
