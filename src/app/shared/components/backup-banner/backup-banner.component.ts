@@ -60,12 +60,12 @@ import { describeBackupError } from '../../../backup/backup-errors';
       width: 100%;
       box-sizing: border-box;
       padding: 0.6rem var(--chrome-gutter);
-      background: var(--ink-tint);
-      border-bottom: 1px solid var(--ink-tint-edge);
+      background: var(--primary-fixed);
+      border-bottom: 1px solid var(--primary);
 
       &.offline {
-        background: var(--silvered-paper);
-        border-bottom-color: var(--hairline-graphite);
+        background: var(--surface-container-low);
+        border-bottom-color: var(--outline-variant);
       }
     }
 
@@ -78,19 +78,19 @@ import { describeBackupError } from '../../../backup/backup-errors';
 
       .backup-method {
       font-weight: 600;
-      color: var(--ink-well-blue);
+      color: var(--primary-deep);
 
       .offline & {
-        color: var(--body-ink);
+        color: var(--on-surface);
       }
     }
 
       .backup-time {
-      color: var(--ink-well-blue);
+      color: var(--primary-deep);
       font-size: 0.85rem;
 
       .offline & {
-        color: var(--body-ink);
+        color: var(--on-surface);
       }
     }
 
@@ -106,9 +106,9 @@ import { describeBackupError } from '../../../backup/backup-errors';
       }
 
       .offline & {
-        background: var(--paper-white);
-        color: var(--muted-slate);
-        border-color: var(--edge-graphite);
+        background: var(--surface-lowest);
+        color: var(--on-surface-variant);
+        border-color: var(--outline);
       }
     }
 
@@ -119,10 +119,10 @@ import { describeBackupError } from '../../../backup/backup-errors';
       gap: 0.5rem;
       margin: 0;
       padding: 0.5rem var(--chrome-gutter);
-      background: var(--danger-surface);
-      color: var(--danger-text);
+      background: var(--error-container);
+      color: var(--on-error-container);
       font-size: 0.85rem;
-      border-bottom: 1px solid var(--danger-border);
+      border-bottom: 1px solid var(--on-error-container);
     }
 
     .error-text {
@@ -134,7 +134,7 @@ import { describeBackupError } from '../../../backup/backup-errors';
       @extend %btn-base;
       @extend %btn-danger;
       @extend %btn-small;
-      color: var(--danger-text);
+      color: var(--on-error-container);
       flex-shrink: 0;
     }
 

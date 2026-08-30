@@ -23,10 +23,10 @@ import { LanguageService } from '../../../core/services/language.service';
         flex-wrap: wrap;
         gap: 0.5rem;
         padding: 0.5rem var(--chrome-gutter);
-        background: var(--ink-tint);
-        border-bottom: 1px solid var(--ink-tint-edge);
+        background: var(--primary-fixed);
+        border-bottom: 1px solid var(--primary);
         font-size: 0.85rem;
-        color: var(--ink-well-blue);
+        color: var(--primary-deep);
 
         > span {
           flex: 1 1 auto;
@@ -58,18 +58,18 @@ import { LanguageService } from '../../../core/services/language.service';
       .btn {
         @extend %btn-base;
         @extend %btn-small;
-        color: var(--body-ink);
+        color: var(--on-surface);
 
         &:hover:not(:disabled) {
-          background: var(--silvered-paper);
+          background: var(--surface-container-low);
         }
 
         &.primary {
           @extend %btn-primary;
 
           &:hover:not(:disabled) {
-            background: var(--ink-well-blue);
-            border-color: var(--ink-well-blue);
+            background: var(--primary-deep);
+            border-color: var(--primary-deep);
           }
         }
       }

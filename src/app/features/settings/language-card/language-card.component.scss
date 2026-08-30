@@ -1,8 +1,8 @@
 @use '../../../shared/styles/patterns' as *;
 
 .card {
-  background: var(--paper-white);
-  border: 1px solid var(--hairline-graphite);
+  background: var(--surface-lowest);
+  border: var(--border-hard);
   border-radius: var(--radius-lg);
   padding: 1rem;
   margin-bottom: 1rem;
@@ -24,10 +24,7 @@
 }
 
 .input {
-  padding: 0.5rem;
-  border: 1px solid var(--edge-graphite);
-  border-radius: var(--radius-sm);
-  font-size: var(--type-body);
+  @extend %field;
 
   &.small {
     width: 100px;
@@ -47,11 +44,11 @@
 }
 
 .success {
-  color: var(--ledger-green);
+  color: var(--primary);
   margin: 0.75rem 0;
 }
 
 .error {
-  color: var(--officers-red);
+  color: var(--error);
   margin: 0.75rem 0;
 }

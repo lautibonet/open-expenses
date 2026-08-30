@@ -4,13 +4,64 @@
  * preserving Angular's component style encapsulation.
  */
 
+/* Caps label — the design's label-caps spec: 12px / 700 / +0.1em / uppercase. */
+%caps-label {
+  font-size: var(--type-label);
+  font-weight: 700;
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  line-height: var(--leading-label);
+}
+
+/* Caps label in the muted metadata ink (table headers, KPI labels). */
+%caps-label-muted {
+  @extend %caps-label;
+  color: var(--on-surface-variant);
+}
+
+/* Hard strokes — cards and controls (thick for modals/emphasis). */
+%hard-border {
+  border: var(--border-hard);
+}
+
+%hard-border-thick {
+  border: var(--border-hard-thick);
+}
+
+/* Directional stripes — the 4px left edge of income/expense rows and cards. */
+%stripe-income {
+  border-left: var(--stripe-income);
+}
+
+%stripe-expense {
+  border-left: var(--stripe-expense);
+}
+
+/* Monetary/numeric figures: JetBrains Mono, kept tabular so columns of
+   amounts read as one ledger. */
+%mono-data {
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--type-data);
+  line-height: var(--leading-data);
+}
+
 %btn-base {
   padding: 0.5rem 1rem;
-  border: 1px solid var(--edge-graphite);
+  border: var(--border-hard);
   border-radius: var(--radius-sm);
-  background: var(--paper-white);
+  background: var(--surface-lowest);
   cursor: pointer;
-  font-size: var(--type-body);
+  font-size: var(--type-label);
+  font-weight: 700;
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  box-shadow: var(--shadow-press);
+
+  &:active:not(:disabled) {
+    box-shadow: none;
+    transform: translate(2px, 2px);
+  }
 
   &:disabled {
     opacity: 0.6;
@@ -20,80 +71,94 @@
 
 %btn-small {
   padding: 0.25rem 0.5rem;
-  font-size: 0.8rem;
+  font-size: var(--type-label);
 }
 
+/* Primary: the solid blue CTA fill, press shadow from the base. */
 %btn-primary {
-  background: var(--ledger-ink);
-  color: var(--paper-white);
-  border-color: var(--ledger-ink);
+  background: var(--primary-container);
+  color: var(--surface-lowest);
+  border-color: var(--on-surface);
+
+  &:hover:not(:disabled) {
+    background: var(--primary-deep);
+  }
 }
 
 /* Outline danger: anything inside a table row or dense list. */
 %btn-danger {
-  color: var(--officers-red);
-  border-color: var(--danger-edge);
+  color: var(--error);
+  border-color: var(--error);
+  background: var(--surface-lowest);
 }
 
 /* Filled danger: panel/card-level destructive confirmations only. */
 %btn-danger-filled {
-  background: var(--officers-red);
-  color: var(--paper-white);
-  border-color: var(--officers-red);
+  background: var(--error);
+  color: var(--surface-lowest);
+  border-color: var(--on-surface);
+
+  &:hover:not(:disabled) {
+    background: var(--on-error-container);
+  }
 }
 
 %stacked-label {
+  @extend %caps-label;
   display: flex;
   flex-direction: column;
-  font-size: var(--type-label);
-  letter-spacing: var(--tracking-micro);
-  line-height: var(--leading-label);
-  color: var(--body-ink);
+  color: var(--on-surface);
 }
 
 %field {
   padding: 0.5rem;
-  border: 1px solid var(--edge-graphite);
+  border: var(--border-hard);
   border-radius: var(--radius-sm);
+  background: var(--surface-lowest);
+  color: var(--on-surface);
   font-size: var(--type-body);
+  font-weight: 400;
+  line-height: var(--leading-body);
+  letter-spacing: normal;
+  text-transform: none;
 }
 
 %readonly-field {
-  background: var(--silvered-paper);
-  color: var(--muted-slate);
+  background: var(--surface-container-low);
+  color: var(--on-surface-variant);
   cursor: not-allowed;
 }
 
-/* The ink-tint well for exchange-rate capture. */
+/* The blue-tint well for exchange-rate capture. */
 %exchange-well {
   margin-top: 0.75rem;
   padding: 0.75rem;
-  background: var(--ink-tint);
-  border: 1px solid var(--ink-tint-edge);
+  background: var(--primary-fixed);
+  border: 1px solid var(--primary);
   border-radius: var(--radius-md);
 
   h4 {
+    @extend %caps-label;
     margin: 0 0 0.5rem;
-    font-size: var(--type-caption);
-    color: var(--ink-well-blue);
+    color: var(--on-primary-fixed);
   }
 }
 
 %rate-status {
   font-size: var(--type-label);
-  color: var(--muted-slate);
+  color: var(--on-surface-variant);
   margin: 0 0 0.5rem;
   font-style: italic;
 }
 
 %rate-error {
   font-size: var(--type-label);
-  color: var(--officers-red);
+  color: var(--error);
   margin: 0 0 0.5rem;
 }
 
 %rate-source {
   font-size: var(--type-tag);
-  color: var(--muted-slate);
+  color: var(--on-surface-variant);
   margin: 0.5rem 0 0;
 }
