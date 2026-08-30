@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
 import { ShellComponent } from './shell.component';
 import { routes } from '../../../app.routes';
 import { LanguageService } from '../../../core/services/language.service';
@@ -67,5 +67,79 @@ describe('ShellComponent', () => {
     expect(fixture.nativeElement.querySelector('nav.tab-bar')?.getAttribute('aria-label')).toBe(
       'Principal',
     );
+  });
+
+  it('renders the brand block with the monogram and the untranslated wordmark', () => {
+    const brand = fixture.nativeElement.querySelector('.brand') as HTMLElement;
+    expect(brand).not.toBeNull();
+    expect(brand.querySelector('.monogram')?.textContent?.trim()).toBe('O');
+    expect(brand.querySelector('.wordmark')?.textContent?.trim()).toBe('Open Expenses');
+  });
+
+  it('renders the local-storage status chip in the active language', async () => {
+    expect(fixture.nativeElement.querySelector('.status-chip')?.textContent?.trim()).toBe(
+      'Local storage',
+    );
+
+    await TestBed.inject(LanguageService).setLanguage('es');
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.status-chip')?.textContent?.trim()).toBe(
+      'Almacenamiento local',
+    );
+  });
+
+  it('routes the Quick Add CTA to Movements when used from another page', async () => {
+    const router = TestBed.inject(Router);
+    const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+
+    await fixture.componentInstance.goToQuickAdd();
+
+    expect(navigate).toHaveBeenCalledWith(['/movements']);
+  });
+
+  it('does not re-navigate when Quick Add is used on Movements', async () => {
+    const router = TestBed.inject(Router);
+    const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    vi.spyOn(router, 'url', 'get').mockReturnValue('/movements');
+
+    await fixture.componentInstance.goToQuickAdd();
+
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it('scrolls to and focuses the Quick Add capture card', async () => {
+    const router = TestBed.inject(Router);
+    vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    const focus = vi.fn();
+    const scrollIntoView = vi.fn();
+    const amountInput = { focus } as unknown as HTMLInputElement;
+    const card = {
+      scrollIntoView,
+      querySelector: vi.fn().mockReturnValue(amountInput),
+    } as unknown as HTMLElement;
+    const querySpy = vi.spyOn(document, 'querySelector').mockReturnValue(card);
+
+    await fixture.componentInstance.goToQuickAdd();
+
+    expect(querySpy).toHaveBeenCalledWith('app-quick-add-card');
+    expect(scrollIntoView).toHaveBeenCalled();
+    expect(focus).toHaveBeenCalled();
+    querySpy.mockRestore();
+  });
+
+  it('tolerates a missing Quick Add card', async () => {
+    const router = TestBed.inject(Router);
+    vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    const querySpy = vi.spyOn(document, 'querySelector').mockReturnValue(null);
+
+    await expect(fixture.componentInstance.goToQuickAdd()).resolves.toBeUndefined();
+    querySpy.mockRestore();
+  });
+
+  it('points the Backup link at the Settings backup card', () => {
+    const link = fixture.nativeElement.querySelector('a.backup-link') as HTMLAnchorElement;
+    expect(link).not.toBeNull();
+    expect(link.getAttribute('href')).toBe('/settings#backup');
   });
 });

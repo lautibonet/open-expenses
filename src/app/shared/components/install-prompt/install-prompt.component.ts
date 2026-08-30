@@ -22,15 +22,15 @@ import { LanguageService } from '../../../core/services/language.service';
         align-items: center;
         flex-wrap: wrap;
         gap: 0.5rem;
-        padding: 0.5rem var(--chrome-gutter);
-        background: var(--primary-fixed);
-        border-bottom: 1px solid var(--primary);
-        font-size: 0.85rem;
-        color: var(--primary-deep);
+        padding: 0.6rem var(--chrome-gutter);
+        background: var(--surface-lowest);
+        border-bottom: 1px solid var(--on-surface);
 
         > span {
           flex: 1 1 auto;
           min-width: 0;
+          @extend %caps-label;
+          color: var(--on-surface);
         }
       }
 

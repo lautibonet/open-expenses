@@ -1,34 +1,65 @@
 <a class="skip-link" href="#main-content" (click)="skipToContent($event)">{{
   language.t('shell.skipToContent')
 }}</a>
-<app-install-prompt />
-<app-backup-banner />
-<nav class="tab-bar" [attr.aria-label]="language.t('shell.primaryNavAria')">
-  <a
-    routerLink="/movements"
-    routerLinkActive="active"
-    #movementsTab="routerLinkActive"
-    class="tab"
-    [attr.aria-current]="movementsTab.isActive ? 'page' : null"
-    >{{ language.t('shell.movements') }}</a
-  >
-  <a
-    routerLink="/dashboard"
-    routerLinkActive="active"
-    #statsTab="routerLinkActive"
-    class="tab"
-    [attr.aria-current]="statsTab.isActive ? 'page' : null"
-    >{{ language.t('shell.stats') }}</a
-  >
-  <a
-    routerLink="/settings"
-    routerLinkActive="active"
-    #settingsTab="routerLinkActive"
-    class="tab"
-    [attr.aria-current]="settingsTab.isActive ? 'page' : null"
-    >{{ language.t('shell.settings') }}</a
-  >
-</nav>
-<main class="content" id="main-content" tabindex="-1">
-  <router-outlet />
-</main>
+
+<aside class="sidebar">
+  <div class="brand-block">
+    <div class="brand">
+      <span class="monogram" aria-hidden="true">O</span>
+      <span class="wordmark">Open Expenses</span>
+    </div>
+    <p class="status-chip">{{ language.t('shell.storageStatus') }}</p>
+  </div>
+
+  <nav class="tab-bar" [attr.aria-label]="language.t('shell.primaryNavAria')">
+    <a
+      routerLink="/movements"
+      routerLinkActive="active"
+      #movementsTab="routerLinkActive"
+      class="tab"
+      [attr.aria-current]="movementsTab.isActive ? 'page' : null"
+      ><span class="tab-label">{{ language.t('shell.movements') }}</span></a
+    >
+    <a
+      routerLink="/dashboard"
+      routerLinkActive="active"
+      #statsTab="routerLinkActive"
+      class="tab"
+      [attr.aria-current]="statsTab.isActive ? 'page' : null"
+      ><span class="tab-label">{{ language.t('shell.stats') }}</span></a
+    >
+    <a
+      routerLink="/settings"
+      routerLinkActive="active"
+      #settingsTab="routerLinkActive"
+      class="tab"
+      [attr.aria-current]="settingsTab.isActive ? 'page' : null"
+      ><span class="tab-label">{{ language.t('shell.settings') }}</span></a
+    >
+  </nav>
+
+  <div class="sidebar-actions">
+    <button type="button" class="quick-add" (click)="goToQuickAdd()">
+      {{ language.t('shell.quickAdd') }}
+    </button>
+    <a class="backup-link" routerLink="/settings" fragment="backup">{{
+      language.t('shell.backup')
+    }}</a>
+  </div>
+</aside>
+
+<header class="top-bar">
+  <div class="brand">
+    <span class="monogram" aria-hidden="true">O</span>
+    <span class="wordmark">Open Expenses</span>
+  </div>
+  <p class="status-chip">{{ language.t('shell.storageStatus') }}</p>
+</header>
+
+<div class="main-area">
+  <app-install-prompt />
+  <app-backup-banner />
+  <main class="content" id="main-content" tabindex="-1">
+    <router-outlet />
+  </main>
+</div>
