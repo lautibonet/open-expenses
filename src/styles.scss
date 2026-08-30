@@ -1,7 +1,29 @@
+/* Self-hosted webfonts (D7) — zero CDN dependency; precached by public/sw.js.
+   Inter ships as one variable woff2 covering weights 400–800. */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url('/fonts/inter-variable-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/jetbrains-mono-500-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
 /* Design tokens — the single source of truth for "The Quiet Register" (DESIGN.md).
    Every role resolves here; components reference tokens, never raw values. */
 :root {
   /* Type ramp — hierarchy is carried by size and weight alone. */
+  --font-ui: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-data: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', 'SF Mono', Consolas, monospace;
   --type-headline: 1.1rem;
   --type-title: 1rem;
   --type-body: 0.9rem;
@@ -82,13 +104,7 @@ html {
 }
 
 body {
-  /* No webfont is loaded; the system stack pins intent across platforms. */
-  font-family:
-    system-ui,
-    -apple-system,
-    'Segoe UI',
-    Roboto,
-    sans-serif;
+  font-family: var(--font-ui);
   font-size: var(--type-body);
   line-height: var(--leading-body);
   color: var(--body-ink);
@@ -119,10 +135,15 @@ td {
   text-align: left;
 }
 
-/* Data figures inherit the tabular setting so columns read as one register. */
+/* Data figures are monetary/numeric: JetBrains Mono, kept tabular so columns
+   read as one register. Every number input in the app is a monetary amount or
+   an exchange rate. */
 .value,
 .amount,
-.stat .value {
+.stat .value,
+.data-figure,
+input[type='number'] {
+  font-family: var(--font-data);
   font-variant-numeric: tabular-nums;
 }
 

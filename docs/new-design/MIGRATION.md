@@ -26,6 +26,7 @@ models, or user flows**.
 | D12 | **Net Flow card added** on Movements — new read-only UI, derived data only (scope income − expense in base currency). |
 | D13 | **Scope semantics unchanged** (month + year + All Time), dressed in the design's stepper/segmented chrome. No Quarter. |
 | D14 | Settings stays **inline-save** and **deactivate** (never hard-delete); category chips get an ×-style *deactivate* affordance, not destructive remove. No "Save Changes" button. No "Load More Records" pagination. |
+| D15 | **Icons: hand-rolled inline SVGs**, not Material Symbols. The needed set is tiny (chevrons, ↑/↓, pencil, ×, +); the Material Symbols variable woff2 is ~3.5 MB — prohibitive to precache offline for glyphs we would never use — and subsetting it adds tooling and binary-asset upkeep for no gain. Inline SVGs inherit `currentColor`, scale crisply, need no network request, and keep the zero-CDN stance. |
 
 Derived implications:
 - Warnings (conversion failure, backup errors) adopt the **error ramp** — the design palette has no amber.
@@ -221,10 +222,14 @@ the mobile regime (`headline-lg` 32→24, `display` 48→24).
 
 | Asset | Source | Home |
 |---|---|---|
-| Inter woff2 — 400, 600, 700, 800 | Google Fonts (OFL) download, self-hosted (D7) | `public/fonts/` |
-| JetBrains Mono woff2 — 500 | Google Fonts (OFL), self-hosted | `public/fonts/` |
-| Icons (chevrons, arrows, pencil, ×, +) | self-hosted **Material Symbols Outlined** variable woff2 (matches exports), OR hand-rolled inline SVGs if bundle weight matters — decide at Phase 1 | `public/fonts/` or inline |
+| Inter — variable woff2, latin subset, declared `400 800` (covers the 400/600/700/800 ramp; Google Fonts serves the same variable file for every requested weight, so one 47 KB file replaces four static ones) | Google Fonts (OFL, license in folder), self-hosted (D7) | `public/fonts/inter-variable-latin.woff2` |
+| JetBrains Mono woff2 — 500 (static instance), latin subset | Google Fonts (OFL, license in folder), self-hosted | `public/fonts/jetbrains-mono-500-latin.woff2` |
+| Icons (chevrons, arrows, pencil, ×, +) | **decided (D15): hand-rolled inline SVGs** in component templates — not a self-hosted Material Symbols font | inline |
 | Favicon/app icons | existing set unchanged; recolor only if manifest requires | `public/icons/` |
+
+Fonts ship with `font-display: swap`, system fallback stacks (`--font-ui` / `--font-data` in
+`styles.scss`), `<link rel="preload">` for both files in `index.html` (the only fonts used at
+first paint), and entries in `sw.js` `PRECACHE_URLS` with the cache name bumped.
 
 ---
 

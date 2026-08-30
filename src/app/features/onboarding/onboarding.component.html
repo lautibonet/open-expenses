@@ -139,7 +139,8 @@
         <ul class="account-list">
           @for (account of accounts(); track $index) {
             <li>
-              {{ account.name }} ({{ account.currency }}) — {{ account.balance }}
+              {{ account.name }} ({{ account.currency }}) —
+              <span class="data-figure">{{ account.balance }}</span>
               <button class="btn small" (click)="removeAccount($index)">{{ languageService.t('onboarding.accounts.remove') }}</button>
             </li>
           }
