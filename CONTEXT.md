@@ -37,16 +37,12 @@ The conversion factor between two currencies. Fetched from Frankfurter v2 (ECB r
 _Avoid_: Conversion rate, FX rate
 
 **Movement**:
-The unified display of Transactions and Transfers in a single chronological list. Each row starts with a direction arrow: → for Income, ← for Expense, = for Transfer. Amounts are always positive; cross-currency items show both original and converted amounts (e.g. `$10.00 → €8.57`).
+The unified display of Transactions and Transfers in a single chronological list. Each row carries a colored edge stripe identifying its kind: green for Income, red for Expense, grey for Transfer. Amounts are always positive; cross-currency items show both original and converted amounts (e.g. `$10.00 → €8.57`).
 _Avoid_: Feed, timeline, history
 
-**Direction Arrow**:
-A visual indicator at the start of each Movement row. → (right arrow) for Income, ← (left arrow) for Expense, = (equals) for Transfer. Uses green/red color coding for Income/Expense respectively.
-_Avoid_: Sign, prefix, indicator, direction glyph
-
 **Quick Add**:
-The compact capture form at the top of the Movements screen for recording a Transaction or Transfer in one step, without opening the full editor.
-_Avoid_: Quick entry, mini form, inline add
+The full Transaction capture form on the Movements screen — account, category, amount, note, date, and period shown all at once, with no compact/expanded distinction. Hidden by default and revealed by the New Transaction button or the sidebar Quick Add action; it closes after a successful save, and only one capture form (Quick Add or Transfer) is open at a time. Used for both recording and editing a Transaction.
+_Avoid_: Quick entry, mini form, inline add, more options
 
 **Stats** (formerly Dashboard):
 A read-only summary screen showing a total balance in base currency (sum of all account balances, non-base converted using latest rate), period totals, per-category expense breakdown, yearly averages, and per-account balances (current and period-end). Reached via the `/dashboard` route.
@@ -65,10 +61,10 @@ The first-run flow that collects language, base currency, initial accounts, and 
 _Avoid_: Setup, wizard, first-time flow
 
 **Backup**:
-A user-initiated snapshot of the full dataset saved off-device, either to a cloud provider or downloaded as a file. Backups are never triggered automatically — the user starts a cloud backup by tapping the backup banner. _Avoid_: Sync, snapshot, export, autosave
+A user-initiated snapshot of the full dataset saved off-device, either to a cloud provider or downloaded as a file. Backups are never triggered automatically — the user starts a cloud backup from the sidebar Backup action or the Settings backup card. _Avoid_: Sync, snapshot, export, autosave
 
 **Backup Method**:
-The destination of a cloud Backup — Google Drive today, with Dropbox and iCloud as future providers. Shown on the backup banner next to the last-backup time.
+The destination of a cloud Backup — Google Drive today, with Dropbox and iCloud as future providers. Shown next to the last-backup time in the sidebar backup caption and the Settings backup card.
 _Avoid_: Provider, cloud service, storage
 
 **Restore**:
