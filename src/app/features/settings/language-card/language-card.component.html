@@ -1,10 +1,21 @@
 <section class="card">
-  <h2>{{ language.t('settings.language') }}</h2>
-  <div class="inline-form">
+  <h2>
+    <svg aria-hidden="true" viewBox="0 0 16 16" focusable="false">
+      <circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1.5" />
+      <path
+        d="M2 8h12M8 2c-2.5 3.5-2.5 8.5 0 12M8 2c2.5 3.5 2.5 8.5 0 12"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.5"
+      />
+    </svg>
+    {{ language.t('settings.language') }}
+  </h2>
+  <div class="field-stack">
     <select
       [ngModel]="selected()"
       (ngModelChange)="selected.set($event)"
-      class="input small"
+      class="input"
       [attr.aria-label]="language.t('settings.languageAria')"
     >
       @for (option of languages; track option.code) {

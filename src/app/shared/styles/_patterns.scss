@@ -121,6 +121,31 @@
   border-bottom: var(--border-hard);
 }
 
+/* Card header with a leading inline-SVG icon (D15): shared by the Settings
+   cards. */
+%card-header-icon {
+  @extend %card-header;
+
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+
+  svg {
+    width: 1rem;
+    height: 1rem;
+    flex-shrink: 0;
+  }
+}
+
+/* Status strip: tinted, hard-bordered inline message on the error ramp
+   (errors/warnings) or the primary tint (success). Layout only; colors are
+   set by the consumer. */
+%status-strip {
+  margin: 0 0 var(--space-md);
+  padding: var(--space-xs) var(--space-sm);
+  font-size: var(--type-caption);
+}
+
 /* Page header: display-type headline + subtitle, with room for the scope
    control on the right. Shared by Movements and Stats. */
 %page-header {
