@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+
+<html class="h-full" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>LedgerFlow Onboarding</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-bright": "#f9f9f9",
+                    "on-primary-container": "#dfe3ff",
+                    "surface": "#f9f9f9",
+                    "tertiary-fixed-dim": "#c7c6c6",
+                    "on-secondary": "#ffffff",
+                    "on-secondary-fixed": "#1b1b1b",
+                    "surface-dim": "#dadada",
+                    "on-tertiary": "#ffffff",
+                    "error-container": "#ffdad6",
+                    "on-tertiary-fixed": "#1b1c1c",
+                    "on-surface": "#1a1c1c",
+                    "primary-fixed": "#dde1ff",
+                    "on-secondary-fixed-variant": "#474747",
+                    "secondary": "#5e5e5e",
+                    "tertiary": "#4e4e4e",
+                    "surface-container-highest": "#e2e2e2",
+                    "secondary-fixed": "#e2e2e2",
+                    "outline-variant": "#c3c5d9",
+                    "on-primary-fixed-variant": "#0038b6",
+                    "on-secondary-container": "#646464",
+                    "primary-container": "#0052ff",
+                    "error": "#ba1a1a",
+                    "on-error-container": "#93000a",
+                    "on-surface-variant": "#434656",
+                    "inverse-surface": "#2f3131",
+                    "surface-container-lowest": "#ffffff",
+                    "secondary-container": "#e2e2e2",
+                    "on-tertiary-container": "#e6e4e4",
+                    "tertiary-container": "#666666",
+                    "on-primary": "#ffffff",
+                    "surface-tint": "#004ced",
+                    "on-background": "#1a1c1c",
+                    "surface-container": "#eeeeee",
+                    "secondary-fixed-dim": "#c6c6c6",
+                    "on-primary-fixed": "#001452",
+                    "on-tertiary-fixed-variant": "#464747",
+                    "on-error": "#ffffff",
+                    "inverse-on-surface": "#f1f1f1",
+                    "tertiary-fixed": "#e4e2e2",
+                    "inverse-primary": "#b7c4ff",
+                    "surface-container-high": "#e8e8e8",
+                    "primary": "#003ec7",
+                    "surface-container-low": "#f3f3f3",
+                    "primary-fixed-dim": "#b7c4ff",
+                    "surface-variant": "#e2e2e2",
+                    "outline": "#737688",
+                    "background": "#f9f9f9"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0",
+                    "lg": "0",
+                    "xl": "0",
+                    "full": "0"
+            },
+            "spacing": {
+                    "xl": "40px",
+                    "xs": "4px",
+                    "unit": "4px",
+                    "container-margin": "24px",
+                    "md": "16px",
+                    "sm": "8px",
+                    "gutter": "16px",
+                    "lg": "24px"
+            },
+            "fontFamily": {
+                    "body-lg": ["Inter"],
+                    "data-mono": ["JetBrains Mono"],
+                    "headline-md": ["Inter"],
+                    "headline-lg-mobile": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "body-md": ["Inter"],
+                    "display": ["Inter"],
+                    "label-caps": ["Inter"]
+            },
+            "fontSize": {
+                    "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                    "data-mono": ["14px", {"lineHeight": "1.4", "fontWeight": "500"}],
+                    "headline-md": ["20px", {"lineHeight": "1.4", "fontWeight": "600"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "1.2", "fontWeight": "700"}],
+                    "headline-lg": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "body-md": ["16px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                    "display": ["48px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                    "label-caps": ["12px", {"lineHeight": "1", "letterSpacing": "0.1em", "fontWeight": "700"}]
+            }
+          },
+        }
+      }
+    </script>
+<style>
+        .step-active { background-color: #003ec7; color: #ffffff; }
+        .step-inactive { background-color: #f9f9f9; color: #737688; border: 2px solid #e2e2e2; }
+        .step-completed { background-color: #1a1c1c; color: #ffffff; }
+        .grid-bg {
+            background-image: linear-gradient(to right, #e2e2e2 1px, transparent 1px), linear-gradient(to bottom, #e2e2e2 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+    </style>
+</head>
+<body class="bg-surface font-body-lg text-on-surface h-full flex flex-col grid-bg m-0 p-0">
+<!-- TopNav (Suppressed on Onboarding, but requested header anchor) -->
+<header class="flex justify-between items-center w-full px-md h-16 bg-surface border-b-[1px] border-on-surface">
+<div class="text-headline-md font-headline-md font-extrabold text-on-surface tracking-tighter uppercase">
+            LedgerFlow
+        </div>
+<div class="text-label-caps font-label-caps text-on-surface-variant uppercase">
+            Setup
+        </div>
+</header>
+<main class="flex-grow flex flex-col items-center justify-start pt-xl pb-xl px-md overflow-y-auto">
+<div class="w-full max-w-4xl bg-surface border-[1px] border-on-surface flex flex-col">
+<!-- Stepper Header -->
+<div class="w-full border-b-[1px] border-on-surface flex md:flex-row flex-col bg-surface-bright">
+<div class="flex-1 p-md flex items-center border-b-[1px] md:border-b-0 md:border-r-[1px] border-on-surface step-completed gap-sm">
+<span class="material-symbols-outlined" data-icon="check_circle">check_circle</span>
+<span class="text-label-caps font-label-caps uppercase">1. Language</span>
+</div>
+<div class="flex-1 p-md flex items-center border-b-[1px] md:border-b-0 md:border-r-[1px] border-on-surface step-completed gap-sm">
+<span class="material-symbols-outlined" data-icon="check_circle">check_circle</span>
+<span class="text-label-caps font-label-caps uppercase">2. Backup</span>
+</div>
+<div class="flex-1 p-md flex items-center border-b-[1px] md:border-b-0 md:border-r-[1px] border-on-surface step-active gap-sm">
+<span class="material-symbols-outlined" data-icon="radio_button_checked">radio_button_checked</span>
+<span class="text-label-caps font-label-caps uppercase">3. Currency</span>
+</div>
+<div class="flex-1 p-md flex items-center border-b-[1px] md:border-b-0 md:border-r-[1px] border-on-surface bg-surface text-outline gap-sm">
+<span class="material-symbols-outlined" data-icon="radio_button_unchecked">radio_button_unchecked</span>
+<span class="text-label-caps font-label-caps uppercase">4. Accounts</span>
+</div>
+<div class="flex-1 p-md flex items-center bg-surface text-outline gap-sm">
+<span class="material-symbols-outlined" data-icon="radio_button_unchecked">radio_button_unchecked</span>
+<span class="text-label-caps font-label-caps uppercase">5. Categories</span>
+</div>
+</div>
+<!-- Content Area -->
+<div class="p-lg md:p-xl flex flex-col gap-lg bg-surface">
+<div>
+<h1 class="text-display font-display text-on-surface uppercase mb-sm">Select Base Currency</h1>
+<p class="text-body-lg font-body-lg text-on-surface-variant max-w-2xl">
+                        Choose the primary currency for your ledger. All reports and global statistics will be converted to this base currency.
+                    </p>
+</div>
+<!-- Bento Grid for Currencies -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-0 border-[1px] border-on-surface bg-on-surface">
+<!-- USD Card -->
+<label class="cursor-pointer group bg-surface p-lg border-[1px] border-on-surface hover:bg-surface-container-high transition-colors flex flex-col gap-md relative overflow-hidden">
+<input checked="" class="sr-only peer" name="currency" type="radio" value="USD"/>
+<div class="absolute inset-0 border-[2px] border-primary opacity-0 peer-checked:opacity-100 pointer-events-none z-10 transition-opacity"></div>
+<div class="flex justify-between items-start z-20">
+<span class="text-headline-lg font-headline-lg text-on-surface">USD</span>
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary peer-checked:text-primary transition-colors" data-icon="attach_money">attach_money</span>
+</div>
+<div class="text-body-md font-body-md text-on-surface-variant z-20">United States Dollar</div>
+<div class="w-full h-[1px] bg-on-surface my-xs z-20 opacity-20"></div>
+<div class="text-label-caps font-label-caps text-on-surface-variant uppercase z-20">Symbol: $</div>
+</label>
+<!-- EUR Card -->
+<label class="cursor-pointer group bg-surface p-lg border-[1px] border-on-surface hover:bg-surface-container-high transition-colors flex flex-col gap-md relative overflow-hidden">
+<input class="sr-only peer" name="currency" type="radio" value="EUR"/>
+<div class="absolute inset-0 border-[2px] border-primary opacity-0 peer-checked:opacity-100 pointer-events-none z-10 transition-opacity"></div>
+<div class="flex justify-between items-start z-20">
+<span class="text-headline-lg font-headline-lg text-on-surface">EUR</span>
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary peer-checked:text-primary transition-colors" data-icon="euro">euro</span>
+</div>
+<div class="text-body-md font-body-md text-on-surface-variant z-20">Euro Member Countries</div>
+<div class="w-full h-[1px] bg-on-surface my-xs z-20 opacity-20"></div>
+<div class="text-label-caps font-label-caps text-on-surface-variant uppercase z-20">Symbol: €</div>
+</label>
+<!-- GBP Card -->
+<label class="cursor-pointer group bg-surface p-lg border-[1px] border-on-surface hover:bg-surface-container-high transition-colors flex flex-col gap-md relative overflow-hidden">
+<input class="sr-only peer" name="currency" type="radio" value="GBP"/>
+<div class="absolute inset-0 border-[2px] border-primary opacity-0 peer-checked:opacity-100 pointer-events-none z-10 transition-opacity"></div>
+<div class="flex justify-between items-start z-20">
+<span class="text-headline-lg font-headline-lg text-on-surface">GBP</span>
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary peer-checked:text-primary transition-colors" data-icon="currency_pound">currency_pound</span>
+</div>
+<div class="text-body-md font-body-md text-on-surface-variant z-20">United Kingdom Pound</div>
+<div class="w-full h-[1px] bg-on-surface my-xs z-20 opacity-20"></div>
+<div class="text-label-caps font-label-caps text-on-surface-variant uppercase z-20">Symbol: £</div>
+</label>
+<!-- JPY Card -->
+<label class="cursor-pointer group bg-surface p-lg border-[1px] border-on-surface hover:bg-surface-container-high transition-colors flex flex-col gap-md relative overflow-hidden">
+<input class="sr-only peer" name="currency" type="radio" value="JPY"/>
+<div class="absolute inset-0 border-[2px] border-primary opacity-0 peer-checked:opacity-100 pointer-events-none z-10 transition-opacity"></div>
+<div class="flex justify-between items-start z-20">
+<span class="text-headline-lg font-headline-lg text-on-surface">JPY</span>
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary peer-checked:text-primary transition-colors" data-icon="currency_yen">currency_yen</span>
+</div>
+<div class="text-body-md font-body-md text-on-surface-variant z-20">Japan Yen</div>
+<div class="w-full h-[1px] bg-on-surface my-xs z-20 opacity-20"></div>
+<div class="text-label-caps font-label-caps text-on-surface-variant uppercase z-20">Symbol: ¥</div>
+</label>
+<!-- Search/Custom Input Card -->
+<div class="col-span-1 sm:col-span-2 lg:col-span-2 bg-surface p-lg border-[1px] border-on-surface flex flex-col justify-center gap-sm">
+<label class="text-label-caps font-label-caps text-on-surface uppercase block mb-xs">Search other currencies</label>
+<div class="relative w-full border-[1px] border-on-surface focus-within:border-primary focus-within:border-[2px] transition-all flex items-center h-12">
+<span class="material-symbols-outlined text-on-surface-variant absolute left-3" data-icon="search">search</span>
+<input class="w-full h-full bg-transparent border-none focus:ring-0 pl-10 pr-4 text-body-md font-body-md placeholder-outline-variant outline-none" placeholder="e.g. CAD, AUD, INR" type="text"/>
+</div>
+</div>
+</div>
+<!-- Action Bar -->
+<div class="mt-lg flex justify-between items-center border-t-[1px] border-on-surface pt-lg">
+<button class="bg-surface text-on-surface border-[2px] border-on-surface px-lg py-sm text-label-caps font-label-caps uppercase hover:bg-surface-container transition-colors flex items-center gap-xs">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+                        Back
+                    </button>
+<button class="bg-primary text-on-primary border-[2px] border-primary px-lg py-sm text-label-caps font-label-caps uppercase hover:bg-on-primary-fixed-variant transition-colors flex items-center gap-xs font-bold shadow-[2px_2px_0px_0px_#1a1c1c] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none">
+                        Continue
+                        <span class="material-symbols-outlined" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+</main>
+</body></html>
