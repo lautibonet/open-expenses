@@ -430,7 +430,7 @@ describe('QuickAddCardComponent - translations', () => {
     expect(text).toContain('Cuenta');
     expect(text).toContain('Categoría');
     expect(text).toContain('Registrar');
-    expect(text).toContain('Más opciones');
+    expect(text).toContain('Más...');
   });
 
   it('re-renders in Spanish immediately when the Language changes after render', async () => {
