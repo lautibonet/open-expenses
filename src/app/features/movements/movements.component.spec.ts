@@ -894,6 +894,120 @@ describe('MovementsComponent - period year', () => {
   });
 });
 
+describe('MovementsComponent - page header and scope stepper', () => {
+  let fixture: ComponentFixture<MovementsComponent>;
+  let component: MovementsComponent;
+  let transactionService: TransactionService;
+  let accountId: number;
+  let categoryId: number;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    await TestBed.configureTestingModule({
+      imports: [MovementsComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(MovementsComponent);
+    component = fixture.componentInstance;
+    transactionService = TestBed.inject(TransactionService);
+    const acc = await TestBed.inject(AccountService).create('Cash', 'EUR', 100000);
+    accountId = acc.id!;
+    const cat = await TestBed.inject(CategoryService).create('Food', 'expense');
+    categoryId = cat.id!;
+  });
+
+  afterEach(async () => {
+    await db.delete();
+  });
+
+  async function scopeTo(period: number, year: number): Promise<void> {
+    await component.onScopeYearChange(year);
+    await component.onScopeMonthChange(period);
+  }
+
+  it('renders the display headline with its subtitle', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const h1 = fixture.nativeElement.querySelector('.page-header h1');
+    expect(h1).toBeTruthy();
+    expect(h1.textContent.trim()).toBe('Movements');
+
+    const subtitle = fixture.nativeElement.querySelector('.page-header .subtitle');
+    expect(subtitle.textContent.trim()).toBe('Track and categorize your financial flow.');
+  });
+
+  it('keeps accessible names on the year and month scope selects', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('select[aria-label="Scope year"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('select[aria-label="Scope month"]')).toBeTruthy();
+  });
+
+  it('steps the month via the stepper without touching the year', async () => {
+    const year = getCurrentYear();
+    await component.ngOnInit();
+    await scopeTo(6, year);
+
+    await component.stepScopeMonth(1);
+    expect(component.scope()).toEqual({ kind: 'month', period: 7, year });
+
+    await component.stepScopeMonth(-1);
+    await component.stepScopeMonth(-1);
+    expect(component.scope()).toEqual({ kind: 'month', period: 5, year });
+  });
+
+  it('disables the stepper at the calendar edges', async () => {
+    await component.ngOnInit();
+    await scopeTo(1, getCurrentYear());
+    expect(component.canStepMonth(-1)).toBe(false);
+    expect(component.canStepMonth(1)).toBe(true);
+
+    await scopeTo(12, getCurrentYear());
+    expect(component.canStepMonth(-1)).toBe(true);
+    expect(component.canStepMonth(1)).toBe(false);
+  });
+
+  it('cannot step months while All Time is active', async () => {
+    await component.ngOnInit();
+    await component.onScopeYearChange('all-time');
+
+    expect(component.canStepMonth(-1)).toBe(false);
+    expect(component.canStepMonth(1)).toBe(false);
+
+    await component.stepScopeMonth(1);
+    expect(component.scope().kind).toBe('all-time');
+  });
+
+  it('toggles All Time from the scope control and back to the current month', async () => {
+    await component.ngOnInit();
+
+    await component.toggleAllTime();
+    expect(component.scope()).toEqual({ kind: 'all-time' });
+
+    await component.toggleAllTime();
+    expect(component.scope()).toEqual(defaultScope());
+  });
+
+  it('leads the content with the Net Flow card', async () => {
+    await transactionService.create(accountId, categoryId, 500, new Date(), getCurrentPeriod());
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const card = fixture.nativeElement.querySelector('app-net-flow-card .net-flow-card');
+    expect(card).toBeTruthy();
+
+    const movements = fixture.nativeElement.querySelector('.movements');
+    const units = Array.from(movements.children).map((el) =>
+      (el as Element).tagName.toLowerCase(),
+    );
+    expect(units.indexOf('app-net-flow-card')).toBeGreaterThanOrEqual(0);
+    expect(units.indexOf('app-net-flow-card')).toBeLessThan(units.indexOf('app-quick-add-card'));
+  });
+});
+
 describe('MovementsComponent - transaction note', () => {
   let fixture: ComponentFixture<MovementsComponent>;
   let component: MovementsComponent;
