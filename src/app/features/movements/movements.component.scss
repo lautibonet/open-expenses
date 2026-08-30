@@ -166,12 +166,7 @@
   margin-bottom: var(--space-lg);
 
   h3 {
-    @extend %caps-label;
-
-    color: var(--on-surface);
-    margin: 0 0 var(--space-md);
-    padding-bottom: var(--space-sm);
-    border-bottom: var(--border-hard);
+    @extend %card-header;
   }
 }
 
