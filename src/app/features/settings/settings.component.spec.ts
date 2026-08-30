@@ -268,6 +268,153 @@ describe('SettingsComponent - no tag affordances', () => {
   });
 });
 
+describe('SettingsComponent - LedgerFlow restyle', () => {
+  let fixture: ComponentFixture<SettingsComponent>;
+  let component: SettingsComponent;
+  let accountService: AccountService;
+  let categoryService: CategoryService;
+  let accountId: number;
+  let incomeCategoryId: number;
+  let expenseCategoryId: number;
+
+  const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 10));
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    await TestBed.configureTestingModule({
+      imports: [SettingsComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(SettingsComponent);
+    component = fixture.componentInstance;
+    accountService = TestBed.inject(AccountService);
+    categoryService = TestBed.inject(CategoryService);
+
+    const account = await accountService.create('Cash', 'EUR', 100000);
+    accountId = account.id!;
+    const income = await categoryService.create('Salary', 'income');
+    incomeCategoryId = income.id!;
+    const expense = await categoryService.create('Food', 'expense');
+    expenseCategoryId = expense.id!;
+    await component.ngOnInit();
+    fixture.detectChanges();
+  });
+
+  afterEach(async () => {
+    await db.delete();
+  });
+
+  function chipFor(name: string): HTMLElement {
+    const chips = Array.from(
+      fixture.nativeElement.querySelectorAll('.cat-chip') as NodeListOf<HTMLElement>,
+    );
+    return chips.find((c) => c.textContent!.includes(name))!;
+  }
+
+  it('renders the design cards with no Save Changes button and no Danger Zone', () => {
+    const headings = Array.from(
+      fixture.nativeElement.querySelectorAll('h2') as NodeListOf<HTMLElement>,
+    ).map((h) => h.textContent!.trim());
+    for (const expected of ['Accounts', 'Base Currency', 'Language', 'Categories']) {
+      expect(headings).toContain(expected);
+    }
+
+    const text: string = fixture.nativeElement.textContent;
+    expect(text).not.toContain('Save Changes');
+    expect(text).not.toContain('Danger Zone');
+    expect(text).not.toContain('Wipe Data');
+  });
+
+  it('renders square category chips striped by type', () => {
+    const incomeChip = chipFor('Salary');
+    const expenseChip = chipFor('Food');
+    expect(incomeChip.classList.contains('stripe-income')).toBe(true);
+    expect(expenseChip.classList.contains('stripe-expense')).toBe(true);
+  });
+
+  it('deactivates a category via the chip x affordance', async () => {
+    const chip = chipFor('Food');
+    const x = chip.querySelector('.chip-deactivate') as HTMLButtonElement;
+    expect(x).toBeTruthy();
+    expect(x.getAttribute('aria-label')).toBeTruthy();
+
+    x.click();
+    await flush();
+
+    const updated = await categoryService.getById(expenseCategoryId);
+    expect(updated?.active).toBe(false);
+  });
+
+  it('offers a reactivate affordance on inactive category chips', async () => {
+    await categoryService.setActive(expenseCategoryId, false);
+    await component.refresh();
+    fixture.detectChanges();
+
+    const chip = chipFor('Food');
+    expect(chip.classList.contains('inactive')).toBe(true);
+    const reactivate = chip.querySelector('.chip-reactivate') as HTMLButtonElement;
+    expect(reactivate).toBeTruthy();
+    expect(reactivate.getAttribute('aria-label')).toBeTruthy();
+
+    reactivate.click();
+    await flush();
+
+    const updated = await categoryService.getById(expenseCategoryId);
+    expect(updated?.active).toBe(true);
+  });
+
+  it('renders dashed add affordances for accounts and categories', () => {
+    const dashed = Array.from(
+      fixture.nativeElement.querySelectorAll('.btn.dashed') as NodeListOf<HTMLButtonElement>,
+    ).map((b) => b.textContent!.trim());
+    expect(dashed.length).toBe(2);
+    expect(dashed[0]).toContain('Add Account');
+    expect(dashed[1]).toContain('Add');
+  });
+
+  it('keeps the account deactivation confirmation flow inside the account row', async () => {
+    const row = Array.from(
+      fixture.nativeElement.querySelectorAll('.account-row') as NodeListOf<HTMLElement>,
+    ).find((r) => r.textContent!.includes('Cash'))!;
+    const deactivate = Array.from(row.querySelectorAll('button')).find(
+      (b) => b.textContent!.trim() === 'Deactivate',
+    )!;
+    deactivate.click();
+    fixture.detectChanges();
+
+    const confirmSpan = row.querySelector('.deactivate-confirm') as HTMLElement;
+    expect(confirmSpan).toBeTruthy();
+    expect(confirmSpan.getAttribute('role')).toBe('alert');
+
+    const confirm = Array.from(row.querySelectorAll('button')).find(
+      (b) => b.textContent!.trim() === 'Confirm',
+    )!;
+    confirm.click();
+    await flush();
+
+    const updated = await accountService.getById(accountId);
+    expect(updated?.active).toBe(false);
+  });
+
+  it('keeps account name inline editing from the row', async () => {
+    const row = Array.from(
+      fixture.nativeElement.querySelectorAll('.account-row') as NodeListOf<HTMLElement>,
+    ).find((r) => r.textContent!.includes('Cash'))!;
+    const pencil = row.querySelector('.account-edit') as HTMLButtonElement;
+    expect(pencil).toBeTruthy();
+
+    pencil.click();
+    fixture.detectChanges();
+    expect(component.editingAccountName()).toEqual({ id: accountId, value: 'Cash' });
+
+    component.editingAccountName.set({ id: accountId, value: 'Wallet' });
+    await component.saveAccountName();
+    const updated = await accountService.getById(accountId);
+    expect(updated?.name).toBe('Wallet');
+  });
+});
+
 describe('SettingsComponent - language card', () => {
   let fixture: ComponentFixture<SettingsComponent>;
   let component: SettingsComponent;
@@ -302,6 +449,13 @@ describe('SettingsComponent - language card', () => {
     return fixture.nativeElement.querySelector('select[aria-label="Language"]');
   }
 
+  function languageUpdateButton(): HTMLButtonElement {
+    const card = fixture.nativeElement.querySelector('app-language-card');
+    return Array.from(card.querySelectorAll('button') as NodeListOf<HTMLButtonElement>).find(
+      (b) => b.textContent!.trim() === 'Update',
+    )!;
+  }
+
   it('renders a Language card offering both languages in their own language', () => {
     const headings = Array.from(
       fixture.nativeElement.querySelectorAll('h2') as NodeListOf<HTMLElement>,
@@ -321,9 +475,7 @@ describe('SettingsComponent - language card', () => {
     expect(languageService.activeLanguage()).toBe('en');
     expect((await profileService.get())!.language).toBe('en');
 
-    const updateButton = Array.from(
-      fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>,
-    ).find((b) => b.textContent!.trim() === 'Update');
+    const updateButton = languageUpdateButton();
     updateButton!.click();
     await flush();
     fixture.detectChanges();
@@ -338,9 +490,7 @@ describe('SettingsComponent - language card', () => {
   it('keeps the choice across reloads', async () => {
     languageSelect().value = 'es';
     languageSelect().dispatchEvent(new Event('change'));
-    const updateButton = Array.from(
-      fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>,
-    ).find((b) => b.textContent!.trim() === 'Update');
+    const updateButton = languageUpdateButton();
     updateButton!.click();
     await flush();
 

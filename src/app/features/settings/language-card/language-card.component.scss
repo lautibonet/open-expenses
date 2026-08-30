@@ -3,31 +3,24 @@
 .card {
   background: var(--surface-lowest);
   border: var(--border-hard);
-  border-radius: var(--radius-lg);
-  padding: 1rem;
-  margin-bottom: 1rem;
+  padding: var(--space-lg);
+  margin: 0;
 
   h2 {
-    font-size: var(--type-headline);
-    font-weight: 600;
-    line-height: var(--leading-headline);
-    margin-bottom: 0.75rem;
+    @extend %card-header-icon;
   }
 }
 
-.inline-form {
+.field-stack {
   display: flex;
-  gap: 0.5rem;
-  align-items: flex-end;
-  margin-bottom: 0.75rem;
-  flex-wrap: wrap;
-}
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-sm);
 
-.input {
-  @extend %field;
+  select {
+    @extend %field;
 
-  &.small {
-    width: 100px;
+    width: 100%;
   }
 }
 
@@ -37,18 +30,22 @@
   &.primary {
     @extend %btn-primary;
   }
-
-  &.small {
-    @extend %btn-small;
-  }
 }
 
 .success {
-  color: var(--primary);
-  margin: 0.75rem 0;
+  @extend %status-strip;
+
+  margin: var(--space-md) 0 0;
+  background: var(--primary-fixed);
+  color: var(--on-primary-fixed);
+  border: 1px solid var(--primary);
 }
 
 .error {
-  color: var(--error);
-  margin: 0.75rem 0;
+  @extend %status-strip;
+
+  margin: var(--space-md) 0 0;
+  background: var(--error-container);
+  color: var(--on-error-container);
+  border: 1px solid var(--on-error-container);
 }

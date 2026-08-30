@@ -51,6 +51,19 @@ describe('translations', () => {
     }
   });
 
+  it('covers the settings restyle keys', () => {
+    for (const key of [
+      'settings.subtitle',
+      'settings.addAccount',
+      'settings.editNameAria',
+      'settings.deactivateCategoryAria',
+      'settings.reactivateCategoryAria',
+    ]) {
+      expect(TRANSLATIONS.en[key]).toBeTruthy();
+      expect(TRANSLATIONS.es[key]).toBeTruthy();
+    }
+  });
+
   it('covers the backup card keys', () => {
     for (const key of [
       'backup.card.title',

@@ -2,35 +2,69 @@
 
 .settings {
   padding-bottom: 1rem;
+}
 
-  h1 {
-    font-size: var(--type-title);
-    font-weight: 600;
-    line-height: var(--leading-headline);
-    margin-bottom: 1rem;
-  }
+.page-header {
+  @extend %page-header;
+}
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: var(--space-lg);
+  align-items: start;
+  margin-top: var(--space-lg);
+}
+
+.col-main,
+.col-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  min-width: 0;
 }
 
 .card {
   background: var(--surface-lowest);
   border: var(--border-hard);
-  border-radius: var(--radius-lg);
-  padding: 1rem;
-  margin-bottom: 1rem;
+  padding: var(--space-lg);
+  margin: 0;
 
   h2 {
-    font-size: var(--type-headline);
-    font-weight: 600;
-    line-height: var(--leading-headline);
-    margin-bottom: 0.75rem;
+    @extend %card-header-icon;
   }
+
+  /* Main-column cards carry a title-type header; side cards stay caps. */
+  .card-title {
+    font-size: var(--type-title);
+    font-weight: 600;
+    line-height: var(--leading-title);
+    letter-spacing: normal;
+    text-transform: none;
+  }
+}
+
+.error {
+  @extend %status-strip;
+
+  background: var(--error-container);
+  color: var(--on-error-container);
+  border: 1px solid var(--on-error-container);
+}
+
+.success {
+  @extend %status-strip;
+
+  background: var(--primary-fixed);
+  color: var(--on-primary-fixed);
+  border: 1px solid var(--primary);
 }
 
 .inline-form {
   display: flex;
-  gap: 0.5rem;
+  gap: var(--space-sm);
   align-items: flex-end;
-  margin-bottom: 0.75rem;
+  margin-bottom: var(--space-md);
   flex-wrap: wrap;
 }
 
@@ -56,49 +90,234 @@
   &.small {
     @extend %btn-small;
   }
+
+  /* Dashed affordance for add-actions (accounts, categories). */
+  &.dashed {
+    border-style: dashed;
+    box-shadow: none;
+
+    &:active:not(:disabled) {
+      transform: none;
+    }
+  }
 }
 
-table {
-  width: 100%;
-  border-collapse: collapse;
+/* Accounts: bordered tile rows (design), inline pencil-edit kept. */
+.account-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
 
-  th,
-  td {
-    padding: 0.5rem;
-    text-align: left;
-    border-bottom: 1px solid var(--surface-container-low);
-  }
+.account-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+  border: var(--border-hard);
+  padding: var(--space-sm) var(--space-md);
 
-  th {
-    @extend %caps-label-muted;
-  }
-
-  tr.inactive {
+  &.inactive {
     opacity: 0.6;
+    background: var(--surface-container-low);
   }
 }
 
-.empty {
-  color: var(--on-surface-variant);
-  font-style: italic;
+.account-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
 
-.error {
-  color: var(--error);
-  margin-bottom: 0.75rem;
-}
-
-.success {
-  color: var(--primary);
-  margin-bottom: 0.75rem;
-}
-
-.editable {
+.account-name {
+  align-self: flex-start;
+  padding: 0;
+  border: none;
+  background: none;
   cursor: pointer;
-  border-bottom: 1px dashed var(--outline);
-  padding: 0.25rem;
+  font: inherit;
+  font-weight: 600;
+  color: var(--on-surface);
+  text-align: left;
+
+  &:hover {
+    color: var(--primary);
+  }
 }
 
-.editable:hover {
-  border-bottom-color: var(--primary);
+.account-meta {
+  @extend %mono-data;
+
+  display: flex;
+  gap: var(--space-sm);
+  color: var(--on-surface-variant);
+}
+
+.account-balance {
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  text-decoration: underline dashed var(--outline);
+  text-underline-offset: 3px;
+
+  &:hover {
+    color: var(--primary);
+  }
+}
+
+.account-side {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.account-status {
+  @extend %caps-label-muted;
+}
+
+.account-edit {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--on-surface-variant);
+
+  svg {
+    width: 0.875rem;
+    height: 0.875rem;
+  }
+
+  &:hover {
+    color: var(--primary);
+  }
+}
+
+.deactivate-confirm {
+  display: inline-block;
+  color: var(--error);
+  font-size: var(--type-caption);
+  font-weight: 500;
+}
+
+/* Categories: square chips with directional stripe and × deactivate. */
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.chip-edit {
+  display: inline-flex;
+  gap: var(--space-xs);
+  align-items: center;
+}
+
+.cat-chip {
+  @extend %caps-label;
+
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-xs) var(--space-xs) var(--space-sm);
+  background: var(--surface-lowest);
+  border: var(--border-hard);
+  color: var(--on-surface);
+
+  &.stripe-income {
+    border-left: var(--stripe-income);
+  }
+
+  &.stripe-expense {
+    border-left: var(--stripe-expense);
+  }
+
+  &.inactive {
+    opacity: 0.6;
+    color: var(--on-surface-variant);
+    border-left: 4px solid var(--surface-dim);
+  }
+}
+
+.chip-name {
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+}
+
+.chip-status {
+  font-size: var(--type-caption);
+  font-weight: 400;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.chip-deactivate,
+.chip-reactivate {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--on-surface-variant);
+
+  svg {
+    width: 0.625rem;
+    height: 0.625rem;
+  }
+
+  &:hover {
+    color: var(--primary);
+  }
+}
+
+.chip-deactivate {
+  &:hover {
+    color: var(--error);
+  }
+}
+
+.chip-reactivate {
+  &:hover {
+    color: var(--primary);
+  }
+}
+
+/* Side cards: stacked field + inline-save button. */
+.field-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-sm);
+
+  select {
+    @extend %field;
+
+    width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .settings-grid {
+    grid-template-columns: 1fr;
+  }
 }
