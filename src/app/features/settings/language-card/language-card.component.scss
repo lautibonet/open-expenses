@@ -33,19 +33,13 @@
 }
 
 .success {
-  @extend %status-strip;
+  @extend %status-strip-primary;
 
   margin: var(--space-md) 0 0;
-  background: var(--primary-fixed);
-  color: var(--on-primary-fixed);
-  border: 1px solid var(--primary);
 }
 
 .error {
-  @extend %status-strip;
+  @extend %status-strip-error;
 
   margin: var(--space-md) 0 0;
-  background: var(--error-container);
-  color: var(--on-error-container);
-  border: 1px solid var(--on-error-container);
 }

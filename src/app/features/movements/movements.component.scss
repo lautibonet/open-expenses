@@ -190,11 +190,6 @@
     font: inherit;
     color: inherit;
     letter-spacing: inherit;
-
-    &:focus-visible {
-      outline: 2px solid var(--primary);
-      outline-offset: 2px;
-    }
   }
 
   .sort-indicator {
@@ -296,9 +291,7 @@
 }
 
 .empty {
-  text-align: center;
-  color: var(--on-surface-variant);
-  padding: 2rem;
+  @extend %empty-state;
 }
 
 .error {
@@ -362,8 +355,8 @@
   }
 
   /* Keep the toast clear of the fixed bottom nav bar (MIGRATION.md risk 8):
-     64px nav height + safe-area inset + a small breathing gap. */
+     nav height + safe-area inset + a small breathing gap. */
   .undo-toast {
-    bottom: calc(64px + env(safe-area-inset-bottom, 0px) + 0.5rem);
+    bottom: calc(var(--nav-bar-size) + env(safe-area-inset-bottom, 0px) + 0.5rem);
   }
 }

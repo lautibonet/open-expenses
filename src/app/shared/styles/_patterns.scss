@@ -146,6 +146,24 @@
   font-size: var(--type-caption);
 }
 
+/* The two sanctioned strip colors: success/info on the primary tint,
+   errors and warnings on the error ramp. Margins are the consumer's. */
+%status-strip-primary {
+  @extend %status-strip;
+
+  background: var(--primary-fixed);
+  color: var(--on-primary-fixed);
+  border: 1px solid var(--primary);
+}
+
+%status-strip-error {
+  @extend %status-strip;
+
+  background: var(--error-container);
+  color: var(--on-error-container);
+  border: 1px solid var(--on-error-container);
+}
+
 /* Page header: display-type headline + subtitle, with room for the scope
    control on the right. Shared by Movements and Stats. */
 %page-header {
@@ -283,6 +301,20 @@
   }
 }
 
+/* Empty state: the dashed "nothing here yet" affordance (same dashed
+   language as the + Add actions) on a flat card surface, centered muted
+   message. */
+%empty-state {
+  margin: 0;
+  padding: var(--space-lg);
+  text-align: center;
+  color: var(--on-surface-variant);
+  background: var(--surface-lowest);
+  border: 1px dashed var(--outline);
+}
+
+/* Inline transient status notes: "fetching rate…", inline form errors.
+   Text-only by design (no strips inside forms); colors set by the consumer. */
 %rate-status {
   font-size: var(--type-label);
   color: var(--on-surface-variant);

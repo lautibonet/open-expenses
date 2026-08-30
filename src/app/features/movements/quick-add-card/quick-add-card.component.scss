@@ -21,6 +21,15 @@
   h3 {
     @extend %card-header;
   }
+
+  /* Rate/status notes render as grid children in the compact form:
+     span the full row so the message reads full-width. */
+  &.compact {
+    .rate-status,
+    .rate-error {
+      grid-column: 1 / -1;
+    }
+  }
 }
 
 label {
@@ -109,10 +118,7 @@ label {
 }
 
 .empty-state {
-  margin: 0;
-  text-align: center;
-  color: var(--on-surface-variant);
-  font-size: var(--type-body);
+  @extend %empty-state;
 }
 
 @media (max-width: 768px) {

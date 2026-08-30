@@ -109,6 +109,10 @@
   /* Full-bleed chrome strips align their content to the centered content column. */
   --chrome-gutter: max(1rem, calc((100% - 800px) / 2));
 
+  /* Mobile bottom nav bar height (D9) — shared so fixed overlays (undo toast)
+     offset from the same figure the nav bar is sized with. */
+  --nav-bar-size: 4rem;
+
   /* Elevation — the only sanctioned shadow: the press effect. Removed on :active. */
   --shadow-press: 2px 2px 0 0 var(--on-surface);
 }

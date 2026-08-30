@@ -180,7 +180,7 @@ A single centered column, `max-width: 800px` (`main.content` in the shell), padd
 
 Cards stack vertically with 1rem gutter. Forms lay out on a two-column grid; the Quick Add card's compact mode gives the amount column the widest track. Tables are full-width, `border-collapse: collapse`, with 0.5rem cell padding, 1px tonal row rules, and a `--row-hover` (#f5f5f5) hover.
 
-Spacing rhythm sits on the 4px baseline grid: 0.5rem (button clusters, table cells), 1rem (form-grid gutters, card padding, page padding), 1.5rem (section spacing), 2.5rem (large group gaps). The responsive breakpoint is 768px; below it, display/headline sizes step down (3rem/2rem → 1.5rem) and grids collapse to one column.
+Spacing rhythm sits on the 4px baseline grid: 0.5rem (button clusters, table cells), 1rem (form-grid gutters, card padding, page padding), 1.5rem (section spacing), 2.5rem (large group gaps). The responsive breakpoint is 768px; below it, display/headline sizes step down (3rem/2rem → 1.5rem) and grids collapse to one column. In the mobile regime the sidebar becomes a fixed bottom nav bar and a sticky top bar, both sized by the shared `--nav-bar-size` (4rem) token with `env(safe-area-inset-bottom)` respected; the main area's bottom padding and fixed overlays (the undo toast) offset from the same token so nothing hides behind the bar.
 
 ## Elevation & Depth
 
@@ -221,7 +221,7 @@ Corners are **zero everywhere**: buttons, inputs, cards, modals, chips, and the 
 - **Focus:** a 2px offset solid Primary outline via `:focus-visible` — the design's blue focus border, no glow.
 
 ### Navigation
-- **Style:** a sticky top tab bar of three equal links (Movements, Stats, Settings) over a 1px Outline Variant rule. Inactive tabs are On Surface Variant; the active tab reads in Primary with a 2px Primary underline. (The Monolith sidebar/bottom-nav chrome lands with the layout migration; until then the tab bar keeps its geometry in the new palette.)
+- **Style:** desktop (≥ 769px) a fixed 256px left sidebar with a 1px black right border: brand block, status chip, three caps-label nav links (Movements, Stats, Settings) where the active link is a solid Primary block with white text, and footer actions (+ Quick Add, Backup). Mobile (≤ 768px) the same three links collapse into the fixed bottom nav bar sized by `--nav-bar-size`, above the safe-area inset, with a sticky top bar carrying brand + status.
 
 ### Signature Components
 - **Backup Banner:** a non-interactive full-width status strip (Primary Fixed fill, Primary bottom hairline) with its content aligned to the centered content column via the chrome gutter. Status reads left: the method label ("Google Drive") in Primary Deep at 600, with the relative-time caption beneath it; a compact primary **Back up** button (`%btn-primary`/`%btn-small`) sits pinned right and is the strip's only interactive element. Offline, it degrades to Surface Container Low with the method and caption in On Surface and renders a genuinely disabled neutral button. Backup failures render an error strip in the error-container family below the banner, announced via `role="alert"`, with a small outline-danger Dismiss button. Its sibling Install Prompt uses the same strip language.

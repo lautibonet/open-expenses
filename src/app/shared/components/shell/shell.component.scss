@@ -1,7 +1,6 @@
 @use '../../styles/patterns' as *;
 
 $sidebar-width: 256px;
-$nav-bar-size: 64px;
 
 /* ===== Brand block (sidebar header / mobile top bar) ===== */
 
@@ -129,6 +128,7 @@ $nav-bar-size: 64px;
 .main-area {
   margin-left: $sidebar-width;
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
 }
@@ -141,6 +141,9 @@ $nav-bar-size: 64px;
   box-sizing: border-box;
   margin: 0 auto;
 
+  /* Skip-link target: focused programmatically, so the outline is suppressed
+     on the whole content column; the skip link itself carries the visible
+     focus treatment. */
   &:focus {
     outline: none;
   }
@@ -192,7 +195,7 @@ $nav-bar-size: 64px;
   .tab {
     flex: 1;
     justify-content: center;
-    min-height: $nav-bar-size;
+    min-height: var(--nav-bar-size);
 
     .tab-label {
       letter-spacing: var(--tracking-caps);
@@ -207,7 +210,7 @@ $nav-bar-size: 64px;
     position: sticky;
     top: 0;
     z-index: 40;
-    min-height: 64px;
+    min-height: var(--nav-bar-size);
     padding: var(--space-sm) var(--space-md);
     background: var(--surface-lowest);
     border-bottom: 1px solid var(--on-surface);
@@ -221,7 +224,7 @@ $nav-bar-size: 64px;
   .main-area {
     margin-left: 0;
     /* Keep content clear of the fixed bottom nav + safe area (D9). */
-    padding-bottom: calc(#{$nav-bar-size} + env(safe-area-inset-bottom));
+    padding-bottom: calc(var(--nav-bar-size) + env(safe-area-inset-bottom));
   }
 
   .content {
