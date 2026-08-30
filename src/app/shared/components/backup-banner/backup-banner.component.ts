@@ -60,8 +60,8 @@ import { describeBackupError } from '../../../backup/backup-errors';
       width: 100%;
       box-sizing: border-box;
       padding: 0.6rem var(--chrome-gutter);
-      background: var(--primary-fixed);
-      border-bottom: 1px solid var(--primary);
+      background: var(--surface-lowest);
+      border-bottom: 1px solid var(--on-surface);
 
       &.offline {
         background: var(--surface-container-low);
@@ -77,20 +77,19 @@ import { describeBackupError } from '../../../backup/backup-errors';
     }
 
       .backup-method {
-      font-weight: 600;
-      color: var(--primary-deep);
+      @extend %caps-label;
+      color: var(--on-surface);
 
       .offline & {
-        color: var(--on-surface);
+        color: var(--on-surface-variant);
       }
     }
 
       .backup-time {
-      color: var(--primary-deep);
-      font-size: 0.85rem;
+      @extend %caps-label-muted;
 
       .offline & {
-        color: var(--on-surface);
+        color: var(--on-surface-variant);
       }
     }
 
@@ -121,13 +120,13 @@ import { describeBackupError } from '../../../backup/backup-errors';
       padding: 0.5rem var(--chrome-gutter);
       background: var(--error-container);
       color: var(--on-error-container);
-      font-size: 0.85rem;
       border-bottom: 1px solid var(--on-error-container);
     }
 
     .error-text {
       min-width: 0;
       overflow-wrap: anywhere;
+      font-size: var(--type-caption);
     }
 
     .error-dismiss {

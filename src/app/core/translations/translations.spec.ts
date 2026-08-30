@@ -42,6 +42,9 @@ describe('translations', () => {
       'shell.movements',
       'shell.stats',
       'shell.settings',
+      'shell.storageStatus',
+      'shell.quickAdd',
+      'shell.backup',
     ]) {
       expect(TRANSLATIONS.en[key]).toBeTruthy();
       expect(TRANSLATIONS.es[key]).toBeTruthy();
