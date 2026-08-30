@@ -110,6 +110,17 @@
   color: var(--on-surface);
 }
 
+/* Card header: caps label separated from the card body by a 1px line
+   (design: "headers within cards are separated by a horizontal line"). */
+%card-header {
+  @extend %caps-label;
+
+  color: var(--on-surface);
+  margin: 0 0 var(--space-md);
+  padding-bottom: var(--space-sm);
+  border-bottom: var(--border-hard);
+}
+
 %field {
   padding: 0.5rem;
   border: var(--border-hard);
