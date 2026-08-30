@@ -4,7 +4,8 @@ Migrate the existing Angular 21 PWA to the Stitch "LedgerFlow / Rigid Minimalism
 (`docs/new-design/*_ledgerflow/`) **without changing any functionality, business logic, data
 models, or user flows**.
 
-**Status:** plan only — no code has been changed.
+**Status:** complete — all phases (0–7) implemented on `feat/new_design`; see
+[Phase 7 sign-off](#7-polish--sign-off) for the final pass and deviations.
 
 ---
 
@@ -271,6 +272,59 @@ Each phase: implement → `ng test` green → quick manual smoke of the affected
 | **5. Stats** | KPI cards, bars, balances, warning remap. Smoke: conversion-failure path. |
 | **6. Settings** | Cards, chips/deactivate, selects, backup & language cards. Smoke: backup/restore, offline disable. |
 | **7. Polish & sign-off** | Empty/loading/error states in the new language; focus-visible pass; mobile pass at 320/768px; full `ng test`; end-to-end manual regression (onboard → quick add → transfer → filter → stats → settings → backup → restore). |
+
+### 7. Polish & sign-off — outcome
+
+Automated portion complete; deviations from the plan recorded below. No functionality,
+markup hooks, or translation keys changed anywhere in this phase — classes kept
+(`.empty`, `.empty-state`, `.rate-status`, `.rate-error`, `.info`, `.success`, `.error`,
+`.backup-banner-error`, `.conversion-warning`), so specs stayed green untouched.
+
+**Empty/loading/error state treatments (now uniform):**
+- Empty states (Movements table, Quick Add no-accounts/no-categories) use a shared
+  `%empty-state` placeholder: dashed 1px `--outline` border on `--surface-lowest`, centered
+  `--on-surface-variant` text — the same dashed language as the "+ Add" affordances (§3.3).
+- Page/card-level alerts keep the tinted-strip treatment on their sanctioned ramps
+  (`%status-strip` — now deduplicated into `%status-strip-primary`/`%status-strip-error` —
+  in Settings, Language card, Backup card, backup banner error; the Dashboard conversion
+  warning is hand-rolled to the same error-container recipe because it also carries the
+  caps-label type). Backup card's transient
+  "Working…" (`.info`) and success (`.success`) notes were promoted from bare blue text to
+  the primary-tint strip used by Settings, removing the last inconsistency.
+- Inline form-level notes stay text-only by design (no strips inside forms): rate
+  fetch/status and inline errors (`--error` ink, caption/label ramp); Onboarding's
+  `.info`/`.error` normalized to the caption size.
+
+**Focus-visible pass:**
+- Single global rule (`styles.scss`): `:focus-visible` = 2px solid `--primary`, offset 2px;
+  square corners match the design. Removed the one redundant local duplicate (Movements
+  `.th-sort`). Keyboard navigation unchanged (skip link, `aria-current`, live regions).
+- The skip-link target (`main[tabindex="-1"]`) intentionally suppresses the outline on the
+  whole content column (`:focus`, programmatic focus) — documented in place.
+
+**Mobile pass (320px / 768px):**
+- Added a `--nav-bar-size: 4rem` token (recorded in `DESIGN.md` Layout); the bottom nav,
+  mobile top bar, main-area bottom padding, and the undo-toast's clearance offset all derive
+  from it (previously the toast
+  hardcoded 64px while the shell used an SCSS variable).
+- `.main-area` now uses `100dvh` (with a `100vh` fallback) so mobile browser chrome doesn't
+  strand content behind the bottom nav.
+- Overlap audit: strips are in-flow (no fixed positioning), bottom nav z-30 < top bar z-40 <
+  skip link z-50 < undo toast z-60, and the toast offsets by nav height + safe-area inset;
+  safe-area insets respected on the nav bar, main area, and toast. Form grids, filter bar,
+  and step tabs collapse/stack at the 768px regime; the movements table scrolls horizontally
+  at 320px.
+
+**Deviations from the plan:** none functional. The additions above (`%empty-state`
+dashed treatment, `--nav-bar-size` token, `dvh` viewport height, and the Quick Add compact
+form's rate/status notes spanning the full grid row instead of landing in one cell) are
+polish-level extensions of the documented design language, not changes to any flow.
+
+**Remaining for human sign-off:** the manual end-to-end regression pass (onboard → quick add
+→ transfer → filter → stats → settings → backup → restore, including offline rate failure and
+backup error paths) — the automated suite (552 tests) covers the logic and rendered state
+text, but a visual click-through on real hardware (including iOS safe areas) is not
+agent-verifiable.
 
 ---
 

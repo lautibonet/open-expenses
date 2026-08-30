@@ -344,14 +344,18 @@
   display: none;
 }
 
+/* Inline status notes on the wizard: primary tint ink for info, error ink
+   for failures — sized to the caption ramp used by status strips elsewhere. */
 .info {
   color: var(--primary);
   margin: 0.5rem 0;
+  font-size: var(--type-caption);
 }
 
 .error {
   color: var(--error);
   margin: 0.5rem 0;
+  font-size: var(--type-caption);
 }
 
 @media (max-width: 768px) {

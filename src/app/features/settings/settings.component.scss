@@ -45,19 +45,11 @@
 }
 
 .error {
-  @extend %status-strip;
-
-  background: var(--error-container);
-  color: var(--on-error-container);
-  border: 1px solid var(--on-error-container);
+  @extend %status-strip-error;
 }
 
 .success {
-  @extend %status-strip;
-
-  background: var(--primary-fixed);
-  color: var(--on-primary-fixed);
-  border: 1px solid var(--primary);
+  @extend %status-strip-primary;
 }
 
 .inline-form {

@@ -45,23 +45,19 @@
   display: none;
 }
 
-.info {
-  color: var(--primary);
-  margin: var(--space-md) 0 0;
-}
-
+/* Transient status (working…) and success read as status strips, on the
+   primary tint — same treatment as the Settings page strips. */
+.info,
 .success {
-  color: var(--primary);
+  @extend %status-strip-primary;
+
   margin: var(--space-md) 0 0;
 }
 
 .error {
-  @extend %status-strip;
+  @extend %status-strip-error;
 
   margin: var(--space-md) 0 0;
-  background: var(--error-container);
-  color: var(--on-error-container);
-  border: 1px solid var(--on-error-container);
 }
 
 .restore-confirm {
