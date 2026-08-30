@@ -103,7 +103,14 @@ describe('translations', () => {
   });
 
   it('covers the scope keys', () => {
-    for (const key of ['scope.allTime', 'scope.yearAria', 'scope.monthAria']) {
+    for (const key of [
+      'scope.allTime',
+      'scope.yearAria',
+      'scope.monthAria',
+      'scope.groupAria',
+      'scope.prevMonthAria',
+      'scope.nextMonthAria',
+    ]) {
       expect(TRANSLATIONS.en[key]).toBeTruthy();
       expect(TRANSLATIONS.es[key]).toBeTruthy();
     }
@@ -111,6 +118,11 @@ describe('translations', () => {
 
   it('covers the movements keys', () => {
     for (const key of [
+      'movements.title',
+      'movements.subtitle',
+      'movements.netFlow',
+      'movements.flowIn',
+      'movements.flowOut',
       'movements.addTransfer',
       'movements.transferShortcut',
       'movements.sortNewest',

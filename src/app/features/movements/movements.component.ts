@@ -28,17 +28,16 @@ import {
   QuickAddCardComponent,
   TransactionFormPayload,
 } from './quick-add-card/quick-add-card.component';
+import {
+  NetFlowCardComponent,
+  MovementItem,
+} from './net-flow-card/net-flow-card.component';
 
 interface ExchangeRateState {
   loading: boolean;
   error: string;
   rate: number | null;
   date: string;
-}
-
-interface MovementItem {
-  type: 'transaction' | 'transfer';
-  data: Transaction | Transfer;
 }
 
 type MovementViewRow =
@@ -64,7 +63,7 @@ interface TransferForm {
 
 @Component({
   selector: 'app-movements',
-  imports: [FormsModule, DatePipe, NgClass, QuickAddCardComponent],
+  imports: [FormsModule, DatePipe, NgClass, QuickAddCardComponent, NetFlowCardComponent],
   templateUrl: './movements.component.html',
   styleUrl: './movements.component.scss',
   host: { '(document:keydown)': 'onDocKeydown($event)' },
@@ -333,6 +332,31 @@ export class MovementsComponent implements OnInit, OnDestroy {
         ? current.period
         : getCurrentPeriod();
     await this.setScope({ kind: 'month', period, year: value });
+  }
+
+  isAllTimeScope(): boolean {
+    return isAllTime(this.scope());
+  }
+
+  canStepMonth(delta: -1 | 1): boolean {
+    const s = this.scope();
+    if (isAllTime(s)) return false;
+    const next = s.period + delta;
+    return next >= 1 && next <= 12;
+  }
+
+  async stepScopeMonth(delta: -1 | 1): Promise<void> {
+    const s = this.scope();
+    if (isAllTime(s) || !this.canStepMonth(delta)) return;
+    await this.onScopeMonthChange(s.period + delta);
+  }
+
+  async toggleAllTime(): Promise<void> {
+    if (isAllTime(this.scope())) {
+      await this.onScopeYearChange(getCurrentYear());
+    } else {
+      await this.onScopeYearChange('all-time');
+    }
   }
 
   async onScopeMonthChange(period: number): Promise<void> {

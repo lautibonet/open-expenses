@@ -4,6 +4,105 @@
   padding-bottom: 1rem;
 }
 
+.page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding-bottom: var(--space-md);
+  border-bottom: var(--border-hard);
+  margin-bottom: var(--space-lg);
+
+  h1 {
+    font-size: var(--type-display);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: var(--leading-display);
+    margin: 0;
+    color: var(--on-surface);
+  }
+
+  .subtitle {
+    font-size: var(--type-body-lg);
+    line-height: var(--leading-body-lg);
+    color: var(--on-surface-variant);
+    margin: var(--space-xs) 0 0;
+  }
+}
+
+.scope-control {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-sm);
+}
+
+.scope-stepper {
+  display: flex;
+  align-items: stretch;
+  background: var(--surface-lowest);
+  border: var(--border-hard);
+
+  .step-btn {
+    display: flex;
+    align-items: center;
+    padding: 0 var(--space-sm);
+    border: none;
+    background: none;
+    cursor: pointer;
+    color: var(--on-surface);
+
+    svg {
+      width: 1rem;
+      height: 1rem;
+    }
+
+    &:hover:not(:disabled) {
+      background: var(--surface-container);
+    }
+
+    &:disabled {
+      color: var(--outline);
+      cursor: default;
+    }
+  }
+
+  .scope-selects {
+    display: flex;
+    border-left: var(--border-hard);
+    border-right: var(--border-hard);
+
+    select {
+      @extend %field;
+
+      border: none;
+      background: transparent;
+      font-family: var(--font-data);
+      font-variant-numeric: tabular-nums;
+    }
+  }
+}
+
+.all-time-btn {
+  @extend %caps-label;
+
+  padding: 0 var(--space-md);
+  border: var(--border-hard);
+  background: var(--surface-lowest);
+  color: var(--on-surface-variant);
+  cursor: pointer;
+
+  &:hover {
+    background: var(--surface-container);
+  }
+
+  &.active {
+    background: var(--primary);
+    border-color: var(--on-surface);
+    color: var(--surface-lowest);
+  }
+}
+
 .controls {
   display: flex;
   gap: 0.5rem;
@@ -280,7 +379,12 @@
   @extend %rate-source;
 }
 
-@media (max-width: 560px) {
+@media (max-width: 768px) {
+  .page-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
   .controls {
     flex-wrap: wrap;
   }
