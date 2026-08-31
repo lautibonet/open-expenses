@@ -9,10 +9,11 @@ import { Account } from '../../core/models/account.model';
 import { Category, CategoryType } from '../../core/models/category.model';
 import { BackupCardComponent } from './backup-card/backup-card.component';
 import { LanguageCardComponent } from './language-card/language-card.component';
+import { DismissibleAlertComponent } from '../../shared/components/dismissible-alert/dismissible-alert.component';
 
 @Component({
   selector: 'app-settings',
-  imports: [FormsModule, BackupCardComponent, LanguageCardComponent],
+  imports: [FormsModule, BackupCardComponent, LanguageCardComponent, DismissibleAlertComponent],
   templateUrl: './settings.component.html',
   styleUrl: './settings.component.scss',
 })
@@ -34,6 +35,7 @@ export class SettingsComponent implements OnInit {
   newCategoryType = signal<CategoryType>('expense');
   errorMessage = signal('');
   successMessage = signal('');
+  statusEpoch = signal(0);
   editingAccountBalance = signal<{ id: number; value: number } | null>(null);
   editingAccountName = signal<{ id: number; value: string } | null>(null);
   editingCategoryName = signal<{ id: number; value: string } | null>(null);
@@ -50,6 +52,7 @@ export class SettingsComponent implements OnInit {
   }
 
   async addAccount(): Promise<void> {
+    this.clearStatus();
     try {
       await this.accountService.create(
         this.newAccountName(),
@@ -58,7 +61,6 @@ export class SettingsComponent implements OnInit {
       );
       this.newAccountName.set('');
       this.newAccountBalance.set(0);
-      this.errorMessage.set('');
       await this.refresh();
     } catch (e: unknown) {
       this.errorMessage.set(
@@ -78,6 +80,7 @@ export class SettingsComponent implements OnInit {
   async saveAccountName(): Promise<void> {
     const editing = this.editingAccountName();
     if (!editing) return;
+    this.clearStatus();
     try {
       await this.accountService.update(editing.id, { name: editing.value });
       this.editingAccountName.set(null);
@@ -101,6 +104,7 @@ export class SettingsComponent implements OnInit {
   async saveAccountBalance(): Promise<void> {
     const editing = this.editingAccountBalance();
     if (!editing) return;
+    this.clearStatus();
     try {
       await this.accountService.update(editing.id, { initialBalance: editing.value });
       this.editingAccountBalance.set(null);
@@ -140,10 +144,10 @@ export class SettingsComponent implements OnInit {
   }
 
   async addCategory(): Promise<void> {
+    this.clearStatus();
     try {
       await this.categoryService.create(this.newCategoryName(), this.newCategoryType());
       this.newCategoryName.set('');
-      this.errorMessage.set('');
       await this.refresh();
     } catch (e: unknown) {
       this.errorMessage.set(
@@ -163,6 +167,7 @@ export class SettingsComponent implements OnInit {
   async saveCategoryName(): Promise<void> {
     const editing = this.editingCategoryName();
     if (!editing) return;
+    this.clearStatus();
     try {
       await this.categoryService.update(editing.id, { name: editing.value });
       this.editingCategoryName.set(null);
@@ -186,8 +191,8 @@ export class SettingsComponent implements OnInit {
   }
 
   async updateBaseCurrency(): Promise<void> {
+    this.clearStatus();
     try {
-      this.errorMessage.set('');
       await this.profileService.updateBaseCurrency(this.baseCurrency());
       this.showSuccess(this.language.t('settings.currencyUpdated'));
     } catch (e: unknown) {
@@ -195,6 +200,12 @@ export class SettingsComponent implements OnInit {
         e instanceof Error ? e.message : this.language.t('settings.failedUpdateCurrency'),
       );
     }
+  }
+
+  private clearStatus(): void {
+    this.statusEpoch.update((n) => n + 1);
+    this.errorMessage.set('');
+    this.successMessage.set('');
   }
 
   private showSuccess(message: string): void {

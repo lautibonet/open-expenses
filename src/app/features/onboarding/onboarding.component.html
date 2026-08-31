@@ -110,9 +110,7 @@
           @if (noBackupMessage()) {
             <p class="info">{{ noBackupMessage() }}</p>
           }
-          @if (errorMessage()) {
-            <p class="error">{{ errorMessage() }}</p>
-          }
+          <app-dismissible-alert appearance="note" variant="error" [message]="errorMessage()" [resetKey]="statusEpoch()" />
         </section>
       }
 
@@ -202,9 +200,7 @@
             <button class="btn dashed" (click)="addAccount()">{{ languageService.t('onboarding.accounts.add') }}</button>
           </div>
 
-          @if (errorMessage()) {
-            <p class="error">{{ errorMessage() }}</p>
-          }
+          <app-dismissible-alert appearance="note" variant="error" [message]="errorMessage()" [resetKey]="statusEpoch()" />
 
           @if (accounts().length > 0) {
             <ul class="account-list">
@@ -236,9 +232,7 @@
           <h1 class="step-title">{{ languageService.t('onboarding.categories.title') }}</h1>
           <p class="step-description">{{ languageService.t('onboarding.categories.description') }}</p>
 
-          @if (errorMessage()) {
-            <p class="error">{{ errorMessage() }}</p>
-          }
+          <app-dismissible-alert appearance="note" variant="error" [message]="errorMessage()" [resetKey]="statusEpoch()" />
 
           <table class="category-table">
             <thead>

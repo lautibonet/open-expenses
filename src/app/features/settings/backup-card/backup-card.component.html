@@ -33,15 +33,21 @@
     </button>
   </div>
 
-  @if (isBusy()) {
-    <p class="info">{{ language.t('backup.card.working') }}</p>
-  }
-  @if (message()) {
-    <p class="success">{{ message() }}</p>
-  }
-  @if (errorMessage()) {
-    <p class="error">{{ errorMessage() }}</p>
-  }
+  <app-dismissible-alert
+    variant="info"
+    [message]="isBusy() ? language.t('backup.card.working') : ''"
+    [resetKey]="statusEpoch()"
+  />
+  <app-dismissible-alert
+    variant="success"
+    [message]="message()"
+    [resetKey]="statusEpoch()"
+  />
+  <app-dismissible-alert
+    variant="error"
+    [message]="errorMessage()"
+    [resetKey]="statusEpoch()"
+  />
 
   @if (pendingRestore()) {
     <div class="restore-confirm">

@@ -86,11 +86,13 @@
       <span class="label">{{ language.t('stats.allAccounts', { currency: baseCurrency() }) }}</span>
       <span class="value">{{ formatMoney(totalBalanceBaseCurrency()) }}</span>
     </div>
-    @if (conversionFailed()) {
-      <div class="conversion-warning" role="alert">
-        {{ language.t('stats.conversionWarning', { currency: baseCurrency() }) }}
-      </div>
-    }
+    <app-dismissible-alert
+      class="conversion-warning"
+      role="alert"
+      variant="error"
+      [message]="conversionFailed() ? language.t('stats.conversionWarning', { currency: baseCurrency() }) : ''"
+      [resetKey]="conversionFailed()"
+    />
   </section>
 
   <section class="card">

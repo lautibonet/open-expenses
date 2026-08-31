@@ -1463,6 +1463,39 @@ describe('MovementsComponent - contextual delete confirmation and undo', () => {
 
     expect(component.undo()).toBeNull();
   });
+
+  it('should dismiss the undo toast via its close affordance without undoing', async () => {
+    const txn = await transactionService.create(
+      accountId,
+      categoryId,
+      500,
+      new Date(),
+      getCurrentPeriod(),
+    );
+    await component.ngOnInit();
+    const item = component.movements().find((m) => (m.data as Transaction).id === txn.id)!;
+
+    component.requestDelete(item);
+    await component.confirmDelete();
+    fixture.detectChanges();
+    expect(component.undo()).not.toBeNull();
+
+    const toast = fixture.nativeElement.querySelector('.undo-toast') as HTMLElement;
+    const dismiss = toast.querySelector('.toast-dismiss') as HTMLButtonElement;
+    expect(dismiss).toBeTruthy();
+    expect(dismiss.querySelector('svg')).toBeTruthy();
+    expect(dismiss.textContent!.trim()).toBe('');
+    expect(dismiss.getAttribute('aria-label')).toBeTruthy();
+
+    dismiss.click();
+    fixture.detectChanges();
+
+    expect(component.undo()).toBeNull();
+    expect(await transactionService.getAll()).toHaveLength(0);
+
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(component.undo()).toBeNull();
+  });
 });
 
 describe('MovementsComponent - icon row actions', () => {

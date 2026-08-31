@@ -498,4 +498,114 @@ describe('SettingsComponent - language card', () => {
 
     expect(languageService.activeLanguage()).toBe('es');
   });
+
+  it('brings the language card success note back after dismissal on the next save', async () => {
+    const select = languageSelect();
+    const updateButton = languageUpdateButton();
+    select.value = 'es';
+    select.dispatchEvent(new Event('change'));
+    updateButton.click();
+    await flush();
+    fixture.detectChanges();
+
+    const card = fixture.nativeElement.querySelector('app-language-card');
+    const alert = card.querySelector('.alert') as HTMLElement;
+    expect(alert).toBeTruthy();
+
+    (alert.querySelector('.alert-dismiss') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(card.querySelector('.alert')).toBeNull();
+
+    select.value = 'en';
+    select.dispatchEvent(new Event('change'));
+    updateButton.click();
+    await flush();
+    fixture.detectChanges();
+    expect(card.querySelector('.alert')).toBeTruthy();
+  });
+});
+
+describe('SettingsComponent - dismissible alerts', () => {
+  let fixture: ComponentFixture<SettingsComponent>;
+  let component: SettingsComponent;
+  let accountService: AccountService;
+  let accountId: number;
+
+  const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 10));
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    await TestBed.configureTestingModule({
+      imports: [SettingsComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(SettingsComponent);
+    component = fixture.componentInstance;
+    accountService = TestBed.inject(AccountService);
+
+    const account = await accountService.create('Cash', 'EUR', 100000);
+    accountId = account.id!;
+    await component.ngOnInit();
+    fixture.detectChanges();
+  });
+
+  afterEach(async () => {
+    await db.delete();
+  });
+
+  function errorAlert(): HTMLElement {
+    return fixture.nativeElement.querySelector('app-dismissible-alert[role="alert"] .alert');
+  }
+
+  function successAlert(): HTMLElement {
+    return fixture.nativeElement.querySelector('app-dismissible-alert[role="status"] .alert');
+  }
+
+  function dismissOf(alert: HTMLElement): HTMLButtonElement {
+    return alert.querySelector('.alert-dismiss') as HTMLButtonElement;
+  }
+
+  it('renders the error strip with an icon-only dismiss button', async () => {
+    component.startEditAccountName(accountId, 'Cash');
+    component.editingAccountName.set({ id: accountId, value: '' });
+    await component.saveAccountName();
+    fixture.detectChanges();
+
+    const alert = errorAlert();
+    expect(alert).toBeTruthy();
+    const dismiss = dismissOf(alert);
+    expect(dismiss.querySelector('svg')).toBeTruthy();
+    expect(dismiss.textContent!.trim()).toBe('');
+    expect(dismiss.getAttribute('aria-label')).toBeTruthy();
+  });
+
+  it('hides the error strip when dismissed and brings it back on the next failure', async () => {
+    component.startEditAccountName(accountId, 'Cash');
+    component.editingAccountName.set({ id: accountId, value: '' });
+    await component.saveAccountName();
+    fixture.detectChanges();
+    expect(errorAlert()).toBeTruthy();
+
+    dismissOf(errorAlert()).click();
+    fixture.detectChanges();
+    expect(errorAlert()).toBeNull();
+
+    component.startEditAccountBalance(accountId, -100);
+    await component.saveAccountBalance();
+    fixture.detectChanges();
+    expect(errorAlert()).toBeTruthy();
+  });
+
+  it('dismisses the success strip', async () => {
+    component.startEditAccountName(accountId, 'Cash');
+    component.editingAccountName.set({ id: accountId, value: 'Wallet' });
+    await component.saveAccountName();
+    fixture.detectChanges();
+    expect(successAlert()).toBeTruthy();
+
+    dismissOf(successAlert()).click();
+    fixture.detectChanges();
+    expect(successAlert()).toBeNull();
+  });
 });

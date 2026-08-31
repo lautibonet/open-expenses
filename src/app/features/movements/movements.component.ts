@@ -747,6 +747,10 @@ export class MovementsComponent implements OnInit, OnDestroy {
     await this.applyScopeOptions();
   }
 
+  dismissUndo(): void {
+    this.clearUndo();
+  }
+
   private setUndo(pending: PendingDelete): void {
     this.undo.set(pending);
     this.scheduleUndoAutoDismiss();

@@ -518,6 +518,17 @@
     >
       <span class="undo-message"> {{ undoDeleteLabel(pending) }} </span>
       <button class="btn small" (click)="undoDelete()">{{ language.t('movements.undo') }}</button>
+      <button
+        type="button"
+        class="toast-dismiss"
+        (click)="dismissUndo()"
+        [attr.aria-label]="language.t('alert.dismiss')"
+        [title]="language.t('alert.dismiss')"
+      >
+        <svg aria-hidden="true" viewBox="0 0 10 10" focusable="false">
+          <path d="M2 2l6 6M8 2 2 8" fill="none" stroke="currentColor" stroke-width="1.5" />
+        </svg>
+      </button>
     </div>
   }
 </div>

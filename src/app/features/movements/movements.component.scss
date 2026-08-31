@@ -80,6 +80,10 @@
 
     color: var(--on-surface);
   }
+
+  .toast-dismiss {
+    @extend %alert-dismiss;
+  }
 }
 
 .form-card {

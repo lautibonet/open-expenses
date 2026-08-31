@@ -32,14 +32,7 @@
   }
 }
 
-.success {
-  @extend %status-strip-primary;
-
-  margin: var(--space-md) 0 0;
-}
-
-.error {
-  @extend %status-strip-error;
-
+/* Dismissible status alerts (success, failure) keep the strip treatment. */
+app-dismissible-alert {
   margin: var(--space-md) 0 0;
 }

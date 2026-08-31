@@ -352,10 +352,9 @@
   font-size: var(--type-caption);
 }
 
-.error {
-  color: var(--error);
+/* Dismissible error notes use the shared alert in its note appearance. */
+app-dismissible-alert {
   margin: 0.5rem 0;
-  font-size: var(--type-caption);
 }
 
 @media (max-width: 768px) {

@@ -766,7 +766,25 @@ describe('DashboardComponent - page header, scope control and restyled cards', (
     await component.ngOnInit();
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('.conversion-warning')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.conversion-warning .alert')).toBeNull();
+  });
+
+  it('dismisses the conversion warning and keeps it hidden while the failure persists', async () => {
+    await accountService.create('Cash', 'EUR', 100000);
+    await accountService.create('USD Account', 'USD', 50000);
+    networkService.isOnline.set(false);
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const dismiss = fixture.nativeElement.querySelector(
+      '.conversion-warning .alert-dismiss',
+    ) as HTMLButtonElement;
+    expect(dismiss).toBeTruthy();
+    dismiss.click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.conversion-warning .alert')).toBeNull();
   });
 });
 

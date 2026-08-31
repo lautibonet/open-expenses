@@ -4,6 +4,7 @@ const APP_NAME = 'Open Expenses';
 
 const en: Record<string, string> = {
   'app.title': APP_NAME,
+  'alert.dismiss': 'Close',
   'shell.skipToContent': 'Skip to content',
   'shell.primaryNavAria': 'Primary',
   'shell.movements': 'Movements',
@@ -297,6 +298,7 @@ const en: Record<string, string> = {
 
 const es: Record<string, string> = {
   'app.title': APP_NAME,
+  'alert.dismiss': 'Cerrar',
   'shell.skipToContent': 'Saltar al contenido',
   'shell.primaryNavAria': 'Principal',
   'shell.movements': 'Movimientos',
