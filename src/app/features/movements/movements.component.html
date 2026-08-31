@@ -312,26 +312,79 @@
                   </td>
                   <td>{{ getAccountName(txn.accountId) }}</td>
                   <td>
-                    <button class="btn small" (click)="openQuickAddForEdit(txn)">
-                      {{ language.t('movements.edit') }}
-                    </button>
                     @if (confirmingDelete() === item) {
-                      <span
-                        class="delete-confirm"
-                        aria-live="polite"
-                        [attr.aria-label]="language.t('movements.confirmTransactionDeletionAria')"
-                      >
+                      <span class="visually-hidden" aria-live="polite">
                         {{ deleteConfirmationLabel(confirmingDelete()!) }}
                       </span>
-                      <button class="btn small danger" (click)="confirmDelete()">
-                        {{ language.t('movements.delete') }}
+                      <button
+                        #deleteConfirmBtn
+                        class="btn small danger icon-btn"
+                        (click)="confirmDelete()"
+                        [attr.aria-label]="language.t('movements.confirmTransactionDeletionAria')"
+                        [title]="language.t('movements.confirmTransactionDeletionAria')"
+                      >
+                        <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                          <path
+                            d="M20 6 9 17l-5-5"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          />
+                        </svg>
                       </button>
-                      <button class="btn small" (click)="cancelDelete()">
-                        {{ language.t('movements.cancel') }}
+                      <button
+                        class="btn small icon-btn"
+                        (click)="cancelDelete()"
+                        [attr.aria-label]="language.t('movements.cancelDeletionAria')"
+                        [title]="language.t('movements.cancelDeletionAria')"
+                      >
+                        <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                          <path
+                            d="M18 6 6 18M6 6l12 12"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          />
+                        </svg>
                       </button>
                     } @else {
-                      <button class="btn small danger" (click)="requestDelete(item)">
-                        {{ language.t('movements.delete') }}
+                      <button
+                        class="btn small icon-btn"
+                        (click)="openQuickAddForEdit(txn)"
+                        [attr.aria-label]="language.t('movements.editMovementAria')"
+                        [title]="language.t('movements.editMovementAria')"
+                      >
+                        <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                          <path
+                            d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          />
+                        </svg>
+                      </button>
+                      <button
+                        class="btn small danger icon-btn"
+                        (click)="requestDelete(item)"
+                        [attr.aria-label]="language.t('movements.deleteMovementAria')"
+                        [title]="language.t('movements.deleteMovementAria')"
+                      >
+                        <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                          <path
+                            d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          />
+                        </svg>
                       </button>
                     }
                   </td>
@@ -353,26 +406,79 @@
                     }
                   </td>
                   <td>
-                    <button class="btn small" (click)="openTransferForm(tr.id!)">
-                      {{ language.t('movements.edit') }}
-                    </button>
                     @if (confirmingDelete() === item) {
-                      <span
-                        class="delete-confirm"
-                        aria-live="polite"
-                        [attr.aria-label]="language.t('movements.confirmTransferDeletionAria')"
-                      >
+                      <span class="visually-hidden" aria-live="polite">
                         {{ deleteConfirmationLabel(confirmingDelete()!) }}
                       </span>
-                      <button class="btn small danger" (click)="confirmDelete()">
-                        {{ language.t('movements.delete') }}
+                      <button
+                        #deleteConfirmBtn
+                        class="btn small danger icon-btn"
+                        (click)="confirmDelete()"
+                        [attr.aria-label]="language.t('movements.confirmTransferDeletionAria')"
+                        [title]="language.t('movements.confirmTransferDeletionAria')"
+                      >
+                        <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                          <path
+                            d="M20 6 9 17l-5-5"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          />
+                        </svg>
                       </button>
-                      <button class="btn small" (click)="cancelDelete()">
-                        {{ language.t('movements.cancel') }}
+                      <button
+                        class="btn small icon-btn"
+                        (click)="cancelDelete()"
+                        [attr.aria-label]="language.t('movements.cancelDeletionAria')"
+                        [title]="language.t('movements.cancelDeletionAria')"
+                      >
+                        <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                          <path
+                            d="M18 6 6 18M6 6l12 12"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          />
+                        </svg>
                       </button>
                     } @else {
-                      <button class="btn small danger" (click)="requestDelete(item)">
-                        {{ language.t('movements.delete') }}
+                      <button
+                        class="btn small icon-btn"
+                        (click)="openTransferForm(tr.id!)"
+                        [attr.aria-label]="language.t('movements.editMovementAria')"
+                        [title]="language.t('movements.editMovementAria')"
+                      >
+                        <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                          <path
+                            d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          />
+                        </svg>
+                      </button>
+                      <button
+                        class="btn small danger icon-btn"
+                        (click)="requestDelete(item)"
+                        [attr.aria-label]="language.t('movements.deleteMovementAria')"
+                        [title]="language.t('movements.deleteMovementAria')"
+                      >
+                        <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                          <path
+                            d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          />
+                        </svg>
                       </button>
                     }
                   </td>

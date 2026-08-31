@@ -209,6 +209,7 @@ Corners are **zero everywhere**: buttons, inputs, cards, modals, chips, and the 
 - **Primary:** Primary Container (#0052ff) fill, white text, hard black border; hover deepens to Primary Deep. Reserved for the single prominent action on a form or view.
 - **Danger:** two sanctioned treatments — **filled** Error with white text for panel/card-level destructive confirmations (restore), and **outline** Error text and border for anything inside a table row or dense list.
 - **Small:** reduced padding (0.25rem 0.5rem); same caps type.
+- **Icon-only:** row actions that need no text render as small square icon buttons (pencil Edit, trash Delete, tick/X delete confirm/cancel) — inline SVG at `1rem`, `currentColor` stroke, no visible label; the accessible name comes from `aria-label` mirrored to `title`. Confirm/cancel swaps the whole action pair and announces the deleted-movement prompt through a visually-hidden polite live region, never visible message text.
 - **Disabled:** 0.6 opacity, default cursor, no press.
 
 ### Cards / Containers
@@ -229,7 +230,7 @@ Corners are **zero everywhere**: buttons, inputs, cards, modals, chips, and the 
 
 ### Signature Components
 - **Backup Banner:** a non-interactive full-width status strip (Primary Fixed fill, Primary bottom hairline) with its content aligned to the centered content column via the chrome gutter. Status reads left: the method label ("Google Drive") in Primary Deep at 600, with the relative-time caption beneath it; a compact primary **Back up** button (`%btn-primary`/`%btn-small`) sits pinned right and is the strip's only interactive element. Offline, it degrades to Surface Container Low with the method and caption in On Surface and renders a genuinely disabled neutral button. Backup failures render an error strip in the error-container family below the banner, announced via `role="alert"`, with a small outline-danger Dismiss button. Its sibling Install Prompt uses the same strip language.
-- **Movement Rows:** no Type column and no direction arrows — the 4px left edge stripe is the type's only signal: green (income), red (expense), grey (transfer). Amounts always render positive in JetBrains Mono, colored only by direction: Income green, Error red; transfers stay neutral ink.
+- **Movement Rows:** no Type column and no direction arrows — the 4px left edge stripe is the type's only signal: green (income), red (expense), grey (transfer). Amounts always render positive in JetBrains Mono, colored only by direction: Income green, Error red; transfers stay neutral ink. Actions are icon-only: pencil Edit, trash Delete (outline danger); Delete swaps the pair for tick (confirm, outline danger) / X (cancel) icon buttons with the prompt announced off-screen, and the Undo Toast covers recovery.
 - **Undo Toast:** a fixed, bottom-center Surface Lowest strip with a hard black border pairing the deleted-movement label with a small Undo button. It presses like every button; it never floats.
 - **Tables:** headers are caps labels in On Surface Variant, rows separated by 1px Surface Container Low rules; Date is the first column and month group header rows span the full count; transfer rows tint Background and carry the grey stripe; amount cells are mono and colored only by direction; inactive rows dim to 0.6 opacity.
 

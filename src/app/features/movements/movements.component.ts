@@ -166,6 +166,14 @@ export class MovementsComponent implements OnInit, OnDestroy {
   }
   transferHeading = viewChild<ElementRef<HTMLHeadingElement>>('transferHeading');
 
+  deleteConfirmButton = viewChild<ElementRef<HTMLButtonElement>>('deleteConfirmBtn');
+
+  private focusDeleteConfirm = effect(() => {
+    if (this.confirmingDelete()) {
+      this.deleteConfirmButton()?.nativeElement.focus();
+    }
+  });
+
   private focusTransferForm = effect(() => {
     const heading = this.transferHeading();
     if (heading) {
