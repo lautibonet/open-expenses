@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { vi } from 'vitest';
 import { SettingsComponent } from './settings.component';
 import { AccountService } from '../../core/services/account.service';
 import { CategoryService } from '../../core/services/category.service';
@@ -7,11 +8,14 @@ import { LanguageService } from '../../core/services/language.service';
 import { DataVersionService } from '../../core/services/data-version.service';
 import { db } from '../../core/db/database';
 
-describe('SettingsComponent - inline editing', () => {
+const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 10));
+
+describe('SettingsComponent - pencil edit state (component)', () => {
   let fixture: ComponentFixture<SettingsComponent>;
   let component: SettingsComponent;
   let accountService: AccountService;
   let categoryService: CategoryService;
+  let profileService: ProfileService;
   let accountId: number;
   let categoryId: number;
 
@@ -26,7 +30,9 @@ describe('SettingsComponent - inline editing', () => {
     component = fixture.componentInstance;
     accountService = TestBed.inject(AccountService);
     categoryService = TestBed.inject(CategoryService);
+    profileService = TestBed.inject(ProfileService);
 
+    await profileService.completeOnboarding('EUR', 'en');
     const account = await accountService.create('Cash', 'EUR', 100000);
     accountId = account.id!;
     const category = await categoryService.create('Food', 'expense');
@@ -38,150 +44,158 @@ describe('SettingsComponent - inline editing', () => {
     await db.delete();
   });
 
-  it('should start editing account initialBalance', () => {
-    component.startEditAccountBalance(accountId, 100000);
-    expect(component.editingAccountBalance()).toEqual({ id: accountId, value: 100000 });
+  it('opens the account edit state with name and initial balance', () => {
+    component.startEditAccount(accountId);
+    expect(component.editingAccount()).toEqual({
+      id: accountId,
+      name: 'Cash',
+      initialBalance: 100000,
+    });
+    expect(component.editError()).toBe('');
   });
 
-  it('should cancel editing account initialBalance', () => {
-    component.startEditAccountBalance(accountId, 100000);
-    component.cancelEditAccountBalance();
-    expect(component.editingAccountBalance()).toBeNull();
+  it('cancels the account edit state', () => {
+    component.startEditAccount(accountId);
+    component.cancelEditAccount();
+    expect(component.editingAccount()).toBeNull();
   });
 
-  it('should save account initialBalance', async () => {
-    component.startEditAccountBalance(accountId, 100000);
-    component.editingAccountBalance.set({ id: accountId, value: 200000 });
-    await component.saveAccountBalance();
-    expect(component.editingAccountBalance()).toBeNull();
+  it('saves account name and initial balance from the single edit state', async () => {
+    component.startEditAccount(accountId);
+    component.editAccountName('Wallet');
+    component.editAccountBalance(200000);
+    await component.saveAccountEdit();
+
+    expect(component.editingAccount()).toBeNull();
     const updated = await accountService.getById(accountId);
+    expect(updated?.name).toBe('Wallet');
     expect(updated?.initialBalance).toBe(200000);
   });
 
-  it('should validate account initialBalance is not negative', async () => {
-    component.startEditAccountBalance(accountId, 100000);
-    component.editingAccountBalance.set({ id: accountId, value: -100 });
-    await component.saveAccountBalance();
-    expect(component.errorMessage()).toContain('cannot be negative');
-    expect(component.editingAccountBalance()).not.toBeNull();
-  });
+  it('keeps the edit state open with an inline error for a negative balance', async () => {
+    component.startEditAccount(accountId);
+    component.editAccountBalance(-100);
+    await component.saveAccountEdit();
 
-  it('should start editing account name', () => {
-    component.startEditAccountName(accountId, 'Cash');
-    expect(component.editingAccountName()).toEqual({ id: accountId, value: 'Cash' });
-  });
-
-  it('should cancel editing account name', () => {
-    component.startEditAccountName(accountId, 'Cash');
-    component.cancelEditAccountName();
-    expect(component.editingAccountName()).toBeNull();
-  });
-
-  it('should save account name', async () => {
-    component.startEditAccountName(accountId, 'Cash');
-    component.editingAccountName.set({ id: accountId, value: 'Wallet' });
-    await component.saveAccountName();
-    expect(component.editingAccountName()).toBeNull();
+    expect(component.editError()).toContain('cannot be negative');
+    expect(component.editingAccount()).not.toBeNull();
     const updated = await accountService.getById(accountId);
-    expect(updated?.name).toBe('Wallet');
+    expect(updated?.initialBalance).toBe(100000);
   });
 
-  it('should validate account name is required', async () => {
-    component.startEditAccountName(accountId, 'Cash');
-    component.editingAccountName.set({ id: accountId, value: '' });
-    await component.saveAccountName();
-    expect(component.errorMessage()).toContain('required');
-    expect(component.editingAccountName()).not.toBeNull();
+  it('keeps the edit state open with an inline error for a required name', async () => {
+    component.startEditAccount(accountId);
+    component.editAccountName('');
+    await component.saveAccountEdit();
+
+    expect(component.editError()).toContain('required');
+    expect(component.editingAccount()).not.toBeNull();
   });
 
-  it('should validate account name is unique', async () => {
+  it('shows a translated uniqueness error for a duplicate account name', async () => {
     await accountService.create('Bank', 'EUR', 0);
-    component.startEditAccountName(accountId, 'Cash');
-    component.editingAccountName.set({ id: accountId, value: 'Bank' });
-    await component.saveAccountName();
-    expect(component.errorMessage()).toBe('An account named "Bank" already exists');
-    expect(component.editingAccountName()).not.toBeNull();
+    component.startEditAccount(accountId);
+    component.editAccountName('Bank');
+    await component.saveAccountEdit();
+
+    expect(component.editError()).toBe('An account named "Bank" already exists');
+    expect(component.editingAccount()).not.toBeNull();
   });
 
-  it('should start editing category name', () => {
-    component.startEditCategoryName(categoryId, 'Food');
-    expect(component.editingCategoryName()).toEqual({ id: categoryId, value: 'Food' });
-  });
-
-  it('should cancel editing category name', () => {
-    component.startEditCategoryName(categoryId, 'Food');
-    component.cancelEditCategoryName();
-    expect(component.editingCategoryName()).toBeNull();
-  });
-
-  it('should save category name', async () => {
-    component.startEditCategoryName(categoryId, 'Food');
-    component.editingCategoryName.set({ id: categoryId, value: 'Groceries' });
-    await component.saveCategoryName();
-    expect(component.editingCategoryName()).toBeNull();
-    const updated = await categoryService.getById(categoryId);
-    expect(updated?.name).toBe('Groceries');
-  });
-
-  it('should validate category name is required', async () => {
-    component.startEditCategoryName(categoryId, 'Food');
-    component.editingCategoryName.set({ id: categoryId, value: '' });
-    await component.saveCategoryName();
-    expect(component.errorMessage()).toContain('required');
-    expect(component.editingCategoryName()).not.toBeNull();
-  });
-
-  it('should validate category name is unique', async () => {
-    await categoryService.create('Transport', 'expense');
-    component.startEditCategoryName(categoryId, 'Food');
-    component.editingCategoryName.set({ id: categoryId, value: 'Transport' });
-    await component.saveCategoryName();
-    expect(component.errorMessage()).toBe('A category named "Transport" already exists');
-    expect(component.editingCategoryName()).not.toBeNull();
-  });
-
-  it('should render duplicate account errors in Spanish when the Language is Spanish', async () => {
-    await accountService.create('Bank', 'EUR', 0);
-    await TestBed.inject(LanguageService).setLanguage('es');
-    component.startEditAccountName(accountId, 'Cash');
-    component.editingAccountName.set({ id: accountId, value: 'Bank' });
-    await component.saveAccountName();
-    expect(component.errorMessage()).toBe('Ya hay una cuenta llamada "Bank"');
-  });
-
-  it('should re-render the duplicate account error in the other language on re-trigger', async () => {
+  it('renders the duplicate account error in Spanish and re-renders on re-trigger', async () => {
     await accountService.create('Bank', 'EUR', 0);
     const languageService = TestBed.inject(LanguageService);
 
-    component.startEditAccountName(accountId, 'Cash');
-    component.editingAccountName.set({ id: accountId, value: 'Bank' });
-    await component.saveAccountName();
-    expect(component.errorMessage()).toBe('An account named "Bank" already exists');
+    component.startEditAccount(accountId);
+    component.editAccountName('Bank');
+    await component.saveAccountEdit();
+    expect(component.editError()).toBe('An account named "Bank" already exists');
 
     await languageService.setLanguage('es');
-    await component.saveAccountName();
-    expect(component.errorMessage()).toBe('Ya hay una cuenta llamada "Bank"');
+    await component.saveAccountEdit();
+    expect(component.editError()).toBe('Ya hay una cuenta llamada "Bank"');
 
     await languageService.setLanguage('en');
-    await component.saveAccountName();
-    expect(component.errorMessage()).toBe('An account named "Bank" already exists');
+    await component.saveAccountEdit();
+    expect(component.editError()).toBe('An account named "Bank" already exists');
   });
 
-  it('should render duplicate category errors in Spanish when the Language is Spanish', async () => {
+  it('renders negative balance errors in Spanish when the Language is Spanish', async () => {
+    await TestBed.inject(LanguageService).setLanguage('es');
+    component.startEditAccount(accountId);
+    component.editAccountBalance(-100);
+    await component.saveAccountEdit();
+    expect(component.editError()).toBe('El saldo inicial no puede ser negativo');
+  });
+
+  it('clears the inline error when another edit is started or the edit is cancelled', async () => {
+    component.startEditAccount(accountId);
+    component.editAccountName('');
+    await component.saveAccountEdit();
+    expect(component.editError()).not.toBe('');
+
+    component.cancelEditAccount();
+    expect(component.editError()).toBe('');
+
+    component.startEditAccount(accountId);
+    expect(component.editError()).toBe('');
+  });
+
+  it('opens only one row edit at a time', () => {
+    component.startEditAccount(accountId);
+    component.startEditCategory(categoryId);
+    expect(component.editingCategory()).toEqual({ id: categoryId, name: 'Food' });
+    expect(component.editingAccount()).toBeNull();
+  });
+
+  it('opens, saves and cancels the category edit state', async () => {
+    component.startEditCategory(categoryId);
+    expect(component.editingCategory()).toEqual({ id: categoryId, name: 'Food' });
+
+    component.editCategoryName('Groceries');
+    await component.saveCategoryEdit();
+    expect(component.editingCategory()).toBeNull();
+    const updated = await categoryService.getById(categoryId);
+    expect(updated?.name).toBe('Groceries');
+
+    component.startEditCategory(categoryId);
+    component.cancelEditCategory();
+    expect(component.editingCategory()).toBeNull();
+  });
+
+  it('keeps the edit state open with an inline error for a required category name', async () => {
+    component.startEditCategory(categoryId);
+    component.editCategoryName('');
+    await component.saveCategoryEdit();
+    expect(component.editError()).toContain('required');
+    expect(component.editingCategory()).not.toBeNull();
+  });
+
+  it('shows a translated uniqueness error for a duplicate category name', async () => {
     await categoryService.create('Transport', 'expense');
-    await TestBed.inject(LanguageService).setLanguage('es');
-    component.startEditCategoryName(categoryId, 'Food');
-    component.editingCategoryName.set({ id: categoryId, value: 'Transport' });
-    await component.saveCategoryName();
-    expect(component.errorMessage()).toBe('Ya hay una categoría llamada "Transport"');
+    component.startEditCategory(categoryId);
+    component.editCategoryName('Transport');
+    await component.saveCategoryEdit();
+    expect(component.editError()).toBe('A category named "Transport" already exists');
   });
 
-  it('should render negative balance errors in Spanish when the Language is Spanish', async () => {
-    await TestBed.inject(LanguageService).setLanguage('es');
-    component.startEditAccountBalance(accountId, 100000);
-    component.editingAccountBalance.set({ id: accountId, value: -100 });
-    await component.saveAccountBalance();
-    expect(component.errorMessage()).toBe('El saldo inicial no puede ser negativo');
+  it('edits the base currency through a draft that only persists on save', async () => {
+    component.startEditBaseCurrency();
+    expect(component.editingBaseCurrency()).toBe(true);
+    expect(component.baseCurrencyDraft()).toBe('EUR');
+    expect((await profileService.get())!.baseCurrency).toBe('EUR');
+
+    component.editBaseCurrency('USD');
+    await component.saveBaseCurrency();
+    expect(component.editingBaseCurrency()).toBe(false);
+    expect(component.baseCurrency()).toBe('USD');
+    expect((await profileService.get())!.baseCurrency).toBe('USD');
+
+    component.startEditBaseCurrency();
+    component.editBaseCurrency('CHF');
+    component.cancelEditBaseCurrency();
+    expect(component.editingBaseCurrency()).toBe(false);
+    expect(component.baseCurrency()).toBe('USD');
   });
 });
 
@@ -369,14 +383,13 @@ describe('SettingsComponent - no tag affordances', () => {
   });
 });
 
-describe('SettingsComponent - LedgerFlow restyle', () => {
+describe('SettingsComponent - edit-on-demand rows', () => {
   let fixture: ComponentFixture<SettingsComponent>;
   let component: SettingsComponent;
   let accountService: AccountService;
   let categoryService: CategoryService;
   let accountId: number;
-  let incomeCategoryId: number;
-  let expenseCategoryId: number;
+  let categoryId: number;
 
   const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 10));
 
@@ -394,6 +407,613 @@ describe('SettingsComponent - LedgerFlow restyle', () => {
 
     const account = await accountService.create('Cash', 'EUR', 100000);
     accountId = account.id!;
+    const category = await categoryService.create('Food', 'expense');
+    categoryId = category.id!;
+    await component.ngOnInit();
+    fixture.detectChanges();
+  });
+
+  afterEach(async () => {
+    await db.delete();
+  });
+
+  function rowFor(selector: string, name: string): HTMLElement {
+    const rows = Array.from(
+      fixture.nativeElement.querySelectorAll(selector) as NodeListOf<HTMLElement>,
+    );
+    return rows.find((r) => r.textContent!.includes(name))!;
+  }
+
+  function pencilFor(row: HTMLElement): HTMLButtonElement {
+    return row.querySelector('button[data-edit-pencil]') as HTMLButtonElement;
+  }
+
+  it('displays account name, currency and balance as plain text with a pencil action', () => {
+    const row = rowFor('.account-row', 'Cash');
+    expect(row.querySelector('.account-name')!.textContent!.trim()).toBe('Cash');
+    expect(row.querySelector('.account-meta')!.textContent).toContain('EUR');
+    expect(row.querySelector('.account-meta')!.textContent).toContain('100000');
+
+    const pencil = pencilFor(row);
+    expect(pencil.getAttribute('aria-label')).toBe('Edit account');
+    expect(row.querySelector('.account-name button')).toBeNull();
+    expect(row.querySelector('.account-balance')).toBeNull();
+  });
+
+  it('opens the expanded account edit state from the pencil; tick saves', async () => {
+    const row = rowFor('.account-row', 'Cash');
+    pencilFor(row).click();
+    fixture.detectChanges();
+    await flush();
+    fixture.detectChanges();
+
+    const editState = row.querySelector('.edit-state') as HTMLElement;
+    expect(editState).toBeTruthy();
+    const nameInput = editState.querySelector('input[type="text"]') as HTMLInputElement;
+    const balanceInput = editState.querySelector('input[type="number"]') as HTMLInputElement;
+    expect(nameInput.value).toBe('Cash');
+    expect(balanceInput.value).toBe('100000');
+    expect(editState.textContent).toContain('EUR');
+
+    nameInput.value = 'Wallet';
+    nameInput.dispatchEvent(new Event('input'));
+    balanceInput.value = '250000';
+    balanceInput.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+
+    (editState.querySelector('button[aria-label="Save changes"]') as HTMLButtonElement).click();
+    await flush();
+    fixture.detectChanges();
+
+    const updated = await accountService.getById(accountId);
+    expect(updated?.name).toBe('Wallet');
+    expect(updated?.initialBalance).toBe(250000);
+    expect(row.querySelector('.edit-state')).toBeNull();
+    expect(row.querySelector('.account-name')!.textContent!.trim()).toBe('Wallet');
+  });
+
+  it('discards changes from the X button without touching the service', async () => {
+    const row = rowFor('.account-row', 'Cash');
+    pencilFor(row).click();
+    fixture.detectChanges();
+
+    const editState = row.querySelector('.edit-state') as HTMLElement;
+    const nameInput = editState.querySelector('input[type="text"]') as HTMLInputElement;
+    nameInput.value = 'Wallet';
+    nameInput.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+
+    (editState.querySelector('button[aria-label="Discard changes"]') as HTMLButtonElement).click();
+    await flush();
+    fixture.detectChanges();
+
+    const updated = await accountService.getById(accountId);
+    expect(updated?.name).toBe('Cash');
+    expect(row.querySelector('.edit-state')).toBeNull();
+  });
+
+  it('saves on Enter and cancels on Escape', async () => {
+    const row = rowFor('.account-row', 'Cash');
+    pencilFor(row).click();
+    fixture.detectChanges();
+
+    let editState = row.querySelector('.edit-state') as HTMLElement;
+    const nameInput = editState.querySelector('input[type="text"]') as HTMLInputElement;
+    nameInput.value = 'Wallet';
+    nameInput.dispatchEvent(new Event('input'));
+    nameInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+    await flush();
+    fixture.detectChanges();
+    expect((await accountService.getById(accountId))?.name).toBe('Wallet');
+
+    pencilFor(row).click();
+    fixture.detectChanges();
+    editState = row.querySelector('.edit-state') as HTMLElement;
+    const nameInput2 = editState.querySelector('input[type="text"]') as HTMLInputElement;
+    nameInput2.value = 'Changed';
+    nameInput2.dispatchEvent(new Event('input'));
+    nameInput2.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    await flush();
+    fixture.detectChanges();
+    expect((await accountService.getById(accountId))?.name).toBe('Wallet');
+  });
+
+  it('moves focus to the first input on open and back to the pencil on cancel', async () => {
+    const row = rowFor('.account-row', 'Cash');
+    pencilFor(row).click();
+    fixture.detectChanges();
+
+    const editState = row.querySelector('.edit-state') as HTMLElement;
+    const nameInput = editState.querySelector('input[type="text"]') as HTMLInputElement;
+    expect(document.activeElement).toBe(nameInput);
+
+    nameInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    await flush();
+    fixture.detectChanges();
+
+    const pencil = row.querySelector(
+      `button[data-edit-pencil="account-${accountId}"]`,
+    ) as HTMLButtonElement;
+    expect(pencil).toBeTruthy();
+    expect(document.activeElement).toBe(pencil);
+  });
+
+  it('renders edit-state validation errors inline, announced, without a page-level alert', async () => {
+    await accountService.create('Bank', 'EUR', 0);
+    fixture.detectChanges();
+
+    const row = rowFor('.account-row', 'Cash');
+    pencilFor(row).click();
+    fixture.detectChanges();
+
+    const editState = row.querySelector('.edit-state') as HTMLElement;
+    const nameInput = editState.querySelector('input[type="text"]') as HTMLInputElement;
+    nameInput.value = 'Bank';
+    nameInput.dispatchEvent(new Event('input'));
+    (editState.querySelector('button[aria-label="Save changes"]') as HTMLButtonElement).click();
+    await flush();
+    fixture.detectChanges();
+
+    const inlineError = row.querySelector('.edit-error') as HTMLElement;
+    expect(inlineError).toBeTruthy();
+    expect(inlineError.getAttribute('role')).toBe('alert');
+    expect(inlineError.textContent).toContain('already exists');
+
+    const pageAlert = fixture.nativeElement.querySelector(
+      'app-dismissible-alert[role="alert"] .alert',
+    );
+    expect(pageAlert).toBeNull();
+    expect(row.querySelector('.edit-state')).toBeTruthy();
+  });
+
+  it('opens the expanded category edit state from the pencil; tick saves, X discards', async () => {
+    const row = rowFor('.category-row', 'Food');
+    pencilFor(row).click();
+    fixture.detectChanges();
+    await flush();
+    fixture.detectChanges();
+
+    const editState = row.querySelector('.edit-state') as HTMLElement;
+    const nameInput = editState.querySelector('input[type="text"]') as HTMLInputElement;
+    expect(nameInput.value).toBe('Food');
+
+    nameInput.value = 'Groceries';
+    nameInput.dispatchEvent(new Event('input'));
+    (editState.querySelector('button[aria-label="Save changes"]') as HTMLButtonElement).click();
+    await flush();
+    fixture.detectChanges();
+    expect((await categoryService.getById(categoryId))?.name).toBe('Groceries');
+
+    pencilFor(row).click();
+    fixture.detectChanges();
+    const editState2 = row.querySelector('.edit-state') as HTMLElement;
+    const nameInput2 = editState2.querySelector('input[type="text"]') as HTMLInputElement;
+    nameInput2.value = 'Renamed';
+    nameInput2.dispatchEvent(new Event('input'));
+    (editState2.querySelector('button[aria-label="Discard changes"]') as HTMLButtonElement).click();
+    await flush();
+    fixture.detectChanges();
+    expect((await categoryService.getById(categoryId))?.name).toBe('Groceries');
+  });
+
+  it('keeps the deactivation icon confirmation grammar on account rows', async () => {
+    const row = rowFor('.account-row', 'Cash');
+    const deactivate = row.querySelector(
+      'button[aria-label="Deactivate account"]',
+    ) as HTMLButtonElement;
+    expect(deactivate).toBeTruthy();
+
+    deactivate.click();
+    fixture.detectChanges();
+    expect(row.querySelector('button[aria-label="Confirm deactivation"]')).toBeTruthy();
+    expect(row.querySelector('button[aria-label="Cancel deactivation"]')).toBeTruthy();
+
+    (
+      row.querySelector('button[aria-label="Confirm deactivation"]') as HTMLButtonElement
+    ).click();
+    await flush();
+    expect((await accountService.getById(accountId))?.active).toBe(false);
+  });
+});
+
+describe('SettingsComponent - base currency card', () => {
+  let fixture: ComponentFixture<SettingsComponent>;
+  let component: SettingsComponent;
+  let profileService: ProfileService;
+
+  const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 10));
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    await TestBed.configureTestingModule({
+      imports: [SettingsComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(SettingsComponent);
+    component = fixture.componentInstance;
+    profileService = TestBed.inject(ProfileService);
+    await profileService.completeOnboarding('EUR', 'en');
+    await TestBed.inject(LanguageService).init();
+    await component.ngOnInit();
+    fixture.detectChanges();
+  });
+
+  afterEach(async () => {
+    await db.delete();
+  });
+
+  function currencyCard(): HTMLElement {
+    const cards = Array.from(
+      fixture.nativeElement.querySelectorAll('section.card') as NodeListOf<HTMLElement>,
+    );
+    return cards.find((c) => c.querySelector('h2')!.textContent!.includes('Base Currency'))!;
+  }
+
+  function pencil(card: HTMLElement): HTMLButtonElement {
+    return card.querySelector('button[data-edit-pencil="base-currency-0"]') as HTMLButtonElement;
+  }
+
+  it('displays the base currency value by default and keeps the neutral currency icon', () => {
+    const card = currencyCard();
+    expect(card.querySelector('.card-value')!.textContent).toContain('EUR');
+    expect(card.querySelector('select')).toBeNull();
+    expect(pencil(card).getAttribute('aria-label')).toBe('Edit base currency');
+    expect(card.querySelector('h2 circle')).toBeTruthy();
+    expect(card.querySelector('h2 path[stroke-linecap="round"]')).toBeTruthy();
+  });
+
+  it('reveals select with tick and X on pencil and saves on tick', async () => {
+    const card = currencyCard();
+    pencil(card).click();
+    fixture.detectChanges();
+    await flush();
+    fixture.detectChanges();
+
+    const select = card.querySelector('select') as HTMLSelectElement;
+    expect(select).toBeTruthy();
+    expect(select.value).toBe('EUR');
+    expect(card.querySelector('button[aria-label="Save changes"]')).toBeTruthy();
+    expect(card.querySelector('button[aria-label="Discard changes"]')).toBeTruthy();
+
+    select.value = 'USD';
+    select.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    (card.querySelector('button[aria-label="Save changes"]') as HTMLButtonElement).click();
+    await flush();
+    fixture.detectChanges();
+
+    expect((await profileService.get())!.baseCurrency).toBe('USD');
+    expect(card.querySelector('.card-value')!.textContent).toContain('USD');
+    expect(card.querySelector('select')).toBeNull();
+  });
+
+  it('discards the base currency change on X and Escape', async () => {
+    const card = currencyCard();
+    pencil(card).click();
+    fixture.detectChanges();
+    await flush();
+    fixture.detectChanges();
+
+    const select = card.querySelector('select') as HTMLSelectElement;
+    select.value = 'USD';
+    select.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    (card.querySelector('button[aria-label="Discard changes"]') as HTMLButtonElement).click();
+    await flush();
+    fixture.detectChanges();
+
+    expect((await profileService.get())!.baseCurrency).toBe('EUR');
+    expect(card.querySelector('select')).toBeNull();
+
+    pencil(card).click();
+    fixture.detectChanges();
+    const select2 = card.querySelector('select') as HTMLSelectElement;
+    select2.value = 'USD';
+    select2.dispatchEvent(new Event('change'));
+    select2.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    await flush();
+    fixture.detectChanges();
+    expect((await profileService.get())!.baseCurrency).toBe('EUR');
+    expect(card.querySelector('select')).toBeNull();
+  });
+
+  it('saves the base currency on Enter from the select', async () => {
+    const card = currencyCard();
+    pencil(card).click();
+    fixture.detectChanges();
+    await flush();
+    fixture.detectChanges();
+
+    const select = card.querySelector('select') as HTMLSelectElement;
+    select.value = 'USD';
+    select.dispatchEvent(new Event('change'));
+    select.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+    await flush();
+    fixture.detectChanges();
+
+    expect((await profileService.get())!.baseCurrency).toBe('USD');
+    expect(card.querySelector('select')).toBeNull();
+  });
+
+  it('renders a translated inline error when the base currency save fails', async () => {
+    vi.spyOn(profileService, 'updateBaseCurrency').mockRejectedValue(new Error('boom'));
+
+    const card = currencyCard();
+    pencil(card).click();
+    fixture.detectChanges();
+    await flush();
+    fixture.detectChanges();
+
+    const select = card.querySelector('select') as HTMLSelectElement;
+    select.value = 'USD';
+    select.dispatchEvent(new Event('change'));
+    (card.querySelector('button[aria-label="Save changes"]') as HTMLButtonElement).click();
+    await flush();
+    fixture.detectChanges();
+
+    const inlineError = card.querySelector('.edit-error') as HTMLElement;
+    expect(inlineError).toBeTruthy();
+    expect(inlineError.getAttribute('role')).toBe('alert');
+    expect(inlineError.textContent).toContain('Failed to save currency');
+    expect(card.querySelector('select')).toBeTruthy();
+  });
+});
+
+describe('SettingsComponent - language card', () => {
+  let fixture: ComponentFixture<SettingsComponent>;
+  let component: SettingsComponent;
+  let profileService: ProfileService;
+  let languageService: LanguageService;
+
+  const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 10));
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    await TestBed.configureTestingModule({
+      imports: [SettingsComponent],
+    }).compileComponents();
+
+    profileService = TestBed.inject(ProfileService);
+    languageService = TestBed.inject(LanguageService);
+    await profileService.completeOnboarding('EUR', 'en');
+    await languageService.init();
+
+    fixture = TestBed.createComponent(SettingsComponent);
+    component = fixture.componentInstance;
+    await component.ngOnInit();
+    fixture.detectChanges();
+  });
+
+  afterEach(async () => {
+    await db.delete();
+  });
+
+  function languageCard(): HTMLElement {
+    return fixture.nativeElement.querySelector('app-language-card') as HTMLElement;
+  }
+
+  function pencil(): HTMLButtonElement {
+    return languageCard().querySelector(
+      'button[data-edit-pencil="language"]',
+    ) as HTMLButtonElement;
+  }
+
+  it('renders a Language card displaying the active language by default', () => {
+    const card = languageCard();
+    const headings = Array.from(card.querySelectorAll('h2') as NodeListOf<HTMLElement>).map((h) =>
+      h.textContent!.trim(),
+    );
+    expect(headings).toContain('Language');
+    expect(card.querySelector('.card-value')!.textContent).toContain('English');
+    expect(card.querySelector('select')).toBeNull();
+    expect(pencil().getAttribute('aria-label')).toBe('Edit language');
+  });
+
+  it('reveals the select on pencil and switches language only on tick', async () => {
+    pencil().click();
+    fixture.detectChanges();
+    await flush();
+    fixture.detectChanges();
+
+    const select = languageCard().querySelector('select') as HTMLSelectElement;
+    expect(select).toBeTruthy();
+    expect(select.value).toBe('en');
+
+    const options = Array.from(select.options).map((o) => o.textContent!.trim());
+    expect(options).toEqual(['English', 'Español']);
+
+    select.value = 'es';
+    select.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+
+    expect(languageService.activeLanguage()).toBe('en');
+    (languageCard().querySelector('button[aria-label="Save changes"]') as HTMLButtonElement).click();
+    await flush();
+    fixture.detectChanges();
+
+    expect(languageService.activeLanguage()).toBe('es');
+    expect((await profileService.get())!.language).toBe('es');
+    expect(document.documentElement.getAttribute('lang')).toBe('es');
+    expect(languageCard().querySelector('.card-value')!.textContent).toContain('Español');
+    expect(languageCard().querySelector('select')).toBeNull();
+  });
+
+  it('keeps the choice across reloads', async () => {
+    pencil().click();
+    fixture.detectChanges();
+    const select = languageCard().querySelector('select') as HTMLSelectElement;
+    select.value = 'es';
+    select.dispatchEvent(new Event('change'));
+    (languageCard().querySelector('button[aria-label="Save changes"]') as HTMLButtonElement).click();
+    await flush();
+
+    await languageService.init();
+    expect(languageService.activeLanguage()).toBe('es');
+  });
+
+  it('discards the language change on X and returns focus to the pencil', async () => {
+    pencil().click();
+    fixture.detectChanges();
+    const select = languageCard().querySelector('select') as HTMLSelectElement;
+    select.value = 'es';
+    select.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    (languageCard().querySelector('button[aria-label="Discard changes"]') as HTMLButtonElement).click();
+    await flush();
+    fixture.detectChanges();
+
+    expect(languageService.activeLanguage()).toBe('en');
+    expect((await profileService.get())!.language).toBe('en');
+    expect(languageCard().querySelector('select')).toBeNull();
+
+    const restoredPencil = pencil();
+    expect(document.activeElement).toBe(restoredPencil);
+  });
+
+  it('applies the language on Enter from the select', async () => {
+    pencil().click();
+    fixture.detectChanges();
+    await flush();
+    fixture.detectChanges();
+
+    const select = languageCard().querySelector('select') as HTMLSelectElement;
+    select.value = 'es';
+    select.dispatchEvent(new Event('change'));
+    select.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+    await flush();
+    fixture.detectChanges();
+
+    expect(languageService.activeLanguage()).toBe('es');
+    expect(languageCard().querySelector('select')).toBeNull();
+  });
+
+  it('renders a translated inline error when the language save fails', async () => {
+    vi.spyOn(languageService, 'setLanguage').mockRejectedValue(new Error('boom'));
+
+    pencil().click();
+    fixture.detectChanges();
+    await flush();
+    fixture.detectChanges();
+
+    const select = languageCard().querySelector('select') as HTMLSelectElement;
+    select.value = 'es';
+    select.dispatchEvent(new Event('change'));
+    (languageCard().querySelector('button[aria-label="Save changes"]') as HTMLButtonElement).click();
+    await flush();
+    fixture.detectChanges();
+
+    const inlineError = languageCard().querySelector('.edit-error') as HTMLElement;
+    expect(inlineError).toBeTruthy();
+    expect(inlineError.getAttribute('role')).toBe('alert');
+    expect(inlineError.textContent).toContain('Failed to update language');
+    expect(languageService.activeLanguage()).toBe('en');
+  });
+});
+
+describe('SettingsComponent - dismissible alerts', () => {
+  let fixture: ComponentFixture<SettingsComponent>;
+  let component: SettingsComponent;
+  let accountService: AccountService;
+  let accountId: number;
+
+  const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 10));
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    await TestBed.configureTestingModule({
+      imports: [SettingsComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(SettingsComponent);
+    component = fixture.componentInstance;
+    accountService = TestBed.inject(AccountService);
+
+    const account = await accountService.create('Cash', 'EUR', 100000);
+    accountId = account.id!;
+    await component.ngOnInit();
+    fixture.detectChanges();
+  });
+
+  afterEach(async () => {
+    await db.delete();
+  });
+
+  function errorAlert(): HTMLElement {
+    return fixture.nativeElement.querySelector('app-dismissible-alert[role="alert"] .alert');
+  }
+
+  function dismissOf(alert: HTMLElement): HTMLButtonElement {
+    return alert.querySelector('.alert-dismiss') as HTMLButtonElement;
+  }
+
+  it('keeps the page-level error strip for add-form failures', async () => {
+    component.newAccountName.set('Cash');
+    await component.addAccount();
+    fixture.detectChanges();
+
+    const alert = errorAlert();
+    expect(alert).toBeTruthy();
+    expect(alert.textContent).toContain('already exists');
+    const dismiss = dismissOf(alert);
+    expect(dismiss.querySelector('svg')).toBeTruthy();
+    expect(dismiss.textContent!.trim()).toBe('');
+    expect(dismiss.getAttribute('aria-label')).toBeTruthy();
+  });
+
+  it('hides the error strip when dismissed and brings it back on the next failure', async () => {
+    component.newAccountName.set('Cash');
+    await component.addAccount();
+    fixture.detectChanges();
+    expect(errorAlert()).toBeTruthy();
+
+    dismissOf(errorAlert()).click();
+    fixture.detectChanges();
+    expect(errorAlert()).toBeNull();
+
+    component.newAccountName.set('Cash');
+    await component.addAccount();
+    fixture.detectChanges();
+    expect(errorAlert()).toBeTruthy();
+  });
+
+  it('does not render a success strip anywhere on the settings page', async () => {
+    component.startEditAccount(accountId);
+    component.editAccountName('Wallet');
+    await component.saveAccountEdit();
+    fixture.detectChanges();
+
+    expect(
+      fixture.nativeElement.querySelector('app-dismissible-alert[role="status"] .alert'),
+    ).toBeNull();
+  });
+});
+
+describe('SettingsComponent - LedgerFlow restyle', () => {
+  let fixture: ComponentFixture<SettingsComponent>;
+  let component: SettingsComponent;
+  let accountService: AccountService;
+  let categoryService: CategoryService;
+  let incomeCategoryId: number;
+  let expenseCategoryId: number;
+
+  const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 10));
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    await TestBed.configureTestingModule({
+      imports: [SettingsComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(SettingsComponent);
+    component = fixture.componentInstance;
+    accountService = TestBed.inject(AccountService);
+    categoryService = TestBed.inject(CategoryService);
+
+    await accountService.create('Cash', 'EUR', 100000);
     const income = await categoryService.create('Salary', 'income');
     incomeCategoryId = income.id!;
     const expense = await categoryService.create('Food', 'expense');
@@ -432,79 +1052,14 @@ describe('SettingsComponent - LedgerFlow restyle', () => {
     expect(topRow.querySelector('app-language-card')).toBeTruthy();
   });
 
-  it('edits the account name by clicking it, with no pencil icon', async () => {
-    const row = rowFor('.account-row', 'Cash');
-    expect(row.querySelector('.account-edit')).toBeNull();
-
-    const name = row.querySelector('.account-name') as HTMLButtonElement;
-    name.click();
-    fixture.detectChanges();
-    expect(component.editingAccountName()).toEqual({ id: accountId, value: 'Cash' });
-
-    component.editingAccountName.set({ id: accountId, value: 'Wallet' });
-    await component.saveAccountName();
-    const updated = await accountService.getById(accountId);
-    expect(updated?.name).toBe('Wallet');
-  });
-
-  it('keeps the opening balance click-to-edit', async () => {
-    const row = rowFor('.account-row', 'Cash');
-    const balance = row.querySelector('.account-balance') as HTMLButtonElement;
-    balance.click();
-    fixture.detectChanges();
-    expect(component.editingAccountBalance()).toEqual({ id: accountId, value: 100000 });
-  });
-
-  it('deactivates an account via an X icon that swaps to tick/X confirmation with no text', async () => {
-    const row = rowFor('.account-row', 'Cash');
-    const deactivate = row.querySelector(
-      'button[aria-label="Deactivate account"]',
-    ) as HTMLButtonElement;
-    expect(deactivate).toBeTruthy();
-    expect(deactivate.textContent!.trim()).toBe('');
-
-    deactivate.click();
-    fixture.detectChanges();
-
-    const confirm = row.querySelector(
-      'button[aria-label="Confirm deactivation"]',
-    ) as HTMLButtonElement;
-    const cancel = row.querySelector(
-      'button[aria-label="Cancel deactivation"]',
-    ) as HTMLButtonElement;
-    expect(confirm).toBeTruthy();
-    expect(confirm.textContent!.trim()).toBe('');
-    expect(cancel).toBeTruthy();
-
-    const side = row.querySelector('.account-side') as HTMLElement;
-    const visibleButtons = Array.from(
-      side.querySelectorAll('button') as NodeListOf<HTMLButtonElement>,
-    ).map((b) => b.textContent!.trim());
-    expect(visibleButtons.every((t) => t === '')).toBe(true);
-
-    const live = row.querySelector('.visually-hidden[aria-live="polite"]') as HTMLElement;
-    expect(live).toBeTruthy();
-    expect(live.textContent).toBeTruthy();
-
-    confirm.click();
-    await flush();
-
-    const updated = await accountService.getById(accountId);
-    expect(updated?.active).toBe(false);
-  });
-
-  it('keeps the account active when the confirmation is cancelled', async () => {
-    const row = rowFor('.account-row', 'Cash');
-    (row.querySelector('button[aria-label="Deactivate account"]') as HTMLButtonElement).click();
-    fixture.detectChanges();
-    (row.querySelector('button[aria-label="Cancel deactivation"]') as HTMLButtonElement).click();
-    fixture.detectChanges();
-
-    const account = await accountService.getById(accountId);
-    expect(account?.active).toBe(true);
+  it('renders no click-to-edit or dashed-underline affordances', () => {
+    expect(fixture.nativeElement.querySelectorAll('button.account-name').length).toBe(0);
+    expect(fixture.nativeElement.querySelectorAll('button.category-name').length).toBe(0);
+    expect(fixture.nativeElement.querySelectorAll('.account-balance').length).toBe(0);
   });
 
   it('offers a textual Reactivate button on inactive accounts', async () => {
+    const accountId = (await accountService.getAll())[0].id!;
     await accountService.setActive(accountId, false);
     await component.refresh();
     fixture.detectChanges();
@@ -597,201 +1152,6 @@ describe('SettingsComponent - LedgerFlow restyle', () => {
         expect(field.classList.contains('small')).toBe(false);
       }
     }
-  });
-});
-
-describe('SettingsComponent - language card', () => {
-  let fixture: ComponentFixture<SettingsComponent>;
-  let component: SettingsComponent;
-  let profileService: ProfileService;
-  let languageService: LanguageService;
-
-  const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 10));
-
-  beforeEach(async () => {
-    await db.delete();
-    await db.open();
-    await TestBed.configureTestingModule({
-      imports: [SettingsComponent],
-    }).compileComponents();
-
-    profileService = TestBed.inject(ProfileService);
-    languageService = TestBed.inject(LanguageService);
-    await profileService.completeOnboarding('EUR', 'en');
-    await languageService.init();
-
-    fixture = TestBed.createComponent(SettingsComponent);
-    component = fixture.componentInstance;
-    await component.ngOnInit();
-    fixture.detectChanges();
-  });
-
-  afterEach(async () => {
-    await db.delete();
-  });
-
-  function languageSelect(): HTMLSelectElement {
-    return fixture.nativeElement.querySelector('select[aria-label="Language"]');
-  }
-
-  function languageUpdateButton(): HTMLButtonElement {
-    const card = fixture.nativeElement.querySelector('app-language-card');
-    return Array.from(card.querySelectorAll('button') as NodeListOf<HTMLButtonElement>).find(
-      (b) => b.textContent!.trim() === 'Update',
-    )!;
-  }
-
-  it('renders a Language card offering both languages in their own language', () => {
-    const headings = Array.from(
-      fixture.nativeElement.querySelectorAll('h2') as NodeListOf<HTMLElement>,
-    ).map((h) => h.textContent!.trim());
-    expect(headings).toContain('Language');
-
-    const options = Array.from(languageSelect().options).map((o) => o.textContent!.trim());
-    expect(options).toEqual(['English', 'Español']);
-    expect(languageSelect().value).toBe('en');
-  });
-
-  it('switches to Spanish only after clicking Update, without reload', async () => {
-    languageSelect().value = 'es';
-    languageSelect().dispatchEvent(new Event('change'));
-    fixture.detectChanges();
-
-    expect(languageService.activeLanguage()).toBe('en');
-    expect((await profileService.get())!.language).toBe('en');
-
-    const updateButton = languageUpdateButton();
-    updateButton!.click();
-    await flush();
-    fixture.detectChanges();
-
-    const title = fixture.nativeElement.querySelector('h1');
-    expect(title.textContent!.trim()).toBe('Ajustes');
-    expect(languageService.activeLanguage()).toBe('es');
-    expect(document.documentElement.getAttribute('lang')).toBe('es');
-    expect((await profileService.get())!.language).toBe('es');
-  });
-
-  it('keeps the choice across reloads', async () => {
-    languageSelect().value = 'es';
-    languageSelect().dispatchEvent(new Event('change'));
-    const updateButton = languageUpdateButton();
-    updateButton!.click();
-    await flush();
-
-    await languageService.init();
-
-    expect(languageService.activeLanguage()).toBe('es');
-  });
-
-  it('brings the language card success note back after dismissal on the next save', async () => {
-    const select = languageSelect();
-    const updateButton = languageUpdateButton();
-    select.value = 'es';
-    select.dispatchEvent(new Event('change'));
-    updateButton.click();
-    await flush();
-    fixture.detectChanges();
-
-    const card = fixture.nativeElement.querySelector('app-language-card');
-    const alert = card.querySelector('.alert') as HTMLElement;
-    expect(alert).toBeTruthy();
-
-    (alert.querySelector('.alert-dismiss') as HTMLButtonElement).click();
-    fixture.detectChanges();
-    expect(card.querySelector('.alert')).toBeNull();
-
-    select.value = 'en';
-    select.dispatchEvent(new Event('change'));
-    updateButton.click();
-    await flush();
-    fixture.detectChanges();
-    expect(card.querySelector('.alert')).toBeTruthy();
-  });
-});
-
-describe('SettingsComponent - dismissible alerts', () => {
-  let fixture: ComponentFixture<SettingsComponent>;
-  let component: SettingsComponent;
-  let accountService: AccountService;
-  let accountId: number;
-
-  const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 10));
-
-  beforeEach(async () => {
-    await db.delete();
-    await db.open();
-    await TestBed.configureTestingModule({
-      imports: [SettingsComponent],
-    }).compileComponents();
-
-    fixture = TestBed.createComponent(SettingsComponent);
-    component = fixture.componentInstance;
-    accountService = TestBed.inject(AccountService);
-
-    const account = await accountService.create('Cash', 'EUR', 100000);
-    accountId = account.id!;
-    await component.ngOnInit();
-    fixture.detectChanges();
-  });
-
-  afterEach(async () => {
-    await db.delete();
-  });
-
-  function errorAlert(): HTMLElement {
-    return fixture.nativeElement.querySelector('app-dismissible-alert[role="alert"] .alert');
-  }
-
-  function successAlert(): HTMLElement {
-    return fixture.nativeElement.querySelector('app-dismissible-alert[role="status"] .alert');
-  }
-
-  function dismissOf(alert: HTMLElement): HTMLButtonElement {
-    return alert.querySelector('.alert-dismiss') as HTMLButtonElement;
-  }
-
-  it('renders the error strip with an icon-only dismiss button', async () => {
-    component.startEditAccountName(accountId, 'Cash');
-    component.editingAccountName.set({ id: accountId, value: '' });
-    await component.saveAccountName();
-    fixture.detectChanges();
-
-    const alert = errorAlert();
-    expect(alert).toBeTruthy();
-    const dismiss = dismissOf(alert);
-    expect(dismiss.querySelector('svg')).toBeTruthy();
-    expect(dismiss.textContent!.trim()).toBe('');
-    expect(dismiss.getAttribute('aria-label')).toBeTruthy();
-  });
-
-  it('hides the error strip when dismissed and brings it back on the next failure', async () => {
-    component.startEditAccountName(accountId, 'Cash');
-    component.editingAccountName.set({ id: accountId, value: '' });
-    await component.saveAccountName();
-    fixture.detectChanges();
-    expect(errorAlert()).toBeTruthy();
-
-    dismissOf(errorAlert()).click();
-    fixture.detectChanges();
-    expect(errorAlert()).toBeNull();
-
-    component.startEditAccountBalance(accountId, -100);
-    await component.saveAccountBalance();
-    fixture.detectChanges();
-    expect(errorAlert()).toBeTruthy();
-  });
-
-  it('dismisses the success strip', async () => {
-    component.startEditAccountName(accountId, 'Cash');
-    component.editingAccountName.set({ id: accountId, value: 'Wallet' });
-    await component.saveAccountName();
-    fixture.detectChanges();
-    expect(successAlert()).toBeTruthy();
-
-    dismissOf(successAlert()).click();
-    fixture.detectChanges();
-    expect(successAlert()).toBeNull();
   });
 });
 
