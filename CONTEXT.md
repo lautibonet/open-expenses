@@ -25,8 +25,8 @@ A calendar month (January through December) assigned to a Transaction or Transfe
 _Avoid_: Cycle, fiscal period, date range
 
 **Scope**:
-The reporting window chosen on the Stats and Movements screens: either a single Period (a month together with its year) or All Time. Filtering by Scope always uses the stored Period year, never the movement's date. Under All Time the month dimension disappears and only the year selector remains.
-_Avoid_: Filter, range, timeframe, selection
+The reporting window chosen on the Stats and Movements screens: a single Period (a month together with its year). Filtering by Scope always uses the stored Period year, never the movement's date. Aggregations that span multiple Periods (total balance, yearly averages, per-year totals) are independent of Scope.
+_Avoid_: Filter, range, timeframe, selection, All Time
 
 **Base Currency**:
 The single currency in which the Stats total balance and all period totals/averages are reported. Set during onboarding. Accounts may hold different currencies; amounts are converted using exchange rates recorded at transaction/transfer time.
