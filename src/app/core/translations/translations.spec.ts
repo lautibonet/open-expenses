@@ -44,7 +44,6 @@ describe('translations', () => {
       'shell.settings',
       'shell.storageStatus',
       'shell.quickAdd',
-      'shell.backup',
     ]) {
       expect(TRANSLATIONS.en[key]).toBeTruthy();
       expect(TRANSLATIONS.es[key]).toBeTruthy();
@@ -80,22 +79,20 @@ describe('translations', () => {
       'backup.card.downloadFailed',
       'backup.noCloudBackup',
       'backup.restoredOk',
+      'backup.card.backUpTo',
     ]) {
       expect(TRANSLATIONS.en[key]).toBeTruthy();
       expect(TRANSLATIONS.es[key]).toBeTruthy();
     }
   });
 
-  it('covers the backup banner keys', () => {
+  it('covers the backup status and action keys', () => {
     for (const key of [
-      'backup.banner.ariaLabel',
-      'backup.banner.methodBackup',
-      'backup.banner.lastBackup',
-      'backup.banner.backUp',
-      'backup.banner.backingUp',
-      'backup.banner.offline',
-      'backup.banner.dismiss',
-      'backup.banner.never',
+      'backup.sidebar.ariaLabel',
+      'backup.status.lastBackup',
+      'backup.status.never',
+      'backup.action.backUp',
+      'backup.action.backingUp',
       'backup.relative.justNow',
     ]) {
       expect(TRANSLATIONS.en[key]).toBeTruthy();

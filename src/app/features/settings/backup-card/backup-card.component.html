@@ -11,8 +11,18 @@
     {{ language.t('backup.card.title') }}
   </h2>
   <p class="description">{{ language.t('backup.card.description') }}</p>
+  <p class="last-backup">{{ lastBackupDisplay() }}</p>
 
   <div class="backup-actions">
+    <button
+      type="button"
+      class="btn"
+      [disabled]="isBusy() || !isOnline()"
+      (click)="backUp()"
+    >
+      {{ language.t('backup.card.backUpTo', { method: method }) }}
+    </button>
+
     <button type="button" class="btn primary" [disabled]="isBusy()" (click)="downloadBackup()">
       {{ language.t('backup.card.download') }}
     </button>
@@ -48,6 +58,15 @@
     [message]="errorMessage()"
     [resetKey]="statusEpoch()"
   />
+  @if (serviceErrorCopy(); as copy) {
+    <app-dismissible-alert
+      role="alert"
+      variant="error"
+      [message]="copy.text"
+      [attr.title]="copy.code"
+      [resetKey]="copy.text"
+    />
+  }
 
   @if (pendingRestore()) {
     <div class="restore-confirm">

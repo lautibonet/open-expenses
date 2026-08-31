@@ -1,13 +1,14 @@
-import { Component, inject } from '@angular/core';
+import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { Router, RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { InstallPromptComponent } from '../install-prompt/install-prompt.component';
-import { BackupBannerComponent } from '../backup-banner/backup-banner.component';
 import { LanguageService } from '../../../core/services/language.service';
 import { CaptureFormService } from '../../../core/services/capture-form.service';
+import { DriveBackupService } from '../../../core/services/drive-backup.service';
+import { formatLastBackupStatus } from '../../../backup/last-backup-status';
 
 @Component({
   selector: 'app-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, InstallPromptComponent, BackupBannerComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, InstallPromptComponent],
   templateUrl: './shell.component.html',
   styleUrl: './shell.component.scss',
   host: { '(document:keydown)': 'onDocKeydown($event)' },
@@ -16,6 +17,25 @@ export class ShellComponent {
   language = inject(LanguageService);
   private router = inject(Router);
   private captureFormService = inject(CaptureFormService);
+  private backupService = inject(DriveBackupService);
+
+  private minuteTick = signal(0);
+
+  isBackingUp = this.backupService.isBackingUp;
+
+  backupCaption = computed(() => {
+    this.minuteTick();
+    return formatLastBackupStatus(
+      this.language.activeLanguage(),
+      this.backupService.lastBackupAt(),
+      this.backupService.method,
+    );
+  });
+
+  constructor() {
+    const intervalId = setInterval(() => this.minuteTick.update((t) => t + 1), 60_000);
+    inject(DestroyRef).onDestroy(() => clearInterval(intervalId));
+  }
 
   skipToContent(event: MouseEvent): void {
     event.preventDefault();
@@ -30,6 +50,17 @@ export class ShellComponent {
   async goToTransferForm(): Promise<void> {
     await this.navigateToMovementsIfNeeded();
     this.captureFormService.requestTransfer();
+  }
+
+  async backUp(): Promise<void> {
+    if (this.isBackingUp()) {
+      return;
+    }
+    try {
+      await this.backupService.backupNow();
+    } catch {
+      // Backup errors surface in the Settings backup card.
+    }
   }
 
   async onDocKeydown(e: KeyboardEvent): Promise<void> {
