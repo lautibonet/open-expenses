@@ -50,9 +50,24 @@ describe('QuickAddCardComponent', () => {
     localStorage.clear();
   });
 
-  it('starts in compact mode with the first account and category when nothing was stored', async () => {
+  it('renders the full form with every field and no compact mode', async () => {
     await component.ngOnInit();
-    expect(component.mode()).toBe('compact');
+    fixture.detectChanges();
+
+    const el = fixture.nativeElement;
+    expect(el.querySelector('h3').textContent).toContain('New Transaction');
+    expect(el.querySelector('select[name="account"]')).toBeTruthy();
+    expect(el.querySelector('select[name="category"]')).toBeTruthy();
+    expect(el.querySelector('input[name="amount"]')).toBeTruthy();
+    expect(el.querySelector('input[name="note"]')).toBeTruthy();
+    expect(el.querySelector('input[name="date"]')).toBeTruthy();
+    expect(el.querySelector('select[name="period"]')).toBeTruthy();
+    expect(el.querySelector('select[name="year"]')).toBeTruthy();
+    expect(el.textContent).not.toContain('More...');
+  });
+
+  it('starts with the first account and category when nothing was stored', async () => {
+    await component.ngOnInit();
     expect(component.form().accountId).toBe(1);
     expect(component.form().categoryId).toBe(10);
   });
@@ -65,7 +80,7 @@ describe('QuickAddCardComponent', () => {
     expect(document.activeElement).toBe(input);
   });
 
-  it('emits a save payload for a base-currency quick-add', async () => {
+  it('emits a save payload for a base-currency transaction', async () => {
     await component.ngOnInit();
     component.form.update((f) => ({ ...f, amount: 50 }));
     let saved: any;
@@ -85,7 +100,7 @@ describe('QuickAddCardComponent', () => {
     });
   });
 
-  it('emits a save payload with the fetched rate for a foreign-currency quick-add', async () => {
+  it('emits a save payload with the fetched rate for a foreign-currency transaction', async () => {
     await component.ngOnInit();
     component.onAccountChange(2);
     await new Promise((resolve) => setTimeout(resolve, 10));
@@ -101,26 +116,32 @@ describe('QuickAddCardComponent', () => {
     expect(saved.baseCurrencyAmount).toBe(108);
   });
 
-  it('expands to the full form when a foreign-currency rate cannot be resolved', async () => {
+  it('blocks submit until a foreign-currency rate is available and accepts a manual entry', async () => {
     exchangeRateService.getRate.mockRejectedValue(new Error('offline'));
     await component.ngOnInit();
     component.onAccountChange(2);
-    await new Promise(resolve => setTimeout(resolve, 10));
+    await new Promise((resolve) => setTimeout(resolve, 10));
 
-    component.form.update(f => ({ ...f, amount: 100 }));
-    let saved = false;
-    component.save.subscribe(() => (saved = true));
+    component.form.update((f) => ({ ...f, amount: 100 }));
+    let saved: any;
+    component.save.subscribe((data) => (saved = data));
 
     component.onSubmit();
 
-    expect(saved).toBe(false);
-    expect(component.mode()).toBe('expanded');
+    expect(saved).toBeUndefined();
+    expect(component.errorMessage()).toBeTruthy();
+
+    component.form.update((f) => ({ ...f, exchangeRate: 1.2 }));
+    component.onAmountOrRateChange();
+    component.onSubmit();
+
+    expect(saved).toMatchObject({ exchangeRate: 1.2, baseCurrencyAmount: 120 });
   });
 
   it('re-fetches the rate when the date changes on a foreign-currency account', async () => {
     await component.ngOnInit();
     component.onAccountChange(2);
-    await new Promise(resolve => setTimeout(resolve, 10));
+    await new Promise((resolve) => setTimeout(resolve, 10));
     expect(exchangeRateService.getRate).toHaveBeenCalledWith('USD', 'EUR', component.form().date);
 
     exchangeRateService.getRate.mockResolvedValueOnce({
@@ -132,7 +153,6 @@ describe('QuickAddCardComponent', () => {
     expect(exchangeRateService.getRate).toHaveBeenCalledWith('USD', 'EUR', '2026-01-15');
     expect(component.form().exchangeRate).toBe(1.12);
   });
-
 
   it('persists the last-used account and category to localStorage on save', async () => {
     await component.ngOnInit();
@@ -165,39 +185,7 @@ describe('QuickAddCardComponent', () => {
     expect(component.form().categoryId).toBe(11);
   });
 
-  it('expands in place via More options and preserves the compact selection', async () => {
-    await component.ngOnInit();
-    component.form.update((f) => ({ ...f, amount: 42 }));
-    component.onAccountChange(2);
-    await new Promise((resolve) => setTimeout(resolve, 10));
-
-    component.expandForm();
-
-    expect(component.mode()).toBe('expanded');
-    expect(component.form().accountId).toBe(2);
-    expect(component.form().amount).toBe(42);
-    expect(component.editingId()).toBeNull();
-  });
-
-  it('emits a save with note from the expanded new-transaction form', async () => {
-    await component.ngOnInit();
-    component.expandForm();
-    component.form.update((f) => ({
-      ...f,
-      amount: 25,
-      note: 'lunch',
-    }));
-
-    let saved: any;
-    component.save.subscribe((data) => (saved = data));
-    component.onSubmitForm();
-
-    expect(saved.id).toBeNull();
-    expect(saved.amount).toBe(25);
-    expect(saved.note).toBe('lunch');
-  });
-
-  it('opens the expanded form pre-filled when an existing transaction is edited', async () => {
+  it('opens prefilled when an existing transaction is set for edit', async () => {
     const txn: Transaction = {
       id: 7,
       accountId: 2,
@@ -214,11 +202,11 @@ describe('QuickAddCardComponent', () => {
     fixture.componentRef.setInput('editTransaction', txn);
     fixture.detectChanges();
 
-    expect(component.mode()).toBe('expanded');
     expect(component.editingId()).toBe(7);
     expect(component.form().accountId).toBe(2);
     expect(component.form().amount).toBe(120);
     expect(component.form().note).toBe('flight');
+    expect(fixture.nativeElement.querySelector('h3').textContent).toContain('Edit Transaction');
   });
 
   it('emits a save payload carrying the id when saving an edit', async () => {
@@ -241,75 +229,33 @@ describe('QuickAddCardComponent', () => {
 
     let saved: any;
     component.save.subscribe((data) => (saved = data));
-    component.onSubmitForm();
+    component.onSubmit();
 
     expect(saved.id).toBe(7);
     expect(saved.amount).toBe(130);
   });
 
-  it('collapses and announces success after markSaved', async () => {
+  it('emits close when the user cancels', async () => {
     await component.ngOnInit();
-    component.expandForm();
+    let closed = false;
+    component.close.subscribe(() => (closed = true));
 
-    component.markSaved(false);
+    component.cancel();
 
-    expect(component.mode()).toBe('compact');
-    expect(component.announcement()).toBe('Transaction saved');
-    expect(component.form().amount).toBe(0);
+    expect(closed).toBe(true);
   });
 
-  it('exposes the announcement to assistive tech in the expanded form', async () => {
-    await component.ngOnInit();
-    component.expandForm();
-    component.announcement.set('Transaction saved');
-    fixture.detectChanges();
-
-    const live = fixture.nativeElement.querySelector('[aria-live="polite"]');
-    expect(live).toBeTruthy();
-    expect(live.textContent).toContain('Transaction saved');
-  });
-
-  it('does not pop focus back to the amount input when a save completes', async () => {
-    await component.ngOnInit();
-    const focusSpy = vi.spyOn(component, 'focusAmount');
-
-    component.markSaved(false);
-
-    expect(focusSpy).not.toHaveBeenCalled();
-  });
-
-  it('clears saving and surfaces the error after markFailed', async () => {
+  it('blocks submit while a save is in flight and unblocks after failure', async () => {
     await component.ngOnInit();
     component.form.update((f) => ({ ...f, amount: 25 }));
+
     component.saving.set(true);
-
-    component.markFailed('Boom');
-
-    expect(component.saving()).toBe(false);
-    expect(component.errorMessage()).toBe('Boom');
-  });
-
-  it('cancels an expanded new form by collapsing to compact', async () => {
-    await component.ngOnInit();
-    component.expandForm();
-    expect(component.mode()).toBe('expanded');
-
-    component.cancelExpand();
-
-    expect(component.mode()).toBe('compact');
-    expect(component.editingId()).toBeNull();
-  });
-
-  it('blocks compact submit while a save is in flight and unblocks on success', async () => {
-    await component.ngOnInit();
-    component.form.update((f) => ({ ...f, amount: 25 }));
-
-    component.onSubmit();
     expect(component.canSubmit()).toBe(false);
 
-    component.markSaved(false);
-    component.form.update((f) => ({ ...f, amount: 30 }));
+    component.markFailed('Boom');
+    expect(component.saving()).toBe(false);
     expect(component.canSubmit()).toBe(true);
+    expect(component.errorMessage()).toBe('Boom');
   });
 
   function tagControls(root: HTMLElement): Element[] {
@@ -320,7 +266,7 @@ describe('QuickAddCardComponent', () => {
     });
   }
 
-  it('collects no tags in the compact form or its payload', async () => {
+  it('collects no tags in the form or its payload', async () => {
     await component.ngOnInit();
     fixture.detectChanges();
 
@@ -330,21 +276,6 @@ describe('QuickAddCardComponent', () => {
     let saved: any;
     component.save.subscribe((data) => (saved = data));
     component.onSubmit();
-
-    expect(saved).not.toHaveProperty('tags');
-  });
-
-  it('collects no tags in the expanded form or its payload', async () => {
-    await component.ngOnInit();
-    component.expandForm();
-    fixture.detectChanges();
-
-    expect(fixture.nativeElement.querySelectorAll('.tag')).toHaveLength(0);
-    expect(tagControls(fixture.nativeElement)).toHaveLength(0);
-    component.form.update((f) => ({ ...f, amount: 25 }));
-    let saved: any;
-    component.save.subscribe((data) => (saved = data));
-    component.onSubmitForm();
 
     expect(saved).not.toHaveProperty('tags');
   });
@@ -366,16 +297,16 @@ describe('QuickAddCardComponent', () => {
     fixture.componentRef.setInput('editTransaction', txn);
     fixture.detectChanges();
 
-    expect(component.mode()).toBe('expanded');
     expect(tagControls(fixture.nativeElement)).toHaveLength(0);
     let saved: any;
     component.save.subscribe((data) => (saved = data));
-    component.onSubmitForm();
+    component.onSubmit();
 
     expect(saved.id).toBe(7);
     expect(saved).not.toHaveProperty('tags');
   });
 });
+
 describe('QuickAddCardComponent - translations', () => {
   let fixture: ComponentFixture<QuickAddCardComponent>;
   let component: QuickAddCardComponent;
@@ -411,7 +342,7 @@ describe('QuickAddCardComponent - translations', () => {
     );
   });
 
-  it('renders the compact form in Spanish when the active Language is Spanish', async () => {
+  it('renders the full form in Spanish when the active Language is Spanish', async () => {
     const now = new Date();
     const accounts: Account[] = [
       { id: 1, name: 'Cash', currency: 'EUR', initialBalance: 0, active: true, createdAt: now },
@@ -426,11 +357,12 @@ describe('QuickAddCardComponent - translations', () => {
     fixture.detectChanges();
 
     const text = fixture.nativeElement.textContent;
+    expect(text).toContain('Nueva transacción');
     expect(text).toContain('Importe');
     expect(text).toContain('Cuenta');
     expect(text).toContain('Categoría');
-    expect(text).toContain('Registrar');
-    expect(text).toContain('Más...');
+    expect(text).toContain('Guardar');
+    expect(text).not.toContain('Más...');
   });
 
   it('re-renders in Spanish immediately when the Language changes after render', async () => {
@@ -443,10 +375,10 @@ describe('QuickAddCardComponent - translations', () => {
     ]);
     await component.ngOnInit();
     fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Record');
+    expect(fixture.nativeElement.textContent).toContain('New Transaction');
 
     await TestBed.inject(LanguageService).setLanguage('es');
     fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Registrar');
+    expect(fixture.nativeElement.textContent).toContain('Nueva transacción');
   });
 });

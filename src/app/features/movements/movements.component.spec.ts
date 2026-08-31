@@ -10,6 +10,7 @@ import { LanguageService } from '../../core/services/language.service';
 import { db } from '../../core/db/database';
 import { Transaction } from '../../core/models/transaction.model';
 import { Transfer } from '../../core/models/transfer.model';
+import { CaptureFormService } from '../../core/services/capture-form.service';
 import { MONTH_NAMES, defaultScope, getCurrentPeriod, getCurrentYear } from '../../core/types/period.type';
 
 describe('MovementsComponent - filtering', () => {
@@ -982,6 +983,7 @@ describe('MovementsComponent - page header and scope stepper', () => {
   it('leads the content with the Net Flow card', async () => {
     await transactionService.create(accountId, categoryId, 500, new Date(), getCurrentPeriod());
     await component.ngOnInit();
+    component.toggleQuickAdd();
     fixture.detectChanges();
 
     const card = fixture.nativeElement.querySelector('app-net-flow-card .net-flow-card');
@@ -1556,6 +1558,7 @@ describe('MovementsComponent - assistive tech', () => {
 
   it('gives every quick-add select an accessible name', async () => {
     await component.ngOnInit();
+    component.toggleQuickAdd();
     fixture.detectChanges();
 
     const selects = fixture.nativeElement.querySelectorAll('.quick-add select');
@@ -1700,7 +1703,7 @@ describe('MovementsComponent - quick-add integration', () => {
     );
     component.editTransaction.set(t);
 
-    component.onCancelEdit();
+    component.closeQuickAdd();
 
     expect(component.editTransaction()).toBeNull();
   });
@@ -1944,5 +1947,197 @@ describe('MovementsComponent - date header sorting', () => {
     button.click();
     fixture.detectChanges();
     expect(th.getAttribute('aria-sort')).toBe('descending');
+  });
+});
+
+describe('MovementsComponent - Quick Add capture form', () => {
+  let fixture: ComponentFixture<MovementsComponent>;
+  let component: MovementsComponent;
+  let transactionService: TransactionService;
+  let accountService: AccountService;
+  let categoryService: CategoryService;
+  let captureFormService: CaptureFormService;
+  let accountId: number;
+  let categoryId: number;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    await TestBed.configureTestingModule({
+      imports: [MovementsComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(MovementsComponent);
+    component = fixture.componentInstance;
+    transactionService = TestBed.inject(TransactionService);
+    accountService = TestBed.inject(AccountService);
+    categoryService = TestBed.inject(CategoryService);
+    captureFormService = TestBed.inject(CaptureFormService);
+
+    const account = await accountService.create('Cash', 'EUR', 100000);
+    accountId = account.id!;
+    const category = await categoryService.create('Food', 'expense');
+    categoryId = category.id!;
+  });
+
+  afterEach(async () => {
+    await db.delete();
+  });
+
+  it('hides Quick Add on page load', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    expect(component.showForm()).toBe('none');
+    expect(fixture.nativeElement.querySelector('app-quick-add-card')).toBeNull();
+  });
+
+  it('reveals Quick Add via the New Transaction button and toggles it closed', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const button = (
+      Array.from(fixture.nativeElement.querySelectorAll('.controls button')) as HTMLButtonElement[]
+    ).find((b) => b.textContent!.trim() === 'New Transaction')!;
+    button.click();
+    fixture.detectChanges();
+
+    expect(component.showForm()).toBe('transaction');
+    expect(fixture.nativeElement.querySelector('app-quick-add-card')).toBeTruthy();
+
+    button.click();
+
+    expect(component.showForm()).toBe('none');
+  });
+
+  it('opens only one capture form at a time', async () => {
+    await component.ngOnInit();
+
+    component.toggleQuickAdd();
+    expect(component.showForm()).toBe('transaction');
+
+    component.openTransferForm();
+    expect(component.showForm()).toBe('transfer');
+
+    component.openQuickAdd();
+    expect(component.showForm()).toBe('transaction');
+  });
+
+  it('closes after a successful create', async () => {
+    await component.ngOnInit();
+    component.toggleQuickAdd();
+
+    await component.onSaveTransaction({
+      id: null,
+      accountId,
+      categoryId,
+      amount: 500,
+      date: '2026-08-15',
+      period: getCurrentPeriod(),
+      year: getCurrentYear(),
+      exchangeRate: null,
+      baseCurrencyAmount: null,
+      note: '',
+    });
+
+    expect(component.showForm()).toBe('none');
+    expect(component.editTransaction()).toBeNull();
+  });
+
+  it('closes after a successful edit', async () => {
+    const t = await transactionService.create(
+      accountId,
+      categoryId,
+      500,
+      new Date(),
+      getCurrentPeriod(),
+    );
+    await component.ngOnInit();
+    component.openQuickAddForEdit(t);
+    expect(component.showForm()).toBe('transaction');
+
+    await component.onSaveTransaction({
+      id: t.id!,
+      accountId,
+      categoryId,
+      amount: 500,
+      date: '2026-08-15',
+      period: getCurrentPeriod(),
+      year: getCurrentYear(),
+      exchangeRate: null,
+      baseCurrencyAmount: null,
+      note: '',
+    });
+
+    expect(component.showForm()).toBe('none');
+    expect(component.editTransaction()).toBeNull();
+  });
+
+  it('opens the form prefilled when editing a transaction', async () => {
+    const t = await transactionService.create(
+      accountId,
+      categoryId,
+      1200,
+      new Date(),
+      getCurrentPeriod(),
+      null,
+      null,
+      getCurrentYear(),
+      'coffee',
+    );
+    await component.ngOnInit();
+
+    component.openQuickAddForEdit(t);
+    fixture.detectChanges();
+
+    expect(component.showForm()).toBe('transaction');
+    expect(component.quickAddCard()!.editingId()).toBe(t.id);
+    expect(component.quickAddCard()!.form().amount).toBe(1200);
+    expect(component.quickAddCard()!.form().note).toBe('coffee');
+  });
+
+  it("focuses the amount field when the 'n' shortcut opens the form", async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'n' }));
+    fixture.detectChanges();
+
+    expect(component.showForm()).toBe('transaction');
+    const amountInput = fixture.nativeElement.querySelector(
+      'app-quick-add-card input[aria-label="Amount"]',
+    );
+    expect(amountInput).toBeTruthy();
+    expect(document.activeElement).toBe(amountInput);
+  });
+
+  it('opens the form when the sidebar Quick Add action requests it', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    captureFormService.requestQuickAdd();
+    fixture.detectChanges();
+
+    expect(component.showForm()).toBe('transaction');
+    expect(captureFormService.pendingQuickAddRequests()).toBe(0);
+  });
+
+  it('opens the transfer form when the sidebar transfer action requests it', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    captureFormService.requestTransfer();
+    fixture.detectChanges();
+
+    expect(component.showForm()).toBe('transfer');
+    expect(captureFormService.pendingTransferRequests()).toBe(0);
+  });
+
+  it('keeps the t shortcut opening the transfer form', async () => {
+    await component.ngOnInit();
+
+    component.onDocKeydown(new KeyboardEvent('keydown', { key: 't' }));
+
+    expect(component.showForm()).toBe('transfer');
   });
 });

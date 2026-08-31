@@ -72,16 +72,26 @@
     [baseCurrency]="baseCurrency()"
   />
 
-  <app-quick-add-card
-    [accounts]="accounts()"
-    [categories]="categories()"
-    [baseCurrency]="baseCurrency()"
-    [editTransaction]="editTransaction()"
-    (save)="onSaveTransaction($event)"
-    (cancelEdit)="onCancelEdit()"
-  />
+  @if (showForm() === 'transaction') {
+    <app-quick-add-card
+      [accounts]="accounts()"
+      [categories]="categories()"
+      [baseCurrency]="baseCurrency()"
+      [editTransaction]="editTransaction()"
+      (save)="onSaveTransaction($event)"
+      (close)="closeQuickAdd()"
+    />
+  }
 
   <div class="controls">
+    <button
+      class="btn"
+      (click)="toggleQuickAdd()"
+      [attr.aria-expanded]="showForm() === 'transaction'"
+      [title]="language.t('movements.newTransaction')"
+    >
+      {{ language.t('movements.newTransaction') }}
+    </button>
     <button class="btn" (click)="openTransferForm()" [title]="language.t('movements.transferShortcut')">
       {{ language.t('movements.addTransfer') }}
     </button>
@@ -326,7 +336,7 @@
                   </td>
                   <td>{{ getAccountName(txn.accountId) }}</td>
                   <td>
-                    <button class="btn small" (click)="editTransaction.set(txn)">
+                    <button class="btn small" (click)="openQuickAddForEdit(txn)">
                       {{ language.t('movements.edit') }}
                     </button>
                     @if (confirmingDelete() === item) {
