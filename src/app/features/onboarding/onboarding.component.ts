@@ -154,7 +154,7 @@ export class OnboardingComponent {
 
     try {
       await action();
-      this.router.navigate(['/dashboard']);
+      this.router.navigate(['/movements']);
     } catch (e: unknown) {
       if (e instanceof NoBackupFoundError) {
         this.noBackupMessage.set(this.languageService.t('onboarding.restore.noBackupFound'));
@@ -241,7 +241,7 @@ export class OnboardingComponent {
       for (const cat of this.categories()) {
         await this.categoryService.create(cat.name, cat.type);
       }
-      this.router.navigate(['/dashboard']);
+      this.router.navigate(['/movements']);
     } catch (e: unknown) {
       this.errorMessage.set(
         e instanceof Error ? e.message : this.languageService.t('onboarding.completionFailed'),
