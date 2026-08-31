@@ -1,9 +1,19 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  computed,
+  effect,
+  inject,
+  signal,
+} from '@angular/core';
 import { DriveBackupService } from '../../../core/services/drive-backup.service';
+import { NetworkService } from '../../../core/services/network.service';
 import { LanguageService } from '../../../core/services/language.service';
 import { NoBackupFoundError } from '../../../backup/drive-backup-provider';
 import { BackupSnapshot, createSnapshot, stringifySnapshot } from '../../../backup/backup-snapshot';
 import { DismissibleAlertComponent } from '../../../shared/components/dismissible-alert/dismissible-alert.component';
+import { formatLastBackupStatus } from '../../../backup/last-backup-status';
+import { describeBackupError } from '../../../backup/backup-errors';
 
 const BACKUP_FILE_NAME = 'open-expenses-backup.json';
 
@@ -15,6 +25,7 @@ const BACKUP_FILE_NAME = 'open-expenses-backup.json';
 })
 export class BackupCardComponent {
   private backupService = inject(DriveBackupService);
+  private networkService = inject(NetworkService);
   language = inject(LanguageService);
 
   method = this.backupService.method;
@@ -24,10 +35,56 @@ export class BackupCardComponent {
   errorMessage = signal('');
   statusEpoch = signal(0);
 
+  private minuteTick = signal(0);
+
+  isOnline = this.networkService.isOnline;
+
+  lastBackupDisplay = computed(() => {
+    this.minuteTick();
+    return formatLastBackupStatus(
+      this.language.activeLanguage(),
+      this.backupService.lastBackupAt(),
+      this.backupService.method,
+    );
+  });
+
+  serviceErrorCopy = computed(() => {
+    this.language.activeLanguage();
+    const raw = this.backupService.error();
+    return raw ? describeBackupError(raw, this.language.activeLanguage()) : null;
+  });
+
+  constructor() {
+    const intervalId = setInterval(() => this.minuteTick.update((t) => t + 1), 60_000);
+    inject(DestroyRef).onDestroy(() => clearInterval(intervalId));
+
+    effect(() => {
+      if (!this.networkService.isOnline()) {
+        this.backupService.clearError();
+      }
+    });
+  }
+
   private newStatusCycle(): void {
     this.statusEpoch.update((n) => n + 1);
     this.message.set('');
     this.errorMessage.set('');
+  }
+
+  async backUp(): Promise<void> {
+    if (this.isBusy() || !this.isOnline()) {
+      return;
+    }
+    this.isBusy.set(true);
+    this.newStatusCycle();
+
+    try {
+      await this.backupService.backupNow();
+    } catch {
+      // Cloud backup errors surface via the service-error alert.
+    } finally {
+      this.isBusy.set(false);
+    }
   }
 
   backupDate = computed(() => {

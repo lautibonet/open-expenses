@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { BackupCardComponent } from './backup-card.component';
 import { DriveBackupService } from '../../../core/services/drive-backup.service';
+import { NetworkService } from '../../../core/services/network.service';
 import { ProfileService } from '../../../core/services/profile.service';
 import { AccountService } from '../../../core/services/account.service';
 import { LanguageService } from '../../../core/services/language.service';
@@ -53,11 +54,98 @@ describe('BackupCardComponent', () => {
     await db.delete();
   });
 
-  it('renders the three backup actions', () => {
+  it('renders the backup actions', () => {
     const text = fixture.nativeElement.textContent;
+    expect(text).toContain('Back up to Google Drive');
     expect(text).toContain('Download backup file');
     expect(text).toContain('Restore from file');
     expect(text).toContain('Restore from Google Drive');
+  });
+
+  it('backs up to the cloud from the card', async () => {
+    const spy = vi.spyOn(backupService, 'backupNow').mockResolvedValue(undefined);
+
+    const button = fixture.nativeElement.querySelector('.backup-actions button') as HTMLButtonElement;
+    button.click();
+    await fixture.whenStable();
+
+    expect(spy).toHaveBeenCalled();
+  });
+
+  it('disables the cloud back-up button while offline', () => {
+    TestBed.inject(NetworkService).isOnline.set(false);
+    fixture.detectChanges();
+
+    const button = fixture.nativeElement.querySelector('.backup-actions button') as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+
+    vi.spyOn(backupService, 'backupNow').mockResolvedValue(undefined);
+    button.click();
+
+    expect(backupService.backupNow).not.toHaveBeenCalled();
+  });
+
+  it('shows the last-backup time with the method, Never before the first backup', () => {
+    const lastBackup = fixture.nativeElement.querySelector('.last-backup') as HTMLElement;
+    expect(lastBackup.textContent?.trim()).toBe('Last backup: Never');
+
+    backupService.lastBackupAt.set(new Date(Date.now() - 5 * 60 * 1000));
+    fixture.detectChanges();
+
+    expect(lastBackup.textContent?.trim()).toBe('Google Drive · Last backup: 5 minutes ago');
+  });
+
+  it('renders the last-backup time in Spanish', async () => {
+    await TestBed.inject(LanguageService).setLanguage('es');
+    fixture.detectChanges();
+
+    const lastBackup = fixture.nativeElement.querySelector('.last-backup') as HTMLElement;
+    expect(lastBackup.textContent?.trim()).toBe('Última copia: Nunca');
+
+    const text = fixture.nativeElement.textContent;
+    expect(text).toContain('Hacer copia en Google Drive');
+  });
+
+  it('surfaces a cloud backup failure as a dismissible alert', () => {
+    backupService.error.set('popup_closed_by_user');
+    fixture.detectChanges();
+
+    const alert = fixture.nativeElement.querySelector('app-dismissible-alert[role="alert"] .alert') as HTMLElement;
+    expect(alert).not.toBeNull();
+    expect(alert.textContent).toContain('sign-in was cancelled');
+
+    const host = alert.closest('app-dismissible-alert') as HTMLElement;
+    expect(host.getAttribute('title')).toBe('popup_closed_by_user');
+
+    (alert.querySelector('.alert-dismiss') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('app-dismissible-alert[role="alert"] .alert')).toBeNull();
+  });
+
+  it('renders the cloud backup failure in Spanish', async () => {
+    await TestBed.inject(LanguageService).setLanguage('es');
+    backupService.error.set('popup_closed_by_user');
+    fixture.detectChanges();
+
+    const alert = fixture.nativeElement.querySelector('app-dismissible-alert[role="alert"] .alert') as HTMLElement;
+    expect(alert.textContent).toContain('se canceló');
+  });
+
+  it('clears a stale cloud backup error when the app goes offline', () => {
+    backupService.error.set('popup_closed_by_user');
+    fixture.detectChanges();
+    expect(
+      fixture.nativeElement.querySelector('app-dismissible-alert[role="alert"] .alert'),
+    ).not.toBeNull();
+
+    TestBed.inject(NetworkService).isOnline.set(false);
+    fixture.detectChanges();
+
+    expect(backupService.error()).toBeNull();
+    expect(
+      fixture.nativeElement.querySelector('app-dismissible-alert[role="alert"] .alert'),
+    ).toBeNull();
   });
 
   it('renders in Spanish with a locale-formatted backup date', async () => {

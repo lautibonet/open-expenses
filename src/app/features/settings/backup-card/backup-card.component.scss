@@ -18,6 +18,11 @@
   margin: 0 0 var(--space-md);
 }
 
+.last-backup {
+  @extend %caps-label-muted;
+  margin: calc(-1 * var(--space-md)) 0 var(--space-md);
+}
+
 .backup-actions {
   display: flex;
   gap: var(--space-sm);

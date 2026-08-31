@@ -4,6 +4,7 @@ import { ShellComponent } from './shell.component';
 import { routes } from '../../../app.routes';
 import { LanguageService } from '../../../core/services/language.service';
 import { CaptureFormService } from '../../../core/services/capture-form.service';
+import { DriveBackupService } from '../../../core/services/drive-backup.service';
 import { db } from '../../../core/db/database';
 
 describe('ShellComponent', () => {
@@ -34,8 +35,64 @@ describe('ShellComponent', () => {
     await db.delete();
   });
 
-  it('renders the backup banner in the app shell', () => {
-    expect(fixture.nativeElement.querySelector('app-backup-banner')).toBeTruthy();
+  it('renders the sidebar Backup as a bordered button with a status caption', () => {
+    const banner = fixture.nativeElement.querySelector('app-backup-banner');
+    expect(banner).toBeNull();
+
+    const button = fixture.nativeElement.querySelector('button.backup-button') as HTMLButtonElement;
+    expect(button).not.toBeNull();
+    expect(button.textContent?.trim()).toBe('Back up');
+
+    const block = fixture.nativeElement.querySelector('.backup-block') as HTMLElement;
+    expect(block.getAttribute('role')).toBe('group');
+    expect(block.getAttribute('aria-label')).toBe('Backup status');
+
+    const caption = fixture.nativeElement.querySelector('.backup-caption') as HTMLElement;
+    expect(caption.textContent?.trim()).toBe('Last backup: Never');
+  });
+
+  it('shows the backup method with the relative last-backup time in the caption', () => {
+    const backupService = TestBed.inject(DriveBackupService);
+    backupService.lastBackupAt.set(new Date(Date.now() - 5 * 60 * 1000));
+    fixture.detectChanges();
+
+    const caption = fixture.nativeElement.querySelector('.backup-caption') as HTMLElement;
+    expect(caption.textContent?.trim()).toBe('Google Drive · Last backup: 5 minutes ago');
+  });
+
+  it('renders the backup button and caption in Spanish', async () => {
+    await TestBed.inject(LanguageService).setLanguage('es');
+    fixture.detectChanges();
+
+    const button = fixture.nativeElement.querySelector('button.backup-button') as HTMLButtonElement;
+    expect(button.textContent?.trim()).toBe('Hacer copia');
+
+    const block = fixture.nativeElement.querySelector('.backup-block') as HTMLElement;
+    expect(block.getAttribute('aria-label')).toBe('Estado de la copia');
+
+    const caption = fixture.nativeElement.querySelector('.backup-caption') as HTMLElement;
+    expect(caption.textContent?.trim()).toBe('Última copia: Nunca');
+  });
+
+  it('backs up when the sidebar button is tapped', async () => {
+    const backupService = TestBed.inject(DriveBackupService);
+    const spy = vi.spyOn(backupService, 'backupNow').mockResolvedValue(undefined);
+
+    const button = fixture.nativeElement.querySelector('button.backup-button') as HTMLButtonElement;
+    button.click();
+    await fixture.whenStable();
+
+    expect(spy).toHaveBeenCalled();
+  });
+
+  it('disables the backup button while a backup is in progress', () => {
+    const backupService = TestBed.inject(DriveBackupService);
+    backupService.isBackingUp.set(true);
+    fixture.detectChanges();
+
+    const button = fixture.nativeElement.querySelector('button.backup-button') as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    expect(button.textContent?.trim()).toBe('Backing up…');
   });
 
   it('renders the main navigation tabs in Movements, Stats, Settings order', () => {
@@ -162,11 +219,5 @@ describe('ShellComponent', () => {
 
     expect(captureFormService.pendingQuickAddRequests()).toBe(0);
     expect(captureFormService.pendingTransferRequests()).toBe(0);
-  });
-
-  it('points the Backup link at the Settings backup card', () => {
-    const link = fixture.nativeElement.querySelector('a.backup-link') as HTMLAnchorElement;
-    expect(link).not.toBeNull();
-    expect(link.getAttribute('href')).toBe('/settings#backup');
   });
 });

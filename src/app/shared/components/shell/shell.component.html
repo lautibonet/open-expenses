@@ -42,9 +42,21 @@
     <button type="button" class="quick-add" (click)="goToQuickAdd()">
       {{ language.t('shell.quickAdd') }}
     </button>
-    <a class="backup-link" routerLink="/settings" fragment="backup">{{
-      language.t('shell.backup')
-    }}</a>
+    <div class="backup-block" role="group" [attr.aria-label]="language.t('backup.sidebar.ariaLabel')">
+      <button
+        type="button"
+        class="backup-button"
+        (click)="backUp()"
+        [disabled]="isBackingUp()"
+      >
+        {{
+          isBackingUp()
+            ? language.t('backup.action.backingUp')
+            : language.t('backup.action.backUp')
+        }}
+      </button>
+      <p class="backup-caption">{{ backupCaption() }}</p>
+    </div>
   </div>
 </aside>
 
@@ -58,7 +70,6 @@
 
 <div class="main-area">
   <app-install-prompt />
-  <app-backup-banner />
   <main class="content" id="main-content" tabindex="-1">
     <router-outlet />
   </main>
