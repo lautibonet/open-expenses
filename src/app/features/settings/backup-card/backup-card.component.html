@@ -11,8 +11,7 @@
     {{ language.t('backup.card.title') }}
   </h2>
   <p class="description">{{ language.t('backup.card.description') }}</p>
-  <p class="last-backup">{{ lastBackupDisplay() }}</p>
-
+  
   <div class="backup-actions">
     <button
       type="button"
@@ -42,6 +41,8 @@
       {{ language.t('backup.card.restoreFrom', { method: method }) }}
     </button>
   </div>
+
+  <p class="last-backup">{{ lastBackupDisplay() }}</p>
 
   <app-dismissible-alert
     variant="info"
