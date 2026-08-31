@@ -194,6 +194,14 @@ describe('OnboardingComponent', () => {
     expect(codes()).toEqual(['USD', 'EUR', 'GBP', 'JPY']);
   });
 
+  it('lands on Movements when the fresh wizard completes', async () => {
+    const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+
+    await component.completeOnboarding();
+
+    expect(navigate).toHaveBeenCalledWith(['/movements']);
+  });
+
   it('persists the chosen language to the profile when completing onboarding', async () => {
     vi.spyOn(router, 'navigate').mockResolvedValue(true);
     component.onLanguageChange('es');
@@ -256,14 +264,14 @@ describe('OnboardingComponent', () => {
     expect(cats.map(c => c.name)).not.toContain('Comida');
   });
 
-  it('restores from cloud: connects, restores, and goes to the dashboard', async () => {
+  it('restores from cloud: connects, restores, and lands on Movements', async () => {
     const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
 
     await component.restoreFromCloud();
 
     expect(driveBackupService.connect).toHaveBeenCalled();
     expect(driveBackupService.restore).toHaveBeenCalled();
-    expect(navigate).toHaveBeenCalledWith(['/dashboard']);
+    expect(navigate).toHaveBeenCalledWith(['/movements']);
   });
 
   it('stays on the restore step with a clear message when no cloud backup exists', async () => {
@@ -300,14 +308,14 @@ describe('OnboardingComponent', () => {
     expect(component.errorMessage()).toBe('Cannot restore while offline');
   });
 
-  it('restores from an uploaded file and goes to the dashboard', async () => {
+  it('restores from an uploaded file and lands on Movements', async () => {
     const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
     const file = new File(['{}'], 'backup.json', { type: 'application/json' });
 
     await component.restoreFromFile(file);
 
     expect(driveBackupService.restoreFromFile).toHaveBeenCalledWith(file);
-    expect(navigate).toHaveBeenCalledWith(['/dashboard']);
+    expect(navigate).toHaveBeenCalledWith(['/movements']);
   });
 
   it('shows an error when the uploaded file is invalid', async () => {
