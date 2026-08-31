@@ -8,6 +8,7 @@ import { ProfileService } from '../../core/services/profile.service';
 import { ExchangeRateService } from '../../core/services/exchange-rate.service';
 import { NetworkService } from '../../core/services/network.service';
 import { LanguageService } from '../../core/services/language.service';
+import { DataVersionService } from '../../core/services/data-version.service';
 import {
   MONTH_NUMBERS,
   MonthNumber,
@@ -40,6 +41,7 @@ export class DashboardComponent implements OnInit {
   private profileService = inject(ProfileService);
   private exchangeRateService = inject(ExchangeRateService);
   private networkService = inject(NetworkService);
+  private dataVersion = inject(DataVersionService);
   language = inject(LanguageService);
 
   scope = signal<PeriodScope>(defaultScope());
@@ -66,11 +68,17 @@ export class DashboardComponent implements OnInit {
   avgMonthlySavings = signal(0);
 
   async ngOnInit(): Promise<void> {
+    await this.loadAll();
+  }
+
+  private async loadAll(): Promise<void> {
     this.baseCurrency.set(await this.profileService.getBaseCurrency());
     await this.refresh();
     await this.refreshAverages();
     await this.applyScopeOptions();
   }
+
+  private reloadDataOnVersionChange = this.dataVersion.reloadOnChange(() => this.loadAll());
 
   async refresh(): Promise<void> {
     this.conversionFailed.set(false);

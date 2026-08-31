@@ -4,6 +4,7 @@ import { AccountService } from '../../core/services/account.service';
 import { CategoryService } from '../../core/services/category.service';
 import { ProfileService } from '../../core/services/profile.service';
 import { LanguageService } from '../../core/services/language.service';
+import { DataVersionService } from '../../core/services/data-version.service';
 import { SUPPORTED_CURRENCIES } from '../../core/constants/currencies';
 import { Account } from '../../core/models/account.model';
 import { Category, CategoryType } from '../../core/models/category.model';
@@ -22,6 +23,7 @@ export class SettingsComponent implements OnInit {
   private accountService = inject(AccountService);
   private categoryService = inject(CategoryService);
   private profileService = inject(ProfileService);
+  private dataVersion = inject(DataVersionService);
   language = inject(LanguageService);
 
   supportedCurrencies = SUPPORTED_CURRENCIES;
@@ -43,7 +45,13 @@ export class SettingsComponent implements OnInit {
   confirmingDeactivate = signal<number | null>(null);
   confirmingCategoryDeactivate = signal<number | null>(null);
 
+  private reloadDataOnVersionChange = this.dataVersion.reloadOnChange(() => this.loadAll());
+
   async ngOnInit(): Promise<void> {
+    await this.loadAll();
+  }
+
+  private async loadAll(): Promise<void> {
     this.baseCurrency.set(await this.profileService.getBaseCurrency());
     await this.refresh();
   }
