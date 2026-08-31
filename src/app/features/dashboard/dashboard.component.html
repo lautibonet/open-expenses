@@ -7,17 +7,15 @@
 
     <div class="scope-control" role="group" [attr.aria-label]="language.t('scope.groupAria')">
       <div class="scope-selects">
-        @if (scope().kind !== 'all-time') {
-          <select
-            [ngModel]="scopePeriod()"
-            (ngModelChange)="onScopeMonthChange($event)"
-            [attr.aria-label]="language.t('scope.monthAria')"
-          >
-            @for (month of scopeMonths(); track month) {
-              <option [ngValue]="month">{{ language.monthName(month) }}</option>
-            }
-          </select>
-        }
+        <select
+          [ngModel]="scopePeriod()"
+          (ngModelChange)="onScopeMonthChange($event)"
+          [attr.aria-label]="language.t('scope.monthAria')"
+        >
+          @for (month of scopeMonths(); track month) {
+            <option [ngValue]="month">{{ language.monthName(month) }}</option>
+          }
+        </select>
         <select
           [ngModel]="scopeYearValue()"
           (ngModelChange)="onScopeYearChange($event)"
@@ -26,18 +24,8 @@
           @for (yr of scopeYears(); track yr) {
             <option [ngValue]="yr">{{ yr }}</option>
           }
-          <option [ngValue]="'all-time'">{{ language.t('scope.allTime') }}</option>
         </select>
       </div>
-      <button
-        type="button"
-        class="all-time-btn"
-        [class.active]="isAllTimeScope()"
-        [attr.aria-pressed]="isAllTimeScope()"
-        (click)="toggleAllTime()"
-      >
-        {{ language.t('scope.allTime') }}
-      </button>
     </div>
 
     <span class="visually-hidden" aria-live="polite">{{ scopeAnnouncement() }}</span>

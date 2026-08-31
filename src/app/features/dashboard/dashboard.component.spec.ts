@@ -164,20 +164,6 @@ describe('DashboardComponent', () => {
       expect(component.avgMonthlySavings()).toBe(2400);
     });
 
-    it('should compute all-time averages across all months with data', async () => {
-      const acc = await accountService.create('Cash', 'EUR', 0);
-      const incomeCat = await categoryService.create('Payroll', 'income');
-
-      await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date('2025-01-15'), 1);
-      await transactionService.create(acc.id!, incomeCat.id!, 4000, new Date('2026-03-15'), 3);
-      await transactionService.create(acc.id!, incomeCat.id!, 2500, new Date('2026-06-15'), 6);
-
-      await component.ngOnInit();
-      await component.onScopeYearChange('all-time');
-
-      expect(component.avgMonthlyIncome()).toBeCloseTo(3166.67, 0);
-    });
-
     it('should show zero averages when no data exists', async () => {
       await component.ngOnInit();
       await component.refreshAverages();
@@ -397,7 +383,7 @@ describe('DashboardComponent - shared scope', () => {
     expect(component.scopeMonths()).toContain(5);
   });
 
-  it('should compute All time totals across every period present in the data', async () => {
+  it('should show only the selected period totals', async () => {
     const acc = await accountService.create('Cash', 'EUR', 0);
     const incomeCat = await categoryService.create('Payroll', 'income');
     await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date('2012-01-15'), 1, null, null, 2012);
@@ -406,20 +392,22 @@ describe('DashboardComponent - shared scope', () => {
     await component.ngOnInit();
     expect(component.totalIncome()).toBe(0);
 
-    await component.onScopeYearChange('all-time');
+    await component.onScopeYearChange(2012);
+    await component.onScopeMonthChange(1);
 
-    expect(component.scope().kind).toBe('all-time');
-    expect(component.totalIncome()).toBe(7000);
+    expect(component.scope()).toEqual({ kind: 'month', period: 1, year: 2012 });
+    expect(component.totalIncome()).toBe(3000);
   });
 
-  it('should include movements older than ten years in All time totals', async () => {
+  it('should include movements older than ten years when their year is selected', async () => {
     const acc = await accountService.create('Cash', 'EUR', 0);
     const incomeCat = await categoryService.create('Payroll', 'income');
     const oldYear = getCurrentYear() - 20;
     await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(`${oldYear}-01-15`), 1, null, null, oldYear);
 
     await component.ngOnInit();
-    await component.onScopeYearChange('all-time');
+    await component.onScopeYearChange(oldYear);
+    await component.onScopeMonthChange(1);
 
     expect(component.totalIncome()).toBe(3000);
   });
@@ -428,8 +416,11 @@ describe('DashboardComponent - shared scope', () => {
     await component.ngOnInit();
     expect(component.scopeAnnouncement()).toBe('');
 
-    await component.onScopeYearChange('all-time');
-    expect(component.scopeAnnouncement()).toBe('All time');
+    const period = getCurrentPeriod();
+    await component.onScopeYearChange(getCurrentYear() - 1);
+    expect(component.scopeAnnouncement()).toBe(
+      `${MONTH_NAMES[period - 1]} ${getCurrentYear() - 1}`,
+    );
   });
 
   it('should label the totals card with the current scope', async () => {
@@ -437,9 +428,6 @@ describe('DashboardComponent - shared scope', () => {
     expect(component.scopeLabelText()).toBe(
       `${MONTH_NAMES[getCurrentPeriod() - 1]} ${getCurrentYear()}`,
     );
-
-    await component.onScopeYearChange('all-time');
-    expect(component.scopeLabelText()).toBe('All time');
   });
 
   it('should render exactly two scope selects and no extra averages dropdown', async () => {
@@ -454,24 +442,15 @@ describe('DashboardComponent - shared scope', () => {
     expect(labels).toContain('Scope month');
   });
 
-  it('should hide the month selector for All time when month adds no meaning', async () => {
-    await component.ngOnInit();
-    await component.onScopeYearChange('all-time');
-    fixture.detectChanges();
-
-    const monthSelect = fixture.nativeElement.querySelector('select[aria-label="Scope month"]');
-    expect(monthSelect).toBeNull();
-  });
-
   it('should name the scope in every card heading', async () => {
     await component.ngOnInit();
-    await component.onScopeYearChange('all-time');
     fixture.detectChanges();
 
+    const expectedLabel = `${MONTH_NAMES[getCurrentPeriod() - 1]} ${getCurrentYear()}`;
     const headings = Array.from(fixture.nativeElement.querySelectorAll('h2') as NodeListOf<HTMLElement>);
     expect(headings.length).toBeGreaterThan(0);
     for (const h of headings) {
-      expect(h.textContent).toContain('All time');
+      expect(h.textContent).toContain(expectedLabel);
     }
   });
 
@@ -544,23 +523,7 @@ describe('DashboardComponent - shared scope', () => {
     expect(component.savingsRate()).toBeNull();
   });
 
-  it('should compute all-time balances across every period present in the data', async () => {
-    const acc = await accountService.create('Cash', 'EUR', 0);
-    const incomeCat = await categoryService.create('Payroll', 'income');
-    const expenseCat = await categoryService.create('Food', 'expense');
-
-    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date('2012-01-15'), 1, null, null, 2012);
-    await transactionService.create(acc.id!, expenseCat.id!, 500, new Date('2026-03-15'), 3);
-
-    await component.ngOnInit();
-    await component.onScopeYearChange('all-time');
-
-    expect(component.totalIncome()).toBe(3000);
-    expect(component.totalExpenses()).toBe(500);
-    expect(component.netIncome()).toBe(2500);
-  });
-
-  it('should keep a numeric year scope when switching from All time back to a year', async () => {
+  it('should switch scope by year via the select', async () => {
     const acc = await accountService.create('Cash', 'EUR', 0);
     const incomeCat = await categoryService.create('Payroll', 'income');
     const year = getCurrentYear();
@@ -571,14 +534,6 @@ describe('DashboardComponent - shared scope', () => {
 
     const yearSelect = fixture.nativeElement.querySelector('select[aria-label="Scope year"]') as HTMLSelectElement;
     const flush = () => new Promise<void>(resolve => setTimeout(resolve, 10));
-
-    const allTimeOption = Array.from(yearSelect.options).find(o => o.textContent?.trim() === 'All time')!;
-    yearSelect.value = allTimeOption.value;
-    yearSelect.dispatchEvent(new Event('change'));
-    await flush();
-    fixture.detectChanges();
-    expect(component.scope().kind).toBe('all-time');
-    expect(component.totalIncome()).toBe(3000);
 
     const yearOption = Array.from(yearSelect.options).find(o => o.textContent?.trim() === String(year))!;
     yearSelect.value = yearOption.value;
@@ -655,16 +610,6 @@ describe('DashboardComponent - page header, scope control and restyled cards', (
     ).toBeNull();
     expect(fixture.nativeElement.querySelector('button[aria-label="Next month"]')).toBeNull();
     expect(fixture.nativeElement.querySelector('.scope-selects select')).toBeTruthy();
-  });
-
-  it('toggles All Time from the scope control and back to the current month', async () => {
-    await component.ngOnInit();
-
-    await component.toggleAllTime();
-    expect(component.scope()).toEqual({ kind: 'all-time' });
-
-    await component.toggleAllTime();
-    expect(component.scope()).toEqual(defaultScope());
   });
 
   it('refreshes averages when the scope month changes, keeping the year-average semantics', async () => {
@@ -825,8 +770,8 @@ describe('DashboardComponent - translations', () => {
     expect(text).toContain('Media neta');
     expect(text).toContain('Saldo total de');
     expect(text).toContain('Saldos de cuentas de');
-    expect(text).toContain('Todo el periodo');
     expect(fixture.nativeElement.querySelector('[aria-label="Ámbito: año"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('[aria-label="Ámbito: mes"]')).toBeTruthy();
   });
 
   it('re-renders in Spanish immediately when the Language changes after render', async () => {

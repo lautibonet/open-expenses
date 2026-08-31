@@ -209,14 +209,6 @@ describe('TransactionService', () => {
     expect(jan26[0].amount).toBe(100);
   });
 
-  it('should get all transactions for the all-time scope', async () => {
-    await transactionService.create(accountId, categoryId, 100, new Date('2010-05-01'), 5, null, null, 2010);
-    await transactionService.create(accountId, categoryId, 200, new Date('2026-06-01'), 6, null, null, 2026);
-
-    const all = await transactionService.getByScope({ kind: 'all-time' });
-    expect(all.length).toBe(2);
-  });
-
   it('should update the period year', async () => {
     const t = await transactionService.create(accountId, categoryId, 100, new Date('2025-12-22'), 1);
     const updated = await transactionService.update(t.id!, { year: 2025 });

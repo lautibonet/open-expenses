@@ -45,11 +45,7 @@ export interface MonthScope {
   year: number;
 }
 
-export interface AllTimeScope {
-  kind: 'all-time';
-}
-
-export type PeriodScope = MonthScope | AllTimeScope;
+export type PeriodScope = MonthScope;
 
 export type ScopeAwareMovement = {
   period: number | string;
@@ -59,10 +55,6 @@ export type ScopeAwareMovement = {
 
 export function defaultScope(): PeriodScope {
   return { kind: 'month', period: getCurrentPeriod(), year: getCurrentYear() };
-}
-
-export function isAllTime(scope: PeriodScope): scope is AllTimeScope {
-  return scope.kind === 'all-time';
 }
 
 export function yearsFromData(

@@ -119,9 +119,6 @@ export class TransactionService {
   }
 
   async getByScope(scope: PeriodScope): Promise<Transaction[]> {
-    if (scope.kind === 'all-time') {
-      return this.getAll();
-    }
     return this.getByPeriod(scope.period, scope.year);
   }
 

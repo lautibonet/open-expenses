@@ -16,10 +16,6 @@
   @extend %scope-selects;
 }
 
-.all-time-btn {
-  @extend %all-time-btn;
-}
-
 .controls {
   display: flex;
   gap: 0.5rem;
@@ -139,12 +135,6 @@
   }
 }
 
-.month-group-row td {
-  @extend %caps-label-muted;
-  padding-top: 1rem;
-  background: var(--surface-lowest);
-}
-
 .filter-badge {
   display: inline-flex;
   align-items: center;
@@ -234,7 +224,7 @@
     border-left: var(--stripe-transfer);
   }
 
-  tbody tr:not(.month-group-row):hover td {
+  tbody tr:hover td {
     background: var(--row-hover);
   }
 

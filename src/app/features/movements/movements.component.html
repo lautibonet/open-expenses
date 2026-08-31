@@ -7,17 +7,15 @@
 
     <div class="scope-control" role="group" [attr.aria-label]="language.t('scope.groupAria')">
       <div class="scope-selects">
-        @if (scope().kind !== 'all-time') {
-          <select
-            [ngModel]="scopePeriod()"
-            (ngModelChange)="onScopeMonthChange($event)"
-            [attr.aria-label]="language.t('scope.monthAria')"
-          >
-            @for (month of scopeMonths(); track month) {
-              <option [ngValue]="month">{{ language.monthName(month) }}</option>
-            }
-          </select>
-        }
+        <select
+          [ngModel]="scopePeriod()"
+          (ngModelChange)="onScopeMonthChange($event)"
+          [attr.aria-label]="language.t('scope.monthAria')"
+        >
+          @for (month of scopeMonths(); track month) {
+            <option [ngValue]="month">{{ language.monthName(month) }}</option>
+          }
+        </select>
         <select
           [ngModel]="scopeYearValue()"
           (ngModelChange)="onScopeYearChange($event)"
@@ -26,18 +24,8 @@
           @for (yr of scopeYears(); track yr) {
             <option [ngValue]="yr">{{ yr }}</option>
           }
-          <option [ngValue]="'all-time'">{{ language.t('scope.allTime') }}</option>
         </select>
       </div>
-      <button
-        type="button"
-        class="all-time-btn"
-        [class.active]="isAllTimeScope()"
-        [attr.aria-pressed]="isAllTimeScope()"
-        (click)="toggleAllTime()"
-      >
-        {{ language.t('scope.allTime') }}
-      </button>
     </div>
   </header>
 
@@ -284,206 +272,200 @@
           </thead>
           <tbody>
             @for (row of movementView(); track trackKey(row)) {
-              @if (row.kind === 'group') {
-                <tr class="month-group-row">
-                  <td colspan="5">{{ row.label }}</td>
-                </tr>
-              } @else {
-                @let item = row.item;
-                @if (isTransaction(item)) {
-                  @let txn = getTransactionData(item);
-                @let income = isIncomeTransaction(txn);
-                <tr
-                  [class.row-income]="income"
-                  [class.row-expense]="!income"
+            @let item = row;
+              @if (isTransaction(item)) {
+                @let txn = getTransactionData(item);
+              @let income = isIncomeTransaction(txn);
+              <tr
+                [class.row-income]="income"
+                [class.row-expense]="!income"
+              >
+                <td>{{ txn.date | date: 'mediumDate' }}</td>
+                <td>
+                  <span class="cat-chip">{{ getCategoryName(txn.categoryId) }}</span>
+                  @if (txn.note) {
+                    <div class="note">{{ txn.note }}</div>
+                  }
+                </td>
+                <td
+                  [class.income]="isIncomeTransaction(txn)"
+                  [class.expense]="!isIncomeTransaction(txn)"
                 >
-                  <td>{{ txn.date | date: 'mediumDate' }}</td>
-                  <td>
-                    <span class="cat-chip">{{ getCategoryName(txn.categoryId) }}</span>
-                    @if (txn.note) {
-                      <div class="note">{{ txn.note }}</div>
-                    }
-                  </td>
-                  <td
-                    [class.income]="isIncomeTransaction(txn)"
-                    [class.expense]="!isIncomeTransaction(txn)"
-                  >
-                    {{ formatTransactionDisplayAmount(txn) }}
-                  </td>
-                  <td>{{ getAccountName(txn.accountId) }}</td>
-                  <td class="actions-cell">
-                    @if (confirmingDelete() === item) {
-                      <span class="visually-hidden" aria-live="polite">
-                        {{ deleteConfirmationLabel(confirmingDelete()!) }}
-                      </span>
-                      <button
-                        #deleteConfirmBtn
-                        class="btn small danger icon-btn"
-                        (click)="confirmDelete()"
-                        [attr.aria-label]="language.t('movements.confirmTransactionDeletionAria')"
-                        [title]="language.t('movements.confirmTransactionDeletionAria')"
-                      >
-                        <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
-                          <path
-                            d="M20 6 9 17l-5-5"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                          />
-                        </svg>
-                      </button>
-                      <button
-                        class="btn small icon-btn"
-                        (click)="cancelDelete()"
-                        [attr.aria-label]="language.t('movements.cancelDeletionAria')"
-                        [title]="language.t('movements.cancelDeletionAria')"
-                      >
-                        <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
-                          <path
-                            d="M18 6 6 18M6 6l12 12"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                          />
-                        </svg>
-                      </button>
-                    } @else {
-                      <button
-                        class="btn small icon-btn"
-                        (click)="openQuickAddForEdit(txn)"
-                        [attr.aria-label]="language.t('movements.editMovementAria')"
-                        [title]="language.t('movements.editMovementAria')"
-                      >
-                        <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
-                          <path
-                            d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                          />
-                        </svg>
-                      </button>
-                      <button
-                        class="btn small danger icon-btn"
-                        (click)="requestDelete(item)"
-                        [attr.aria-label]="language.t('movements.deleteMovementAria')"
-                        [title]="language.t('movements.deleteMovementAria')"
-                      >
-                        <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
-                          <path
-                            d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                          />
-                        </svg>
-                      </button>
-                    }
-                  </td>
-                </tr>
-              } @else {
-                @let tr = getTransferData(item);
-                <tr class="transfer-row">
-                  <td>{{ tr.date | date: 'mediumDate' }}</td>
-                  <td>
-                    {{ getAccountName(tr.sourceAccountId) }} →
-                    {{ getAccountName(tr.destinationAccountId) }}
-                  </td>
-                  <td class="amount-cell">
-                    {{ formatTransferDisplayAmount(tr) }}
-                  </td>
-                  <td>
-                    @if (tr.note) {
-                      <span class="note">{{ tr.note }}</span>
-                    }
-                  </td>
-                  <td class="actions-cell">
-                    @if (confirmingDelete() === item) {
-                      <span class="visually-hidden" aria-live="polite">
-                        {{ deleteConfirmationLabel(confirmingDelete()!) }}
-                      </span>
-                      <button
-                        #deleteConfirmBtn
-                        class="btn small danger icon-btn"
-                        (click)="confirmDelete()"
-                        [attr.aria-label]="language.t('movements.confirmTransferDeletionAria')"
-                        [title]="language.t('movements.confirmTransferDeletionAria')"
-                      >
-                        <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
-                          <path
-                            d="M20 6 9 17l-5-5"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                          />
-                        </svg>
-                      </button>
-                      <button
-                        class="btn small icon-btn"
-                        (click)="cancelDelete()"
-                        [attr.aria-label]="language.t('movements.cancelDeletionAria')"
-                        [title]="language.t('movements.cancelDeletionAria')"
-                      >
-                        <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
-                          <path
-                            d="M18 6 6 18M6 6l12 12"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                          />
-                        </svg>
-                      </button>
-                    } @else {
-                      <button
-                        class="btn small icon-btn"
-                        (click)="openTransferForm(tr.id!)"
-                        [attr.aria-label]="language.t('movements.editMovementAria')"
-                        [title]="language.t('movements.editMovementAria')"
-                      >
-                        <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
-                          <path
-                            d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                          />
-                        </svg>
-                      </button>
-                      <button
-                        class="btn small danger icon-btn"
-                        (click)="requestDelete(item)"
-                        [attr.aria-label]="language.t('movements.deleteMovementAria')"
-                        [title]="language.t('movements.deleteMovementAria')"
-                      >
-                        <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
-                          <path
-                            d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="2"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                          />
-                        </svg>
-                      </button>
-                    }
-                  </td>
-                </tr>
-                }
+                  {{ formatTransactionDisplayAmount(txn) }}
+                </td>
+                <td>{{ getAccountName(txn.accountId) }}</td>
+                <td class="actions-cell">
+                  @if (confirmingDelete() === item) {
+                    <span class="visually-hidden" aria-live="polite">
+                      {{ deleteConfirmationLabel(confirmingDelete()!) }}
+                    </span>
+                    <button
+                      #deleteConfirmBtn
+                      class="btn small danger icon-btn"
+                      (click)="confirmDelete()"
+                      [attr.aria-label]="language.t('movements.confirmTransactionDeletionAria')"
+                      [title]="language.t('movements.confirmTransactionDeletionAria')"
+                    >
+                      <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                        <path
+                          d="M20 6 9 17l-5-5"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        />
+                      </svg>
+                    </button>
+                    <button
+                      class="btn small icon-btn"
+                      (click)="cancelDelete()"
+                      [attr.aria-label]="language.t('movements.cancelDeletionAria')"
+                      [title]="language.t('movements.cancelDeletionAria')"
+                    >
+                      <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                        <path
+                          d="M18 6 6 18M6 6l12 12"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        />
+                      </svg>
+                    </button>
+                  } @else {
+                    <button
+                      class="btn small icon-btn"
+                      (click)="openQuickAddForEdit(txn)"
+                      [attr.aria-label]="language.t('movements.editMovementAria')"
+                      [title]="language.t('movements.editMovementAria')"
+                    >
+                      <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                        <path
+                          d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        />
+                      </svg>
+                    </button>
+                    <button
+                      class="btn small danger icon-btn"
+                      (click)="requestDelete(item)"
+                      [attr.aria-label]="language.t('movements.deleteMovementAria')"
+                      [title]="language.t('movements.deleteMovementAria')"
+                    >
+                      <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                        <path
+                          d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        />
+                      </svg>
+                    </button>
+                  }
+                </td>
+              </tr>
+            } @else {
+              @let tr = getTransferData(item);
+              <tr class="transfer-row">
+                <td>{{ tr.date | date: 'mediumDate' }}</td>
+                <td>
+                  {{ getAccountName(tr.sourceAccountId) }} →
+                  {{ getAccountName(tr.destinationAccountId) }}
+                </td>
+                <td class="amount-cell">
+                  {{ formatTransferDisplayAmount(tr) }}
+                </td>
+                <td>
+                  @if (tr.note) {
+                    <span class="note">{{ tr.note }}</span>
+                  }
+                </td>
+                <td class="actions-cell">
+                  @if (confirmingDelete() === item) {
+                    <span class="visually-hidden" aria-live="polite">
+                      {{ deleteConfirmationLabel(confirmingDelete()!) }}
+                    </span>
+                    <button
+                      #deleteConfirmBtn
+                      class="btn small danger icon-btn"
+                      (click)="confirmDelete()"
+                      [attr.aria-label]="language.t('movements.confirmTransferDeletionAria')"
+                      [title]="language.t('movements.confirmTransferDeletionAria')"
+                    >
+                      <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                        <path
+                          d="M20 6 9 17l-5-5"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        />
+                      </svg>
+                    </button>
+                    <button
+                      class="btn small icon-btn"
+                      (click)="cancelDelete()"
+                      [attr.aria-label]="language.t('movements.cancelDeletionAria')"
+                      [title]="language.t('movements.cancelDeletionAria')"
+                    >
+                      <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                        <path
+                          d="M18 6 6 18M6 6l12 12"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        />
+                      </svg>
+                    </button>
+                  } @else {
+                    <button
+                      class="btn small icon-btn"
+                      (click)="openTransferForm(tr.id!)"
+                      [attr.aria-label]="language.t('movements.editMovementAria')"
+                      [title]="language.t('movements.editMovementAria')"
+                    >
+                      <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                        <path
+                          d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        />
+                      </svg>
+                    </button>
+                    <button
+                      class="btn small danger icon-btn"
+                      (click)="requestDelete(item)"
+                      [attr.aria-label]="language.t('movements.deleteMovementAria')"
+                      [title]="language.t('movements.deleteMovementAria')"
+                    >
+                      <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                        <path
+                          d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        />
+                      </svg>
+                    </button>
+                  }
+                </td>
+              </tr>
               }
             }
           </tbody>
