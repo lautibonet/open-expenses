@@ -12,8 +12,8 @@
   @extend %scope-control;
 }
 
-.scope-stepper {
-  @extend %scope-stepper;
+.scope-selects {
+  @extend %scope-selects;
 }
 
 .all-time-btn {
@@ -128,10 +128,13 @@
   label {
     @extend %stacked-label;
 
+    flex: 1;
+
     select,
     input {
       @extend %field;
       margin-top: 0.25rem;
+      width: 100%;
     }
   }
 }
@@ -339,7 +342,12 @@
   }
 
   .filter-bar {
-    flex-wrap: wrap;
+    flex-direction: column;
+    align-items: stretch;
+
+    label {
+      width: 100%;
+    }
   }
 
   /* Keep the toast clear of the fixed bottom nav bar (MIGRATION.md risk 8):

@@ -198,57 +198,22 @@
   }
 }
 
-/* Scope control: chevron stepper around the month/year selects plus an
-   All Time toggle. Shared by Movements and Stats (D13 chrome). */
+/* Scope control: plain month/year selects side by side — standard fields
+   with the app's 1px border — plus an All Time toggle. Shared by Movements
+   and Stats. */
 %scope-control {
   display: flex;
-  align-items: stretch;
+  align-items: center;
   gap: var(--space-sm);
 }
 
-%scope-stepper {
+%scope-selects {
   display: flex;
-  align-items: stretch;
-  background: var(--surface-lowest);
-  border: var(--border-hard);
+  align-items: center;
+  gap: var(--space-sm);
 
-  .step-btn {
-    display: flex;
-    align-items: center;
-    padding: 0 var(--space-sm);
-    border: none;
-    background: none;
-    cursor: pointer;
-    color: var(--on-surface);
-
-    svg {
-      width: 1rem;
-      height: 1rem;
-    }
-
-    &:hover:not(:disabled) {
-      background: var(--surface-container);
-    }
-
-    &:disabled {
-      color: var(--outline);
-      cursor: default;
-    }
-  }
-
-  .scope-selects {
-    display: flex;
-    border-left: var(--border-hard);
-    border-right: var(--border-hard);
-
-    select {
-      @extend %field;
-
-      border: none;
-      background: transparent;
-      font-family: var(--font-data);
-      font-variant-numeric: tabular-nums;
-    }
+  select {
+    @extend %field;
   }
 }
 

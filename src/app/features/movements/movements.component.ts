@@ -351,19 +351,6 @@ export class MovementsComponent implements OnInit, OnDestroy {
     return isAllTime(this.scope());
   }
 
-  canStepMonth(delta: -1 | 1): boolean {
-    const s = this.scope();
-    if (isAllTime(s)) return false;
-    const next = s.period + delta;
-    return next >= 1 && next <= 12;
-  }
-
-  async stepScopeMonth(delta: -1 | 1): Promise<void> {
-    const s = this.scope();
-    if (isAllTime(s) || !this.canStepMonth(delta)) return;
-    await this.onScopeMonthChange(s.period + delta);
-  }
-
   async toggleAllTime(): Promise<void> {
     if (isAllTime(this.scope())) {
       await this.onScopeYearChange(getCurrentYear());

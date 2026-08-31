@@ -883,7 +883,7 @@ describe('MovementsComponent - period year', () => {
   });
 });
 
-describe('MovementsComponent - page header and scope stepper', () => {
+describe('MovementsComponent - page header and scope control', () => {
   let fixture: ComponentFixture<MovementsComponent>;
   let component: MovementsComponent;
   let transactionService: TransactionService;
@@ -910,11 +910,6 @@ describe('MovementsComponent - page header and scope stepper', () => {
     await db.delete();
   });
 
-  async function scopeTo(period: number, year: number): Promise<void> {
-    await component.onScopeYearChange(year);
-    await component.onScopeMonthChange(period);
-  }
-
   it('renders the display headline with its subtitle', async () => {
     await component.ngOnInit();
     fixture.detectChanges();
@@ -935,39 +930,16 @@ describe('MovementsComponent - page header and scope stepper', () => {
     expect(fixture.nativeElement.querySelector('select[aria-label="Scope month"]')).toBeTruthy();
   });
 
-  it('steps the month via the stepper without touching the year', async () => {
-    const year = getCurrentYear();
+  it('renders plain month and year selects with no chevron stepper', async () => {
     await component.ngOnInit();
-    await scopeTo(6, year);
+    fixture.detectChanges();
 
-    await component.stepScopeMonth(1);
-    expect(component.scope()).toEqual({ kind: 'month', period: 7, year });
-
-    await component.stepScopeMonth(-1);
-    await component.stepScopeMonth(-1);
-    expect(component.scope()).toEqual({ kind: 'month', period: 5, year });
-  });
-
-  it('disables the stepper at the calendar edges', async () => {
-    await component.ngOnInit();
-    await scopeTo(1, getCurrentYear());
-    expect(component.canStepMonth(-1)).toBe(false);
-    expect(component.canStepMonth(1)).toBe(true);
-
-    await scopeTo(12, getCurrentYear());
-    expect(component.canStepMonth(-1)).toBe(true);
-    expect(component.canStepMonth(1)).toBe(false);
-  });
-
-  it('cannot step months while All Time is active', async () => {
-    await component.ngOnInit();
-    await component.onScopeYearChange('all-time');
-
-    expect(component.canStepMonth(-1)).toBe(false);
-    expect(component.canStepMonth(1)).toBe(false);
-
-    await component.stepScopeMonth(1);
-    expect(component.scope().kind).toBe('all-time');
+    expect(fixture.nativeElement.querySelectorAll('.step-btn').length).toBe(0);
+    expect(
+      fixture.nativeElement.querySelector('button[aria-label="Previous month"]'),
+    ).toBeNull();
+    expect(fixture.nativeElement.querySelector('button[aria-label="Next month"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.scope-selects select')).toBeTruthy();
   });
 
   it('toggles All Time from the scope control and back to the current month', async () => {
