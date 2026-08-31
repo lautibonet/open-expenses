@@ -28,13 +28,18 @@
   border: var(--border-hard-thick);
 }
 
-/* Directional stripes — the 4px left edge of income/expense rows and cards. */
+/* Directional stripes — the 4px left edge of income/expense/transfer rows
+   and cards. */
 %stripe-income {
   border-left: var(--stripe-income);
 }
 
 %stripe-expense {
   border-left: var(--stripe-expense);
+}
+
+%stripe-transfer {
+  border-left: var(--stripe-transfer);
 }
 
 /* Monetary/numeric figures: JetBrains Mono, kept tabular so columns of

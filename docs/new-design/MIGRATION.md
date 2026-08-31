@@ -20,7 +20,7 @@ models, or user flows**.
 | D5 | **No Danger Zone / Wipe Data** — new destructive feature, out of scope. |
 | D6 | **Quick Add card restyled in place** — same 416-line behavior (rate fetch, confirm/override, localStorage memory). Design's "ADD ENTRY" CTA becomes a Quick Add CTA that scrolls/focuses the card. |
 | D7 | **Fonts self-hosted** (woff2 in `public/fonts/`), no Google Fonts CDN — offline-first PWA. |
-| D8 | **No green token.** Income = primary blue, expense = error red (matches screenshots' ↑ blue / ↓ red). Revisit later if wanted. |
+| D8 | **No green token.** Income = primary blue, expense = error red (matches screenshots' ↑ blue / ↓ red). **Reversed 2026-08-31 (ADR 0011, issue #69):** income is ledger green (`--income` #15803d), transfers get a quiet grey stripe (`--stripe-transfer`), and the Movements Type column (with its ↑/↓/= arrows) is dropped — the 4px edge stripe is the type's only signal. |
 | D9 | **Mobile: sidebar collapses to a bottom nav bar** (not the HTML's top-nav hint), with safe-area insets. |
 | D10 | **ADR 0008 stands** — tokens stay CSS custom properties in `src/styles.scss`; values replaced. No Tailwind, no new styling architecture. `DESIGN.md` rewritten. |
 | D11 | **Token-first rollout**, then screen-by-screen; `ng test` (Vitest) after each phase. |
@@ -54,11 +54,11 @@ ramp with the LedgerFlow ramp. Suggested token names keep the existing naming *s
 | `--body-ink` | `#374151` | `--on-surface` | `#1a1c1c` | primary ink; doubles as **border black** |
 | `--muted-slate` | `#6b7280` | `--on-surface-variant` | `#434656` | secondary text |
 | `--faint-ash` | `#9ca3af` | `--outline` | `#737688` | merged |
-| `--ledger-ink` | `#2563eb` | `--primary` | `#003ec7` | active nav, links, income |
-| `--ledger-ink-bright` | `#3b82f6` | `--primary-container` | `#0052ff` | big CTA fill, income arrows |
+| `--ledger-ink` | `#2563eb` | `--primary` | `#003ec7` | active nav, links |
+| `--ledger-ink-bright` | `#3b82f6` | `--primary-container` | `#0052ff` | big CTA fill |
 | `--ink-well-blue` | `#1e40af` | `--primary-deep` | `#0038b6` | hover/pressed |
 | `--ink-tint` / `-hover` / `-edge` | `#eff6ff`/`#dbeafe`/`#bfdbfe` | `--primary-fixed` | `#dde1ff` (+ `--on-primary-fixed` `#001452`, `--on-primary-container` `#dfe3ff`) | selected tiles, tinted surfaces |
-| `--ledger-green` | `#15803d` | — **retired** (D8) | — | income uses `--primary` |
+| `--ledger-green` | `#15803d` | `--income` | `#15803d` | **revived** (D8 reversed, ADR 0011) — income figures and the income stripe |
 | `--officers-red` | `#dc2626` | `--error` | `#ba1a1a` | expense, destructive |
 | `--danger-surface/border/edge/ink/text` | amber-free red ramp | `--error-container` `#ffdad6`, `--on-error-container` `#93000a` | | negative balances, warnings (see implications) |
 | `--amber-surface/border/ink` | `#fef3c7`… | — **retired** | — | warnings use error ramp |
@@ -69,8 +69,9 @@ New structural tokens:
 |---|---|---|
 | `--border-hard` | `1px solid var(--on-surface)` | default card/control stroke |
 | `--border-hard-thick` | `2px solid var(--on-surface)` | modals, emphasis |
-| `--stripe-income` | `4px solid var(--primary-container)` | row/card left edge, income |
+| `--stripe-income` | `4px solid var(--income)` | row/card left edge, income (D8 reversed: was `var(--primary-container)`) |
 | `--stripe-expense` | `4px solid var(--error)` | row/card left edge, expense |
+| `--stripe-transfer` | `4px solid var(--outline)` | row left edge, transfers (D8 reversed) |
 | `--row-hover` | `#f5f5f5` | table/list hover |
 | `--grid-line` / `--grid-size` | `#e2e2e2` / `40px` | onboarding graph paper |
 | `--shadow-press` | `2px 2px 0 0 var(--on-surface)` | the **only** shadow; removed on `:active` (button press) |
@@ -144,12 +145,14 @@ the mobile regime (`headline-lg` 32→24, `display` 48→24).
   segmented/stepper chrome (‹ › chevrons around month/year, plus an All Time position).
   `aria-label`s preserved (tests: `select[aria-label]`, `[aria-label="Ámbito: año"]`).
 - **Net Flow card (D12, new)**: bordered card, 4px left stripe, mono numerals: net = scope
-  income − expense in base currency; small IN/OUT sub-lines in blue/red. Derived from existing
-  scope queries — no new service logic.
-- Movements list → bordered data table look: 4px left stripes per row direction (blue/red),
-  category chip tags (square), mono right-aligned amounts, `#f5f5f5` row hover. Keep the
-  existing `<table>` markup, `.tag`/`.note`/`.undo-toast`/`.rate-source` classes (tests hook
-  them), sort `aria-sort`, arrows, inline editing.
+  income − expense in base currency; small IN/OUT sub-lines in green/red (D8 reversed). Derived
+  from existing scope queries — no new service logic.
+- Movements list → bordered data table look: 4px left stripes per row direction (green income /
+  red expense / grey transfer — D8 reversed), category chip tags (square), mono right-aligned
+  amounts, `#f5f5f5` row hover. Keep the existing `<table>` markup,
+  `.tag`/`.note`/`.undo-toast`/`.rate-source` classes (tests hook them), sort `aria-sort`,
+  inline editing. No Type column or direction arrows (D8 reversed): the stripe is the only type
+  signal.
 - Quick Add card: same form, fields restyled (square, 1px black border, 2px blue focus,
   caps labels); exchange-rate well and readonly computed field restyled, behavior untouched.
 - Transfer editor + delete/undo toast: restyled only; 10s undo logic untouched.
@@ -157,7 +160,7 @@ the mobile regime (`headline-lg` 32→24, `display` 48→24).
 ### 3.2 Stats / dashboard (`features/dashboard/`)
 - Headline "Stats" (keep glossary; tests assert the h1) + existing scope select restyled as
   segmented chrome (month/year/All Time — **no Quarter**, D13).
-- Totals → 3 KPI cards with 4px left stripes: Avg Income (blue), Avg Expense (red), and a
+- Totals → 3 KPI cards with 4px left stripes: Avg Income (green, D8 reversed), Avg Expense (red), and a
   solid-ink inverted "Net Average / savings-rate" card. Maps current per-category/per-account
   data; conversions keep current failure-warning behavior (error-ramp strip, D8 implication).
 - "Expenses by Category" → CSS horizontal bars (no chart lib; black/gray fills).
@@ -249,8 +252,9 @@ first paint), and entries in `sw.js` `PRECACHE_URLS` with the cache name bumped.
    states clearly distinguishable from plain content (tested states exist — keep them green).
 6. **Scope-creep pressure** from the design's extra features (Accounts page, Wipe Data,
    pagination, Quarter, Save button): explicitly out of scope (D4, D5, D13, D14).
-7. **Income-in-blue ambiguity**: blue now means both "primary/interactive" and "income".
-   Monitor after release (D8 says revisit later); stripes + IN/OUT labels carry the semantics.
+7. **Income-in-blue ambiguity**: ~~blue now means both "primary/interactive" and "income".~~
+   Resolved by the D8 reversal (ADR 0011, issue #69): income reads green and transfers carry a
+   grey stripe, so blue is unambiguously action/information again.
 8. **Mobile bottom-nav overlap** with the undo toast and install/backup strips — verify
    stacking and safe-area insets.
 9. **FOUT/flash** on first paint — use `font-display: swap` + preloads; fallback stacks tuned

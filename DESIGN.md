@@ -8,7 +8,7 @@ colors:
   primary-fixed: "#dde1ff"
   on-primary-fixed: "#001452"
   on-primary-container: "#dfe3ff"
-  income: "#003ec7"
+  income: "#15803d"
   expense: "#ba1a1a"
   error: "#ba1a1a"
   error-container: "#ffdad6"
@@ -110,7 +110,7 @@ components:
 
 **Creative North Star: "Monolith Ledger"** (ADR 0010; migration plan in `docs/new-design/MIGRATION.md`)
 
-Open Expenses is a slab of financial architecture: rigid minimalism and modern flat design applied to a personal expense tracker. Every screen is a block of machined surfaces — stark whites on a near-black grid of 1px strokes, sharp 90-degree corners, and one saturated Digital Blue reserved for action and income. Depth is communicated through color blocking and stroke weight, never shadows or gradients; the interface reads as controlled authority and absolute transparency.
+Open Expenses is a slab of financial architecture: rigid minimalism and modern flat design applied to a personal expense tracker. Every screen is a block of machined surfaces — stark whites on a near-black grid of 1px strokes, sharp 90-degree corners, one saturated Digital Blue reserved for action, and ledger green reserved for income. Depth is communicated through color blocking and stroke weight, never shadows or gradients; the interface reads as controlled authority and absolute transparency.
 
 Type is the loudest tool: an Inter ramp stepped way up (48px display, 32px headlines) so headlines dominate, uppercase letter-spaced caps labels for all metadata, and JetBrains Mono tabular figures for every number so columns of amounts align as one ledger. Nothing decorative earns space unless it helps record or read a number correctly.
 
@@ -118,16 +118,16 @@ Type is the loudest tool: an Inter ramp stepped way up (48px display, 32px headl
 - Zero-radius geometry: every element is square (radius `0` on controls, wells, cards, chips, and pills)
 - Hard 1px black borders on cards and controls; tonal gray steps only zone, never separate
 - Flat hierarchy: the single sanctioned shadow is the 2px press shadow on buttons, removed on `:active`
-- High-contrast utility: near-black ink, stark whites, saturated functional blues and one urgent red
+- High-contrast utility: near-black ink, stark whites, saturated functional blues, one urgent red, and one ledger green
 - Inter for interface, JetBrains Mono (tabular) for all monetary/numeric data, both self-hosted
 
 ## Colors
 
-A neutral monochrome ramp frames the data; blue acts, red is money out and everything that warns. There is no green (D8) and no amber: income renders in Primary, and warnings adopt the error ramp.
+A neutral monochrome ramp frames the data; blue acts, red is money out and everything that warns, and green is money in (D8 reversed, ADR 0011). There is no amber: warnings adopt the error ramp.
 
 ### Primary
-- **Primary** (#003ec7): the system's action ink — active nav, links, income figures, and the browser theme color (`<meta theme-color>` is #003ec7).
-- **Primary Container** (#0052ff): the vibrant "Digital Blue" fill for big call-to-action buttons and income arrows; hovers deepen to **Primary Deep** (#0038b6).
+- **Primary** (#003ec7): the system's action ink — active nav, links, and the browser theme color (`<meta theme-color>` is #003ec7).
+- **Primary Container** (#0052ff): the vibrant "Digital Blue" fill for big call-to-action buttons; hovers deepen to **Primary Deep** (#0038b6).
 - **Primary Fixed** (#dde1ff): the blue wash for tinted wells and informational surfaces (exchange-rate capture), with **On Primary Fixed** (#001452) as its ink.
 
 ### Neutral
@@ -144,11 +144,15 @@ The single sanctioned signal family — money out, destructive intent, and every
 - **Error Container** (#ffdad6): the tinted fill of warning strips and destructive-confirmation wells.
 - **On Error Container** (#93000a): the ink on the tinted fill and its hairline.
 
+### Income
+
+- **Income** (#15803d): the ledger green revived (D8 reversed) — income figures (movement amount cells, the Net Flow IN line) and the income directional stripe. Green means money in and nothing else: it never marks action, warning, or information. Transfers stay neutral: neutral ink amounts, quiet grey stripe.
+
 ### Name Rules
 
-**The Blue Acts Rule.** Blue appears only on action, active state, income, and information. Blue on a screen means "here is something live or something you can do." Blue never warns and never destroys — that is Error's job.
+**The Blue Acts Rule.** Blue appears only on action, active state, and information. Blue on a screen means "here is something live or something you can do." Blue never warns, never destroys — that is Error's job — and no longer colors income: money in is green.
 
-**The No-Green Rule (D8).** Income is Primary blue, expense is Error red. Direction is carried by color *plus* the 4px directional stripes and ↑/↓ arrows, so blue-as-income never reads ambiguously against blue-as-action.
+**The Ledger Green Rule (D8 reversed, ADR 0011).** Income is green (#15803d), expense is Error red, transfers are neutral with a quiet grey stripe. Direction is carried by color *plus* the 4px directional stripes — green, red, grey — which are the movement type's only signal (the Type column was dropped, arrows with it). Green never touches interactive elements; blue never marks money direction.
 
 **The Hard Stroke Rule.** Cards and interactive controls are drawn with 1px solid On Surface; hairlines between rows and strips use Outline Variant. Tinted fills are limited to the primary-fixed wash and the error container — never as gratuitous cards.
 
@@ -225,9 +229,9 @@ Corners are **zero everywhere**: buttons, inputs, cards, modals, chips, and the 
 
 ### Signature Components
 - **Backup Banner:** a non-interactive full-width status strip (Primary Fixed fill, Primary bottom hairline) with its content aligned to the centered content column via the chrome gutter. Status reads left: the method label ("Google Drive") in Primary Deep at 600, with the relative-time caption beneath it; a compact primary **Back up** button (`%btn-primary`/`%btn-small`) sits pinned right and is the strip's only interactive element. Offline, it degrades to Surface Container Low with the method and caption in On Surface and renders a genuinely disabled neutral button. Backup failures render an error strip in the error-container family below the banner, announced via `role="alert"`, with a small outline-danger Dismiss button. Its sibling Install Prompt uses the same strip language.
-- **Movement Rows:** direction arrows (→ income, ← expense, = transfer) at 600 weight in Primary (income), Error (expense), or On Surface Variant (transfer). Amounts always render positive in JetBrains Mono, colored only by direction; income and derived informational figures both read in the blue family per D8.
+- **Movement Rows:** no Type column and no direction arrows — the 4px left edge stripe is the type's only signal: green (income), red (expense), grey (transfer). Amounts always render positive in JetBrains Mono, colored only by direction: Income green, Error red; transfers stay neutral ink.
 - **Undo Toast:** a fixed, bottom-center Surface Lowest strip with a hard black border pairing the deleted-movement label with a small Undo button. It presses like every button; it never floats.
-- **Tables:** headers are caps labels in On Surface Variant, rows separated by 1px Surface Container Low rules; transfer rows tint Background; amount cells are mono and colored only by direction; inactive rows dim to 0.6 opacity.
+- **Tables:** headers are caps labels in On Surface Variant, rows separated by 1px Surface Container Low rules; Date is the first column and month group header rows span the full count; transfer rows tint Background and carry the grey stripe; amount cells are mono and colored only by direction; inactive rows dim to 0.6 opacity.
 
 ## Do's and Don'ts
 
@@ -236,7 +240,7 @@ Corners are **zero everywhere**: buttons, inputs, cards, modals, chips, and the 
 - **Do** keep everything square: zero radius on every element, pills included.
 - **Do** use caps labels (12px/700/+0.1em/uppercase) for all metadata — labels, headers, buttons, tags.
 - **Do** render every amount in JetBrains Mono tabular figures, right-aligned in data tables.
-- **Do** color money only by direction: Primary blue for income, Error red for expense, On Surface Variant for transfers; derived figures read as information in the blue family.
+- **Do** color money only by direction: Income green for money in, Error red for money out, neutral ink for transfers; the directional stripe carries the same signal.
 - **Do** put warnings on the error ramp (Error Container fill, On Error Container ink) — there is no amber.
 - **Do** press buttons (shadow shed + 2px shift on `:active`) instead of lifting them.
 
@@ -244,6 +248,6 @@ Corners are **zero everywhere**: buttons, inputs, cards, modals, chips, and the 
 - **Don't** round anything, or cast a shadow at rest — the press shadow on buttons is the only shadow.
 - **Don't** use gradients, glassmorphism, backdrop blur, or full-bleed color panels anywhere.
 - **Don't** invent off-ramp grays or ad-hoc tints — every fill must belong to the surface ramp, the primary-fixed wash, or the error container before it touches a component.
-- **Don't** reach for green (retired, D8) or amber (retired): income is blue, warnings are red.
+- **Don't** let green act or blue signal money direction (D8 reversed): green is only income, blue is only action/information, and amber is retired.
 - **Don't** set interface prose in mono or numbers in Inter — the two families have strict jobs.
 - **Don't** whisper metadata in mixed case below the caps-label spec.

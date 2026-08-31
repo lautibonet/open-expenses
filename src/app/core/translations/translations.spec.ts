@@ -166,7 +166,6 @@ describe('translations', () => {
       'movements.filtersActive',
       'movements.clearFilters',
       'movements.tableCaption',
-      'movements.colType',
       'movements.colDate',
       'movements.colCategoryTransfer',
       'movements.colAmount',
