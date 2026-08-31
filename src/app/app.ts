@@ -19,7 +19,7 @@ export class App implements OnInit {
     if (!completed) {
       this.router.navigate(['/onboarding']);
     } else {
-      this.router.navigate(['/dashboard']);
+      this.router.navigate(['/movements']);
     }
   }
 }

@@ -10,25 +10,9 @@
 }
 
 .quick-add-form {
-  &.compact {
-    display: grid;
-    grid-template-columns: 1.5fr 1fr 1fr;
-    gap: var(--space-md);
-    align-items: end;
-  }
-
-  /* Expanded-form title: caps label over a 1px separator. */
+  /* Form title: caps label over a 1px separator. */
   h3 {
     @extend %card-header;
-  }
-
-  /* Rate/status notes render as grid children in the compact form:
-     span the full row so the message reads full-width. */
-  &.compact {
-    .rate-status,
-    .rate-error {
-      grid-column: 1 / -1;
-    }
   }
 }
 
@@ -48,12 +32,6 @@ label {
   @extend %mono-data;
 
   font-weight: 600;
-}
-
-.compact-actions {
-  display: flex;
-  gap: var(--space-sm);
-  align-items: center;
 }
 
 .btn {
@@ -122,7 +100,6 @@ label {
 }
 
 @media (max-width: 768px) {
-  .quick-add-form.compact,
   .exchange-rate-grid {
     grid-template-columns: 1fr;
   }

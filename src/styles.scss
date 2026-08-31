@@ -82,9 +82,15 @@
   --error-container: #ffdad6;
   --on-error-container: #93000a;
 
-  /* Directional stripes — the 4px left edge of income/expense rows and cards. */
-  --stripe-income: 4px solid var(--primary-container);
+  /* Income — ledger green revived (D8 reversed, ADR 0011): income rows,
+     amounts, and IN figures read green against the blue action ink. */
+  --income: #15803d;
+
+  /* Directional stripes — the 4px left edge of income/expense/transfer rows
+     and cards; the stripe is the movement type's only signal. */
+  --stripe-income: 4px solid var(--income);
   --stripe-expense: 4px solid var(--error);
+  --stripe-transfer: 4px solid var(--outline);
 
   /* Row hover and onboarding graph paper. */
   --row-hover: #f5f5f5;
@@ -109,9 +115,10 @@
   /* Full-bleed chrome strips align their content to the centered content column. */
   --chrome-gutter: max(1rem, calc((100% - 800px) / 2));
 
-  /* Mobile bottom nav bar height (D9) — shared so fixed overlays (undo toast)
-     offset from the same figure the nav bar is sized with. */
-  --nav-bar-size: 4rem;
+  /* Mobile bottom nav bar height (D9) — icons-only, so a touch-height of
+     3.5rem (+ safe-area inset) is enough. Shared so fixed overlays (undo
+     toast) offset from the same figure the nav bar is sized with. */
+  --nav-bar-size: 3.5rem;
 
   /* Elevation — the only sanctioned shadow: the press effect. Removed on :active. */
   --shadow-press: 2px 2px 0 0 var(--on-surface);

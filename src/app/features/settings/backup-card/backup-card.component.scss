@@ -18,6 +18,12 @@
   margin: 0 0 var(--space-md);
 }
 
+.last-backup {
+  @extend %caps-label-muted;
+  margin-top: var(--space-md);
+  margin-bottom: 0;
+}
+
 .backup-actions {
   display: flex;
   gap: var(--space-sm);
@@ -45,18 +51,9 @@
   display: none;
 }
 
-/* Transient status (working…) and success read as status strips, on the
-   primary tint — same treatment as the Settings page strips. */
-.info,
-.success {
-  @extend %status-strip-primary;
-
-  margin: var(--space-md) 0 0;
-}
-
-.error {
-  @extend %status-strip-error;
-
+/* Dismissible status alerts (working…, success, failure) keep the strip
+   treatment — primary tint for info/success, error ramp for failures. */
+app-dismissible-alert {
   margin: var(--space-md) 0 0;
 }
 

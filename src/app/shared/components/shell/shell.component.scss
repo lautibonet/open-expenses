@@ -68,10 +68,19 @@ $sidebar-width: 256px;
 .tab {
   display: flex;
   align-items: center;
+  gap: var(--space-sm);
   padding: var(--space-sm) var(--space-md);
   text-decoration: none;
   color: var(--on-surface-variant);
   border: 1px solid transparent;
+  /* The stripe edge is reserved on every tab so activation doesn't reflow. */
+  border-left-width: 4px;
+
+  .tab-icon {
+    width: 1rem;
+    height: 1rem;
+    flex-shrink: 0;
+  }
 
   .tab-label {
     @extend %caps-label;
@@ -83,9 +92,11 @@ $sidebar-width: 256px;
   }
 
   &.active {
-    background: var(--primary);
-    border-color: var(--on-surface);
-    color: var(--surface-lowest);
+    /* Subtle active state: a light Primary tint with a short Primary left
+       edge and ink text — no solid blue block, no white-on-blue. */
+    background: var(--primary-fixed);
+    border-left-color: var(--primary);
+    color: var(--on-surface);
   }
 }
 
@@ -100,21 +111,32 @@ $sidebar-width: 256px;
 .quick-add {
   @extend %btn-base;
   @extend %btn-primary;
+  /* One blue for the sidebar's interactive accents: the CTA uses the same
+     Primary ink as the nav's active edge, not the lighter container blue. */
+  background: var(--primary);
   width: 100%;
   padding-block: var(--space-md);
 }
 
-.backup-link {
+.backup-block {
   display: flex;
-  align-items: center;
-  padding: var(--space-sm) var(--space-md);
-  text-decoration: none;
-  color: var(--on-surface-variant);
+  flex-direction: column;
+  gap: var(--space-xs);
+  min-width: 0;
+}
 
-  &:hover {
-    background: var(--surface-container);
-    color: var(--on-surface);
-  }
+.backup-button {
+  @extend %btn-base;
+  width: 100%;
+  padding-block: var(--space-sm);
+}
+
+.backup-caption {
+  @extend %caps-label-muted;
+  margin-top: var(--space-sm);
+  margin-bottom: 0;
+  text-align: center;
+  overflow-wrap: anywhere;
 }
 
 /* ===== Mobile top bar (<= 768px) — hidden on desktop ===== */
@@ -197,8 +219,15 @@ $sidebar-width: 256px;
     justify-content: center;
     min-height: var(--nav-bar-size);
 
+    .tab-icon {
+      width: 1.25rem;
+      height: 1.25rem;
+    }
+
+    /* Icons-only bottom nav (D9): the accessible name lives on the
+       anchor's aria-label, so the visible label can drop. */
     .tab-label {
-      letter-spacing: var(--tracking-caps);
+      display: none;
     }
   }
 

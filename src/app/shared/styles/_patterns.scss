@@ -28,13 +28,18 @@
   border: var(--border-hard-thick);
 }
 
-/* Directional stripes — the 4px left edge of income/expense rows and cards. */
+/* Directional stripes — the 4px left edge of income/expense/transfer rows
+   and cards. */
 %stripe-income {
   border-left: var(--stripe-income);
 }
 
 %stripe-expense {
   border-left: var(--stripe-expense);
+}
+
+%stripe-transfer {
+  border-left: var(--stripe-transfer);
 }
 
 /* Monetary/numeric figures: JetBrains Mono, kept tabular so columns of
@@ -72,6 +77,23 @@
 %btn-small {
   padding: 0.25rem 0.5rem;
   font-size: var(--type-label);
+}
+
+/* Small square icon button for inline row actions (pencil, X, tick/X
+   confirm/cancel): 1rem inline SVG at currentColor, no visible label — the
+   accessible name comes from the button's aria-label. */
+%icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+
+  svg {
+    width: 1rem;
+    height: 1rem;
+  }
 }
 
 /* Primary: the solid blue CTA fill, press shadow from the base. */
@@ -116,9 +138,7 @@
   @extend %caps-label;
 
   color: var(--on-surface);
-  margin: 0 0 var(--space-md);
-  padding-bottom: var(--space-sm);
-  border-bottom: var(--border-hard);
+  margin: 0 0 var(--space-lg);
 }
 
 /* Card header with a leading inline-SVG icon (D15): shared by the Settings
@@ -164,16 +184,44 @@
   border: 1px solid var(--on-error-container);
 }
 
+/* Icon-only ×-close affordance for dismissible alerts: inherits the
+   strip's ink, keyboard focusable. The accessible name comes from the
+   `alert.dismiss` translation key. */
+%alert-dismiss {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 2px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: inherit;
+
+  svg {
+    width: 0.75rem;
+    height: 0.75rem;
+  }
+
+  &:hover {
+    opacity: 0.7;
+  }
+
+  &:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+  }
+}
+
 /* Page header: display-type headline + subtitle, with room for the scope
    control on the right. Shared by Movements and Stats. */
 %page-header {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
+  flex-direction: column;
+  align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-md);
-  padding-bottom: var(--space-md);
-  border-bottom: var(--border-hard);
   margin-bottom: var(--space-lg);
 
   h1 {
@@ -193,57 +241,22 @@
   }
 }
 
-/* Scope control: chevron stepper around the month/year selects plus an
-   All Time toggle. Shared by Movements and Stats (D13 chrome). */
+/* Scope control: plain month/year selects side by side — standard fields
+   with the app's 1px border — plus an All Time toggle. Shared by Movements
+   and Stats. */
 %scope-control {
   display: flex;
-  align-items: stretch;
+  align-items: center;
   gap: var(--space-sm);
 }
 
-%scope-stepper {
+%scope-selects {
   display: flex;
-  align-items: stretch;
-  background: var(--surface-lowest);
-  border: var(--border-hard);
+  align-items: center;
+  gap: var(--space-sm);
 
-  .step-btn {
-    display: flex;
-    align-items: center;
-    padding: 0 var(--space-sm);
-    border: none;
-    background: none;
-    cursor: pointer;
-    color: var(--on-surface);
-
-    svg {
-      width: 1rem;
-      height: 1rem;
-    }
-
-    &:hover:not(:disabled) {
-      background: var(--surface-container);
-    }
-
-    &:disabled {
-      color: var(--outline);
-      cursor: default;
-    }
-  }
-
-  .scope-selects {
-    display: flex;
-    border-left: var(--border-hard);
-    border-right: var(--border-hard);
-
-    select {
-      @extend %field;
-
-      border: none;
-      background: transparent;
-      font-family: var(--font-data);
-      font-variant-numeric: tabular-nums;
-    }
+  select {
+    @extend %field;
   }
 }
 

@@ -1,18 +1,41 @@
-import { Component, inject } from '@angular/core';
+import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { Router, RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { InstallPromptComponent } from '../install-prompt/install-prompt.component';
-import { BackupBannerComponent } from '../backup-banner/backup-banner.component';
 import { LanguageService } from '../../../core/services/language.service';
+import { CaptureFormService } from '../../../core/services/capture-form.service';
+import { DriveBackupService } from '../../../core/services/drive-backup.service';
+import { formatLastBackupStatus } from '../../../backup/last-backup-status';
 
 @Component({
   selector: 'app-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, InstallPromptComponent, BackupBannerComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, InstallPromptComponent],
   templateUrl: './shell.component.html',
   styleUrl: './shell.component.scss',
+  host: { '(document:keydown)': 'onDocKeydown($event)' },
 })
 export class ShellComponent {
   language = inject(LanguageService);
   private router = inject(Router);
+  private captureFormService = inject(CaptureFormService);
+  private backupService = inject(DriveBackupService);
+
+  private minuteTick = signal(0);
+
+  isBackingUp = this.backupService.isBackingUp;
+
+  backupCaption = computed(() => {
+    this.minuteTick();
+    return formatLastBackupStatus(
+      this.language.activeLanguage(),
+      this.backupService.lastBackupAt(),
+      this.backupService.method,
+    );
+  });
+
+  constructor() {
+    const intervalId = setInterval(() => this.minuteTick.update((t) => t + 1), 60_000);
+    inject(DestroyRef).onDestroy(() => clearInterval(intervalId));
+  }
 
   skipToContent(event: MouseEvent): void {
     event.preventDefault();
@@ -20,19 +43,49 @@ export class ShellComponent {
   }
 
   async goToQuickAdd(): Promise<void> {
+    await this.navigateToMovementsIfNeeded();
+    this.captureFormService.requestQuickAdd();
+  }
+
+  async goToTransferForm(): Promise<void> {
+    await this.navigateToMovementsIfNeeded();
+    this.captureFormService.requestTransfer();
+  }
+
+  async backUp(): Promise<void> {
+    if (this.isBackingUp()) {
+      return;
+    }
+    try {
+      await this.backupService.backupNow();
+    } catch {
+      // Backup errors surface in the Settings backup card.
+    }
+  }
+
+  async onDocKeydown(e: KeyboardEvent): Promise<void> {
+    if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return;
+    const target = e.target as HTMLElement | null;
+    if (
+      target &&
+      (target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.tagName === 'SELECT' ||
+        target.isContentEditable)
+    ) {
+      return;
+    }
+    if (this.router.url.startsWith('/movements')) return;
+    if (e.key === 'n' || e.key === 'N') {
+      await this.goToQuickAdd();
+    } else if (e.key === 't' || e.key === 'T') {
+      await this.goToTransferForm();
+    }
+  }
+
+  private async navigateToMovementsIfNeeded(): Promise<void> {
     if (!this.router.url.startsWith('/movements')) {
       await this.router.navigate(['/movements']);
     }
-    this.focusQuickAddCard();
-  }
-
-  private focusQuickAddCard(): void {
-    const card = document.querySelector('app-quick-add-card');
-    if (!card) {
-      return;
-    }
-    card.scrollIntoView({ block: 'start' });
-    const amountInput = card.querySelector<HTMLInputElement>('input[type="number"]');
-    amountInput?.focus();
   }
 }

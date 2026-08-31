@@ -161,6 +161,24 @@ describe('NetFlowCardComponent', () => {
     expect(amount).toContain('-');
   });
 
+  it('marks the card negative so its stripe can render red', async () => {
+    const period = getCurrentPeriod();
+    await transactionService.create(eurAccountId, expenseCategoryId, 800, new Date(), period);
+    await render();
+
+    const card = fixture.nativeElement.querySelector('.net-flow-card');
+    expect(card.classList.contains('negative')).toBe(true);
+  });
+
+  it('does not mark the card negative when the net is zero or positive', async () => {
+    const period = getCurrentPeriod();
+    await transactionService.create(eurAccountId, incomeCategoryId, 800, new Date(), period);
+    await render();
+
+    const card = fixture.nativeElement.querySelector('.net-flow-card');
+    expect(card.classList.contains('negative')).toBe(false);
+  });
+
   it('shows zero without a sign for an empty scope', async () => {
     await render();
 

@@ -26,10 +26,16 @@
       {{ language.t('settings.update') }}
     </button>
   </div>
-  @if (errorMessage()) {
-    <p class="error">{{ errorMessage() }}</p>
-  }
-  @if (successMessage()) {
-    <p class="success">{{ successMessage() }}</p>
-  }
+  <app-dismissible-alert
+    role="alert"
+    variant="error"
+    [message]="errorMessage()"
+    [resetKey]="statusEpoch()"
+  />
+  <app-dismissible-alert
+    role="status"
+    variant="success"
+    [message]="successMessage()"
+    [resetKey]="statusEpoch()"
+  />
 </section>

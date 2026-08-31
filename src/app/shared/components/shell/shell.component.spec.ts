@@ -3,6 +3,8 @@ import { Router, provideRouter } from '@angular/router';
 import { ShellComponent } from './shell.component';
 import { routes } from '../../../app.routes';
 import { LanguageService } from '../../../core/services/language.service';
+import { CaptureFormService } from '../../../core/services/capture-form.service';
+import { DriveBackupService } from '../../../core/services/drive-backup.service';
 import { db } from '../../../core/db/database';
 
 describe('ShellComponent', () => {
@@ -33,8 +35,64 @@ describe('ShellComponent', () => {
     await db.delete();
   });
 
-  it('renders the backup banner in the app shell', () => {
-    expect(fixture.nativeElement.querySelector('app-backup-banner')).toBeTruthy();
+  it('renders the sidebar Backup as a bordered button with a status caption', () => {
+    const banner = fixture.nativeElement.querySelector('app-backup-banner');
+    expect(banner).toBeNull();
+
+    const button = fixture.nativeElement.querySelector('button.backup-button') as HTMLButtonElement;
+    expect(button).not.toBeNull();
+    expect(button.textContent?.trim()).toBe('Back up');
+
+    const block = fixture.nativeElement.querySelector('.backup-block') as HTMLElement;
+    expect(block.getAttribute('role')).toBe('group');
+    expect(block.getAttribute('aria-label')).toBe('Backup status');
+
+    const caption = fixture.nativeElement.querySelector('.backup-caption') as HTMLElement;
+    expect(caption.textContent?.trim()).toBe('Last backup: Never');
+  });
+
+  it('shows the backup method with the relative last-backup time in the caption', () => {
+    const backupService = TestBed.inject(DriveBackupService);
+    backupService.lastBackupAt.set(new Date(Date.now() - 5 * 60 * 1000));
+    fixture.detectChanges();
+
+    const caption = fixture.nativeElement.querySelector('.backup-caption') as HTMLElement;
+    expect(caption.textContent?.trim()).toBe('Google Drive · Last backup: 5 minutes ago');
+  });
+
+  it('renders the backup button and caption in Spanish', async () => {
+    await TestBed.inject(LanguageService).setLanguage('es');
+    fixture.detectChanges();
+
+    const button = fixture.nativeElement.querySelector('button.backup-button') as HTMLButtonElement;
+    expect(button.textContent?.trim()).toBe('Hacer copia');
+
+    const block = fixture.nativeElement.querySelector('.backup-block') as HTMLElement;
+    expect(block.getAttribute('aria-label')).toBe('Estado de la copia');
+
+    const caption = fixture.nativeElement.querySelector('.backup-caption') as HTMLElement;
+    expect(caption.textContent?.trim()).toBe('Última copia: Nunca');
+  });
+
+  it('backs up when the sidebar button is tapped', async () => {
+    const backupService = TestBed.inject(DriveBackupService);
+    const spy = vi.spyOn(backupService, 'backupNow').mockResolvedValue(undefined);
+
+    const button = fixture.nativeElement.querySelector('button.backup-button') as HTMLButtonElement;
+    button.click();
+    await fixture.whenStable();
+
+    expect(spy).toHaveBeenCalled();
+  });
+
+  it('disables the backup button while a backup is in progress', () => {
+    const backupService = TestBed.inject(DriveBackupService);
+    backupService.isBackingUp.set(true);
+    fixture.detectChanges();
+
+    const button = fixture.nativeElement.querySelector('button.backup-button') as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    expect(button.textContent?.trim()).toBe('Backing up…');
   });
 
   it('renders the main navigation tabs in Movements, Stats, Settings order', () => {
@@ -42,6 +100,25 @@ describe('ShellComponent', () => {
       (a) => (a as HTMLAnchorElement).textContent?.trim(),
     );
     expect(links).toEqual(['Movements', 'Stats', 'Settings']);
+  });
+
+  it('names each nav tab accessibly and renders an icon beside its label', () => {
+    const links = Array.from(
+      fixture.nativeElement.querySelectorAll('a.tab') as NodeListOf<HTMLAnchorElement>,
+    );
+    expect(links.map((a) => a.getAttribute('aria-label'))).toEqual([
+      'Movements',
+      'Stats',
+      'Settings',
+    ]);
+
+    for (const link of links) {
+      const icon = link.querySelector('svg.tab-icon') as SVGElement | null;
+      expect(icon).not.toBeNull();
+      expect(icon?.getAttribute('aria-hidden')).toBe('true');
+      expect(icon?.querySelectorAll('path').length).toBeGreaterThan(0);
+      expect(link.querySelector('.tab-label')).not.toBeNull();
+    }
   });
 
   it('keeps the Stats tab linked to the dashboard route', () => {
@@ -108,38 +185,58 @@ describe('ShellComponent', () => {
     expect(navigate).not.toHaveBeenCalled();
   });
 
-  it('scrolls to and focuses the Quick Add capture card', async () => {
+  it('requests the Quick Add form open when used on Movements', async () => {
+    const captureFormService = TestBed.inject(CaptureFormService);
     const router = TestBed.inject(Router);
-    vi.spyOn(router, 'navigate').mockResolvedValue(true);
-    const focus = vi.fn();
-    const scrollIntoView = vi.fn();
-    const amountInput = { focus } as unknown as HTMLInputElement;
-    const card = {
-      scrollIntoView,
-      querySelector: vi.fn().mockReturnValue(amountInput),
-    } as unknown as HTMLElement;
-    const querySpy = vi.spyOn(document, 'querySelector').mockReturnValue(card);
+    vi.spyOn(router, 'url', 'get').mockReturnValue('/movements');
 
     await fixture.componentInstance.goToQuickAdd();
 
-    expect(querySpy).toHaveBeenCalledWith('app-quick-add-card');
-    expect(scrollIntoView).toHaveBeenCalled();
-    expect(focus).toHaveBeenCalled();
-    querySpy.mockRestore();
+    expect(captureFormService.pendingQuickAddRequests()).toBe(1);
   });
 
-  it('tolerates a missing Quick Add card', async () => {
+  it('routes to Movements and requests the Quick Add form open from another page', async () => {
+    const captureFormService = TestBed.inject(CaptureFormService);
     const router = TestBed.inject(Router);
-    vi.spyOn(router, 'navigate').mockResolvedValue(true);
-    const querySpy = vi.spyOn(document, 'querySelector').mockReturnValue(null);
+    const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
 
-    await expect(fixture.componentInstance.goToQuickAdd()).resolves.toBeUndefined();
-    querySpy.mockRestore();
+    await fixture.componentInstance.goToQuickAdd();
+
+    expect(navigate).toHaveBeenCalledWith(['/movements']);
+    expect(captureFormService.pendingQuickAddRequests()).toBe(1);
   });
 
-  it('points the Backup link at the Settings backup card', () => {
-    const link = fixture.nativeElement.querySelector('a.backup-link') as HTMLAnchorElement;
-    expect(link).not.toBeNull();
-    expect(link.getAttribute('href')).toBe('/settings#backup');
+  it("routes to Movements and opens the transfer form when 't' is pressed elsewhere", async () => {
+    const captureFormService = TestBed.inject(CaptureFormService);
+    const router = TestBed.inject(Router);
+    const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+
+    await fixture.componentInstance.goToTransferForm();
+
+    expect(navigate).toHaveBeenCalledWith(['/movements']);
+    expect(captureFormService.pendingTransferRequests()).toBe(1);
+  });
+
+  it("routes to Movements and requests Quick Add when 'n' is pressed on another page", async () => {
+    const captureFormService = TestBed.inject(CaptureFormService);
+    const router = TestBed.inject(Router);
+    const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+
+    await fixture.componentInstance.onDocKeydown(new KeyboardEvent('keydown', { key: 'n' }));
+
+    expect(navigate).toHaveBeenCalledWith(['/movements']);
+    expect(captureFormService.pendingQuickAddRequests()).toBe(1);
+  });
+
+  it('leaves the shortcuts to the Movements page when it is active', async () => {
+    const captureFormService = TestBed.inject(CaptureFormService);
+    const router = TestBed.inject(Router);
+    vi.spyOn(router, 'url', 'get').mockReturnValue('/movements');
+
+    fixture.componentInstance.onDocKeydown(new KeyboardEvent('keydown', { key: 'n' }));
+    fixture.componentInstance.onDocKeydown(new KeyboardEvent('keydown', { key: 't' }));
+
+    expect(captureFormService.pendingQuickAddRequests()).toBe(0);
+    expect(captureFormService.pendingTransferRequests()).toBe(0);
   });
 });

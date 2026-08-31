@@ -8,20 +8,21 @@
   @extend %page-header;
 }
 
-.settings-grid {
+/* Single top-to-bottom flow: Base Currency + Language share the top row,
+   then Accounts, Categories and Backup follow one per row. */
+.settings-top-row {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-lg);
-  align-items: start;
+  align-items: stretch;
   margin-top: var(--space-lg);
 }
 
-.col-main,
-.col-side {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-lg);
-  min-width: 0;
+.settings .card + .card,
+.settings-top-row + .card,
+app-backup-card {
+  display: block;
+  margin-top: var(--space-lg);
 }
 
 .card {
@@ -33,31 +34,26 @@
   h2 {
     @extend %card-header-icon;
   }
-
-  /* Main-column cards carry a title-type header; side cards stay caps. */
-  .card-title {
-    font-size: var(--type-title);
-    font-weight: 600;
-    line-height: var(--leading-title);
-    letter-spacing: normal;
-    text-transform: none;
-  }
 }
 
-.error {
-  @extend %status-strip-error;
-}
-
-.success {
-  @extend %status-strip-primary;
-}
-
+/* Add forms: name input, currency/type select and Add button share the
+   same width and height — uniform fields, uniformly aligned. */
 .inline-form {
   display: flex;
   gap: var(--space-sm);
-  align-items: flex-end;
+  align-items: stretch;
   margin-bottom: var(--space-md);
   flex-wrap: wrap;
+
+  .input {
+    @extend %field;
+
+    width: 10rem;
+  }
+
+  .btn.dashed {
+    width: 10rem;
+  }
 }
 
 .input {
@@ -94,8 +90,15 @@
   }
 }
 
-/* Accounts: bordered tile rows (design), inline pencil-edit kept. */
-.account-list {
+/* Icon-only confirm/cancel affordances (same as movement deletion). */
+.icon-btn {
+  @extend %icon-btn;
+}
+
+/* Accounts: bordered tile rows; name and opening balance are
+   click-to-edit, deactivation is the icon confirm flow. */
+.account-list,
+.category-list {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -104,7 +107,8 @@
   gap: var(--space-sm);
 }
 
-.account-row {
+.account-row,
+.category-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -119,14 +123,26 @@
   }
 }
 
-.account-main {
+.category-row {
+  &.stripe-income {
+    @extend %stripe-income;
+  }
+
+  &.stripe-expense {
+    @extend %stripe-expense;
+  }
+}
+
+.account-main,
+.category-main {
   display: flex;
   flex-direction: column;
   gap: 2px;
   min-width: 0;
 }
 
-.account-name {
+.account-name,
+.category-name {
   align-self: flex-start;
   padding: 0;
   border: none;
@@ -165,7 +181,14 @@
   }
 }
 
-.account-side {
+.edit-line {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.account-side,
+.category-side {
   display: flex;
   align-items: center;
   gap: var(--space-sm);
@@ -173,125 +196,9 @@
   justify-content: flex-end;
 }
 
-.account-status {
+.account-status,
+.category-status {
   @extend %caps-label-muted;
-}
-
-.account-edit {
-  display: inline-flex;
-  align-items: center;
-  padding: 4px;
-  border: none;
-  background: none;
-  cursor: pointer;
-  color: var(--on-surface-variant);
-
-  svg {
-    width: 0.875rem;
-    height: 0.875rem;
-  }
-
-  &:hover {
-    color: var(--primary);
-  }
-}
-
-.deactivate-confirm {
-  display: inline-block;
-  color: var(--error);
-  font-size: var(--type-caption);
-  font-weight: 500;
-}
-
-/* Categories: square chips with directional stripe and × deactivate. */
-.chip-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-sm);
-}
-
-.chip-edit {
-  display: inline-flex;
-  gap: var(--space-xs);
-  align-items: center;
-}
-
-.cat-chip {
-  @extend %caps-label;
-
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-xs);
-  padding: var(--space-xs) var(--space-xs) var(--space-xs) var(--space-sm);
-  background: var(--surface-lowest);
-  border: var(--border-hard);
-  color: var(--on-surface);
-
-  &.stripe-income {
-    border-left: var(--stripe-income);
-  }
-
-  &.stripe-expense {
-    border-left: var(--stripe-expense);
-  }
-
-  &.inactive {
-    opacity: 0.6;
-    color: var(--on-surface-variant);
-    border-left: 4px solid var(--surface-dim);
-  }
-}
-
-.chip-name {
-  padding: 0;
-  border: none;
-  background: none;
-  cursor: pointer;
-  font: inherit;
-  letter-spacing: inherit;
-  text-transform: inherit;
-  color: inherit;
-}
-
-.chip-status {
-  font-size: var(--type-caption);
-  font-weight: 400;
-  letter-spacing: normal;
-  text-transform: none;
-}
-
-.chip-deactivate,
-.chip-reactivate {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2px;
-  border: none;
-  background: none;
-  cursor: pointer;
-  color: var(--on-surface-variant);
-
-  svg {
-    width: 0.625rem;
-    height: 0.625rem;
-  }
-
-  &:hover {
-    color: var(--primary);
-  }
-}
-
-.chip-deactivate {
-  &:hover {
-    color: var(--error);
-  }
-}
-
-.chip-reactivate {
-  &:hover {
-    color: var(--primary);
-  }
 }
 
 /* Side cards: stacked field + inline-save button. */
@@ -309,7 +216,7 @@
 }
 
 @media (max-width: 768px) {
-  .settings-grid {
+  .settings-top-row {
     grid-template-columns: 1fr;
   }
 }

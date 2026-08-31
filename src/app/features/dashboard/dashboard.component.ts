@@ -24,10 +24,11 @@ import { Transaction } from '../../core/models/transaction.model';
 import { Transfer } from '../../core/models/transfer.model';
 import { Account } from '../../core/models/account.model';
 import { Category, isIncomeCategory } from '../../core/models/category.model';
+import { DismissibleAlertComponent } from '../../shared/components/dismissible-alert/dismissible-alert.component';
 
 @Component({
   selector: 'app-dashboard',
-  imports: [FormsModule],
+  imports: [FormsModule, DismissibleAlertComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss',
 })
@@ -204,19 +205,6 @@ export class DashboardComponent implements OnInit {
 
   isAllTimeScope(): boolean {
     return isAllTime(this.scope());
-  }
-
-  canStepMonth(delta: -1 | 1): boolean {
-    const s = this.scope();
-    if (isAllTime(s)) return false;
-    const next = s.period + delta;
-    return next >= 1 && next <= 12;
-  }
-
-  async stepScopeMonth(delta: -1 | 1): Promise<void> {
-    const s = this.scope();
-    if (isAllTime(s) || !this.canStepMonth(delta)) return;
-    await this.onScopeMonthChange(s.period + delta);
   }
 
   async toggleAllTime(): Promise<void> {

@@ -182,9 +182,7 @@ describe('SettingsComponent - account deactivation confirmation', () => {
     expect(account?.active).toBe(true);
   });
 
-  it('should deactivate an account only after confirming and name it inline', async () => {
-    expect(component.deactivationConfirmationLabel(accountId)).toContain('Cash');
-
+  it('should deactivate an account only after confirming', async () => {
     component.requestDeactivate(accountId);
     await component.confirmDeactivate();
 
@@ -197,6 +195,64 @@ describe('SettingsComponent - account deactivation confirmation', () => {
     await component.confirmDeactivate();
     const account = await accountService.getById(accountId);
     expect(account?.active).toBe(true);
+  });
+});
+
+describe('SettingsComponent - category deactivation confirmation', () => {
+  let fixture: ComponentFixture<SettingsComponent>;
+  let component: SettingsComponent;
+  let categoryService: CategoryService;
+  let categoryId: number;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    await TestBed.configureTestingModule({
+      imports: [SettingsComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(SettingsComponent);
+    component = fixture.componentInstance;
+    categoryService = TestBed.inject(CategoryService);
+
+    const category = await categoryService.create('Food', 'expense');
+    categoryId = category.id!;
+    await component.ngOnInit();
+  });
+
+  afterEach(async () => {
+    await db.delete();
+  });
+
+  it('should set and clear the category deactivation confirmation target', () => {
+    component.requestCategoryDeactivate(categoryId);
+    expect(component.confirmingCategoryDeactivate()).toBe(categoryId);
+
+    component.cancelCategoryDeactivate();
+    expect(component.confirmingCategoryDeactivate()).toBeNull();
+  });
+
+  it('should not deactivate a category until confirmed', async () => {
+    component.requestCategoryDeactivate(categoryId);
+    component.cancelCategoryDeactivate();
+
+    const category = await categoryService.getById(categoryId);
+    expect(category?.active).toBe(true);
+  });
+
+  it('should deactivate a category only after confirming', async () => {
+    component.requestCategoryDeactivate(categoryId);
+    await component.confirmCategoryDeactivate();
+
+    const category = await categoryService.getById(categoryId);
+    expect(category?.active).toBe(false);
+    expect(component.confirmingCategoryDeactivate()).toBeNull();
+  });
+
+  it('should do nothing when confirming a category with no target', async () => {
+    await component.confirmCategoryDeactivate();
+    const category = await categoryService.getById(categoryId);
+    expect(category?.active).toBe(true);
   });
 });
 
@@ -305,20 +361,18 @@ describe('SettingsComponent - LedgerFlow restyle', () => {
     await db.delete();
   });
 
-  function chipFor(name: string): HTMLElement {
-    const chips = Array.from(
-      fixture.nativeElement.querySelectorAll('.cat-chip') as NodeListOf<HTMLElement>,
+  function rowFor(selector: string, name: string): HTMLElement {
+    const rows = Array.from(
+      fixture.nativeElement.querySelectorAll(selector) as NodeListOf<HTMLElement>,
     );
-    return chips.find((c) => c.textContent!.includes(name))!;
+    return rows.find((r) => r.textContent!.includes(name))!;
   }
 
-  it('renders the design cards with no Save Changes button and no Danger Zone', () => {
+  it('renders the cards in a single top-to-bottom flow', () => {
     const headings = Array.from(
       fixture.nativeElement.querySelectorAll('h2') as NodeListOf<HTMLElement>,
     ).map((h) => h.textContent!.trim());
-    for (const expected of ['Accounts', 'Base Currency', 'Language', 'Categories']) {
-      expect(headings).toContain(expected);
-    }
+    expect(headings).toEqual(['Base Currency', 'Language', 'Accounts', 'Categories', 'Backup']);
 
     const text: string = fixture.nativeElement.textContent;
     expect(text).not.toContain('Save Changes');
@@ -326,36 +380,148 @@ describe('SettingsComponent - LedgerFlow restyle', () => {
     expect(text).not.toContain('Wipe Data');
   });
 
-  it('renders square category chips striped by type', () => {
-    const incomeChip = chipFor('Salary');
-    const expenseChip = chipFor('Food');
-    expect(incomeChip.classList.contains('stripe-income')).toBe(true);
-    expect(expenseChip.classList.contains('stripe-expense')).toBe(true);
+  it('places Base Currency and Language side by side in the top row', () => {
+    const topRow = fixture.nativeElement.querySelector('.settings-top-row') as HTMLElement;
+    expect(topRow).toBeTruthy();
+    expect(topRow.textContent).toContain('Base Currency');
+    expect(topRow.querySelector('app-language-card')).toBeTruthy();
   });
 
-  it('deactivates a category via the chip x affordance', async () => {
-    const chip = chipFor('Food');
-    const x = chip.querySelector('.chip-deactivate') as HTMLButtonElement;
-    expect(x).toBeTruthy();
-    expect(x.getAttribute('aria-label')).toBeTruthy();
+  it('edits the account name by clicking it, with no pencil icon', async () => {
+    const row = rowFor('.account-row', 'Cash');
+    expect(row.querySelector('.account-edit')).toBeNull();
 
-    x.click();
+    const name = row.querySelector('.account-name') as HTMLButtonElement;
+    name.click();
+    fixture.detectChanges();
+    expect(component.editingAccountName()).toEqual({ id: accountId, value: 'Cash' });
+
+    component.editingAccountName.set({ id: accountId, value: 'Wallet' });
+    await component.saveAccountName();
+    const updated = await accountService.getById(accountId);
+    expect(updated?.name).toBe('Wallet');
+  });
+
+  it('keeps the opening balance click-to-edit', async () => {
+    const row = rowFor('.account-row', 'Cash');
+    const balance = row.querySelector('.account-balance') as HTMLButtonElement;
+    balance.click();
+    fixture.detectChanges();
+    expect(component.editingAccountBalance()).toEqual({ id: accountId, value: 100000 });
+  });
+
+  it('deactivates an account via an X icon that swaps to tick/X confirmation with no text', async () => {
+    const row = rowFor('.account-row', 'Cash');
+    const deactivate = row.querySelector(
+      'button[aria-label="Deactivate account"]',
+    ) as HTMLButtonElement;
+    expect(deactivate).toBeTruthy();
+    expect(deactivate.textContent!.trim()).toBe('');
+
+    deactivate.click();
+    fixture.detectChanges();
+
+    const confirm = row.querySelector(
+      'button[aria-label="Confirm deactivation"]',
+    ) as HTMLButtonElement;
+    const cancel = row.querySelector(
+      'button[aria-label="Cancel deactivation"]',
+    ) as HTMLButtonElement;
+    expect(confirm).toBeTruthy();
+    expect(confirm.textContent!.trim()).toBe('');
+    expect(cancel).toBeTruthy();
+
+    const side = row.querySelector('.account-side') as HTMLElement;
+    const visibleButtons = Array.from(
+      side.querySelectorAll('button') as NodeListOf<HTMLButtonElement>,
+    ).map((b) => b.textContent!.trim());
+    expect(visibleButtons.every((t) => t === '')).toBe(true);
+
+    const live = row.querySelector('.visually-hidden[aria-live="polite"]') as HTMLElement;
+    expect(live).toBeTruthy();
+    expect(live.textContent).toBeTruthy();
+
+    confirm.click();
     await flush();
 
-    const updated = await categoryService.getById(expenseCategoryId);
+    const updated = await accountService.getById(accountId);
     expect(updated?.active).toBe(false);
   });
 
-  it('offers a reactivate affordance on inactive category chips', async () => {
+  it('keeps the account active when the confirmation is cancelled', async () => {
+    const row = rowFor('.account-row', 'Cash');
+    (row.querySelector('button[aria-label="Deactivate account"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    (row.querySelector('button[aria-label="Cancel deactivation"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    const account = await accountService.getById(accountId);
+    expect(account?.active).toBe(true);
+  });
+
+  it('offers a textual Reactivate button on inactive accounts', async () => {
+    await accountService.setActive(accountId, false);
+    await component.refresh();
+    fixture.detectChanges();
+
+    const row = rowFor('.account-row', 'Cash');
+    expect(row.classList.contains('inactive')).toBe(true);
+    const reactivate = Array.from(row.querySelectorAll('button') as NodeListOf<HTMLButtonElement>).find(
+      (b) => b.textContent!.trim() === 'Reactivate',
+    )!;
+    expect(reactivate).toBeTruthy();
+
+    reactivate.click();
+    await flush();
+
+    const updated = await accountService.getById(accountId);
+    expect(updated?.active).toBe(true);
+  });
+
+  it('renders one category per row with a green/red type stripe', () => {
+    const incomeRow = rowFor('.category-row', 'Salary');
+    const expenseRow = rowFor('.category-row', 'Food');
+    expect(incomeRow.classList.contains('stripe-income')).toBe(true);
+    expect(expenseRow.classList.contains('stripe-expense')).toBe(true);
+  });
+
+  it('deactivates a category via an X icon that swaps to tick/X confirmation', async () => {
+    const row = rowFor('.category-row', 'Food');
+    const deactivate = row.querySelector(
+      'button[aria-label="Deactivate category"]',
+    ) as HTMLButtonElement;
+    expect(deactivate).toBeTruthy();
+
+    deactivate.click();
+    fixture.detectChanges();
+
+    let updated = await categoryService.getById(expenseCategoryId);
+    expect(updated?.active).toBe(true);
+
+    const live = row.querySelector('.visually-hidden[aria-live="polite"]') as HTMLElement;
+    expect(live).toBeTruthy();
+
+    const confirm = row.querySelector(
+      'button[aria-label="Confirm deactivation"]',
+    ) as HTMLButtonElement;
+    confirm.click();
+    await flush();
+
+    updated = await categoryService.getById(expenseCategoryId);
+    expect(updated?.active).toBe(false);
+  });
+
+  it('offers a textual Reactivate button on inactive categories', async () => {
     await categoryService.setActive(expenseCategoryId, false);
     await component.refresh();
     fixture.detectChanges();
 
-    const chip = chipFor('Food');
-    expect(chip.classList.contains('inactive')).toBe(true);
-    const reactivate = chip.querySelector('.chip-reactivate') as HTMLButtonElement;
+    const row = rowFor('.category-row', 'Food');
+    expect(row.classList.contains('inactive')).toBe(true);
+    const reactivate = Array.from(row.querySelectorAll('button') as NodeListOf<HTMLButtonElement>).find(
+      (b) => b.textContent!.trim() === 'Reactivate',
+    )!;
     expect(reactivate).toBeTruthy();
-    expect(reactivate.getAttribute('aria-label')).toBeTruthy();
 
     reactivate.click();
     await flush();
@@ -373,45 +539,19 @@ describe('SettingsComponent - LedgerFlow restyle', () => {
     expect(dashed[1]).toContain('Add');
   });
 
-  it('keeps the account deactivation confirmation flow inside the account row', async () => {
-    const row = Array.from(
-      fixture.nativeElement.querySelectorAll('.account-row') as NodeListOf<HTMLElement>,
-    ).find((r) => r.textContent!.includes('Cash'))!;
-    const deactivate = Array.from(row.querySelectorAll('button')).find(
-      (b) => b.textContent!.trim() === 'Deactivate',
-    )!;
-    deactivate.click();
-    fixture.detectChanges();
+  it('sizes every add-form field uniformly', () => {
+    const forms = Array.from(
+      fixture.nativeElement.querySelectorAll('.inline-form') as NodeListOf<HTMLElement>,
+    );
+    expect(forms.length).toBe(2);
 
-    const confirmSpan = row.querySelector('.deactivate-confirm') as HTMLElement;
-    expect(confirmSpan).toBeTruthy();
-    expect(confirmSpan.getAttribute('role')).toBe('alert');
-
-    const confirm = Array.from(row.querySelectorAll('button')).find(
-      (b) => b.textContent!.trim() === 'Confirm',
-    )!;
-    confirm.click();
-    await flush();
-
-    const updated = await accountService.getById(accountId);
-    expect(updated?.active).toBe(false);
-  });
-
-  it('keeps account name inline editing from the row', async () => {
-    const row = Array.from(
-      fixture.nativeElement.querySelectorAll('.account-row') as NodeListOf<HTMLElement>,
-    ).find((r) => r.textContent!.includes('Cash'))!;
-    const pencil = row.querySelector('.account-edit') as HTMLButtonElement;
-    expect(pencil).toBeTruthy();
-
-    pencil.click();
-    fixture.detectChanges();
-    expect(component.editingAccountName()).toEqual({ id: accountId, value: 'Cash' });
-
-    component.editingAccountName.set({ id: accountId, value: 'Wallet' });
-    await component.saveAccountName();
-    const updated = await accountService.getById(accountId);
-    expect(updated?.name).toBe('Wallet');
+    for (const form of forms) {
+      const fields = Array.from(form.querySelectorAll('.input') as NodeListOf<HTMLElement>);
+      expect(fields.length).toBeGreaterThanOrEqual(2);
+      for (const field of fields) {
+        expect(field.classList.contains('small')).toBe(false);
+      }
+    }
   });
 });
 
@@ -497,5 +637,115 @@ describe('SettingsComponent - language card', () => {
     await languageService.init();
 
     expect(languageService.activeLanguage()).toBe('es');
+  });
+
+  it('brings the language card success note back after dismissal on the next save', async () => {
+    const select = languageSelect();
+    const updateButton = languageUpdateButton();
+    select.value = 'es';
+    select.dispatchEvent(new Event('change'));
+    updateButton.click();
+    await flush();
+    fixture.detectChanges();
+
+    const card = fixture.nativeElement.querySelector('app-language-card');
+    const alert = card.querySelector('.alert') as HTMLElement;
+    expect(alert).toBeTruthy();
+
+    (alert.querySelector('.alert-dismiss') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(card.querySelector('.alert')).toBeNull();
+
+    select.value = 'en';
+    select.dispatchEvent(new Event('change'));
+    updateButton.click();
+    await flush();
+    fixture.detectChanges();
+    expect(card.querySelector('.alert')).toBeTruthy();
+  });
+});
+
+describe('SettingsComponent - dismissible alerts', () => {
+  let fixture: ComponentFixture<SettingsComponent>;
+  let component: SettingsComponent;
+  let accountService: AccountService;
+  let accountId: number;
+
+  const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 10));
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    await TestBed.configureTestingModule({
+      imports: [SettingsComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(SettingsComponent);
+    component = fixture.componentInstance;
+    accountService = TestBed.inject(AccountService);
+
+    const account = await accountService.create('Cash', 'EUR', 100000);
+    accountId = account.id!;
+    await component.ngOnInit();
+    fixture.detectChanges();
+  });
+
+  afterEach(async () => {
+    await db.delete();
+  });
+
+  function errorAlert(): HTMLElement {
+    return fixture.nativeElement.querySelector('app-dismissible-alert[role="alert"] .alert');
+  }
+
+  function successAlert(): HTMLElement {
+    return fixture.nativeElement.querySelector('app-dismissible-alert[role="status"] .alert');
+  }
+
+  function dismissOf(alert: HTMLElement): HTMLButtonElement {
+    return alert.querySelector('.alert-dismiss') as HTMLButtonElement;
+  }
+
+  it('renders the error strip with an icon-only dismiss button', async () => {
+    component.startEditAccountName(accountId, 'Cash');
+    component.editingAccountName.set({ id: accountId, value: '' });
+    await component.saveAccountName();
+    fixture.detectChanges();
+
+    const alert = errorAlert();
+    expect(alert).toBeTruthy();
+    const dismiss = dismissOf(alert);
+    expect(dismiss.querySelector('svg')).toBeTruthy();
+    expect(dismiss.textContent!.trim()).toBe('');
+    expect(dismiss.getAttribute('aria-label')).toBeTruthy();
+  });
+
+  it('hides the error strip when dismissed and brings it back on the next failure', async () => {
+    component.startEditAccountName(accountId, 'Cash');
+    component.editingAccountName.set({ id: accountId, value: '' });
+    await component.saveAccountName();
+    fixture.detectChanges();
+    expect(errorAlert()).toBeTruthy();
+
+    dismissOf(errorAlert()).click();
+    fixture.detectChanges();
+    expect(errorAlert()).toBeNull();
+
+    component.startEditAccountBalance(accountId, -100);
+    await component.saveAccountBalance();
+    fixture.detectChanges();
+    expect(errorAlert()).toBeTruthy();
+  });
+
+  it('dismisses the success strip', async () => {
+    component.startEditAccountName(accountId, 'Cash');
+    component.editingAccountName.set({ id: accountId, value: 'Wallet' });
+    await component.saveAccountName();
+    fixture.detectChanges();
+    expect(successAlert()).toBeTruthy();
+
+    dismissOf(successAlert()).click();
+    fixture.detectChanges();
+    expect(successAlert()).toBeNull();
   });
 });

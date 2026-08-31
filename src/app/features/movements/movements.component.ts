@@ -1,12 +1,13 @@
 import { Component, ElementRef, computed, effect, inject, OnDestroy, OnInit, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { DatePipe, NgClass } from '@angular/common';
+import { DatePipe } from '@angular/common';
 import { TransactionService } from '../../core/services/transaction.service';
 import { TransferService } from '../../core/services/transfer.service';
 import { AccountService } from '../../core/services/account.service';
 import { CategoryService } from '../../core/services/category.service';
 import { ProfileService } from '../../core/services/profile.service';
 import { ExchangeRateService } from '../../core/services/exchange-rate.service';
+import { CaptureFormService } from '../../core/services/capture-form.service';
 import { OfflineError } from '../../core/models/offline-error';
 import { Transaction } from '../../core/models/transaction.model';
 import { Transfer } from '../../core/models/transfer.model';
@@ -63,7 +64,7 @@ interface TransferForm {
 
 @Component({
   selector: 'app-movements',
-  imports: [FormsModule, DatePipe, NgClass, QuickAddCardComponent, NetFlowCardComponent],
+  imports: [FormsModule, DatePipe, QuickAddCardComponent, NetFlowCardComponent],
   templateUrl: './movements.component.html',
   styleUrl: './movements.component.scss',
   host: { '(document:keydown)': 'onDocKeydown($event)' },
@@ -75,6 +76,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
   private categoryService = inject(CategoryService);
   private profileService = inject(ProfileService);
   private exchangeRateService = inject(ExchangeRateService);
+  private captureFormService = inject(CaptureFormService);
   language = inject(LanguageService);
 
   scope = signal<PeriodScope>(defaultScope());
@@ -90,7 +92,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
   movements = signal<MovementItem[]>([]);
   baseCurrency = signal('EUR');
 
-  showForm = signal<'none' | 'transfer'>('none');
+  showForm = signal<'none' | 'transfer' | 'transaction'>('none');
   editingId = signal<number | null>(null);
 
   confirmingDelete = signal<MovementItem | null>(null);
@@ -159,10 +161,18 @@ export class MovementsComponent implements OnInit, OnDestroy {
     if (e.key === 't' || e.key === 'T') {
       this.openTransferForm();
     } else if (e.key === 'n' || e.key === 'N') {
-      this.quickAddCard()?.focusAmount();
+      this.openQuickAdd();
     }
   }
   transferHeading = viewChild<ElementRef<HTMLHeadingElement>>('transferHeading');
+
+  deleteConfirmButton = viewChild<ElementRef<HTMLButtonElement>>('deleteConfirmBtn');
+
+  private focusDeleteConfirm = effect(() => {
+    if (this.confirmingDelete()) {
+      this.deleteConfirmButton()?.nativeElement.focus();
+    }
+  });
 
   private focusTransferForm = effect(() => {
     const heading = this.transferHeading();
@@ -172,6 +182,17 @@ export class MovementsComponent implements OnInit, OnDestroy {
         el.scrollIntoView({ behavior: this.prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
       }
       el.focus();
+    }
+  });
+
+  private openOnCaptureRequest = effect(() => {
+    if (this.captureFormService.pendingQuickAddRequests() > 0) {
+      this.captureFormService.consumeQuickAddRequests();
+      this.openQuickAdd();
+    }
+    if (this.captureFormService.pendingTransferRequests() > 0) {
+      this.captureFormService.consumeTransferRequests();
+      this.openTransferForm();
     }
   });
 
@@ -338,19 +359,6 @@ export class MovementsComponent implements OnInit, OnDestroy {
     return isAllTime(this.scope());
   }
 
-  canStepMonth(delta: -1 | 1): boolean {
-    const s = this.scope();
-    if (isAllTime(s)) return false;
-    const next = s.period + delta;
-    return next >= 1 && next <= 12;
-  }
-
-  async stepScopeMonth(delta: -1 | 1): Promise<void> {
-    const s = this.scope();
-    if (isAllTime(s) || !this.canStepMonth(delta)) return;
-    await this.onScopeMonthChange(s.period + delta);
-  }
-
   async toggleAllTime(): Promise<void> {
     if (isAllTime(this.scope())) {
       await this.onScopeYearChange(getCurrentYear());
@@ -384,6 +392,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
   openTransferForm(id?: number): void {
     this.showForm.set('transfer');
     this.editingId.set(id ?? null);
+    this.editTransaction.set(null);
     this.errorMessage.set('');
     this.errorDetail.set('');
     this.transferExchangeRateState.set({ loading: false, error: '', rate: null, date: '' });
@@ -434,9 +443,37 @@ export class MovementsComponent implements OnInit, OnDestroy {
     }
   }
 
+  toggleQuickAdd(): void {
+    if (this.showForm() === 'transaction') {
+      this.closeQuickAdd();
+    } else {
+      this.openQuickAdd();
+    }
+  }
+
+  openQuickAdd(): void {
+    if (this.showForm() === 'transaction') {
+      this.quickAddCard()?.focusAmount();
+      return;
+    }
+    this.showForm.set('transaction');
+    this.editTransaction.set(null);
+  }
+
+  openQuickAddForEdit(txn: Transaction): void {
+    this.showForm.set('transaction');
+    this.editTransaction.set(txn);
+  }
+
+  closeQuickAdd(): void {
+    this.showForm.set('none');
+    this.editTransaction.set(null);
+  }
+
   cancelForm(): void {
     this.showForm.set('none');
     this.editingId.set(null);
+    this.editTransaction.set(null);
     this.errorMessage.set('');
     this.errorDetail.set('');
     this.transferExchangeRateState.set({ loading: false, error: '', rate: null, date: '' });
@@ -616,12 +653,23 @@ export class MovementsComponent implements OnInit, OnDestroy {
           payload.note,
         );
       }
-      this.editTransaction.set(null);
+      const wasEdit = payload.id != null;
+      this.closeQuickAdd();
       await this.refresh();
       await this.applyScopeOptions();
-      this.quickAddCard()?.markSaved(payload.id != null);
+      this.movementAnnouncement.set(
+        wasEdit
+          ? this.language.t('movements.announcement.transactionUpdated')
+          : this.language.t('movements.announcement.transactionSaved'),
+      );
     } catch (e: unknown) {
-      this.quickAddCard()?.markFailed(this.setTransactionError(e));
+      const message = this.setTransactionError(e);
+      const card = this.quickAddCard();
+      if (card) {
+        card.markFailed(message);
+      } else {
+        this.movementAnnouncement.set(message);
+      }
     }
   }
 
@@ -633,10 +681,6 @@ export class MovementsComponent implements OnInit, OnDestroy {
       'Category not found': this.language.t('quickAdd.error.categoryMissing'),
     };
     return known[raw] ?? this.language.t('quickAdd.error.failedToSave');
-  }
-
-  onCancelEdit(): void {
-    this.editTransaction.set(null);
   }
 
   deleteConfirmationLabel(item: MovementItem): string {
@@ -701,6 +745,10 @@ export class MovementsComponent implements OnInit, OnDestroy {
     this.clearUndo();
     await this.refresh();
     await this.applyScopeOptions();
+  }
+
+  dismissUndo(): void {
+    this.clearUndo();
   }
 
   private setUndo(pending: PendingDelete): void {
@@ -776,11 +824,6 @@ export class MovementsComponent implements OnInit, OnDestroy {
     return !isAllTime(s) ? s.year : 'all-time';
   }
 
-  getDirectionArrow(item: Transaction | Transfer, type: 'transaction' | 'transfer'): string {
-    if (type === 'transfer') return '=';
-    return this.isIncomeTransaction(item as Transaction) ? '→' : '←';
-  }
-
   isIncomeTransaction(txn: Transaction): boolean {
     const type = this.allCategoriesForNameResolution().find((c) => c.id === txn.categoryId)?.type;
     return isIncomeCategory(type);
@@ -818,11 +861,6 @@ export class MovementsComponent implements OnInit, OnDestroy {
       return `${sourceFormatted} → ${destFormatted}`;
     }
     return this.formatMoney(tr.sourceAmount);
-  }
-
-  getDirectionArrowClass(item: MovementItem): string {
-    if (item.type === 'transfer') return 'arrow-transfer';
-    return this.isIncomeTransaction(item.data as Transaction) ? 'arrow-income' : 'arrow-expense';
   }
 
   isTransaction(item: MovementItem): boolean {
