@@ -15,14 +15,14 @@
   <div class="backup-actions">
     <button
       type="button"
-      class="btn"
+      class="btn primary"
       [disabled]="isBusy() || !isOnline()"
       (click)="backUp()"
     >
       {{ language.t('backup.card.backUpTo', { method: method }) }}
     </button>
 
-    <button type="button" class="btn primary" [disabled]="isBusy()" (click)="downloadBackup()">
+    <button type="button" class="btn" [disabled]="isBusy()" (click)="downloadBackup()">
       {{ language.t('backup.card.download') }}
     </button>
 
@@ -33,12 +33,13 @@
       class="file-input"
       (change)="onFileSelected($event)"
     />
-    <button type="button" class="btn" [disabled]="isBusy()" (click)="fileInput.click()">
-      {{ language.t('backup.card.restoreFromFile') }}
-    </button>
-
+    
     <button type="button" class="btn" [disabled]="isBusy()" (click)="restoreFromCloud()">
       {{ language.t('backup.card.restoreFrom', { method: method }) }}
+    </button>
+
+    <button type="button" class="btn" [disabled]="isBusy()" (click)="fileInput.click()">
+      {{ language.t('backup.card.restoreFromFile') }}
     </button>
   </div>
 
