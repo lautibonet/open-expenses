@@ -145,7 +145,8 @@ the mobile regime (`headline-lg` 32→24, `display` 48→24).
   segmented/stepper chrome (‹ › chevrons around month/year, plus an All Time position).
   `aria-label`s preserved (tests: `select[aria-label]`, `[aria-label="Ámbito: año"]`).
 - **Net Flow card (D12, new)**: bordered card, 4px left stripe, mono numerals: net = scope
-  income − expense in base currency; small IN/OUT sub-lines in green/red (D8 reversed). Derived
+  income − expense in base currency; small IN/OUT sub-lines in green/red (D8 reversed); a
+  negative net swaps the stripe to the expense red. Derived
   from existing scope queries — no new service logic.
 - Movements list → bordered data table look: 4px left stripes per row direction (green income /
   red expense / grey transfer — D8 reversed), category chip tags (square), mono right-aligned
