@@ -5,6 +5,7 @@
   border: var(--border-hard);
   border-left: var(--stripe-income);
   padding: var(--space-md) var(--space-lg);
+  margin-bottom: var(--space-md);
 
   &.negative {
     border-left: var(--stripe-expense);

@@ -1998,7 +1998,7 @@ describe('MovementsComponent - Quick Add capture form', () => {
 
     const button = (
       Array.from(fixture.nativeElement.querySelectorAll('.controls button')) as HTMLButtonElement[]
-    ).find((b) => b.textContent!.trim() === 'New Transaction')!;
+    ).find((b) => b.textContent!.trim() === '+ Transaction')!;
     button.click();
     fixture.detectChanges();
 
