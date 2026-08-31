@@ -26,7 +26,7 @@ models, or user flows**.
 | D11 | **Token-first rollout**, then screen-by-screen; `ng test` (Vitest) after each phase. |
 | D12 | **Net Flow card added** on Movements — new read-only UI, derived data only (scope income − expense in base currency). |
 | D13 | **Scope semantics unchanged** (month + year + All Time), dressed in the design's stepper/segmented chrome. No Quarter. |
-| D14 | Settings stays **inline-save** and **deactivate** (never hard-delete); category chips get an ×-style *deactivate* affordance, not destructive remove. No "Save Changes" button. No "Load More Records" pagination. |
+| D14 | Settings stays **inline-save** and **deactivate** (never hard-delete); deactivation uses an ×-style affordance, not destructive remove — updated to a single top-to-bottom card flow with one category per row (type-striped, like the accounts list) and an × → tick/× icon confirmation replacing text buttons (issue #76). No "Save Changes" button. No "Load More Records" pagination. |
 | D15 | **Icons: hand-rolled inline SVGs**, not Material Symbols. The needed set is tiny (chevrons, ↑/↓, pencil, ×, +); the Material Symbols variable woff2 is ~3.5 MB — prohibitive to precache offline for glyphs we would never use — and subsetting it adds tooling and binary-asset upkeep for no gain. Inline SVGs inherit `currentColor`, scale crisply, need no network request, and keep the zero-CDN stance. |
 
 Derived implications:
@@ -168,10 +168,18 @@ the mobile regime (`headline-lg` 32→24, `display` 48→24).
 - "Account Balances" → bordered list; negative balances on `--error-container` tiles.
 
 ### 3.3 Settings (`features/settings/`)
-- Bordered cards: Accounts, Base Currency, Language, Categories, Cloud Backup (D5: no Danger
-  Zone).
-- Accounts: rows with pencil-edit inline editing (current behavior), dashed "+ Add Account".
-- Categories: square chip tags with ×-style **deactivate** affordance (D14), dashed "+ Add".
+- Single top-to-bottom card flow (updated in issue #76, superseding the bento
+  grid): Base Currency + Language side by side in the top row, then Accounts,
+  Categories, Backup (D5: no Danger Zone).
+- Accounts: rows with click-to-edit name/opening balance (no pencil icon),
+  × → tick/× icon deactivation confirmation with no message text (same pattern
+  as movement deletion), textual Reactivate on inactive rows, dashed
+  "+ Add Account".
+- Categories: one per row, styled like the accounts list, green/red edge stripe
+  by type; × → tick/× deactivation confirmation replaces the immediate chip ×;
+  textual Reactivate on inactive rows; dashed "+ Add".
+- Add forms: name input, currency/type select and Add button share uniform
+  field heights/widths, matching the app's field/button patterns.
 - Base currency / language: native selects restyled square with caps labels (logic unchanged).
 - `backup-card` / `language-card`: restyled; Drive connect/backup/restore states, offline
   disable, and error strips unchanged.

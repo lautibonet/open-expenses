@@ -40,6 +40,7 @@ export class SettingsComponent implements OnInit {
   editingAccountName = signal<{ id: number; value: string } | null>(null);
   editingCategoryName = signal<{ id: number; value: string } | null>(null);
   confirmingDeactivate = signal<number | null>(null);
+  confirmingCategoryDeactivate = signal<number | null>(null);
 
   async ngOnInit(): Promise<void> {
     this.baseCurrency.set(await this.profileService.getBaseCurrency());
@@ -117,11 +118,6 @@ export class SettingsComponent implements OnInit {
     }
   }
 
-  deactivationConfirmationLabel(id: number): string {
-    const name = this.accounts().find(a => a.id === id)?.name ?? this.language.t('settings.thisAccount');
-    return this.language.t('settings.deactivateAccountConfirm', { name });
-  }
-
   requestDeactivate(id: number): void {
     this.confirmingDeactivate.set(id);
   }
@@ -180,8 +176,19 @@ export class SettingsComponent implements OnInit {
     }
   }
 
-  async deactivateCategory(id: number): Promise<void> {
+  requestCategoryDeactivate(id: number): void {
+    this.confirmingCategoryDeactivate.set(id);
+  }
+
+  cancelCategoryDeactivate(): void {
+    this.confirmingCategoryDeactivate.set(null);
+  }
+
+  async confirmCategoryDeactivate(): Promise<void> {
+    const id = this.confirmingCategoryDeactivate();
+    if (id === null) return;
     await this.categoryService.setActive(id, false);
+    this.confirmingCategoryDeactivate.set(null);
     await this.refresh();
   }
 

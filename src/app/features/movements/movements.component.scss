@@ -48,17 +48,7 @@
 }
 
 .icon-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.75rem;
-  height: 1.75rem;
-  padding: 0;
-
-  svg {
-    width: 1rem;
-    height: 1rem;
-  }
+  @extend %icon-btn;
 }
 
 .undo-toast {
