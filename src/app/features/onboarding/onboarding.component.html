@@ -111,6 +111,13 @@
             <p class="info">{{ noBackupMessage() }}</p>
           }
           <app-dismissible-alert appearance="note" variant="error" [message]="errorMessage()" [resetKey]="statusEpoch()" />
+
+          <div class="nav-buttons">
+            <button class="btn" [disabled]="isRestoring()" (click)="goTo('language')">
+              <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M14 8H3M7 3.5 2.5 8 7 12.5" fill="none" stroke="currentColor" stroke-width="1.5" /></svg>
+              {{ languageService.t('onboarding.back') }}
+            </button>
+          </div>
         </section>
       }
 
@@ -118,6 +125,21 @@
         <section class="step">
           <h1 class="step-title">{{ languageService.t('onboarding.currency.title') }}</h1>
           <p class="step-description">{{ languageService.t('onboarding.currency.description') }}</p>
+
+          <div class="currency-search">
+            <label class="search-label" for="currency-search">{{ languageService.t('onboarding.currency.searchLabel') }}</label>
+            <div class="search-field">
+              <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.5" /><path d="m10.5 10.5 3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.5" /></svg>
+              <input
+                id="currency-search"
+                type="text"
+                [value]="currencyQuery()"
+                (input)="currencyQuery.set($any($event.target).value)"
+                [placeholder]="languageService.t('onboarding.currency.searchPlaceholder')"
+                [attr.aria-label]="languageService.t('onboarding.currency.searchAria')"
+              />
+            </div>
+          </div>
 
           <div class="currency-grid" role="radiogroup" [attr.aria-label]="languageService.t('onboarding.currency.aria')">
             @for (currency of filteredCurrencies(); track currency) {
@@ -134,24 +156,8 @@
                   <span class="tile-symbol">{{ currencySymbol(currency) }}</span>
                 </span>
                 <span class="tile-name">{{ currencyName(currency) }}</span>
-                <span class="tile-symbol-line">{{ languageService.t('onboarding.currency.symbol') }}: {{ currencySymbol(currency) }}</span>
               </button>
             }
-
-            <div class="currency-search">
-              <label class="search-label" for="currency-search">{{ languageService.t('onboarding.currency.searchLabel') }}</label>
-              <div class="search-field">
-                <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.5" /><path d="m10.5 10.5 3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.5" /></svg>
-                <input
-                  id="currency-search"
-                  type="text"
-                  [value]="currencyQuery()"
-                  (input)="currencyQuery.set($any($event.target).value)"
-                  [placeholder]="languageService.t('onboarding.currency.searchPlaceholder')"
-                  [attr.aria-label]="languageService.t('onboarding.currency.searchAria')"
-                />
-              </div>
-            </div>
           </div>
 
           <div class="nav-buttons">
@@ -206,9 +212,17 @@
             <ul class="account-list">
               @for (account of accounts(); track $index) {
                 <li>
-                  {{ account.name }} ({{ account.currency }}) —
-                  <span class="data-figure">{{ account.balance }}</span>
-                  <button class="btn small" (click)="removeAccount($index)">{{ languageService.t('onboarding.accounts.remove') }}</button>
+                  {{ account.name }} ({{ account.currency }})
+                  <span class="data-figure">{{ currencySymbol(account.currency) }} {{ account.balance }}</span>
+                  <button
+                    type="button"
+                    class="btn small danger icon-btn"
+                    [attr.aria-label]="languageService.t('onboarding.accounts.remove')"
+                    [title]="languageService.t('onboarding.accounts.remove')"
+                    (click)="removeAccount($index)"
+                  >
+                    <svg aria-hidden="true" viewBox="0 0 16 16" focusable="false"><path d="M2 2l6 6M8 2 2 8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" /></svg>
+                  </button>
                 </li>
               }
             </ul>

@@ -152,6 +152,11 @@
     @extend %btn-small;
   }
 
+  /* Outline danger: inline row actions (X remove). */
+  &.danger {
+    @extend %btn-danger;
+  }
+
   /* Dashed affordance for add-actions (accounts, categories). */
   &.dashed {
     border-style: dashed;
@@ -176,7 +181,7 @@
 
 .currency-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   margin-bottom: var(--space-lg);
 }
 
@@ -227,18 +232,12 @@
   border-bottom: 1px solid var(--outline-variant);
 }
 
-.tile-symbol-line {
-  @extend %caps-label-muted;
-}
-
+/* Search sits directly under the step title, above the grid, so it stays
+   visible no matter how many results render below. */
 .currency-search {
-  grid-column: span 2;
-  padding: var(--space-md);
-  border: var(--border-hard);
-  margin: 0 0 -1px -1px;
+  margin-bottom: var(--space-md);
   display: flex;
   flex-direction: column;
-  justify-content: center;
   gap: var(--space-sm);
 }
 
@@ -285,6 +284,12 @@
   flex-wrap: wrap;
   align-items: flex-end;
   margin-bottom: var(--space-md);
+
+  /* Fields sit flush in the row — the field pattern's bottom margin would
+     otherwise lift them above the Add button. */
+  .input {
+    margin-bottom: 0;
+  }
 }
 
 .account-list {
@@ -300,6 +305,15 @@
     padding: 0.5rem 0;
     border-bottom: 1px solid var(--outline-variant);
   }
+
+  .data-figure {
+    @extend %mono-data;
+    margin-right: auto;
+  }
+}
+
+.icon-btn {
+  @extend %icon-btn;
 }
 
 .category-table {
@@ -312,6 +326,12 @@
     padding: 0.5rem;
     text-align: left;
     border-bottom: 1px solid var(--outline-variant);
+  }
+
+  /* Action cells keep their content on the right edge of the table. */
+  th:last-child,
+  td:last-child {
+    text-align: right;
   }
 
   th {
@@ -377,10 +397,6 @@ app-dismissible-alert {
 
   .currency-grid {
     grid-template-columns: repeat(2, 1fr);
-  }
-
-  .currency-search {
-    grid-column: 1 / -1;
   }
 
   .step-title {

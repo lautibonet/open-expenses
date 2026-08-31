@@ -272,7 +272,6 @@ describe('translations', () => {
       'onboarding.currency.searchLabel',
       'onboarding.currency.searchAria',
       'onboarding.currency.searchPlaceholder',
-      'onboarding.currency.symbol',
       'onboarding.accounts.title',
       'onboarding.accounts.description',
       'onboarding.accounts.namePlaceholder',

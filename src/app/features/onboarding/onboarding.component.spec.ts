@@ -76,6 +76,33 @@ describe('OnboardingComponent', () => {
     expect(text).toContain('Start fresh');
   });
 
+  it('returns to the language step from the restore step via its Back button', () => {
+    component.goTo('restore');
+    fixture.detectChanges();
+
+    const back = fixture.nativeElement.querySelector(
+      '.nav-buttons .btn:not(.primary)',
+    ) as HTMLButtonElement;
+    expect(back).toBeTruthy();
+    back.click();
+
+    expect(component.step()).toBe('language');
+  });
+
+  it('keeps restore state when going back from the restore step and returning', async () => {
+    driveBackupService.restore.mockRejectedValue(new NoBackupFoundError());
+    await component.restoreFromCloud();
+    expect(component.noBackupMessage()).toContain('No backup');
+
+    component.goTo('language');
+    expect(component.step()).toBe('language');
+
+    component.goTo('restore');
+    fixture.detectChanges();
+    expect(component.noBackupMessage()).toContain('No backup');
+    expect(component.language()).toBe('en');
+  });
+
   it('renders the following steps in the chosen language immediately', async () => {
     await component.onLanguageChange('es');
     fixture.detectChanges();
@@ -146,13 +173,33 @@ describe('OnboardingComponent', () => {
     fixture.detectChanges();
 
     const tiles = Array.from(
-      fixture.nativeElement.querySelectorAll('.select-tile'),
+      fixture.nativeElement.querySelectorAll('.currency-grid .select-tile'),
     ) as HTMLElement[];
     const codes = tiles.map(t => t.querySelector('.tile-code')!.textContent!.trim());
     expect(codes).toEqual(['USD', 'EUR', 'GBP', 'JPY']);
 
     const selected = tiles.find(t => t.classList.contains('selected'));
     expect(selected!.querySelector('.tile-code')!.textContent!.trim()).toBe('EUR');
+  });
+
+  it('pins the currency search above the grid and drops the symbol caption', () => {
+    component.startFresh();
+    fixture.detectChanges();
+
+    const panel = fixture.nativeElement as HTMLElement;
+    const search = panel.querySelector('.currency-search') as HTMLElement;
+    const grid = panel.querySelector('.currency-grid') as HTMLElement;
+    expect(search).toBeTruthy();
+    expect(grid).toBeTruthy();
+    // The search block precedes the grid instead of being a grid child.
+    expect(search.compareDocumentPosition(grid) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(grid.querySelector('.currency-search')).toBeNull();
+
+    const text = panel.textContent as string;
+    expect(text).not.toContain('Symbol:');
+    expect(panel.querySelector('.tile-symbol-line')).toBeNull();
+    // Tiles keep the top-right symbol.
+    expect(grid.querySelector('.tile-symbol')).toBeTruthy();
   });
 
   it('selects a currency tile on click', () => {
@@ -192,6 +239,42 @@ describe('OnboardingComponent', () => {
     input.dispatchEvent(new Event('input'));
     fixture.detectChanges();
     expect(codes()).toEqual(['USD', 'EUR', 'GBP', 'JPY']);
+  });
+
+  it('renders account rows as name plus symbol amount, removed via an X icon without confirm', () => {
+    vi.stubGlobal('navigator', {
+      language: 'en-GB',
+      languages: ['en-GB'],
+      userAgent: 'vitest',
+    });
+    component.goTo('accounts');
+    fixture.detectChanges();
+
+    component.accounts.set([
+      { name: 'Checking', currency: 'EUR', balance: 1250 },
+      { name: 'Cash', currency: 'CLP', balance: 30000 },
+    ]);
+    fixture.detectChanges();
+
+    const rows = Array.from(
+      fixture.nativeElement.querySelectorAll('.account-list li'),
+    ) as HTMLElement[];
+    expect(rows.length).toBe(2);
+    // Symbol before amount, no em dash; code falls back when no symbol exists.
+    expect(rows[0].textContent).toContain('Checking');
+    expect(rows[0].textContent).toContain('€ 1250');
+    expect(rows[0].textContent).not.toContain('—');
+    expect(rows[1].textContent).toContain('Cash');
+    expect(rows[1].textContent).toContain('CLP 30000');
+
+    const remove = rows[0].querySelector('button') as HTMLButtonElement;
+    expect(remove.classList).toContain('icon-btn');
+    expect(remove.getAttribute('aria-label')).toBe('Remove');
+    expect(remove.querySelector('svg')).toBeTruthy();
+    remove.click();
+
+    expect(component.accounts().length).toBe(1);
+    expect(component.accounts()[0].name).toBe('Cash');
   });
 
   it('lands on Movements when the fresh wizard completes', async () => {

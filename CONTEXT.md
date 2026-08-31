@@ -57,7 +57,7 @@ _Avoid_: locale, i18n, translation setting
 _Avoid_: localized name, translated title
 
 **Onboarding**:
-The first-run flow that collects language, base currency, initial accounts, and initial categories before the app is usable. Its first step asks the preferred Language; the second asks whether to restore a Backup from a cloud provider or from an uploaded file, before the wizard itself runs. Restoring a Backup overwrites the chosen Language with the Backup's.
+The first-run flow that collects language, base currency, initial accounts, and initial categories before the app is usable. Its first step asks the preferred Language; the second asks whether to restore a Backup from a cloud provider or from an uploaded file, before the wizard itself runs. Steps after the first carry a Back control; going back only navigates — it never undoes completed work (a completed Restore, the chosen Language, staged accounts and categories all persist). Restoring a Backup overwrites the chosen Language with the Backup's.
 _Avoid_: Setup, wizard, first-time flow
 
 **Backup**:
