@@ -183,10 +183,6 @@ describe('translations', () => {
       'movements.announcement.transferSaved',
       'movements.announcement.transactionUpdated',
       'movements.announcement.transactionSaved',
-      'movements.error.differentAccounts',
-      'movements.error.amountPositive',
-      'movements.error.ratePositive',
-      'movements.error.accountMissing',
       'movements.error.saveFailed',
     ]) {
       expect(TRANSLATIONS.en[key]).toBeTruthy();
@@ -221,7 +217,6 @@ describe('translations', () => {
       'quickAdd.error.offlineRate',
       'quickAdd.error.rateFetch',
       'quickAdd.error.failedToSave',
-      'quickAdd.error.categoryMissing',
     ]) {
       expect(TRANSLATIONS.en[key]).toBeTruthy();
       expect(TRANSLATIONS.es[key]).toBeTruthy();
@@ -279,8 +274,6 @@ describe('translations', () => {
       'onboarding.accounts.balancePlaceholder',
       'onboarding.accounts.add',
       'onboarding.accounts.remove',
-      'onboarding.accounts.nameRequired',
-      'onboarding.accounts.nameExists',
       'onboarding.categories.title',
       'onboarding.categories.description',
       'onboarding.categories.nameHeader',
@@ -290,8 +283,41 @@ describe('translations', () => {
       'onboarding.categories.typeAria',
       'onboarding.categories.addCategory',
       'onboarding.categories.minRequired',
-      'onboarding.categories.namesRequired',
       'onboarding.completionFailed',
+    ]) {
+      expect(TRANSLATIONS.en[key]).toBeTruthy();
+      expect(TRANSLATIONS.es[key]).toBeTruthy();
+    }
+  });
+
+  it('covers the shared validation error keys', () => {
+    for (const key of [
+      'errors.accountNameRequired',
+      'errors.accountNameTaken',
+      'errors.initialBalanceNegative',
+      'errors.accountNotFound',
+      'errors.categoryNameRequired',
+      'errors.categoryNameTaken',
+      'errors.categoryNotFound',
+      'errors.categoryTypeInvalid',
+      'errors.amountPositive',
+      'errors.sourceAmountPositive',
+      'errors.periodInvalid',
+      'errors.yearInvalid',
+      'errors.accountsMustDiffer',
+      'errors.exchangeRatePositive',
+      'errors.sourceAccountNotFound',
+      'errors.destinationAccountNotFound',
+      'errors.transactionNotFound',
+      'errors.transactionIdRequired',
+      'errors.transactionExists',
+      'errors.transferNotFound',
+      'errors.transferIdRequired',
+      'errors.transferExists',
+      'errors.rateApiFailed',
+      'errors.rateNotAvailable',
+      'errors.quoteCurrenciesRequired',
+      'errors.noRatesReturned',
     ]) {
       expect(TRANSLATIONS.en[key]).toBeTruthy();
       expect(TRANSLATIONS.es[key]).toBeTruthy();

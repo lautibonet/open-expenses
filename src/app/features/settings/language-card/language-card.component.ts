@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { LanguageService } from '../../../core/services/language.service';
 import { Language, isLanguage, LANGUAGES } from '../../../core/types/language.type';
 import { DismissibleAlertComponent } from '../../../shared/components/dismissible-alert/dismissible-alert.component';
+import { errorCopy } from '../../../core/models/translation-error';
 
 @Component({
   selector: 'app-language-card',
@@ -31,8 +32,13 @@ export class LanguageCardComponent {
       this.errorMessage.set('');
     } catch (e: unknown) {
       this.errorMessage.set(
-        e instanceof Error ? e.message : this.language.t('settings.failedUpdateLanguage'),
+        errorCopy(
+          e,
+          this.language.translateFn,
+          'settings.failedUpdateLanguage',
+        ),
       );
     }
   }
 }
+

@@ -1,8 +1,8 @@
 import { Injectable } from '@angular/core';
 import { db } from '../db/database';
 import { Transaction } from '../models/transaction.model';
+import { TranslationError } from '../models/translation-error';
 import {
-  PERIOD_ERROR,
   PeriodScope,
   getCurrentYear,
   getPeriodYear,
@@ -24,23 +24,23 @@ export class TransactionService {
     note: string = '',
   ): Promise<Transaction> {
     if (amount <= 0) {
-      throw new Error('Amount must be positive');
+      throw new TranslationError('errors.amountPositive');
     }
     if (!isValidPeriod(period)) {
-      throw new Error(PERIOD_ERROR);
+      throw new TranslationError('errors.periodInvalid');
     }
     if (!isValidYear(year)) {
-      throw new Error('Year must be a valid 4-digit year');
+      throw new TranslationError('errors.yearInvalid');
     }
 
     const account = await db.accounts.get(accountId);
     if (!account) {
-      throw new Error('Account not found');
+      throw new TranslationError('errors.accountNotFound');
     }
 
     const category = await db.categories.get(categoryId);
     if (!category) {
-      throw new Error('Category not found');
+      throw new TranslationError('errors.categoryNotFound');
     }
 
     const transaction: Transaction = {
@@ -66,19 +66,19 @@ export class TransactionService {
   ): Promise<Transaction> {
     const existing = await db.transactions.get(id);
     if (!existing) {
-      throw new Error('Transaction not found');
+      throw new TranslationError('errors.transactionNotFound');
     }
 
     if (changes.amount !== undefined && changes.amount <= 0) {
-      throw new Error('Amount must be positive');
+      throw new TranslationError('errors.amountPositive');
     }
 
     if (changes.year !== undefined && !isValidYear(changes.year)) {
-      throw new Error('Year must be a valid 4-digit year');
+      throw new TranslationError('errors.yearInvalid');
     }
 
     if (changes.period !== undefined && !isValidPeriod(changes.period)) {
-      throw new Error(PERIOD_ERROR);
+      throw new TranslationError('errors.periodInvalid');
     }
 
     await db.transactions.update(id, changes);
@@ -88,18 +88,18 @@ export class TransactionService {
   async delete(id: number): Promise<void> {
     const existing = await db.transactions.get(id);
     if (!existing) {
-      throw new Error('Transaction not found');
+      throw new TranslationError('errors.transactionNotFound');
     }
     await db.transactions.delete(id);
   }
 
   async restore(snapshot: Transaction): Promise<Transaction> {
     if (!snapshot.id) {
-      throw new Error('Transaction id is required');
+      throw new TranslationError('errors.transactionIdRequired');
     }
     const existing = await db.transactions.get(snapshot.id);
     if (existing) {
-      throw new Error('Transaction already exists');
+      throw new TranslationError('errors.transactionExists');
     }
     const { id, ...fields } = snapshot;
     await db.transactions.add({ ...fields, id });

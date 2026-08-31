@@ -13,8 +13,6 @@ export function isMonthNumber(value: unknown): value is MonthNumber {
 
 export const isValidPeriod = isMonthNumber;
 
-export const PERIOD_ERROR = 'Period must be a month between 1 and 12';
-
 export function monthNumberFromName(name: string): MonthNumber | null {
   const index = MONTH_NAMES.findIndex(
     (m) => m.toLowerCase() === name.trim().toLowerCase(),

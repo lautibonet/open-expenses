@@ -10,6 +10,7 @@ import { isCategoryType } from '../models/category.model';
 import { isAllTime, isMonthNumber, PeriodScope } from '../types/period.type';
 import { translate } from '../translations/translations';
 import { formatDateIn, formatMoneyIn, formatNumberIn } from '../format/format';
+import { TranslateFn } from '../models/translation-error';
 
 @Injectable({ providedIn: 'root' })
 export class LanguageService {
@@ -42,6 +43,10 @@ export class LanguageService {
 
   t(key: string, params?: Record<string, string | number>): string {
     return translate(this.activeLanguage(), key, params);
+  }
+
+  get translateFn(): TranslateFn {
+    return (key, params) => this.t(key, params);
   }
 
   monthName(period: number): string {

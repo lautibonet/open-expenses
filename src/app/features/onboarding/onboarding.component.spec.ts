@@ -4,6 +4,7 @@ import { OnboardingComponent } from './onboarding.component';
 import { DriveBackupService } from '../../core/services/drive-backup.service';
 import { LanguageService } from '../../core/services/language.service';
 import { NoBackupFoundError } from '../../backup/drive-backup-provider';
+import { TranslationError } from '../../core/models/translation-error';
 import { db } from '../../core/db/database';
 
 function stubNavigator(language: string): void {
@@ -382,7 +383,9 @@ describe('OnboardingComponent', () => {
   });
 
   it('shows an error when the cloud restore fails for another reason', async () => {
-    driveBackupService.restore.mockRejectedValue(new Error('Cannot restore while offline'));
+    driveBackupService.restore.mockRejectedValue(
+      new TranslationError('backup.error.offlineRestore'),
+    );
 
     await component.restoreFromCloud();
     fixture.detectChanges();
@@ -402,7 +405,9 @@ describe('OnboardingComponent', () => {
   });
 
   it('shows an error when the uploaded file is invalid', async () => {
-    driveBackupService.restoreFromFile.mockRejectedValue(new Error('Invalid backup file'));
+    driveBackupService.restoreFromFile.mockRejectedValue(
+      new TranslationError('backup.error.invalidFile'),
+    );
     const navigate = vi.spyOn(router, 'navigate');
     const file = new File(['nope'], 'backup.json', { type: 'application/json' });
 

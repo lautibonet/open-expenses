@@ -1957,7 +1957,7 @@ describe('MovementsComponent - translations', () => {
     await component.saveTransfer();
 
     expect(component.errorMessage()).toBe(
-      'Esa cuenta ya no existe. Elige otra e inténtalo de nuevo.',
+      'La cuenta de destino ya no existe. Elige otra e inténtalo de nuevo.',
     );
   });
 });

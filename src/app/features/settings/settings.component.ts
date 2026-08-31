@@ -7,6 +7,7 @@ import { LanguageService } from '../../core/services/language.service';
 import { SUPPORTED_CURRENCIES } from '../../core/constants/currencies';
 import { Account } from '../../core/models/account.model';
 import { Category, CategoryType } from '../../core/models/category.model';
+import { errorCopy } from '../../core/models/translation-error';
 import { BackupCardComponent } from './backup-card/backup-card.component';
 import { LanguageCardComponent } from './language-card/language-card.component';
 import { DismissibleAlertComponent } from '../../shared/components/dismissible-alert/dismissible-alert.component';
@@ -65,7 +66,7 @@ export class SettingsComponent implements OnInit {
       await this.refresh();
     } catch (e: unknown) {
       this.errorMessage.set(
-        e instanceof Error ? e.message : this.language.t('settings.failedAddAccount'),
+        errorCopy(e, this.language.translateFn, 'settings.failedAddAccount'),
       );
     }
   }
@@ -89,7 +90,11 @@ export class SettingsComponent implements OnInit {
       await this.refresh();
     } catch (e: unknown) {
       this.errorMessage.set(
-        e instanceof Error ? e.message : this.language.t('settings.failedUpdateAccountName'),
+        errorCopy(
+          e,
+          this.language.translateFn,
+          'settings.failedUpdateAccountName',
+        ),
       );
     }
   }
@@ -113,7 +118,11 @@ export class SettingsComponent implements OnInit {
       await this.refresh();
     } catch (e: unknown) {
       this.errorMessage.set(
-        e instanceof Error ? e.message : this.language.t('settings.failedUpdateAccountBalance'),
+        errorCopy(
+          e,
+          this.language.translateFn,
+          'settings.failedUpdateAccountBalance',
+        ),
       );
     }
   }
@@ -147,7 +156,7 @@ export class SettingsComponent implements OnInit {
       await this.refresh();
     } catch (e: unknown) {
       this.errorMessage.set(
-        e instanceof Error ? e.message : this.language.t('settings.failedAddCategory'),
+        errorCopy(e, this.language.translateFn, 'settings.failedAddCategory'),
       );
     }
   }
@@ -171,7 +180,11 @@ export class SettingsComponent implements OnInit {
       await this.refresh();
     } catch (e: unknown) {
       this.errorMessage.set(
-        e instanceof Error ? e.message : this.language.t('settings.failedUpdateCategoryName'),
+        errorCopy(
+          e,
+          this.language.translateFn,
+          'settings.failedUpdateCategoryName',
+        ),
       );
     }
   }
@@ -204,7 +217,11 @@ export class SettingsComponent implements OnInit {
       this.showSuccess(this.language.t('settings.currencyUpdated'));
     } catch (e: unknown) {
       this.errorMessage.set(
-        e instanceof Error ? e.message : this.language.t('settings.failedUpdateCurrency'),
+        errorCopy(
+          e,
+          this.language.translateFn,
+          'settings.failedUpdateCurrency',
+        ),
       );
     }
   }
@@ -220,3 +237,4 @@ export class SettingsComponent implements OnInit {
     setTimeout(() => this.successMessage.set(''), 3000);
   }
 }
+

@@ -67,7 +67,7 @@ describe('ExchangeRateService', () => {
     };
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse as Response);
 
-    await expect(service.getRate('EUR', 'XYZ')).rejects.toThrow('Exchange rate API failed: Not Found');
+    await expect(service.getRate('EUR', 'XYZ')).rejects.toMatchObject({ key: 'errors.rateApiFailed', params: { status: 'Not Found' } });
   });
 
   it('should throw when target currency missing from response', async () => {
@@ -77,7 +77,7 @@ describe('ExchangeRateService', () => {
     };
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse as Response);
 
-    await expect(service.getRate('EUR', 'XYZ')).rejects.toThrow('Rate not available for XYZ');
+    await expect(service.getRate('EUR', 'XYZ')).rejects.toMatchObject({ key: 'errors.rateNotAvailable', params: { currency: 'XYZ' } });
   });
 
   it('should throw on network error', async () => {
@@ -143,11 +143,11 @@ describe('ExchangeRateService', () => {
       const mockResponse = { ok: false, statusText: 'Not Found' };
       vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse as Response);
 
-      await expect(service.getRates('EUR', ['USD'])).rejects.toThrow('Exchange rate API failed: Not Found');
+      await expect(service.getRates('EUR', ['USD'])).rejects.toMatchObject({ key: 'errors.rateApiFailed', params: { status: 'Not Found' } });
     });
 
     it('should throw when no quotes provided', async () => {
-      await expect(service.getRates('EUR', [])).rejects.toThrow('At least one quote currency is required');
+      await expect(service.getRates('EUR', [])).rejects.toThrow('errors.quoteCurrenciesRequired');
     });
 
     it('should throw on network error', async () => {

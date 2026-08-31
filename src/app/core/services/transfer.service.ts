@@ -1,8 +1,8 @@
 import { Injectable } from '@angular/core';
 import { db } from '../db/database';
 import { Transfer } from '../models/transfer.model';
+import { TranslationError } from '../models/translation-error';
 import {
-  PERIOD_ERROR,
   PeriodScope,
   getCurrentYear,
   getPeriodYear,
@@ -23,29 +23,29 @@ export class TransferService {
     year: number = getCurrentYear(),
   ): Promise<Transfer> {
     if (sourceAccountId === destinationAccountId) {
-      throw new Error('Source and destination accounts must be different');
+      throw new TranslationError('errors.accountsMustDiffer');
     }
     if (amount <= 0) {
-      throw new Error('Amount must be positive');
+      throw new TranslationError('errors.amountPositive');
     }
     if (!isValidPeriod(period)) {
-      throw new Error(PERIOD_ERROR);
+      throw new TranslationError('errors.periodInvalid');
     }
     if (exchangeRate <= 0) {
-      throw new Error('Exchange rate must be positive');
+      throw new TranslationError('errors.exchangeRatePositive');
     }
     if (!isValidYear(year)) {
-      throw new Error('Year must be a valid 4-digit year');
+      throw new TranslationError('errors.yearInvalid');
     }
 
     const sourceAccount = await db.accounts.get(sourceAccountId);
     if (!sourceAccount) {
-      throw new Error('Source account not found');
+      throw new TranslationError('errors.sourceAccountNotFound');
     }
 
     const destAccount = await db.accounts.get(destinationAccountId);
     if (!destAccount) {
-      throw new Error('Destination account not found');
+      throw new TranslationError('errors.destinationAccountNotFound');
     }
 
     const sourceAmount = amount;
@@ -78,33 +78,33 @@ export class TransferService {
   ): Promise<Transfer> {
     const existing = await db.transfers.get(id);
     if (!existing) {
-      throw new Error('Transfer not found');
+      throw new TranslationError('errors.transferNotFound');
     }
 
     if (changes.sourceAccountId !== undefined || changes.destinationAccountId !== undefined) {
       const src = changes.sourceAccountId ?? existing.sourceAccountId;
       const dst = changes.destinationAccountId ?? existing.destinationAccountId;
       if (src === dst) {
-        throw new Error('Source and destination accounts must be different');
+        throw new TranslationError('errors.accountsMustDiffer');
       }
     }
 
     const newSourceAmount = changes.sourceAmount ?? existing.sourceAmount;
     if (changes.sourceAmount !== undefined && changes.sourceAmount <= 0) {
-      throw new Error('Source amount must be positive');
+      throw new TranslationError('errors.sourceAmountPositive');
     }
 
     const newExchangeRate = changes.exchangeRate ?? existing.exchangeRate;
     if (newExchangeRate <= 0) {
-      throw new Error('Exchange rate must be positive');
+      throw new TranslationError('errors.exchangeRatePositive');
     }
 
     if (changes.year !== undefined && !isValidYear(changes.year)) {
-      throw new Error('Year must be a valid 4-digit year');
+      throw new TranslationError('errors.yearInvalid');
     }
 
     if (changes.period !== undefined && !isValidPeriod(changes.period)) {
-      throw new Error(PERIOD_ERROR);
+      throw new TranslationError('errors.periodInvalid');
     }
 
     const newDestinationAccountId = changes.destinationAccountId ?? existing.destinationAccountId;
@@ -130,18 +130,18 @@ export class TransferService {
   async delete(id: number): Promise<void> {
     const existing = await db.transfers.get(id);
     if (!existing) {
-      throw new Error('Transfer not found');
+      throw new TranslationError('errors.transferNotFound');
     }
     await db.transfers.delete(id);
   }
 
   async restore(snapshot: Transfer): Promise<Transfer> {
     if (!snapshot.id) {
-      throw new Error('Transfer id is required');
+      throw new TranslationError('errors.transferIdRequired');
     }
     const existing = await db.transfers.get(snapshot.id);
     if (existing) {
-      throw new Error('Transfer already exists');
+      throw new TranslationError('errors.transferExists');
     }
     const { id, ...fields } = snapshot;
     await db.transfers.add({ ...fields, id });

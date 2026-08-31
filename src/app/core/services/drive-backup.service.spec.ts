@@ -8,6 +8,7 @@ import { TransactionService } from './transaction.service';
 import { TransferService } from './transfer.service';
 import { LanguageService } from './language.service';
 import { db } from '../db/database';
+import { TranslationError } from '../models/translation-error';
 import { BackupSnapshot } from '../../backup/backup-snapshot';
 
 function mockTokenClient(token = 'test-token', autoFire = true) {
@@ -206,7 +207,7 @@ describe('DriveBackupService', () => {
       const networkService = TestBed.inject(NetworkService);
       networkService.isOnline.set(false);
 
-      await expect(service.backupNow()).rejects.toThrow('Cannot backup while offline');
+      await expect(service.backupNow()).rejects.toThrow('backup.error.offlineBackup');
       expect(service.isConnected()).toBe(false);
     });
 
@@ -280,7 +281,7 @@ describe('DriveBackupService', () => {
 
   describe('restore', () => {
     it('should throw if not connected', async () => {
-      await expect(service.restore()).rejects.toThrow('Not connected');
+      await expect(service.restore()).rejects.toThrow('backup.error.notConnected');
     });
 
     it('should throw if no backup file exists', async () => {
@@ -391,8 +392,8 @@ describe('DriveBackupService', () => {
         }),
       });
 
-      await expect(service.restore()).rejects.toThrow(/update the app first/i);
-      expect(service.error()).toMatch(/update the app first/i);
+      await expect(service.restore()).rejects.toThrow('backup.error.newerVersion');
+      expect((service.error() as TranslationError).key).toBe('backup.error.newerVersion');
     });
   });
 
@@ -473,7 +474,7 @@ describe('DriveBackupService', () => {
       };
       const file = new File([JSON.stringify(newer)], 'backup.json', { type: 'application/json' });
 
-      await expect(service.restoreFromFile(file)).rejects.toThrow(/update the app first/i);
+      await expect(service.restoreFromFile(file)).rejects.toThrow('backup.error.newerVersion');
     });
 
     it('should not trigger a new backup when restoring from a file', async () => {
@@ -544,7 +545,7 @@ describe('DriveBackupService', () => {
       await connectAsTestUser(service);
       TestBed.inject(NetworkService).isOnline.set(false);
 
-      await expect(service.getCloudSnapshot()).rejects.toThrow('Cannot restore while offline');
+      await expect(service.getCloudSnapshot()).rejects.toThrow('backup.error.offlineRestore');
     });
 
     it('throws when no backup exists', async () => {
@@ -582,7 +583,7 @@ describe('DriveBackupService', () => {
     it('throws on invalid JSON', async () => {
       const file = new File(['not json'], 'backup.json', { type: 'application/json' });
 
-      await expect(service.parseBackupFile(file)).rejects.toThrow('Invalid backup file');
+      await expect(service.parseBackupFile(file)).rejects.toThrow('backup.error.invalidFile');
     });
 
     it('throws when the file is not a backup snapshot', async () => {
@@ -590,7 +591,7 @@ describe('DriveBackupService', () => {
         type: 'application/json',
       });
 
-      await expect(service.parseBackupFile(file)).rejects.toThrow('Invalid backup file');
+      await expect(service.parseBackupFile(file)).rejects.toThrow('backup.error.invalidFile');
     });
   });
 
