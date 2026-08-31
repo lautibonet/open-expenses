@@ -1,4 +1,4 @@
-<div class="net-flow-card">
+<div class="net-flow-card" [class.negative]="netTotal() < 0">
   <div class="net-flow-head">
     <span class="net-flow-label">{{ language.t('movements.netFlow') }}</span>
   </div>
