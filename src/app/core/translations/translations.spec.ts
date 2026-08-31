@@ -23,11 +23,11 @@ describe('translations', () => {
   });
 
   it('interpolates parameters into the translated text', () => {
-    expect(translate('en', 'settings.deactivateAccountConfirm', { name: 'Cash' })).toBe(
-      'Deactivate Cash?',
+    expect(translate('en', 'backup.card.backUpTo', { method: 'Google Drive' })).toBe(
+      'Back up to Google Drive',
     );
-    expect(translate('es', 'settings.deactivateAccountConfirm', { name: 'Cash' })).toBe(
-      '¿Desactivar Cash?',
+    expect(translate('es', 'backup.card.backUpTo', { method: 'Google Drive' })).toBe(
+      'Hacer copia en Google Drive',
     );
   });
 
@@ -44,7 +44,6 @@ describe('translations', () => {
       'shell.settings',
       'shell.storageStatus',
       'shell.quickAdd',
-      'shell.backup',
     ]) {
       expect(TRANSLATIONS.en[key]).toBeTruthy();
       expect(TRANSLATIONS.es[key]).toBeTruthy();
@@ -55,9 +54,10 @@ describe('translations', () => {
     for (const key of [
       'settings.subtitle',
       'settings.addAccount',
-      'settings.editNameAria',
+      'settings.deactivateAccountAria',
       'settings.deactivateCategoryAria',
-      'settings.reactivateCategoryAria',
+      'settings.confirmDeactivationAria',
+      'settings.cancelDeactivationAria',
     ]) {
       expect(TRANSLATIONS.en[key]).toBeTruthy();
       expect(TRANSLATIONS.es[key]).toBeTruthy();
@@ -80,22 +80,20 @@ describe('translations', () => {
       'backup.card.downloadFailed',
       'backup.noCloudBackup',
       'backup.restoredOk',
+      'backup.card.backUpTo',
     ]) {
       expect(TRANSLATIONS.en[key]).toBeTruthy();
       expect(TRANSLATIONS.es[key]).toBeTruthy();
     }
   });
 
-  it('covers the backup banner keys', () => {
+  it('covers the backup status and action keys', () => {
     for (const key of [
-      'backup.banner.ariaLabel',
-      'backup.banner.methodBackup',
-      'backup.banner.lastBackup',
-      'backup.banner.backUp',
-      'backup.banner.backingUp',
-      'backup.banner.offline',
-      'backup.banner.dismiss',
-      'backup.banner.never',
+      'backup.sidebar.ariaLabel',
+      'backup.status.lastBackup',
+      'backup.status.never',
+      'backup.action.backUp',
+      'backup.action.backingUp',
       'backup.relative.justNow',
     ]) {
       expect(TRANSLATIONS.en[key]).toBeTruthy();
@@ -116,14 +114,7 @@ describe('translations', () => {
   });
 
   it('covers the scope keys', () => {
-    for (const key of [
-      'scope.allTime',
-      'scope.yearAria',
-      'scope.monthAria',
-      'scope.groupAria',
-      'scope.prevMonthAria',
-      'scope.nextMonthAria',
-    ]) {
+    for (const key of ['scope.allTime', 'scope.yearAria', 'scope.monthAria', 'scope.groupAria']) {
       expect(TRANSLATIONS.en[key]).toBeTruthy();
       expect(TRANSLATIONS.es[key]).toBeTruthy();
     }
@@ -137,6 +128,7 @@ describe('translations', () => {
       'movements.flowIn',
       'movements.flowOut',
       'movements.addTransfer',
+      'movements.newTransaction',
       'movements.transferShortcut',
       'movements.sortNewest',
       'movements.sortOldest',
@@ -166,14 +158,14 @@ describe('translations', () => {
       'movements.filtersActive',
       'movements.clearFilters',
       'movements.tableCaption',
-      'movements.colType',
       'movements.colDate',
       'movements.colCategoryTransfer',
       'movements.colAmount',
       'movements.colAccount',
       'movements.colActions',
-      'movements.edit',
-      'movements.delete',
+      'movements.editMovementAria',
+      'movements.deleteMovementAria',
+      'movements.cancelDeletionAria',
       'movements.confirmTransactionDeletionAria',
       'movements.confirmTransferDeletionAria',
       'movements.deleteTransactionConfirm',
@@ -189,6 +181,8 @@ describe('translations', () => {
       'movements.error.rateFetch',
       'movements.announcement.transferUpdated',
       'movements.announcement.transferSaved',
+      'movements.announcement.transactionUpdated',
+      'movements.announcement.transactionSaved',
       'movements.error.differentAccounts',
       'movements.error.amountPositive',
       'movements.error.ratePositive',
@@ -207,8 +201,6 @@ describe('translations', () => {
       'quickAdd.amount',
       'quickAdd.account',
       'quickAdd.category',
-      'quickAdd.record',
-      'quickAdd.moreOptions',
       'quickAdd.fetchingRate',
       'quickAdd.editTransactionTitle',
       'quickAdd.newTransactionTitle',
@@ -280,7 +272,6 @@ describe('translations', () => {
       'onboarding.currency.searchLabel',
       'onboarding.currency.searchAria',
       'onboarding.currency.searchPlaceholder',
-      'onboarding.currency.symbol',
       'onboarding.accounts.title',
       'onboarding.accounts.description',
       'onboarding.accounts.namePlaceholder',
@@ -298,7 +289,6 @@ describe('translations', () => {
       'onboarding.categories.namePlaceholder',
       'onboarding.categories.typeAria',
       'onboarding.categories.addCategory',
-      'onboarding.categories.delete',
       'onboarding.categories.minRequired',
       'onboarding.categories.namesRequired',
       'onboarding.completionFailed',

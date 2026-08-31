@@ -10,6 +10,7 @@ import { LanguageService } from '../../core/services/language.service';
 import { db } from '../../core/db/database';
 import { Transaction } from '../../core/models/transaction.model';
 import { Transfer } from '../../core/models/transfer.model';
+import { CaptureFormService } from '../../core/services/capture-form.service';
 import { MONTH_NAMES, defaultScope, getCurrentPeriod, getCurrentYear } from '../../core/types/period.type';
 
 describe('MovementsComponent - filtering', () => {
@@ -605,23 +606,6 @@ describe('MovementsComponent - direction arrows and display amounts', () => {
     vi.restoreAllMocks();
   });
 
-  it('should return → arrow for income transactions', async () => {
-    await component.ngOnInit();
-    const txn = { categoryId: incomeCategoryId } as any;
-    expect(component.getDirectionArrow(txn, 'transaction')).toBe('→');
-  });
-
-  it('should return ← arrow for expense transactions', async () => {
-    await component.ngOnInit();
-    const txn = { categoryId: expenseCategoryId } as any;
-    expect(component.getDirectionArrow(txn, 'transaction')).toBe('←');
-  });
-
-  it('should return = arrow for transfers', async () => {
-    const tr = {} as any;
-    expect(component.getDirectionArrow(tr, 'transfer')).toBe('=');
-  });
-
   it('should show positive amount for expenses (no minus prefix)', async () => {
     const period = getCurrentPeriod();
     await transactionService.create(eurAccountId, expenseCategoryId, 500, new Date(), period);
@@ -743,18 +727,20 @@ describe('MovementsComponent - direction arrows and display amounts', () => {
     expect(display).toContain('500');
   });
 
-  it('should render direction arrow column in table header', async () => {
+  it('renders Date as the first column and drops the Type column', async () => {
     const period = getCurrentPeriod();
     await transactionService.create(eurAccountId, expenseCategoryId, 100, new Date(), period);
     await component.ngOnInit();
     fixture.detectChanges();
 
-    const headers = fixture.nativeElement.querySelectorAll('th');
-    expect(headers[0].textContent).toContain('Type');
-    expect(headers[1].textContent).toContain('Date');
+    const headers = Array.from(fixture.nativeElement.querySelectorAll('th')).map((el: any) =>
+      el.textContent.trim(),
+    );
+    expect(headers[0]).toContain('Date');
+    expect(headers.some((h: string) => h.includes('Type'))).toBe(false);
   });
 
-  it('should render direction arrow cell for each row', async () => {
+  it('renders no direction arrow cells and starts each data row with its date', async () => {
     const period = getCurrentPeriod();
     const acc2 = await accountService.create('Cash EUR 2', 'EUR', 50000);
     await transactionService.create(eurAccountId, expenseCategoryId, 100, new Date(), period);
@@ -765,10 +751,13 @@ describe('MovementsComponent - direction arrows and display amounts', () => {
     const rows = fixture.nativeElement.querySelectorAll('tbody tr');
     expect(rows.length).toBe(2);
 
-    const arrowCells = fixture.nativeElement.querySelectorAll('tbody tr td:first-child');
-    const arrows = Array.from(arrowCells).map((el: any) => el.textContent.trim());
-    expect(arrows).toContain('←');
-    expect(arrows).toContain('=');
+    expect(fixture.nativeElement.querySelectorAll('td.arrow').length).toBe(0);
+
+    const firstCells = Array.from(rows).map((row: any) => row.querySelector('td').textContent.trim());
+    for (const cell of firstCells) {
+      expect(cell).not.toBe('←');
+      expect(cell).not.toBe('=');
+    }
   });
 });
 
@@ -894,7 +883,7 @@ describe('MovementsComponent - period year', () => {
   });
 });
 
-describe('MovementsComponent - page header and scope stepper', () => {
+describe('MovementsComponent - page header and scope control', () => {
   let fixture: ComponentFixture<MovementsComponent>;
   let component: MovementsComponent;
   let transactionService: TransactionService;
@@ -921,11 +910,6 @@ describe('MovementsComponent - page header and scope stepper', () => {
     await db.delete();
   });
 
-  async function scopeTo(period: number, year: number): Promise<void> {
-    await component.onScopeYearChange(year);
-    await component.onScopeMonthChange(period);
-  }
-
   it('renders the display headline with its subtitle', async () => {
     await component.ngOnInit();
     fixture.detectChanges();
@@ -946,39 +930,16 @@ describe('MovementsComponent - page header and scope stepper', () => {
     expect(fixture.nativeElement.querySelector('select[aria-label="Scope month"]')).toBeTruthy();
   });
 
-  it('steps the month via the stepper without touching the year', async () => {
-    const year = getCurrentYear();
+  it('renders plain month and year selects with no chevron stepper', async () => {
     await component.ngOnInit();
-    await scopeTo(6, year);
+    fixture.detectChanges();
 
-    await component.stepScopeMonth(1);
-    expect(component.scope()).toEqual({ kind: 'month', period: 7, year });
-
-    await component.stepScopeMonth(-1);
-    await component.stepScopeMonth(-1);
-    expect(component.scope()).toEqual({ kind: 'month', period: 5, year });
-  });
-
-  it('disables the stepper at the calendar edges', async () => {
-    await component.ngOnInit();
-    await scopeTo(1, getCurrentYear());
-    expect(component.canStepMonth(-1)).toBe(false);
-    expect(component.canStepMonth(1)).toBe(true);
-
-    await scopeTo(12, getCurrentYear());
-    expect(component.canStepMonth(-1)).toBe(true);
-    expect(component.canStepMonth(1)).toBe(false);
-  });
-
-  it('cannot step months while All Time is active', async () => {
-    await component.ngOnInit();
-    await component.onScopeYearChange('all-time');
-
-    expect(component.canStepMonth(-1)).toBe(false);
-    expect(component.canStepMonth(1)).toBe(false);
-
-    await component.stepScopeMonth(1);
-    expect(component.scope().kind).toBe('all-time');
+    expect(fixture.nativeElement.querySelectorAll('.step-btn').length).toBe(0);
+    expect(
+      fixture.nativeElement.querySelector('button[aria-label="Previous month"]'),
+    ).toBeNull();
+    expect(fixture.nativeElement.querySelector('button[aria-label="Next month"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.scope-selects select')).toBeTruthy();
   });
 
   it('toggles All Time from the scope control and back to the current month', async () => {
@@ -994,6 +955,7 @@ describe('MovementsComponent - page header and scope stepper', () => {
   it('leads the content with the Net Flow card', async () => {
     await transactionService.create(accountId, categoryId, 500, new Date(), getCurrentPeriod());
     await component.ngOnInit();
+    component.toggleQuickAdd();
     fixture.detectChanges();
 
     const card = fixture.nativeElement.querySelector('app-net-flow-card .net-flow-card');
@@ -1501,6 +1463,224 @@ describe('MovementsComponent - contextual delete confirmation and undo', () => {
 
     expect(component.undo()).toBeNull();
   });
+
+  it('should dismiss the undo toast via its close affordance without undoing', async () => {
+    const txn = await transactionService.create(
+      accountId,
+      categoryId,
+      500,
+      new Date(),
+      getCurrentPeriod(),
+    );
+    await component.ngOnInit();
+    const item = component.movements().find((m) => (m.data as Transaction).id === txn.id)!;
+
+    component.requestDelete(item);
+    await component.confirmDelete();
+    fixture.detectChanges();
+    expect(component.undo()).not.toBeNull();
+
+    const toast = fixture.nativeElement.querySelector('.undo-toast') as HTMLElement;
+    const dismiss = toast.querySelector('.toast-dismiss') as HTMLButtonElement;
+    expect(dismiss).toBeTruthy();
+    expect(dismiss.querySelector('svg')).toBeTruthy();
+    expect(dismiss.textContent!.trim()).toBe('');
+    expect(dismiss.getAttribute('aria-label')).toBeTruthy();
+
+    dismiss.click();
+    fixture.detectChanges();
+
+    expect(component.undo()).toBeNull();
+    expect(await transactionService.getAll()).toHaveLength(0);
+
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(component.undo()).toBeNull();
+  });
+});
+
+describe('MovementsComponent - icon row actions', () => {
+  let fixture: ComponentFixture<MovementsComponent>;
+  let component: MovementsComponent;
+  let transactionService: TransactionService;
+  let transferService: TransferService;
+  let accountService: AccountService;
+  let categoryService: CategoryService;
+  let accountId: number;
+  let categoryId: number;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    await TestBed.configureTestingModule({
+      imports: [MovementsComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(MovementsComponent);
+    component = fixture.componentInstance;
+    transactionService = TestBed.inject(TransactionService);
+    transferService = TestBed.inject(TransferService);
+    accountService = TestBed.inject(AccountService);
+    categoryService = TestBed.inject(CategoryService);
+
+    const account = await accountService.create('Cash', 'EUR', 100000);
+    accountId = account.id!;
+    const category = await categoryService.create('Food', 'expense');
+    categoryId = category.id!;
+  });
+
+  afterEach(async () => {
+    fixture.destroy();
+    await db.delete();
+  });
+
+  async function seedTransaction(): Promise<Transaction> {
+    return transactionService.create(
+      accountId,
+      categoryId,
+      500,
+      new Date(),
+      getCurrentPeriod(),
+    );
+  }
+
+  async function settle(): Promise<void> {
+    await fixture.whenStable();
+    for (let i = 0; i < 10; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+    fixture.detectChanges();
+  }
+
+  function actionButtons(): HTMLButtonElement[] {
+    return Array.from(
+      fixture.nativeElement.querySelectorAll('tbody td:last-child button'),
+    ) as HTMLButtonElement[];
+  }
+
+  it('renders pencil and trash icon buttons with accessible names', async () => {
+    await seedTransaction();
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const buttons = actionButtons();
+    expect(buttons).toHaveLength(2);
+    expect(buttons[0].getAttribute('aria-label')).toBe('Edit movement');
+    expect(buttons[0].querySelector('svg')).toBeTruthy();
+    expect(buttons[1].getAttribute('aria-label')).toBe('Delete movement');
+    expect(buttons[1].querySelector('svg')).toBeTruthy();
+    expect(buttons[1].classList.contains('danger')).toBe(true);
+    expect(buttons.every((b) => (b.textContent ?? '').trim() === '')).toBe(true);
+  });
+
+  it('swaps the row actions to tick and X icon buttons when trash is clicked', async () => {
+    const txn = await seedTransaction();
+    await component.ngOnInit();
+    fixture.detectChanges();
+    const item = component.movements().find((m) => (m.data as Transaction).id === txn.id)!;
+
+    component.requestDelete(item);
+    fixture.detectChanges();
+
+    const buttons = actionButtons();
+    expect(buttons).toHaveLength(2);
+    expect(buttons[0].getAttribute('aria-label')).toBe('Confirm transaction deletion');
+    expect(buttons[0].querySelector('svg')).toBeTruthy();
+    expect(buttons[1].getAttribute('aria-label')).toBe('Cancel deletion');
+    expect(buttons[1].querySelector('svg')).toBeTruthy();
+    expect(buttons.every((b) => (b.textContent ?? '').trim() === '')).toBe(true);
+  });
+
+  it('keeps the delete prompt off-screen and announces it politely, with no visible message text', async () => {
+    const txn = await seedTransaction();
+    await component.ngOnInit();
+    fixture.detectChanges();
+    const item = component.movements().find((m) => (m.data as Transaction).id === txn.id)!;
+
+    component.requestDelete(item);
+    fixture.detectChanges();
+
+    const actionsCell = fixture.nativeElement.querySelector('tbody td:last-child');
+    const live = actionsCell.querySelector('span[aria-live="polite"]');
+    expect(live).toBeTruthy();
+    expect(live.classList.contains('visually-hidden')).toBe(true);
+    expect(live.textContent).toContain('€500.00');
+    expect(live.textContent).toContain('Cash');
+  });
+
+  it('moves focus to the tick button when the inline confirmation opens', async () => {
+    const txn = await seedTransaction();
+    await component.ngOnInit();
+    fixture.detectChanges();
+    const item = component.movements().find((m) => (m.data as Transaction).id === txn.id)!;
+
+    component.requestDelete(item);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const tick = actionButtons()[0];
+    expect(document.activeElement).toBe(tick);
+  });
+
+  it('deletes from the tick button and exposes the undo', async () => {
+    const txn = await seedTransaction();
+    await component.ngOnInit();
+    fixture.detectChanges();
+    const item = component.movements().find((m) => (m.data as Transaction).id === txn.id)!;
+
+    component.requestDelete(item);
+    fixture.detectChanges();
+    await actionButtons()[0].click();
+    await settle();
+
+    expect(await transactionService.getAll()).toHaveLength(0);
+    expect(component.undo()?.item.data.id).toBe(txn.id);
+  });
+
+  it('cancels from the X button and restores the pencil and trash icons', async () => {
+    const txn = await seedTransaction();
+    await component.ngOnInit();
+    fixture.detectChanges();
+    const item = component.movements().find((m) => (m.data as Transaction).id === txn.id)!;
+
+    component.requestDelete(item);
+    fixture.detectChanges();
+    await actionButtons()[1].click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(component.confirmingDelete()).toBeNull();
+    expect(await transactionService.getAll()).toHaveLength(1);
+    const buttons = actionButtons();
+    expect(buttons[0].getAttribute('aria-label')).toBe('Edit movement');
+    expect(buttons[1].getAttribute('aria-label')).toBe('Delete movement');
+  });
+
+  it('confirms a transfer deletion via tick and X icons', async () => {
+    const acc2 = await accountService.create('Savings', 'EUR', 50000);
+    const tr = await transferService.create(
+      accountId,
+      acc2.id!,
+      1000,
+      new Date(),
+      getCurrentPeriod(),
+    );
+    await component.ngOnInit();
+    fixture.detectChanges();
+    const item = component.movements()[0];
+
+    component.requestDelete(item);
+    fixture.detectChanges();
+
+    const buttons = actionButtons();
+    expect(buttons[0].getAttribute('aria-label')).toBe('Confirm transfer deletion');
+    expect(buttons[1].getAttribute('aria-label')).toBe('Cancel deletion');
+
+    await buttons[0].click();
+    await settle();
+
+    expect(await transferService.getAll()).toHaveLength(0);
+    expect(component.undo()?.item.data.id).toBe(tr.id);
+  });
 });
 
 describe('MovementsComponent - assistive tech', () => {
@@ -1568,6 +1748,7 @@ describe('MovementsComponent - assistive tech', () => {
 
   it('gives every quick-add select an accessible name', async () => {
     await component.ngOnInit();
+    component.toggleQuickAdd();
     fixture.detectChanges();
 
     const selects = fixture.nativeElement.querySelectorAll('.quick-add select');
@@ -1712,7 +1893,7 @@ describe('MovementsComponent - quick-add integration', () => {
     );
     component.editTransaction.set(t);
 
-    component.onCancelEdit();
+    component.closeQuickAdd();
 
     expect(component.editTransaction()).toBeNull();
   });
@@ -1837,7 +2018,7 @@ describe('MovementsComponent - ledger table styling', () => {
     expect(expenseRow.classList.contains('row-income')).toBe(false);
   });
 
-  it('marks transfer rows for the neutral stripe treatment', async () => {
+  it('marks transfer rows with their own grey stripe treatment', async () => {
     const acc2 = await accountService.create('Savings', 'EUR', 50000);
     const period = getCurrentPeriod();
     await transferService.create(accountId, acc2.id!, 100, new Date(), period);
@@ -1932,6 +2113,15 @@ describe('MovementsComponent - date header sorting', () => {
     expect(movementAmounts()).toEqual([200, 300, 100]);
   });
 
+  it('spans month group header rows across the five remaining columns', async () => {
+    await seedDatedTransactions();
+    fixture.detectChanges();
+
+    const groupCell = fixture.nativeElement.querySelector('tr.month-group-row td');
+    expect(groupCell).toBeTruthy();
+    expect(groupCell.getAttribute('colspan')).toBe('5');
+  });
+
   it('reflects the sort direction via aria-sort and the header button', async () => {
     await seedDatedTransactions();
     fixture.detectChanges();
@@ -1947,5 +2137,197 @@ describe('MovementsComponent - date header sorting', () => {
     button.click();
     fixture.detectChanges();
     expect(th.getAttribute('aria-sort')).toBe('descending');
+  });
+});
+
+describe('MovementsComponent - Quick Add capture form', () => {
+  let fixture: ComponentFixture<MovementsComponent>;
+  let component: MovementsComponent;
+  let transactionService: TransactionService;
+  let accountService: AccountService;
+  let categoryService: CategoryService;
+  let captureFormService: CaptureFormService;
+  let accountId: number;
+  let categoryId: number;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    await TestBed.configureTestingModule({
+      imports: [MovementsComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(MovementsComponent);
+    component = fixture.componentInstance;
+    transactionService = TestBed.inject(TransactionService);
+    accountService = TestBed.inject(AccountService);
+    categoryService = TestBed.inject(CategoryService);
+    captureFormService = TestBed.inject(CaptureFormService);
+
+    const account = await accountService.create('Cash', 'EUR', 100000);
+    accountId = account.id!;
+    const category = await categoryService.create('Food', 'expense');
+    categoryId = category.id!;
+  });
+
+  afterEach(async () => {
+    await db.delete();
+  });
+
+  it('hides Quick Add on page load', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    expect(component.showForm()).toBe('none');
+    expect(fixture.nativeElement.querySelector('app-quick-add-card')).toBeNull();
+  });
+
+  it('reveals Quick Add via the New Transaction button and toggles it closed', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const button = (
+      Array.from(fixture.nativeElement.querySelectorAll('.controls button')) as HTMLButtonElement[]
+    ).find((b) => b.textContent!.trim() === '+ Transaction')!;
+    button.click();
+    fixture.detectChanges();
+
+    expect(component.showForm()).toBe('transaction');
+    expect(fixture.nativeElement.querySelector('app-quick-add-card')).toBeTruthy();
+
+    button.click();
+
+    expect(component.showForm()).toBe('none');
+  });
+
+  it('opens only one capture form at a time', async () => {
+    await component.ngOnInit();
+
+    component.toggleQuickAdd();
+    expect(component.showForm()).toBe('transaction');
+
+    component.openTransferForm();
+    expect(component.showForm()).toBe('transfer');
+
+    component.openQuickAdd();
+    expect(component.showForm()).toBe('transaction');
+  });
+
+  it('closes after a successful create', async () => {
+    await component.ngOnInit();
+    component.toggleQuickAdd();
+
+    await component.onSaveTransaction({
+      id: null,
+      accountId,
+      categoryId,
+      amount: 500,
+      date: '2026-08-15',
+      period: getCurrentPeriod(),
+      year: getCurrentYear(),
+      exchangeRate: null,
+      baseCurrencyAmount: null,
+      note: '',
+    });
+
+    expect(component.showForm()).toBe('none');
+    expect(component.editTransaction()).toBeNull();
+  });
+
+  it('closes after a successful edit', async () => {
+    const t = await transactionService.create(
+      accountId,
+      categoryId,
+      500,
+      new Date(),
+      getCurrentPeriod(),
+    );
+    await component.ngOnInit();
+    component.openQuickAddForEdit(t);
+    expect(component.showForm()).toBe('transaction');
+
+    await component.onSaveTransaction({
+      id: t.id!,
+      accountId,
+      categoryId,
+      amount: 500,
+      date: '2026-08-15',
+      period: getCurrentPeriod(),
+      year: getCurrentYear(),
+      exchangeRate: null,
+      baseCurrencyAmount: null,
+      note: '',
+    });
+
+    expect(component.showForm()).toBe('none');
+    expect(component.editTransaction()).toBeNull();
+  });
+
+  it('opens the form prefilled when editing a transaction', async () => {
+    const t = await transactionService.create(
+      accountId,
+      categoryId,
+      1200,
+      new Date(),
+      getCurrentPeriod(),
+      null,
+      null,
+      getCurrentYear(),
+      'coffee',
+    );
+    await component.ngOnInit();
+
+    component.openQuickAddForEdit(t);
+    fixture.detectChanges();
+
+    expect(component.showForm()).toBe('transaction');
+    expect(component.quickAddCard()!.editingId()).toBe(t.id);
+    expect(component.quickAddCard()!.form().amount).toBe(1200);
+    expect(component.quickAddCard()!.form().note).toBe('coffee');
+  });
+
+  it("focuses the amount field when the 'n' shortcut opens the form", async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'n' }));
+    fixture.detectChanges();
+
+    expect(component.showForm()).toBe('transaction');
+    const amountInput = fixture.nativeElement.querySelector(
+      'app-quick-add-card input[aria-label="Amount"]',
+    );
+    expect(amountInput).toBeTruthy();
+    expect(document.activeElement).toBe(amountInput);
+  });
+
+  it('opens the form when the sidebar Quick Add action requests it', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    captureFormService.requestQuickAdd();
+    fixture.detectChanges();
+
+    expect(component.showForm()).toBe('transaction');
+    expect(captureFormService.pendingQuickAddRequests()).toBe(0);
+  });
+
+  it('opens the transfer form when the sidebar transfer action requests it', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    captureFormService.requestTransfer();
+    fixture.detectChanges();
+
+    expect(component.showForm()).toBe('transfer');
+    expect(captureFormService.pendingTransferRequests()).toBe(0);
+  });
+
+  it('keeps the t shortcut opening the transfer form', async () => {
+    await component.ngOnInit();
+
+    component.onDocKeydown(new KeyboardEvent('keydown', { key: 't' }));
+
+    expect(component.showForm()).toBe('transfer');
   });
 });

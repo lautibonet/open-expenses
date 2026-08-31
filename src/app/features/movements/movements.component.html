@@ -6,52 +6,28 @@
     </div>
 
     <div class="scope-control" role="group" [attr.aria-label]="language.t('scope.groupAria')">
-      <div class="scope-stepper">
-        <button
-          type="button"
-          class="step-btn"
-          (click)="stepScopeMonth(-1)"
-          [disabled]="!canStepMonth(-1)"
-          [attr.aria-label]="language.t('scope.prevMonthAria')"
-        >
-          <svg aria-hidden="true" viewBox="0 0 12 12" focusable="false">
-            <path d="M8 1 3 6l5 5" fill="none" stroke="currentColor" stroke-width="1.5" />
-          </svg>
-        </button>
-        <div class="scope-selects">
-          @if (scope().kind !== 'all-time') {
-            <select
-              [ngModel]="scopePeriod()"
-              (ngModelChange)="onScopeMonthChange($event)"
-              [attr.aria-label]="language.t('scope.monthAria')"
-            >
-              @for (month of scopeMonths(); track month) {
-                <option [ngValue]="month">{{ language.monthName(month) }}</option>
-              }
-            </select>
-          }
+      <div class="scope-selects">
+        @if (scope().kind !== 'all-time') {
           <select
-            [ngModel]="scopeYearValue()"
-            (ngModelChange)="onScopeYearChange($event)"
-            [attr.aria-label]="language.t('scope.yearAria')"
+            [ngModel]="scopePeriod()"
+            (ngModelChange)="onScopeMonthChange($event)"
+            [attr.aria-label]="language.t('scope.monthAria')"
           >
-            @for (yr of scopeYears(); track yr) {
-              <option [ngValue]="yr">{{ yr }}</option>
+            @for (month of scopeMonths(); track month) {
+              <option [ngValue]="month">{{ language.monthName(month) }}</option>
             }
-            <option [ngValue]="'all-time'">{{ language.t('scope.allTime') }}</option>
           </select>
-        </div>
-        <button
-          type="button"
-          class="step-btn"
-          (click)="stepScopeMonth(1)"
-          [disabled]="!canStepMonth(1)"
-          [attr.aria-label]="language.t('scope.nextMonthAria')"
+        }
+        <select
+          [ngModel]="scopeYearValue()"
+          (ngModelChange)="onScopeYearChange($event)"
+          [attr.aria-label]="language.t('scope.yearAria')"
         >
-          <svg aria-hidden="true" viewBox="0 0 12 12" focusable="false">
-            <path d="m4 1 5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.5" />
-          </svg>
-        </button>
+          @for (yr of scopeYears(); track yr) {
+            <option [ngValue]="yr">{{ yr }}</option>
+          }
+          <option [ngValue]="'all-time'">{{ language.t('scope.allTime') }}</option>
+        </select>
       </div>
       <button
         type="button"
@@ -72,16 +48,26 @@
     [baseCurrency]="baseCurrency()"
   />
 
-  <app-quick-add-card
-    [accounts]="accounts()"
-    [categories]="categories()"
-    [baseCurrency]="baseCurrency()"
-    [editTransaction]="editTransaction()"
-    (save)="onSaveTransaction($event)"
-    (cancelEdit)="onCancelEdit()"
-  />
+  @if (showForm() === 'transaction') {
+    <app-quick-add-card
+      [accounts]="accounts()"
+      [categories]="categories()"
+      [baseCurrency]="baseCurrency()"
+      [editTransaction]="editTransaction()"
+      (save)="onSaveTransaction($event)"
+      (close)="closeQuickAdd()"
+    />
+  }
 
   <div class="controls">
+    <button
+      class="btn"
+      (click)="toggleQuickAdd()"
+      [attr.aria-expanded]="showForm() === 'transaction'"
+      [title]="language.t('movements.newTransaction')"
+    >
+      {{ language.t('movements.newTransaction') }}
+    </button>
     <button class="btn" (click)="openTransferForm()" [title]="language.t('movements.transferShortcut')">
       {{ language.t('movements.addTransfer') }}
     </button>
@@ -284,7 +270,6 @@
           </caption>
           <thead>
             <tr>
-              <th scope="col">{{ language.t('movements.colType') }}</th>
               <th scope="col" [attr.aria-sort]="sortDir() === 'desc' ? 'descending' : 'ascending'">
                 <button type="button" class="th-sort" (click)="toggleSort()" [attr.aria-label]="language.t('movements.sortByDateAria')">
                   {{ language.t('movements.colDate') }}
@@ -294,14 +279,14 @@
               <th scope="col">{{ language.t('movements.colCategoryTransfer') }}</th>
               <th scope="col" class="col-amount">{{ language.t('movements.colAmount') }}</th>
               <th scope="col">{{ language.t('movements.colAccount') }}</th>
-              <th scope="col">{{ language.t('movements.colActions') }}</th>
+              <th scope="col" class="col-actions">{{ language.t('movements.colActions') }}</th>
             </tr>
           </thead>
           <tbody>
             @for (row of movementView(); track trackKey(row)) {
               @if (row.kind === 'group') {
                 <tr class="month-group-row">
-                  <td colspan="6">{{ row.label }}</td>
+                  <td colspan="5">{{ row.label }}</td>
                 </tr>
               } @else {
                 @let item = row.item;
@@ -312,9 +297,6 @@
                   [class.row-income]="income"
                   [class.row-expense]="!income"
                 >
-                  <td [ngClass]="['arrow', getDirectionArrowClass(item)]">
-                    {{ getDirectionArrow(txn, 'transaction') }}
-                  </td>
                   <td>{{ txn.date | date: 'mediumDate' }}</td>
                   <td>
                     <span class="cat-chip">{{ getCategoryName(txn.categoryId) }}</span>
@@ -329,27 +311,80 @@
                     {{ formatTransactionDisplayAmount(txn) }}
                   </td>
                   <td>{{ getAccountName(txn.accountId) }}</td>
-                  <td>
-                    <button class="btn small" (click)="editTransaction.set(txn)">
-                      {{ language.t('movements.edit') }}
-                    </button>
+                  <td class="actions-cell">
                     @if (confirmingDelete() === item) {
-                      <span
-                        class="delete-confirm"
-                        aria-live="polite"
-                        [attr.aria-label]="language.t('movements.confirmTransactionDeletionAria')"
-                      >
+                      <span class="visually-hidden" aria-live="polite">
                         {{ deleteConfirmationLabel(confirmingDelete()!) }}
                       </span>
-                      <button class="btn small danger" (click)="confirmDelete()">
-                        {{ language.t('movements.delete') }}
+                      <button
+                        #deleteConfirmBtn
+                        class="btn small danger icon-btn"
+                        (click)="confirmDelete()"
+                        [attr.aria-label]="language.t('movements.confirmTransactionDeletionAria')"
+                        [title]="language.t('movements.confirmTransactionDeletionAria')"
+                      >
+                        <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                          <path
+                            d="M20 6 9 17l-5-5"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          />
+                        </svg>
                       </button>
-                      <button class="btn small" (click)="cancelDelete()">
-                        {{ language.t('movements.cancel') }}
+                      <button
+                        class="btn small icon-btn"
+                        (click)="cancelDelete()"
+                        [attr.aria-label]="language.t('movements.cancelDeletionAria')"
+                        [title]="language.t('movements.cancelDeletionAria')"
+                      >
+                        <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                          <path
+                            d="M18 6 6 18M6 6l12 12"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          />
+                        </svg>
                       </button>
                     } @else {
-                      <button class="btn small danger" (click)="requestDelete(item)">
-                        {{ language.t('movements.delete') }}
+                      <button
+                        class="btn small icon-btn"
+                        (click)="openQuickAddForEdit(txn)"
+                        [attr.aria-label]="language.t('movements.editMovementAria')"
+                        [title]="language.t('movements.editMovementAria')"
+                      >
+                        <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                          <path
+                            d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          />
+                        </svg>
+                      </button>
+                      <button
+                        class="btn small danger icon-btn"
+                        (click)="requestDelete(item)"
+                        [attr.aria-label]="language.t('movements.deleteMovementAria')"
+                        [title]="language.t('movements.deleteMovementAria')"
+                      >
+                        <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                          <path
+                            d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          />
+                        </svg>
                       </button>
                     }
                   </td>
@@ -357,9 +392,6 @@
               } @else {
                 @let tr = getTransferData(item);
                 <tr class="transfer-row">
-                  <td [ngClass]="['arrow', getDirectionArrowClass(item)]">
-                    {{ getDirectionArrow(tr, 'transfer') }}
-                  </td>
                   <td>{{ tr.date | date: 'mediumDate' }}</td>
                   <td>
                     {{ getAccountName(tr.sourceAccountId) }} →
@@ -373,27 +405,80 @@
                       <span class="note">{{ tr.note }}</span>
                     }
                   </td>
-                  <td>
-                    <button class="btn small" (click)="openTransferForm(tr.id!)">
-                      {{ language.t('movements.edit') }}
-                    </button>
+                  <td class="actions-cell">
                     @if (confirmingDelete() === item) {
-                      <span
-                        class="delete-confirm"
-                        aria-live="polite"
-                        [attr.aria-label]="language.t('movements.confirmTransferDeletionAria')"
-                      >
+                      <span class="visually-hidden" aria-live="polite">
                         {{ deleteConfirmationLabel(confirmingDelete()!) }}
                       </span>
-                      <button class="btn small danger" (click)="confirmDelete()">
-                        {{ language.t('movements.delete') }}
+                      <button
+                        #deleteConfirmBtn
+                        class="btn small danger icon-btn"
+                        (click)="confirmDelete()"
+                        [attr.aria-label]="language.t('movements.confirmTransferDeletionAria')"
+                        [title]="language.t('movements.confirmTransferDeletionAria')"
+                      >
+                        <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                          <path
+                            d="M20 6 9 17l-5-5"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          />
+                        </svg>
                       </button>
-                      <button class="btn small" (click)="cancelDelete()">
-                        {{ language.t('movements.cancel') }}
+                      <button
+                        class="btn small icon-btn"
+                        (click)="cancelDelete()"
+                        [attr.aria-label]="language.t('movements.cancelDeletionAria')"
+                        [title]="language.t('movements.cancelDeletionAria')"
+                      >
+                        <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                          <path
+                            d="M18 6 6 18M6 6l12 12"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          />
+                        </svg>
                       </button>
                     } @else {
-                      <button class="btn small danger" (click)="requestDelete(item)">
-                        {{ language.t('movements.delete') }}
+                      <button
+                        class="btn small icon-btn"
+                        (click)="openTransferForm(tr.id!)"
+                        [attr.aria-label]="language.t('movements.editMovementAria')"
+                        [title]="language.t('movements.editMovementAria')"
+                      >
+                        <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                          <path
+                            d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          />
+                        </svg>
+                      </button>
+                      <button
+                        class="btn small danger icon-btn"
+                        (click)="requestDelete(item)"
+                        [attr.aria-label]="language.t('movements.deleteMovementAria')"
+                        [title]="language.t('movements.deleteMovementAria')"
+                      >
+                        <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                          <path
+                            d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                          />
+                        </svg>
                       </button>
                     }
                   </td>
@@ -433,6 +518,17 @@
     >
       <span class="undo-message"> {{ undoDeleteLabel(pending) }} </span>
       <button class="btn small" (click)="undoDelete()">{{ language.t('movements.undo') }}</button>
+      <button
+        type="button"
+        class="toast-dismiss"
+        (click)="dismissUndo()"
+        [attr.aria-label]="language.t('alert.dismiss')"
+        [title]="language.t('alert.dismiss')"
+      >
+        <svg aria-hidden="true" viewBox="0 0 10 10" focusable="false">
+          <path d="M2 2l6 6M8 2 2 8" fill="none" stroke="currentColor" stroke-width="1.5" />
+        </svg>
+      </button>
     </div>
   }
 </div>

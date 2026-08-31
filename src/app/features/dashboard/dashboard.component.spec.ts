@@ -592,7 +592,7 @@ describe('DashboardComponent - shared scope', () => {
   });
 });
 
-describe('DashboardComponent - page header, scope stepper and restyled cards', () => {
+describe('DashboardComponent - page header, scope control and restyled cards', () => {
   let fixture: ComponentFixture<DashboardComponent>;
   let component: DashboardComponent;
   let accountService: AccountService;
@@ -644,39 +644,16 @@ describe('DashboardComponent - page header, scope stepper and restyled cards', (
     expect(fixture.nativeElement.querySelector('select[aria-label="Scope month"]')).toBeTruthy();
   });
 
-  it('steps the month via the stepper without touching the year', async () => {
-    const year = getCurrentYear();
+  it('renders plain month and year selects with no chevron stepper', async () => {
     await component.ngOnInit();
-    await scopeTo(6, year);
+    fixture.detectChanges();
 
-    await component.stepScopeMonth(1);
-    expect(component.scope()).toEqual({ kind: 'month', period: 7, year });
-
-    await component.stepScopeMonth(-1);
-    await component.stepScopeMonth(-1);
-    expect(component.scope()).toEqual({ kind: 'month', period: 5, year });
-  });
-
-  it('disables the stepper at the calendar edges', async () => {
-    await component.ngOnInit();
-    await scopeTo(1, getCurrentYear());
-    expect(component.canStepMonth(-1)).toBe(false);
-    expect(component.canStepMonth(1)).toBe(true);
-
-    await scopeTo(12, getCurrentYear());
-    expect(component.canStepMonth(-1)).toBe(true);
-    expect(component.canStepMonth(1)).toBe(false);
-  });
-
-  it('cannot step months while All Time is active', async () => {
-    await component.ngOnInit();
-    await component.onScopeYearChange('all-time');
-
-    expect(component.canStepMonth(-1)).toBe(false);
-    expect(component.canStepMonth(1)).toBe(false);
-
-    await component.stepScopeMonth(1);
-    expect(component.scope().kind).toBe('all-time');
+    expect(fixture.nativeElement.querySelectorAll('.step-btn').length).toBe(0);
+    expect(
+      fixture.nativeElement.querySelector('button[aria-label="Previous month"]'),
+    ).toBeNull();
+    expect(fixture.nativeElement.querySelector('button[aria-label="Next month"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.scope-selects select')).toBeTruthy();
   });
 
   it('toggles All Time from the scope control and back to the current month', async () => {
@@ -689,7 +666,7 @@ describe('DashboardComponent - page header, scope stepper and restyled cards', (
     expect(component.scope()).toEqual(defaultScope());
   });
 
-  it('refreshes averages when stepping the scope, keeping the year-average semantics', async () => {
+  it('refreshes averages when the scope month changes, keeping the year-average semantics', async () => {
     const acc = await accountService.create('Cash', 'EUR', 0);
     const incomeCat = await categoryService.create('Payroll', 'income');
     const year = getCurrentYear();
@@ -701,7 +678,7 @@ describe('DashboardComponent - page header, scope stepper and restyled cards', (
     await scopeTo(1, year);
     expect(component.avgMonthlyIncome()).toBe(4500);
 
-    await component.stepScopeMonth(1);
+    await component.onScopeMonthChange(2);
     expect(component.scope()).toEqual({ kind: 'month', period: 2, year });
     expect(component.avgMonthlyIncome()).toBe(4500);
   });
@@ -789,7 +766,25 @@ describe('DashboardComponent - page header, scope stepper and restyled cards', (
     await component.ngOnInit();
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('.conversion-warning')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.conversion-warning .alert')).toBeNull();
+  });
+
+  it('dismisses the conversion warning and keeps it hidden while the failure persists', async () => {
+    await accountService.create('Cash', 'EUR', 100000);
+    await accountService.create('USD Account', 'USD', 50000);
+    networkService.isOnline.set(false);
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const dismiss = fixture.nativeElement.querySelector(
+      '.conversion-warning .alert-dismiss',
+    ) as HTMLButtonElement;
+    expect(dismiss).toBeTruthy();
+    dismiss.click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.conversion-warning .alert')).toBeNull();
   });
 });
 

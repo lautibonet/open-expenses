@@ -17,7 +17,22 @@
       routerLinkActive="active"
       #movementsTab="routerLinkActive"
       class="tab"
+      [attr.aria-label]="language.t('shell.movements')"
       [attr.aria-current]="movementsTab.isActive ? 'page' : null"
+      ><svg
+        class="tab-icon"
+        aria-hidden="true"
+        viewBox="0 0 24 24"
+        focusable="false"
+      >
+        <path
+          d="M8 3 4 7l4 4M4 7h16M16 21l4-4-4-4M20 17H4"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        /></svg
       ><span class="tab-label">{{ language.t('shell.movements') }}</span></a
     >
     <a
@@ -25,7 +40,22 @@
       routerLinkActive="active"
       #statsTab="routerLinkActive"
       class="tab"
+      [attr.aria-label]="language.t('shell.stats')"
       [attr.aria-current]="statsTab.isActive ? 'page' : null"
+      ><svg
+        class="tab-icon"
+        aria-hidden="true"
+        viewBox="0 0 24 24"
+        focusable="false"
+      >
+        <path
+          d="M6 20v-6M12 20V4M18 20v-10"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        /></svg
       ><span class="tab-label">{{ language.t('shell.stats') }}</span></a
     >
     <a
@@ -33,7 +63,22 @@
       routerLinkActive="active"
       #settingsTab="routerLinkActive"
       class="tab"
+      [attr.aria-label]="language.t('shell.settings')"
       [attr.aria-current]="settingsTab.isActive ? 'page' : null"
+      ><svg
+        class="tab-icon"
+        aria-hidden="true"
+        viewBox="0 0 24 24"
+        focusable="false"
+      >
+        <path
+          d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        /></svg
       ><span class="tab-label">{{ language.t('shell.settings') }}</span></a
     >
   </nav>
@@ -42,9 +87,21 @@
     <button type="button" class="quick-add" (click)="goToQuickAdd()">
       {{ language.t('shell.quickAdd') }}
     </button>
-    <a class="backup-link" routerLink="/settings" fragment="backup">{{
-      language.t('shell.backup')
-    }}</a>
+    <div class="backup-block" role="group" [attr.aria-label]="language.t('backup.sidebar.ariaLabel')">
+      <button
+        type="button"
+        class="backup-button"
+        (click)="backUp()"
+        [disabled]="isBackingUp()"
+      >
+        {{
+          isBackingUp()
+            ? language.t('backup.action.backingUp')
+            : language.t('backup.action.backUp')
+        }}
+      </button>
+      <p class="backup-caption">{{ backupCaption() }}</p>
+    </div>
   </div>
 </aside>
 
@@ -58,7 +115,6 @@
 
 <div class="main-area">
   <app-install-prompt />
-  <app-backup-banner />
   <main class="content" id="main-content" tabindex="-1">
     <router-outlet />
   </main>
