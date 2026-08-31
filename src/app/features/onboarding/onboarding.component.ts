@@ -16,7 +16,7 @@ const STEPS = ['language', 'restore', 'currency', 'accounts', 'categories'] as c
 
 type Step = (typeof STEPS)[number];
 
-const FEATURED_CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY'] as const;
+const FEATURED_CURRENCIES = ['EUR', 'USD', 'GBP', 'JPY'] as const;
 
 interface EditableCategory {
   name: string;
