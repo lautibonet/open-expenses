@@ -1,21 +1,22 @@
 import { Injectable } from '@angular/core';
 import { db } from '../db/database';
 import { Account } from '../models/account.model';
+import { TranslationError } from '../models/translation-error';
 
 @Injectable({ providedIn: 'root' })
 export class AccountService {
   async create(name: string, currency: string, initialBalance: number): Promise<Account> {
     const trimmedName = name.trim();
     if (!trimmedName) {
-      throw new Error('Account name is required');
+      throw new TranslationError('errors.accountNameRequired');
     }
     if (initialBalance < 0) {
-      throw new Error('Initial balance cannot be negative');
+      throw new TranslationError('errors.initialBalanceNegative');
     }
 
     const existing = await db.accounts.where('name').equals(trimmedName).first();
     if (existing) {
-      throw new Error('Account name must be unique');
+      throw new TranslationError('errors.accountNameTaken', { name: trimmedName });
     }
 
     const account: Account = {
@@ -33,24 +34,24 @@ export class AccountService {
   async update(id: number, changes: { name?: string; initialBalance?: number }): Promise<Account> {
     const account = await db.accounts.get(id);
     if (!account) {
-      throw new Error('Account not found');
+      throw new TranslationError('errors.accountNotFound');
     }
 
     if (changes.name !== undefined) {
       const trimmedName = changes.name.trim();
       if (!trimmedName) {
-        throw new Error('Account name is required');
+        throw new TranslationError('errors.accountNameRequired');
       }
       const existing = await db.accounts.where('name').equals(trimmedName).first();
       if (existing && existing.id !== id) {
-        throw new Error('Account name must be unique');
+        throw new TranslationError('errors.accountNameTaken', { name: trimmedName });
       }
       await db.accounts.update(id, { name: trimmedName });
     }
 
     if (changes.initialBalance !== undefined) {
       if (changes.initialBalance < 0) {
-        throw new Error('Initial balance cannot be negative');
+        throw new TranslationError('errors.initialBalanceNegative');
       }
       await db.accounts.update(id, { initialBalance: changes.initialBalance });
     }
@@ -61,7 +62,7 @@ export class AccountService {
   async setActive(id: number, active: boolean): Promise<void> {
     const account = await db.accounts.get(id);
     if (!account) {
-      throw new Error('Account not found');
+      throw new TranslationError('errors.accountNotFound');
     }
     await db.accounts.update(id, { active });
   }

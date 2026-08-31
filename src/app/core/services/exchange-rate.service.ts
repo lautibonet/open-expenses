@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { NetworkService } from './network.service';
 import { OfflineError } from '../models/offline-error';
+import { TranslationError } from '../models/translation-error';
 
 const FRANKFURTER_BASE = 'https://api.frankfurter.dev/v2';
 
@@ -48,12 +49,12 @@ export class ExchangeRateService {
 
     const response = await fetch(url);
     if (!response.ok) {
-      throw new Error(`Exchange rate API failed: ${response.statusText}`);
+      throw new TranslationError('errors.rateApiFailed', { status: response.statusText });
     }
 
     const data: FrankfurterResponse = await response.json();
     if (!data?.rate) {
-      throw new Error(`Rate not available for ${toCurrency}`);
+      throw new TranslationError('errors.rateNotAvailable', { currency: toCurrency });
     }
 
     return {
@@ -66,7 +67,7 @@ export class ExchangeRateService {
 
   async getRates(base: string, quotes: string[], date?: string): Promise<BatchExchangeRateResult> {
     if (quotes.length === 0) {
-      throw new Error('At least one quote currency is required');
+      throw new TranslationError('errors.quoteCurrenciesRequired');
     }
 
     const baseCurrency = base.toUpperCase();
@@ -94,12 +95,12 @@ export class ExchangeRateService {
 
     const response = await fetch(url);
     if (!response.ok) {
-      throw new Error(`Exchange rate API failed: ${response.statusText}`);
+      throw new TranslationError('errors.rateApiFailed', { status: response.statusText });
     }
 
     const data: FrankfurterResponse[] = await response.json();
     if (!Array.isArray(data) || data.length === 0) {
-      throw new Error('No rates returned');
+      throw new TranslationError('errors.noRatesReturned');
     }
 
     const rates = new Map<string, number>();

@@ -98,7 +98,7 @@ describe('SettingsComponent - inline editing', () => {
     component.startEditAccountName(accountId, 'Cash');
     component.editingAccountName.set({ id: accountId, value: 'Bank' });
     await component.saveAccountName();
-    expect(component.errorMessage()).toContain('unique');
+    expect(component.errorMessage()).toBe('An account named "Bank" already exists');
     expect(component.editingAccountName()).not.toBeNull();
   });
 
@@ -135,8 +135,52 @@ describe('SettingsComponent - inline editing', () => {
     component.startEditCategoryName(categoryId, 'Food');
     component.editingCategoryName.set({ id: categoryId, value: 'Transport' });
     await component.saveCategoryName();
-    expect(component.errorMessage()).toContain('unique');
+    expect(component.errorMessage()).toBe('A category named "Transport" already exists');
     expect(component.editingCategoryName()).not.toBeNull();
+  });
+
+  it('should render duplicate account errors in Spanish when the Language is Spanish', async () => {
+    await accountService.create('Bank', 'EUR', 0);
+    await TestBed.inject(LanguageService).setLanguage('es');
+    component.startEditAccountName(accountId, 'Cash');
+    component.editingAccountName.set({ id: accountId, value: 'Bank' });
+    await component.saveAccountName();
+    expect(component.errorMessage()).toBe('Ya hay una cuenta llamada "Bank"');
+  });
+
+  it('should re-render the duplicate account error in the other language on re-trigger', async () => {
+    await accountService.create('Bank', 'EUR', 0);
+    const languageService = TestBed.inject(LanguageService);
+
+    component.startEditAccountName(accountId, 'Cash');
+    component.editingAccountName.set({ id: accountId, value: 'Bank' });
+    await component.saveAccountName();
+    expect(component.errorMessage()).toBe('An account named "Bank" already exists');
+
+    await languageService.setLanguage('es');
+    await component.saveAccountName();
+    expect(component.errorMessage()).toBe('Ya hay una cuenta llamada "Bank"');
+
+    await languageService.setLanguage('en');
+    await component.saveAccountName();
+    expect(component.errorMessage()).toBe('An account named "Bank" already exists');
+  });
+
+  it('should render duplicate category errors in Spanish when the Language is Spanish', async () => {
+    await categoryService.create('Transport', 'expense');
+    await TestBed.inject(LanguageService).setLanguage('es');
+    component.startEditCategoryName(categoryId, 'Food');
+    component.editingCategoryName.set({ id: categoryId, value: 'Transport' });
+    await component.saveCategoryName();
+    expect(component.errorMessage()).toBe('Ya hay una categoría llamada "Transport"');
+  });
+
+  it('should render negative balance errors in Spanish when the Language is Spanish', async () => {
+    await TestBed.inject(LanguageService).setLanguage('es');
+    component.startEditAccountBalance(accountId, 100000);
+    component.editingAccountBalance.set({ id: accountId, value: -100 });
+    await component.saveAccountBalance();
+    expect(component.errorMessage()).toBe('El saldo inicial no puede ser negativo');
   });
 });
 

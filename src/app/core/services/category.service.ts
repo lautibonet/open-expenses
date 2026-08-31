@@ -3,6 +3,7 @@ import { db } from '../db/database';
 import { Category, CategoryType, isCategoryType } from '../models/category.model';
 import { DEFAULT_LANGUAGE, Language } from '../types/language.type';
 import { translate } from '../translations/translations';
+import { TranslationError } from '../models/translation-error';
 
 const DEFAULT_CATEGORIES: { key: string; type: CategoryType }[] = [
   { key: 'food', type: 'expense' },
@@ -18,7 +19,7 @@ const DEFAULT_CATEGORIES: { key: string; type: CategoryType }[] = [
 
 function assertCategoryType(type: CategoryType): void {
   if (!isCategoryType(type)) {
-    throw new Error('Category type must be income or expense');
+    throw new TranslationError('errors.categoryTypeInvalid');
   }
 }
 
@@ -44,12 +45,12 @@ export class CategoryService {
     assertCategoryType(type);
     const trimmedName = name.trim();
     if (!trimmedName) {
-      throw new Error('Category name is required');
+      throw new TranslationError('errors.categoryNameRequired');
     }
 
     const existing = await db.categories.where('name').equals(trimmedName).first();
     if (existing) {
-      throw new Error('Category name must be unique');
+      throw new TranslationError('errors.categoryNameTaken', { name: trimmedName });
     }
 
     const category: Category = {
@@ -69,17 +70,17 @@ export class CategoryService {
     }
     const category = await db.categories.get(id);
     if (!category) {
-      throw new Error('Category not found');
+      throw new TranslationError('errors.categoryNotFound');
     }
 
     if (changes.name !== undefined) {
       const trimmedName = changes.name.trim();
       if (!trimmedName) {
-        throw new Error('Category name is required');
+        throw new TranslationError('errors.categoryNameRequired');
       }
       const existing = await db.categories.where('name').equals(trimmedName).first();
       if (existing && existing.id !== id) {
-        throw new Error('Category name must be unique');
+        throw new TranslationError('errors.categoryNameTaken', { name: trimmedName });
       }
       await db.categories.update(id, { name: trimmedName });
     }
@@ -94,7 +95,7 @@ export class CategoryService {
   async setActive(id: number, active: boolean): Promise<void> {
     const category = await db.categories.get(id);
     if (!category) {
-      throw new Error('Category not found');
+      throw new TranslationError('errors.categoryNotFound');
     }
     await db.categories.update(id, { active });
   }

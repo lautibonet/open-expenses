@@ -66,37 +66,37 @@ describe('TransactionService', () => {
   it('should reject zero amount', async () => {
     await expect(
       transactionService.create(accountId, categoryId, 0, new Date(), 1),
-    ).rejects.toThrow('Amount must be positive');
+    ).rejects.toThrow('errors.amountPositive');
   });
 
   it('should reject negative amount', async () => {
     await expect(
       transactionService.create(accountId, categoryId, -100, new Date(), 1),
-    ).rejects.toThrow('Amount must be positive');
+    ).rejects.toThrow('errors.amountPositive');
   });
 
   it('should reject an out-of-range period', async () => {
     await expect(
       transactionService.create(accountId, categoryId, 100, new Date(), 0),
-    ).rejects.toThrow('Period must be a month between 1 and 12');
+    ).rejects.toThrow('errors.periodInvalid');
   });
 
   it('should reject a non-integer period', async () => {
     await expect(
       transactionService.create(accountId, categoryId, 100, new Date(), 1.5),
-    ).rejects.toThrow('Period must be a month between 1 and 12');
+    ).rejects.toThrow('errors.periodInvalid');
   });
 
   it('should reject invalid account', async () => {
     await expect(
       transactionService.create(999, categoryId, 100, new Date(), 1),
-    ).rejects.toThrow('Account not found');
+    ).rejects.toThrow('errors.accountNotFound');
   });
 
   it('should reject invalid category', async () => {
     await expect(
       transactionService.create(accountId, 999, 100, new Date(), 1),
-    ).rejects.toThrow('Category not found');
+    ).rejects.toThrow('errors.categoryNotFound');
   });
 
   it('should update a transaction', async () => {
@@ -114,7 +114,7 @@ describe('TransactionService', () => {
     );
     await expect(
       transactionService.update(t.id!, { amount: 0 }),
-    ).rejects.toThrow('Amount must be positive');
+    ).rejects.toThrow('errors.amountPositive');
   });
 
   it('should delete a transaction', async () => {
@@ -156,7 +156,7 @@ describe('TransactionService', () => {
     );
     await expect(
       transactionService.restore(t),
-    ).rejects.toThrow('Transaction already exists');
+    ).rejects.toThrow('errors.transactionExists');
   });
 
   it('should get transactions by period', async () => {
@@ -226,13 +226,13 @@ describe('TransactionService', () => {
   it('should reject an invalid period year on create', async () => {
     await expect(
       transactionService.create(accountId, categoryId, 100, new Date(), 1, null, null, 22),
-    ).rejects.toThrow('Year must be a valid 4-digit year');
+    ).rejects.toThrow('errors.yearInvalid');
   });
 
   it('should reject an invalid period year on update', async () => {
     const t = await transactionService.create(accountId, categoryId, 100, new Date(), 1);
     await expect(
       transactionService.update(t.id!, { year: 22 }),
-    ).rejects.toThrow('Year must be a valid 4-digit year');
+    ).rejects.toThrow('errors.yearInvalid');
   });
 });

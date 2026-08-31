@@ -14,6 +14,7 @@ import { BackupSnapshot, createSnapshot, stringifySnapshot } from '../../../back
 import { DismissibleAlertComponent } from '../../../shared/components/dismissible-alert/dismissible-alert.component';
 import { formatLastBackupStatus } from '../../../backup/last-backup-status';
 import { describeBackupError } from '../../../backup/backup-errors';
+import { TranslationError, errorCopy } from '../../../core/models/translation-error';
 
 const BACKUP_FILE_NAME = 'open-expenses-backup.json';
 
@@ -50,8 +51,13 @@ export class BackupCardComponent {
 
   serviceErrorCopy = computed(() => {
     this.language.activeLanguage();
-    const raw = this.backupService.error();
-    return raw ? describeBackupError(raw, this.language.activeLanguage()) : null;
+    const err = this.backupService.error();
+    if (!err) return null;
+    if (err instanceof TranslationError) {
+      return { text: this.language.t(err.key, err.params), code: null };
+    }
+    const raw = err instanceof Error ? err.message : String(err);
+    return describeBackupError(raw, this.language.activeLanguage());
   });
 
   constructor() {
@@ -115,7 +121,7 @@ export class BackupCardComponent {
       this.message.set(this.language.t('backup.fileDownloaded'));
     } catch (e: unknown) {
       this.errorMessage.set(
-        e instanceof Error ? e.message : this.language.t('backup.card.downloadFailed'),
+        errorCopy(e, this.language.translateFn, 'backup.card.downloadFailed'),
       );
     } finally {
       this.isBusy.set(false);
@@ -135,7 +141,7 @@ export class BackupCardComponent {
     } catch (e: unknown) {
       this.pendingRestore.set(null);
       this.errorMessage.set(
-        e instanceof Error ? e.message : this.language.t('backup.error.invalidFile'),
+        errorCopy(e, this.language.translateFn, 'backup.error.invalidFile'),
       );
     } finally {
       input.value = '';
@@ -155,7 +161,7 @@ export class BackupCardComponent {
         this.errorMessage.set(this.language.t('backup.noCloudBackup'));
       } else {
         this.errorMessage.set(
-          e instanceof Error ? e.message : this.language.t('backup.error.restoreFailed'),
+          errorCopy(e, this.language.translateFn, 'backup.error.restoreFailed'),
         );
       }
     } finally {
@@ -176,7 +182,7 @@ export class BackupCardComponent {
       this.message.set(this.language.t('backup.restoredOk'));
     } catch (e: unknown) {
       this.errorMessage.set(
-        e instanceof Error ? e.message : this.language.t('backup.error.restoreFailed'),
+        errorCopy(e, this.language.translateFn, 'backup.error.restoreFailed'),
       );
     } finally {
       this.isBusy.set(false);

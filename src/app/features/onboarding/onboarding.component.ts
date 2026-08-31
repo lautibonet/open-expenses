@@ -11,6 +11,7 @@ import { CURRENCY_SYMBOLS, SUPPORTED_CURRENCIES } from '../../core/constants/cur
 import { CategoryType } from '../../core/models/category.model';
 import { isLanguage, LANGUAGES, detectBrowserLanguage, Language } from '../../core/types/language.type';
 import { DismissibleAlertComponent } from '../../shared/components/dismissible-alert/dismissible-alert.component';
+import { errorCopy } from '../../core/models/translation-error';
 
 const STEPS = ['language', 'restore', 'currency', 'accounts', 'categories'] as const;
 
@@ -162,7 +163,11 @@ export class OnboardingComponent {
         this.noBackupMessage.set(this.languageService.t('onboarding.restore.noBackupFound'));
       } else {
         this.errorMessage.set(
-          e instanceof Error ? e.message : this.languageService.t('backup.error.restoreFailed'),
+          errorCopy(
+            e,
+            this.languageService.translateFn,
+            'backup.error.restoreFailed',
+          ),
         );
       }
     } finally {
@@ -178,14 +183,16 @@ export class OnboardingComponent {
   addAccount(): void {
     this.resetError();
     if (!this.accountName()) {
-      this.errorMessage.set(this.languageService.t('onboarding.accounts.nameRequired'));
+      this.errorMessage.set(this.languageService.t('errors.accountNameRequired'));
       return;
     }
     const exists = this.accounts().some(
       a => a.name.toLowerCase() === this.accountName().toLowerCase(),
     );
     if (exists) {
-      this.errorMessage.set(this.languageService.t('onboarding.accounts.nameExists'));
+      this.errorMessage.set(
+        this.languageService.t('errors.accountNameTaken', { name: this.accountName() }),
+      );
       return;
     }
     this.accounts.update(accs => [
@@ -237,7 +244,7 @@ export class OnboardingComponent {
 
     const emptyCategory = this.categories().find(c => !c.name.trim());
     if (emptyCategory) {
-      this.errorMessage.set(this.languageService.t('onboarding.categories.namesRequired'));
+      this.errorMessage.set(this.languageService.t('errors.categoryNameRequired'));
       return;
     }
 
@@ -252,8 +259,13 @@ export class OnboardingComponent {
       this.router.navigate(['/movements']);
     } catch (e: unknown) {
       this.errorMessage.set(
-        e instanceof Error ? e.message : this.languageService.t('onboarding.completionFailed'),
+        errorCopy(
+          e,
+          this.languageService.translateFn,
+          'onboarding.completionFailed',
+        ),
       );
     }
   }
 }
+

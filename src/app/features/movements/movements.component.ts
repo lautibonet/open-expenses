@@ -9,6 +9,7 @@ import { ProfileService } from '../../core/services/profile.service';
 import { ExchangeRateService } from '../../core/services/exchange-rate.service';
 import { CaptureFormService } from '../../core/services/capture-form.service';
 import { OfflineError } from '../../core/models/offline-error';
+import { TranslationError, errorCopy } from '../../core/models/translation-error';
 import { Transaction } from '../../core/models/transaction.model';
 import { Transfer } from '../../core/models/transfer.model';
 import { Account } from '../../core/models/account.model';
@@ -611,20 +612,12 @@ export class MovementsComponent implements OnInit, OnDestroy {
   }
 
   private setTransferError(e: unknown): void {
-    const raw = e instanceof Error ? e.message : String(e);
-    const known: Record<string, string> = {
-      'Source and destination accounts must be different':
-        this.language.t('movements.error.differentAccounts'),
-      'Amount must be positive': this.language.t('movements.error.amountPositive'),
-      'Source amount must be positive': this.language.t('movements.error.amountPositive'),
-      'Exchange rate must be positive': this.language.t('movements.error.ratePositive'),
-      'Source account not found': this.language.t('movements.error.accountMissing'),
-      'Destination account not found': this.language.t('movements.error.accountMissing'),
-    };
     this.errorMessage.set(
-      known[raw] ?? this.language.t('movements.error.saveFailed'),
+      errorCopy(e, this.language.translateFn, 'movements.error.saveFailed'),
     );
-    this.errorDetail.set(raw);
+    this.errorDetail.set(
+      e instanceof TranslationError ? '' : e instanceof Error ? e.message : String(e),
+    );
   }
 
   async onSaveTransaction(payload: TransactionFormPayload): Promise<void> {
@@ -674,13 +667,11 @@ export class MovementsComponent implements OnInit, OnDestroy {
   }
 
   private setTransactionError(e: unknown): string {
-    const raw = e instanceof Error ? e.message : String(e);
-    const known: Record<string, string> = {
-      'Amount must be positive': this.language.t('movements.error.amountPositive'),
-      'Account not found': this.language.t('movements.error.accountMissing'),
-      'Category not found': this.language.t('quickAdd.error.categoryMissing'),
-    };
-    return known[raw] ?? this.language.t('quickAdd.error.failedToSave');
+    return errorCopy(
+      e,
+      this.language.translateFn,
+      'quickAdd.error.failedToSave',
+    );
   }
 
   deleteConfirmationLabel(item: MovementItem): string {
@@ -875,3 +866,4 @@ export class MovementsComponent implements OnInit, OnDestroy {
     return item.data as Transfer;
   }
 }
+

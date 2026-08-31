@@ -36,13 +36,16 @@ describe('CategoryService', () => {
 
   it('should reject empty name', async () => {
     await expect(service.create('', 'expense'))
-      .rejects.toThrow('Category name is required');
+      .rejects.toThrow('errors.categoryNameRequired');
   });
 
-  it('should reject duplicate names', async () => {
+  it('should reject duplicate names with the offending name', async () => {
     await service.create('Food', 'expense');
     await expect(service.create('Food', 'income'))
-      .rejects.toThrow('Category name must be unique');
+      .rejects.toMatchObject({
+        key: 'errors.categoryNameTaken',
+        params: { name: 'Food' },
+      });
   });
 
   it('should update category name', async () => {
@@ -59,13 +62,13 @@ describe('CategoryService', () => {
 
   it('should reject an unknown category type on create', async () => {
     await expect(service.create('Food', 'checking' as never))
-      .rejects.toThrow('Category type must be income or expense');
+      .rejects.toThrow('errors.categoryTypeInvalid');
   });
 
   it('should reject an unknown category type on update', async () => {
     const category = await service.create('Food', 'expense');
     await expect(service.update(category.id!, { type: 'Checking' as never }))
-      .rejects.toThrow('Category type must be income or expense');
+      .rejects.toThrow('errors.categoryTypeInvalid');
     const reloaded = await service.getById(category.id!);
     expect(reloaded!.type).toBe('expense');
   });
@@ -74,7 +77,10 @@ describe('CategoryService', () => {
     await service.create('Food', 'expense');
     const transport = await service.create('Transport', 'expense');
     await expect(service.update(transport.id!, { name: 'Food' }))
-      .rejects.toThrow('Category name must be unique');
+      .rejects.toMatchObject({
+        key: 'errors.categoryNameTaken',
+        params: { name: 'Food' },
+      });
   });
 
   it('should deactivate a category', async () => {
