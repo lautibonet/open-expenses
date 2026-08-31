@@ -23,11 +23,11 @@ describe('translations', () => {
   });
 
   it('interpolates parameters into the translated text', () => {
-    expect(translate('en', 'settings.deactivateAccountConfirm', { name: 'Cash' })).toBe(
-      'Deactivate Cash?',
+    expect(translate('en', 'backup.card.backUpTo', { method: 'Google Drive' })).toBe(
+      'Back up to Google Drive',
     );
-    expect(translate('es', 'settings.deactivateAccountConfirm', { name: 'Cash' })).toBe(
-      '¿Desactivar Cash?',
+    expect(translate('es', 'backup.card.backUpTo', { method: 'Google Drive' })).toBe(
+      'Hacer copia en Google Drive',
     );
   });
 
@@ -54,9 +54,10 @@ describe('translations', () => {
     for (const key of [
       'settings.subtitle',
       'settings.addAccount',
-      'settings.editNameAria',
+      'settings.deactivateAccountAria',
       'settings.deactivateCategoryAria',
-      'settings.reactivateCategoryAria',
+      'settings.confirmDeactivationAria',
+      'settings.cancelDeactivationAria',
     ]) {
       expect(TRANSLATIONS.en[key]).toBeTruthy();
       expect(TRANSLATIONS.es[key]).toBeTruthy();

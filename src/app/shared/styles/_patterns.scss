@@ -79,6 +79,23 @@
   font-size: var(--type-label);
 }
 
+/* Small square icon button for inline row actions (pencil, X, tick/X
+   confirm/cancel): 1rem inline SVG at currentColor, no visible label — the
+   accessible name comes from the button's aria-label. */
+%icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+
+  svg {
+    width: 1rem;
+    height: 1rem;
+  }
+}
+
 /* Primary: the solid blue CTA fill, press shadow from the base. */
 %btn-primary {
   background: var(--primary-container);
