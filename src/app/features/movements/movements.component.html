@@ -284,7 +284,6 @@
           </caption>
           <thead>
             <tr>
-              <th scope="col">{{ language.t('movements.colType') }}</th>
               <th scope="col" [attr.aria-sort]="sortDir() === 'desc' ? 'descending' : 'ascending'">
                 <button type="button" class="th-sort" (click)="toggleSort()" [attr.aria-label]="language.t('movements.sortByDateAria')">
                   {{ language.t('movements.colDate') }}
@@ -301,7 +300,7 @@
             @for (row of movementView(); track trackKey(row)) {
               @if (row.kind === 'group') {
                 <tr class="month-group-row">
-                  <td colspan="6">{{ row.label }}</td>
+                  <td colspan="5">{{ row.label }}</td>
                 </tr>
               } @else {
                 @let item = row.item;
@@ -312,9 +311,6 @@
                   [class.row-income]="income"
                   [class.row-expense]="!income"
                 >
-                  <td [ngClass]="['arrow', getDirectionArrowClass(item)]">
-                    {{ getDirectionArrow(txn, 'transaction') }}
-                  </td>
                   <td>{{ txn.date | date: 'mediumDate' }}</td>
                   <td>
                     <span class="cat-chip">{{ getCategoryName(txn.categoryId) }}</span>
@@ -357,9 +353,6 @@
               } @else {
                 @let tr = getTransferData(item);
                 <tr class="transfer-row">
-                  <td [ngClass]="['arrow', getDirectionArrowClass(item)]">
-                    {{ getDirectionArrow(tr, 'transfer') }}
-                  </td>
                   <td>{{ tr.date | date: 'mediumDate' }}</td>
                   <td>
                     {{ getAccountName(tr.sourceAccountId) }} →

@@ -605,23 +605,6 @@ describe('MovementsComponent - direction arrows and display amounts', () => {
     vi.restoreAllMocks();
   });
 
-  it('should return → arrow for income transactions', async () => {
-    await component.ngOnInit();
-    const txn = { categoryId: incomeCategoryId } as any;
-    expect(component.getDirectionArrow(txn, 'transaction')).toBe('→');
-  });
-
-  it('should return ← arrow for expense transactions', async () => {
-    await component.ngOnInit();
-    const txn = { categoryId: expenseCategoryId } as any;
-    expect(component.getDirectionArrow(txn, 'transaction')).toBe('←');
-  });
-
-  it('should return = arrow for transfers', async () => {
-    const tr = {} as any;
-    expect(component.getDirectionArrow(tr, 'transfer')).toBe('=');
-  });
-
   it('should show positive amount for expenses (no minus prefix)', async () => {
     const period = getCurrentPeriod();
     await transactionService.create(eurAccountId, expenseCategoryId, 500, new Date(), period);
@@ -743,18 +726,20 @@ describe('MovementsComponent - direction arrows and display amounts', () => {
     expect(display).toContain('500');
   });
 
-  it('should render direction arrow column in table header', async () => {
+  it('renders Date as the first column and drops the Type column', async () => {
     const period = getCurrentPeriod();
     await transactionService.create(eurAccountId, expenseCategoryId, 100, new Date(), period);
     await component.ngOnInit();
     fixture.detectChanges();
 
-    const headers = fixture.nativeElement.querySelectorAll('th');
-    expect(headers[0].textContent).toContain('Type');
-    expect(headers[1].textContent).toContain('Date');
+    const headers = Array.from(fixture.nativeElement.querySelectorAll('th')).map((el: any) =>
+      el.textContent.trim(),
+    );
+    expect(headers[0]).toContain('Date');
+    expect(headers.some((h: string) => h.includes('Type'))).toBe(false);
   });
 
-  it('should render direction arrow cell for each row', async () => {
+  it('renders no direction arrow cells and starts each data row with its date', async () => {
     const period = getCurrentPeriod();
     const acc2 = await accountService.create('Cash EUR 2', 'EUR', 50000);
     await transactionService.create(eurAccountId, expenseCategoryId, 100, new Date(), period);
@@ -765,10 +750,13 @@ describe('MovementsComponent - direction arrows and display amounts', () => {
     const rows = fixture.nativeElement.querySelectorAll('tbody tr');
     expect(rows.length).toBe(2);
 
-    const arrowCells = fixture.nativeElement.querySelectorAll('tbody tr td:first-child');
-    const arrows = Array.from(arrowCells).map((el: any) => el.textContent.trim());
-    expect(arrows).toContain('←');
-    expect(arrows).toContain('=');
+    expect(fixture.nativeElement.querySelectorAll('td.arrow').length).toBe(0);
+
+    const firstCells = Array.from(rows).map((row: any) => row.querySelector('td').textContent.trim());
+    for (const cell of firstCells) {
+      expect(cell).not.toBe('←');
+      expect(cell).not.toBe('=');
+    }
   });
 });
 
@@ -1837,7 +1825,7 @@ describe('MovementsComponent - ledger table styling', () => {
     expect(expenseRow.classList.contains('row-income')).toBe(false);
   });
 
-  it('marks transfer rows for the neutral stripe treatment', async () => {
+  it('marks transfer rows with their own grey stripe treatment', async () => {
     const acc2 = await accountService.create('Savings', 'EUR', 50000);
     const period = getCurrentPeriod();
     await transferService.create(accountId, acc2.id!, 100, new Date(), period);
@@ -1930,6 +1918,15 @@ describe('MovementsComponent - date header sorting', () => {
     expect(component.sortDir()).toBe('desc');
     expect(component.movementView()[0].kind).toBe('group');
     expect(movementAmounts()).toEqual([200, 300, 100]);
+  });
+
+  it('spans month group header rows across the five remaining columns', async () => {
+    await seedDatedTransactions();
+    fixture.detectChanges();
+
+    const groupCell = fixture.nativeElement.querySelector('tr.month-group-row td');
+    expect(groupCell).toBeTruthy();
+    expect(groupCell.getAttribute('colspan')).toBe('5');
   });
 
   it('reflects the sort direction via aria-sort and the header button', async () => {

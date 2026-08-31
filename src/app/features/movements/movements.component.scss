@@ -208,8 +208,9 @@
     border-bottom: none;
   }
 
-  /* 4px directional stripe on every data row's left edge: blue income,
-     red expense, no stripe for transfers and month group headers. */
+  /* 4px directional stripe on every data row's left edge: green income,
+     red expense, grey transfer — the type's only signal since the Type
+      column went away (D8 reversed). Month group headers stay unstriped. */
   tbody td:first-child {
     border-left: 4px solid transparent;
   }
@@ -220,6 +221,10 @@
 
   tbody tr.row-expense td:first-child {
     border-left: var(--stripe-expense);
+  }
+
+  tbody tr.transfer-row td:first-child {
+    border-left: var(--stripe-transfer);
   }
 
   tbody tr:not(.month-group-row):hover td {
@@ -238,7 +243,7 @@
     }
 
     &.income {
-      color: var(--primary);
+      color: var(--income);
     }
 
     &.expense {
@@ -271,23 +276,6 @@
 
 .note {
   font-style: italic;
-}
-
-.arrow {
-  font-weight: 600;
-  text-align: center;
-
-  &.arrow-income {
-    color: var(--primary);
-  }
-
-  &.arrow-expense {
-    color: var(--error);
-  }
-
-  &.arrow-transfer {
-    color: var(--on-surface-variant);
-  }
 }
 
 .empty {

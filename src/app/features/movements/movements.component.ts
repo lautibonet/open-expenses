@@ -1,6 +1,6 @@
 import { Component, ElementRef, computed, effect, inject, OnDestroy, OnInit, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { DatePipe, NgClass } from '@angular/common';
+import { DatePipe } from '@angular/common';
 import { TransactionService } from '../../core/services/transaction.service';
 import { TransferService } from '../../core/services/transfer.service';
 import { AccountService } from '../../core/services/account.service';
@@ -63,7 +63,7 @@ interface TransferForm {
 
 @Component({
   selector: 'app-movements',
-  imports: [FormsModule, DatePipe, NgClass, QuickAddCardComponent, NetFlowCardComponent],
+  imports: [FormsModule, DatePipe, QuickAddCardComponent, NetFlowCardComponent],
   templateUrl: './movements.component.html',
   styleUrl: './movements.component.scss',
   host: { '(document:keydown)': 'onDocKeydown($event)' },
@@ -776,11 +776,6 @@ export class MovementsComponent implements OnInit, OnDestroy {
     return !isAllTime(s) ? s.year : 'all-time';
   }
 
-  getDirectionArrow(item: Transaction | Transfer, type: 'transaction' | 'transfer'): string {
-    if (type === 'transfer') return '=';
-    return this.isIncomeTransaction(item as Transaction) ? '→' : '←';
-  }
-
   isIncomeTransaction(txn: Transaction): boolean {
     const type = this.allCategoriesForNameResolution().find((c) => c.id === txn.categoryId)?.type;
     return isIncomeCategory(type);
@@ -818,11 +813,6 @@ export class MovementsComponent implements OnInit, OnDestroy {
       return `${sourceFormatted} → ${destFormatted}`;
     }
     return this.formatMoney(tr.sourceAmount);
-  }
-
-  getDirectionArrowClass(item: MovementItem): string {
-    if (item.type === 'transfer') return 'arrow-transfer';
-    return this.isIncomeTransaction(item.data as Transaction) ? 'arrow-income' : 'arrow-expense';
   }
 
   isTransaction(item: MovementItem): boolean {
