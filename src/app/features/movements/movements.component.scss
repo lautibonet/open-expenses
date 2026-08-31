@@ -186,6 +186,10 @@
     &.col-amount {
       text-align: right;
     }
+
+    &.col-actions {
+      text-align: center;
+    }
   }
 
   .th-sort {
@@ -257,6 +261,15 @@
 
     &.expense {
       color: var(--error);
+    }
+  }
+
+  td.actions-cell {
+    text-align: center;
+    white-space: nowrap;
+
+    .icon-btn + .icon-btn {
+      margin-left: var(--space-sm);
     }
   }
 
