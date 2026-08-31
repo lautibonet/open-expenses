@@ -53,17 +53,17 @@ const en: Record<string, string> = {
   'backup.error.searchDrive': 'Failed to search Drive',
   'backup.error.loadIdentity': 'Failed to load Google Identity Services',
   'backup.error.driveUnreachable':
-    'Could not reach Google Drive — check your connection and try again.',
-  'backup.error.unexpected': 'The backup failed unexpectedly — try again.',
+    'Could not reach Google Drive. Check your connection and try again.',
+  'backup.error.unexpected': 'The backup failed unexpectedly. Try again.',
   'backup.error.newerVersion':
     'This backup was created by a newer version of the app. Update the app first, then restore.',
-  'backup.error.oauth.cancelled': 'Google sign-in was cancelled — try again when you are ready.',
+  'backup.error.oauth.cancelled': 'Google sign-in was cancelled. Try again when you are ready.',
   'backup.error.oauth.denied':
-    `Google sign-in was declined — ${APP_NAME} needs Drive access to back up.`,
+    `Google sign-in was declined. ${APP_NAME} needs Drive access to back up.`,
   'backup.error.oauth.popupBlocked':
-    'Google sign-in could not open — allow popups for this site and try again.',
+    'Google sign-in could not open. Allow popups for this site and try again.',
   'backup.error.oauth.loadFailed':
-    'Google sign-in could not load — check your connection, or allow third-party cookies for accounts.google.com.',
+    'Google sign-in could not load. Check your connection, or allow third-party cookies for accounts.google.com.',
   'settings.title': 'Settings',
   'settings.subtitle': 'Configure accounts, categories and application preferences.',
   'settings.language': 'Language',
@@ -255,7 +255,7 @@ const en: Record<string, string> = {
   'onboarding.startTracking': 'Start Tracking',
   'onboarding.restore.title': 'Restore a previous backup?',
   'onboarding.restore.description':
-    `If you've used ${APP_NAME} before, you can pick up where you left off by restoring an existing backup — from the cloud or from a file you saved. Otherwise, start fresh.`,
+    `If you've used ${APP_NAME} before, you can pick up where you left off by restoring an existing backup from the cloud or from a file you saved. Otherwise, start fresh.`,
   'onboarding.restore.startFresh': 'Start fresh',
   'onboarding.restore.restoring': 'Restoring…',
   'onboarding.restore.noBackupFound':
@@ -341,18 +341,18 @@ const es: Record<string, string> = {
   'backup.error.searchDrive': 'No se pudo buscar en Drive',
   'backup.error.loadIdentity': 'No se pudieron cargar los servicios de Google',
   'backup.error.driveUnreachable':
-    'No se pudo acceder a Google Drive — comprueba tu conexión e inténtalo de nuevo.',
-  'backup.error.unexpected': 'La copia de seguridad falló inesperadamente — inténtalo de nuevo.',
+    'No se pudo acceder a Google Drive. Comprueba tu conexión e inténtalo de nuevo.',
+  'backup.error.unexpected': 'La copia de seguridad falló inesperadamente. Inténtalo de nuevo.',
   'backup.error.newerVersion':
     'Esta copia de seguridad fue creada por una versión más reciente de la app. Actualiza la app primero y después restaura.',
   'backup.error.oauth.cancelled':
-    'El inicio de sesión con Google se canceló — inténtalo de nuevo cuando quieras.',
+    'El inicio de sesión con Google se canceló. Inténtalo de nuevo cuando quieras.',
   'backup.error.oauth.denied':
-    `Se denegó el inicio de sesión con Google — ${APP_NAME} necesita acceso a Drive para hacer copias.`,
+    `Se denegó el inicio de sesión con Google. ${APP_NAME} necesita acceso a Drive para hacer copias.`,
   'backup.error.oauth.popupBlocked':
-    'El inicio de sesión con Google no pudo abrirse — permite las ventanas emergentes para este sitio e inténtalo de nuevo.',
+    'El inicio de sesión con Google no pudo abrirse. Permite las ventanas emergentes para este sitio e inténtalo de nuevo.',
   'backup.error.oauth.loadFailed':
-    'El inicio de sesión con Google no pudo cargarse — comprueba tu conexión o permite cookies de terceros para accounts.google.com.',
+    'El inicio de sesión con Google no pudo cargarse. Comprueba tu conexión o permite cookies de terceros para accounts.google.com.',
   'settings.title': 'Ajustes',
   'settings.subtitle': 'Configura cuentas, categorías y preferencias de la aplicación.',
   'settings.language': 'Idioma',
@@ -544,7 +544,7 @@ const es: Record<string, string> = {
   'onboarding.startTracking': 'Empezar a registrar',
   'onboarding.restore.title': '¿Restaurar una copia de seguridad anterior?',
   'onboarding.restore.description':
-    `Si has usado ${APP_NAME} antes, puedes continuar donde lo dejaste restaurando una copia de seguridad existente — desde la nube o desde un archivo que hayas guardado. De lo contrario, empieza de cero.`,
+    `Si has usado ${APP_NAME} antes, puedes continuar donde lo dejaste restaurando una copia de seguridad existente desde la nube o desde un archivo que hayas guardado. De lo contrario, empieza de cero.`,
   'onboarding.restore.startFresh': 'Empezar de cero',
   'onboarding.restore.restoring': 'Restaurando…',
   'onboarding.restore.noBackupFound':
