@@ -102,40 +102,19 @@ export class QuickAddCardComponent implements OnInit, AfterViewInit {
   editTransaction = input<Transaction | null>(null);
 
   save = output<TransactionFormPayload>();
-  cancelEdit = output<void>();
+  close = output<void>();
 
   amountInput = viewChild<ElementRef<HTMLInputElement>>('amountInput');
-  editHeading = viewChild<ElementRef<HTMLHeadingElement>>('editHeading');
-
-  private focusEditForm = effect(() => {
-    const heading = this.editHeading();
-    if (heading) {
-      const el = heading.nativeElement;
-      if (typeof el.scrollIntoView === 'function') {
-        el.scrollIntoView({ behavior: this.prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
-      }
-      el.focus();
-    }
-  });
-
-  private prefersReducedMotion(): boolean {
-    return (
-      typeof window !== 'undefined' &&
-      typeof window.matchMedia === 'function' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    );
-  }
+  formHeading = viewChild<ElementRef<HTMLHeadingElement>>('formHeading');
 
   months = MONTH_NUMBERS;
   years = Array.from({ length: 10 }, (_, i) => getCurrentYear() - i);
 
-  mode = signal<'compact' | 'expanded'>('compact');
   editingId = signal<number | null>(null);
   form = signal<TransactionFormState>(defaultFormState());
 
   rateState = signal<RateState>({ loading: false, error: '', rate: null, date: '' });
   errorMessage = signal('');
-  announcement = signal('');
   saving = signal(false);
 
   selectedAccount = computed(() => this.accounts().find((a) => a.id === this.form().accountId));
@@ -149,8 +128,11 @@ export class QuickAddCardComponent implements OnInit, AfterViewInit {
     const f = this.form();
     if (!f.accountId || !f.categoryId) return false;
     if (f.amount <= 0) return false;
-    if (this.isForeignCurrency() && this.rateState().loading) return false;
     if (this.saving()) return false;
+    if (this.isForeignCurrency()) {
+      if (this.rateState().loading) return false;
+      if (f.exchangeRate === null) return false;
+    }
     return true;
   });
 
@@ -159,6 +141,13 @@ export class QuickAddCardComponent implements OnInit, AfterViewInit {
   }
 
   ngAfterViewInit(): void {
+    const heading = this.formHeading()?.nativeElement;
+    if (heading && typeof heading.scrollIntoView === 'function') {
+      heading.scrollIntoView({
+        behavior: this.prefersReducedMotion() ? 'auto' : 'smooth',
+        block: 'start',
+      });
+    }
     this.focusAmount();
   }
 
@@ -169,7 +158,6 @@ export class QuickAddCardComponent implements OnInit, AfterViewInit {
   onAmountChange(value: number): void {
     this.form.update((f) => ({ ...f, amount: value }));
     this.errorMessage.set('');
-    this.announcement.set('');
   }
 
   onAccountChange(value: number): void {
@@ -189,54 +177,35 @@ export class QuickAddCardComponent implements OnInit, AfterViewInit {
   }
 
   onAmountOrRateChange(): void {
+    this.errorMessage.set('');
     this.recomputeBaseCurrencyAmount();
   }
 
-  expandForm(): void {
-    this.mode.set('expanded');
-    this.errorMessage.set('');
-    this.checkRate(this.form().accountId, this.form().date);
-  }
-
-  cancelExpand(): void {
-    const wasEdit = this.editingId() !== null;
-    if (wasEdit) {
-      this.cancelEdit.emit();
-    }
-    this.mode.set('compact');
-    this.editingId.set(null);
-    this.resetFormForNew();
-    this.resetRate();
-    this.errorMessage.set('');
+  cancel(): void {
+    this.close.emit();
   }
 
   onSubmit(): void {
-    if (this.canSubmit()) {
-      this.submitCompact();
+    if (!this.canSubmit()) {
+      if (this.isForeignCurrency() && !this.rateState().loading && this.form().exchangeRate === null) {
+        this.errorMessage.set(this.language.t('quickAdd.error.rateFetch'));
+      }
+      return;
     }
-  }
 
-  onSubmitForm(): void {
-    if (this.saving()) return;
-    this.persistSelection(this.form().accountId, this.form().categoryId);
+    const f = this.form();
+    const foreign = this.isForeignCurrency();
+    const exchangeRate = foreign ? f.exchangeRate : null;
+    const baseCurrencyAmount = foreign ? round2(f.amount * f.exchangeRate!) : null;
+
+    this.persistSelection(f.accountId, f.categoryId);
     this.saving.set(true);
     this.save.emit({
       id: this.editingId(),
       ...this.form(),
+      exchangeRate,
+      baseCurrencyAmount,
     });
-  }
-
-  markSaved(wasEdit: boolean): void {
-    this.saving.set(false);
-    this.mode.set('compact');
-    this.editingId.set(null);
-    this.resetFormForNew();
-    this.resetRate();
-    this.announcement.set(
-      this.language.t(
-        wasEdit ? 'quickAdd.announcement.updated' : 'quickAdd.announcement.saved',
-      ),
-    );
   }
 
   markFailed(message: string): void {
@@ -248,36 +217,26 @@ export class QuickAddCardComponent implements OnInit, AfterViewInit {
     return this.accounts().find((a) => a.id === accountId)?.currency ?? '';
   }
 
-  private submitCompact(): void {
-    const f = this.form();
-    let exchangeRate: number | null = null;
-    let baseCurrencyAmount: number | null = null;
+  private handleEditInput(t: Transaction | null): void {
+    if (!t) return;
 
-    const account = this.selectedAccount();
-    if (account && account.currency !== this.baseCurrency()) {
-      const rate = this.rateState().rate;
-      if (rate === null) {
-        this.expandForm();
-        return;
-      }
-      exchangeRate = rate;
-      baseCurrencyAmount = round2(f.amount * rate);
-    }
-
-    this.persistSelection(f.accountId, f.categoryId);
-    this.saving.set(true);
-    this.save.emit({
-      id: null,
-      accountId: f.accountId,
-      categoryId: f.categoryId,
-      amount: f.amount,
-      date: f.date,
-      period: f.period,
-      year: f.year,
-      exchangeRate,
-      baseCurrencyAmount,
-      note: f.note ?? '',
+    this.editingId.set(t.id ?? null);
+    this.form.set({
+      accountId: t.accountId,
+      categoryId: t.categoryId,
+      amount: t.amount,
+      date: new Date(t.date).toISOString().split('T')[0],
+      period: isMonthNumber(t.period) ? t.period : getCurrentPeriod(),
+      year: t.year || getCurrentYear(),
+      note: t.note ?? '',
+      exchangeRate: t.exchangeRate,
+      baseCurrencyAmount: t.baseCurrencyAmount,
     });
+    this.resetRate();
+    if (t.exchangeRate) {
+      this.rateState.update((s) => ({ ...s, rate: t.exchangeRate, date: 'stored' }));
+    }
+    this.errorMessage.set('');
   }
 
   private applyStoredSelection(): void {
@@ -307,41 +266,12 @@ export class QuickAddCardComponent implements OnInit, AfterViewInit {
     }
   }
 
-  private handleEditInput(t: Transaction | null): void {
-    if (!t) {
-      if (this.mode() === 'expanded' && this.editingId() !== null) {
-        this.mode.set('compact');
-        this.editingId.set(null);
-        this.resetFormForNew();
-        this.resetRate();
-      }
-      return;
-    }
-
-    this.editingId.set(t.id ?? null);
-    this.mode.set('expanded');
-    this.form.set({
-      accountId: t.accountId,
-      categoryId: t.categoryId,
-      amount: t.amount,
-      date: new Date(t.date).toISOString().split('T')[0],
-      period: isMonthNumber(t.period) ? t.period : getCurrentPeriod(),
-      year: t.year || getCurrentYear(),
-      note: t.note ?? '',
-      exchangeRate: t.exchangeRate,
-      baseCurrencyAmount: t.baseCurrencyAmount,
-    });
-    this.resetRate();
-    if (t.exchangeRate) {
-      this.rateState.update((s) => ({ ...s, rate: t.exchangeRate, date: 'stored' }));
-    }
-    this.errorMessage.set('');
-    this.announcement.set('');
-  }
-
-  private resetFormForNew(): void {
-    const prev = this.form();
-    this.form.set(defaultFormState(prev.accountId, prev.categoryId));
+  private prefersReducedMotion(): boolean {
+    return (
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    );
   }
 
   private resetRate(): void {

@@ -3,6 +3,7 @@ import { Router, provideRouter } from '@angular/router';
 import { ShellComponent } from './shell.component';
 import { routes } from '../../../app.routes';
 import { LanguageService } from '../../../core/services/language.service';
+import { CaptureFormService } from '../../../core/services/capture-form.service';
 import { db } from '../../../core/db/database';
 
 describe('ShellComponent', () => {
@@ -108,33 +109,59 @@ describe('ShellComponent', () => {
     expect(navigate).not.toHaveBeenCalled();
   });
 
-  it('scrolls to and focuses the Quick Add capture card', async () => {
+  it('requests the Quick Add form open when used on Movements', async () => {
+    const captureFormService = TestBed.inject(CaptureFormService);
     const router = TestBed.inject(Router);
-    vi.spyOn(router, 'navigate').mockResolvedValue(true);
-    const focus = vi.fn();
-    const scrollIntoView = vi.fn();
-    const amountInput = { focus } as unknown as HTMLInputElement;
-    const card = {
-      scrollIntoView,
-      querySelector: vi.fn().mockReturnValue(amountInput),
-    } as unknown as HTMLElement;
-    const querySpy = vi.spyOn(document, 'querySelector').mockReturnValue(card);
+    vi.spyOn(router, 'url', 'get').mockReturnValue('/movements');
 
     await fixture.componentInstance.goToQuickAdd();
 
-    expect(querySpy).toHaveBeenCalledWith('app-quick-add-card');
-    expect(scrollIntoView).toHaveBeenCalled();
-    expect(focus).toHaveBeenCalled();
-    querySpy.mockRestore();
+    expect(captureFormService.pendingQuickAddRequests()).toBe(1);
   });
 
-  it('tolerates a missing Quick Add card', async () => {
+  it('routes to Movements and requests the Quick Add form open from another page', async () => {
+    const captureFormService = TestBed.inject(CaptureFormService);
     const router = TestBed.inject(Router);
-    vi.spyOn(router, 'navigate').mockResolvedValue(true);
-    const querySpy = vi.spyOn(document, 'querySelector').mockReturnValue(null);
+    const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
 
-    await expect(fixture.componentInstance.goToQuickAdd()).resolves.toBeUndefined();
-    querySpy.mockRestore();
+    await fixture.componentInstance.goToQuickAdd();
+
+    expect(navigate).toHaveBeenCalledWith(['/movements']);
+    expect(captureFormService.pendingQuickAddRequests()).toBe(1);
+  });
+
+  it("routes to Movements and opens the transfer form when 't' is pressed elsewhere", async () => {
+    const captureFormService = TestBed.inject(CaptureFormService);
+    const router = TestBed.inject(Router);
+    const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+
+    await fixture.componentInstance.goToTransferForm();
+
+    expect(navigate).toHaveBeenCalledWith(['/movements']);
+    expect(captureFormService.pendingTransferRequests()).toBe(1);
+  });
+
+  it("routes to Movements and requests Quick Add when 'n' is pressed on another page", async () => {
+    const captureFormService = TestBed.inject(CaptureFormService);
+    const router = TestBed.inject(Router);
+    const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+
+    await fixture.componentInstance.onDocKeydown(new KeyboardEvent('keydown', { key: 'n' }));
+
+    expect(navigate).toHaveBeenCalledWith(['/movements']);
+    expect(captureFormService.pendingQuickAddRequests()).toBe(1);
+  });
+
+  it('leaves the shortcuts to the Movements page when it is active', async () => {
+    const captureFormService = TestBed.inject(CaptureFormService);
+    const router = TestBed.inject(Router);
+    vi.spyOn(router, 'url', 'get').mockReturnValue('/movements');
+
+    fixture.componentInstance.onDocKeydown(new KeyboardEvent('keydown', { key: 'n' }));
+    fixture.componentInstance.onDocKeydown(new KeyboardEvent('keydown', { key: 't' }));
+
+    expect(captureFormService.pendingQuickAddRequests()).toBe(0);
+    expect(captureFormService.pendingTransferRequests()).toBe(0);
   });
 
   it('points the Backup link at the Settings backup card', () => {
