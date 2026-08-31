@@ -102,6 +102,25 @@ describe('ShellComponent', () => {
     expect(links).toEqual(['Movements', 'Stats', 'Settings']);
   });
 
+  it('names each nav tab accessibly and renders an icon beside its label', () => {
+    const links = Array.from(
+      fixture.nativeElement.querySelectorAll('a.tab') as NodeListOf<HTMLAnchorElement>,
+    );
+    expect(links.map((a) => a.getAttribute('aria-label'))).toEqual([
+      'Movements',
+      'Stats',
+      'Settings',
+    ]);
+
+    for (const link of links) {
+      const icon = link.querySelector('svg.tab-icon') as SVGElement | null;
+      expect(icon).not.toBeNull();
+      expect(icon?.getAttribute('aria-hidden')).toBe('true');
+      expect(icon?.querySelectorAll('path').length).toBeGreaterThan(0);
+      expect(link.querySelector('.tab-label')).not.toBeNull();
+    }
+  });
+
   it('keeps the Stats tab linked to the dashboard route', () => {
     const links = Array.from(fixture.nativeElement.querySelectorAll('a.tab'));
     const statsLink = links.find(
