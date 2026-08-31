@@ -289,7 +289,6 @@ describe('translations', () => {
       'onboarding.categories.namePlaceholder',
       'onboarding.categories.typeAria',
       'onboarding.categories.addCategory',
-      'onboarding.categories.delete',
       'onboarding.categories.minRequired',
       'onboarding.categories.namesRequired',
       'onboarding.completionFailed',

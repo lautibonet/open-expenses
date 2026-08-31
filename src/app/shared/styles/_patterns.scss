@@ -138,9 +138,7 @@
   @extend %caps-label;
 
   color: var(--on-surface);
-  margin: 0 0 var(--space-md);
-  padding-bottom: var(--space-sm);
-  border-bottom: var(--border-hard);
+  margin: 0 0 var(--space-lg);
 }
 
 /* Card header with a leading inline-SVG icon (D15): shared by the Settings
@@ -224,8 +222,6 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-md);
-  padding-bottom: var(--space-md);
-  border-bottom: var(--border-hard);
   margin-bottom: var(--space-lg);
 
   h1 {

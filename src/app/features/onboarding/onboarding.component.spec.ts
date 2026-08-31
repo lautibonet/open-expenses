@@ -176,7 +176,7 @@ describe('OnboardingComponent', () => {
       fixture.nativeElement.querySelectorAll('.currency-grid .select-tile'),
     ) as HTMLElement[];
     const codes = tiles.map(t => t.querySelector('.tile-code')!.textContent!.trim());
-    expect(codes).toEqual(['USD', 'EUR', 'GBP', 'JPY']);
+    expect(codes).toEqual(['EUR', 'USD', 'GBP', 'JPY']);
 
     const selected = tiles.find(t => t.classList.contains('selected'));
     expect(selected!.querySelector('.tile-code')!.textContent!.trim()).toBe('EUR');
@@ -238,7 +238,7 @@ describe('OnboardingComponent', () => {
     input.value = '';
     input.dispatchEvent(new Event('input'));
     fixture.detectChanges();
-    expect(codes()).toEqual(['USD', 'EUR', 'GBP', 'JPY']);
+    expect(codes()).toEqual(['EUR', 'USD', 'GBP', 'JPY']);
   });
 
   it('renders account rows as name plus symbol amount, removed via an X icon without confirm', () => {
