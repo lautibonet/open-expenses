@@ -58,6 +58,12 @@ describe('translations', () => {
       'settings.deactivateCategoryAria',
       'settings.confirmDeactivationAria',
       'settings.cancelDeactivationAria',
+      'settings.editAccountAria',
+      'settings.editCategoryAria',
+      'settings.editBaseCurrencyAria',
+      'settings.editLanguageAria',
+      'settings.confirmEditAria',
+      'settings.cancelEditAria',
     ]) {
       expect(TRANSLATIONS.en[key]).toBeTruthy();
       expect(TRANSLATIONS.es[key]).toBeTruthy();

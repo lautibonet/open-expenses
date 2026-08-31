@@ -11,16 +11,33 @@
   }
 }
 
-.field-stack {
+.edit-line {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-sm);
+  align-items: center;
+  gap: var(--space-xs);
 
   select {
     @extend %field;
 
-    width: 100%;
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.edit-error {
+  margin: var(--space-xs) 0 0;
+  font-size: var(--type-caption);
+  color: var(--error);
+}
+
+.card-value {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+
+  .value {
+    font-size: var(--type-body-lg);
+    color: var(--on-surface);
   }
 }
 
@@ -30,9 +47,13 @@
   &.primary {
     @extend %btn-primary;
   }
+
+  &.small {
+    @extend %btn-small;
+  }
 }
 
-/* Dismissible status alerts (success, failure) keep the strip treatment. */
-app-dismissible-alert {
-  margin: var(--space-md) 0 0;
+/* Icon-only confirm/cancel affordances (same as movement deletion). */
+.icon-btn {
+  @extend %icon-btn;
 }

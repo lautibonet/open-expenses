@@ -95,8 +95,9 @@ app-backup-card {
   @extend %icon-btn;
 }
 
-/* Accounts: bordered tile rows; name and opening balance are
-   click-to-edit, deactivation is the icon confirm flow. */
+/* Accounts: bordered tile rows; name, currency and opening balance are
+   display-by-default, edits open from the pencil into an expanded edit
+   state; deactivation is the icon confirm flow. */
 .account-list,
 .category-list {
   list-style: none;
@@ -144,18 +145,8 @@ app-backup-card {
 .account-name,
 .category-name {
   align-self: flex-start;
-  padding: 0;
-  border: none;
-  background: none;
-  cursor: pointer;
-  font: inherit;
   font-weight: 600;
   color: var(--on-surface);
-  text-align: left;
-
-  &:hover {
-    color: var(--primary);
-  }
 }
 
 .account-meta {
@@ -166,25 +157,43 @@ app-backup-card {
   color: var(--on-surface-variant);
 }
 
-.account-balance {
-  padding: 0;
-  border: none;
-  background: none;
-  cursor: pointer;
-  font: inherit;
-  color: inherit;
-  text-decoration: underline dashed var(--outline);
-  text-underline-offset: 3px;
-
-  &:hover {
-    color: var(--primary);
-  }
+/* Expanded edit state: fields plus tick/X confirm grammar, with the
+   validation error rendered inline. */
+.edit-state {
+  flex: 1 1 100%;
+  min-width: 0;
 }
 
 .edit-line {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: var(--space-xs);
+  flex-wrap: wrap;
+}
+
+.edit-static {
+  @extend %mono-data;
+
+  color: var(--on-surface-variant);
+}
+
+.edit-error {
+  margin: var(--space-xs) 0 0;
+  font-size: var(--type-caption);
+  color: var(--error);
+}
+
+.card-value {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+
+  .value {
+    @extend %mono-data;
+
+    font-size: var(--type-body-lg);
+    color: var(--on-surface);
+  }
 }
 
 .account-side,

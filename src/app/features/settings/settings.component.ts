@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, ElementRef, effect, inject, OnInit, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AccountService } from '../../core/services/account.service';
 import { CategoryService } from '../../core/services/category.service';
@@ -13,6 +13,19 @@ import { BackupCardComponent } from './backup-card/backup-card.component';
 import { LanguageCardComponent } from './language-card/language-card.component';
 import { DismissibleAlertComponent } from '../../shared/components/dismissible-alert/dismissible-alert.component';
 
+interface AccountEditState {
+  id: number;
+  name: string;
+  initialBalance: number;
+}
+
+interface CategoryEditState {
+  id: number;
+  name: string;
+}
+
+type PencilTarget = { kind: 'account' | 'category' | 'base-currency'; id: number };
+
 @Component({
   selector: 'app-settings',
   imports: [FormsModule, BackupCardComponent, LanguageCardComponent, DismissibleAlertComponent],
@@ -24,6 +37,7 @@ export class SettingsComponent implements OnInit {
   private categoryService = inject(CategoryService);
   private profileService = inject(ProfileService);
   private dataVersion = inject(DataVersionService);
+  private host = inject<ElementRef<HTMLElement>>(ElementRef);
   language = inject(LanguageService);
 
   supportedCurrencies = SUPPORTED_CURRENCIES;
@@ -37,13 +51,31 @@ export class SettingsComponent implements OnInit {
   newCategoryName = signal('');
   newCategoryType = signal<CategoryType>('expense');
   errorMessage = signal('');
-  successMessage = signal('');
   statusEpoch = signal(0);
-  editingAccountBalance = signal<{ id: number; value: number } | null>(null);
-  editingAccountName = signal<{ id: number; value: string } | null>(null);
-  editingCategoryName = signal<{ id: number; value: string } | null>(null);
+  editingAccount = signal<AccountEditState | null>(null);
+  editingCategory = signal<CategoryEditState | null>(null);
+  editingBaseCurrency = signal(false);
+  baseCurrencyDraft = signal('EUR');
+  editError = signal('');
   confirmingDeactivate = signal<number | null>(null);
   confirmingCategoryDeactivate = signal<number | null>(null);
+
+  accountNameInput = viewChild<ElementRef<HTMLInputElement>>('accountNameInput');
+  categoryNameInput = viewChild<ElementRef<HTMLInputElement>>('categoryNameInput');
+  baseCurrencySelect = viewChild<ElementRef<HTMLSelectElement>>('baseCurrencySelect');
+
+  /* On open, focus the first input of the expanded edit state. */
+  private focusEditState = effect(() => {
+    if (this.editingAccount()) {
+      this.accountNameInput()?.nativeElement.focus();
+    }
+    if (this.editingCategory()) {
+      this.categoryNameInput()?.nativeElement.focus();
+    }
+    if (this.editingBaseCurrency()) {
+      this.baseCurrencySelect()?.nativeElement.focus();
+    }
+  });
 
   private reloadDataOnVersionChange = this.dataVersion.reloadOnChange(() => this.loadAll());
 
@@ -79,58 +111,113 @@ export class SettingsComponent implements OnInit {
     }
   }
 
-  startEditAccountName(id: number, value: string): void {
-    this.editingAccountName.set({ id, value });
+  startEditAccount(id: number): void {
+    const account = this.accounts().find((a) => a.id === id);
+    if (!account) return;
+    this.editingCategory.set(null);
+    this.editingAccount.set({
+      id,
+      name: account.name,
+      initialBalance: account.initialBalance,
+    });
+    this.editError.set('');
   }
 
-  cancelEditAccountName(): void {
-    this.editingAccountName.set(null);
+  editAccountName(value: string): void {
+    this.editingAccount.update((e) => (e ? { ...e, name: value } : e));
   }
 
-  async saveAccountName(): Promise<void> {
-    const editing = this.editingAccountName();
+  editAccountBalance(value: number): void {
+    this.editingAccount.update((e) => (e ? { ...e, initialBalance: value } : e));
+  }
+
+  cancelEditAccount(): void {
+    const id = this.editingAccount()?.id;
+    this.editingAccount.set(null);
+    this.editError.set('');
+    if (id !== undefined) this.returnToPencil({ kind: 'account', id });
+  }
+
+  async saveAccountEdit(): Promise<void> {
+    const editing = this.editingAccount();
     if (!editing) return;
-    this.clearStatus();
     try {
-      await this.accountService.update(editing.id, { name: editing.value });
-      this.editingAccountName.set(null);
-      this.showSuccess(this.language.t('settings.accountNameUpdated'));
+      await this.accountService.update(editing.id, {
+        name: editing.name,
+        initialBalance: editing.initialBalance,
+      });
+      this.editingAccount.set(null);
+      this.editError.set('');
       await this.refresh();
+      this.returnToPencil({ kind: 'account', id: editing.id });
     } catch (e: unknown) {
-      this.errorMessage.set(
-        errorCopy(
-          e,
-          this.language.translateFn,
-          'settings.failedUpdateAccountName',
-        ),
+      this.editError.set(
+        errorCopy(e, this.language.translateFn, 'settings.failedSaveAccount'),
       );
     }
   }
 
-  startEditAccountBalance(id: number, value: number): void {
-    this.editingAccountBalance.set({ id, value });
+  startEditCategory(id: number): void {
+    const category = this.categories().find((c) => c.id === id);
+    if (!category) return;
+    this.editingAccount.set(null);
+    this.editingCategory.set({ id, name: category.name });
+    this.editError.set('');
   }
 
-  cancelEditAccountBalance(): void {
-    this.editingAccountBalance.set(null);
+  editCategoryName(value: string): void {
+    this.editingCategory.update((c) => (c ? { ...c, name: value } : c));
   }
 
-  async saveAccountBalance(): Promise<void> {
-    const editing = this.editingAccountBalance();
+  cancelEditCategory(): void {
+    const id = this.editingCategory()?.id;
+    this.editingCategory.set(null);
+    this.editError.set('');
+    if (id !== undefined) this.returnToPencil({ kind: 'category', id });
+  }
+
+  async saveCategoryEdit(): Promise<void> {
+    const editing = this.editingCategory();
     if (!editing) return;
-    this.clearStatus();
     try {
-      await this.accountService.update(editing.id, { initialBalance: editing.value });
-      this.editingAccountBalance.set(null);
-      this.showSuccess(this.language.t('settings.accountBalanceUpdated'));
+      await this.categoryService.update(editing.id, { name: editing.name });
+      this.editingCategory.set(null);
+      this.editError.set('');
       await this.refresh();
+      this.returnToPencil({ kind: 'category', id: editing.id });
     } catch (e: unknown) {
-      this.errorMessage.set(
-        errorCopy(
-          e,
-          this.language.translateFn,
-          'settings.failedUpdateAccountBalance',
-        ),
+      this.editError.set(
+        errorCopy(e, this.language.translateFn, 'settings.failedSaveCategory'),
+      );
+    }
+  }
+
+  startEditBaseCurrency(): void {
+    this.baseCurrencyDraft.set(this.baseCurrency());
+    this.editingBaseCurrency.set(true);
+    this.editError.set('');
+  }
+
+  editBaseCurrency(currency: string): void {
+    this.baseCurrencyDraft.set(currency);
+  }
+
+  cancelEditBaseCurrency(): void {
+    this.editingBaseCurrency.set(false);
+    this.editError.set('');
+    this.returnToPencil({ kind: 'base-currency', id: 0 });
+  }
+
+  async saveBaseCurrency(): Promise<void> {
+    try {
+      await this.profileService.updateBaseCurrency(this.baseCurrencyDraft());
+      this.baseCurrency.set(this.baseCurrencyDraft());
+      this.editingBaseCurrency.set(false);
+      this.editError.set('');
+      this.returnToPencil({ kind: 'base-currency', id: 0 });
+    } catch (e: unknown) {
+      this.editError.set(
+        errorCopy(e, this.language.translateFn, 'settings.failedSaveCurrency'),
       );
     }
   }
@@ -169,34 +256,6 @@ export class SettingsComponent implements OnInit {
     }
   }
 
-  startEditCategoryName(id: number, value: string): void {
-    this.editingCategoryName.set({ id, value });
-  }
-
-  cancelEditCategoryName(): void {
-    this.editingCategoryName.set(null);
-  }
-
-  async saveCategoryName(): Promise<void> {
-    const editing = this.editingCategoryName();
-    if (!editing) return;
-    this.clearStatus();
-    try {
-      await this.categoryService.update(editing.id, { name: editing.value });
-      this.editingCategoryName.set(null);
-      this.showSuccess(this.language.t('settings.categoryNameUpdated'));
-      await this.refresh();
-    } catch (e: unknown) {
-      this.errorMessage.set(
-        errorCopy(
-          e,
-          this.language.translateFn,
-          'settings.failedUpdateCategoryName',
-        ),
-      );
-    }
-  }
-
   requestCategoryDeactivate(id: number): void {
     this.confirmingCategoryDeactivate.set(id);
   }
@@ -218,31 +277,19 @@ export class SettingsComponent implements OnInit {
     await this.refresh();
   }
 
-  async updateBaseCurrency(): Promise<void> {
-    this.clearStatus();
-    try {
-      await this.profileService.updateBaseCurrency(this.baseCurrency());
-      this.showSuccess(this.language.t('settings.currencyUpdated'));
-    } catch (e: unknown) {
-      this.errorMessage.set(
-        errorCopy(
-          e,
-          this.language.translateFn,
-          'settings.failedUpdateCurrency',
-        ),
-      );
-    }
+  /* After the edit state collapses, hand focus back to the pencil that
+     opened it. Runs on a macrotask so the pencil element is back in the
+     DOM before it is focused. */
+  private returnToPencil(target: PencilTarget): void {
+    setTimeout(() => {
+      this.host.nativeElement
+        .querySelector<HTMLButtonElement>(`[data-edit-pencil="${target.kind}-${target.id}"]`)
+        ?.focus();
+    });
   }
 
   private clearStatus(): void {
     this.statusEpoch.update((n) => n + 1);
     this.errorMessage.set('');
-    this.successMessage.set('');
-  }
-
-  private showSuccess(message: string): void {
-    this.successMessage.set(message);
-    setTimeout(() => this.successMessage.set(''), 3000);
   }
 }
-
