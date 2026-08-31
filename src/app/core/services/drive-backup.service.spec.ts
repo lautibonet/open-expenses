@@ -10,6 +10,7 @@ import { LanguageService } from './language.service';
 import { db } from '../db/database';
 import { TranslationError } from '../models/translation-error';
 import { BackupSnapshot } from '../../backup/backup-snapshot';
+import { DataVersionService } from './data-version.service';
 
 function mockTokenClient(token = 'test-token', autoFire = true) {
   const configStore: any[] = [];
@@ -395,6 +396,51 @@ describe('DriveBackupService', () => {
       await expect(service.restore()).rejects.toThrow('backup.error.newerVersion');
       expect((service.error() as TranslationError).key).toBe('backup.error.newerVersion');
     });
+
+    it('bumps the data version after a successful cloud restore', async () => {
+      await connectAsTestUser(service);
+      const dataVersion = TestBed.inject(DataVersionService);
+
+      mockFetchByUrl({
+        [FOLDER_SEARCH]: () => ({ files: [{ id: 'folder-1' }] }),
+        [FILE_SEARCH]: () => ({ files: [{ id: 'backup-file-id' }] }),
+        [MEDIA_DOWNLOAD]: () => ({
+          accounts: [],
+          categories: [],
+          transactions: [],
+          transfers: [],
+          profile: [],
+          exportedAt: new Date().toISOString(),
+        }),
+      });
+
+      const before = dataVersion.version();
+      await service.restore();
+
+      expect(dataVersion.version()).toBe(before + 1);
+    });
+
+    it('does not bump the data version when the cloud restore fails', async () => {
+      await connectAsTestUser(service);
+      const dataVersion = TestBed.inject(DataVersionService);
+
+      mockFetchByUrl({
+        [FOLDER_SEARCH]: () => ({ files: [{ id: 'folder-1' }] }),
+        [FILE_SEARCH]: () => ({ files: [{ id: 'backup-file-id' }] }),
+        [MEDIA_DOWNLOAD]: () => ({
+          schemaVersion: 999,
+          accounts: [],
+          categories: [],
+          transactions: [],
+          transfers: [],
+          profile: [],
+          exportedAt: new Date().toISOString(),
+        }),
+      });
+
+      await expect(service.restore()).rejects.toThrow();
+      expect(dataVersion.version()).toBe(0);
+    });
   });
 
   describe('restoreFromFile', () => {
@@ -652,6 +698,60 @@ describe('DriveBackupService', () => {
 
       expect(languageService.activeLanguage()).toBe('es');
       expect((await db.profile.get(1))!.language).toBe('es');
+    });
+
+    it('bumps the data version after a successful file restore', async () => {
+      const dataVersion = TestBed.inject(DataVersionService);
+      const snapshot: BackupSnapshot = {
+        accounts: [],
+        categories: [],
+        transactions: [],
+        transfers: [],
+        profile: [],
+        exportedAt: '2026-08-27T00:00:00.000Z',
+      };
+
+      const before = dataVersion.version();
+      await service.restoreFromSnapshot(snapshot);
+
+      expect(dataVersion.version()).toBe(before + 1);
+    });
+
+    it('applies the restored language before bumping the data version', async () => {
+      const dataVersion = TestBed.inject(DataVersionService);
+      const languageService = TestBed.inject(LanguageService);
+      await languageService.init();
+
+      const applySpy = vi.spyOn(languageService, 'applyFromProfile');
+      const bumpSpy = vi.spyOn(dataVersion, 'bump');
+      const snapshot: BackupSnapshot = {
+        accounts: [],
+        categories: [],
+        transactions: [],
+        transfers: [],
+        profile: [
+          { id: 1, baseCurrency: 'EUR', language: 'es', onboardingCompleted: true, lastBackupAt: null },
+        ],
+        exportedAt: '2026-08-27T00:00:00.000Z',
+      };
+
+      await service.restoreFromSnapshot(snapshot);
+
+      expect(applySpy).toHaveBeenCalledTimes(1);
+      expect(bumpSpy).toHaveBeenCalledTimes(1);
+      expect(applySpy.mock.invocationCallOrder[0]).toBeLessThan(
+        bumpSpy.mock.invocationCallOrder[0],
+      );
+    });
+
+    it('does not bump the data version when the file restore fails', async () => {
+      const dataVersion = TestBed.inject(DataVersionService);
+      const file = new File([JSON.stringify({ foo: 'bar' })], 'backup.json', {
+        type: 'application/json',
+      });
+
+      await expect(service.restoreFromFile(file)).rejects.toThrow();
+      expect(dataVersion.version()).toBe(0);
     });
   });
 

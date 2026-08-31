@@ -4,6 +4,7 @@ import { AccountService } from '../../core/services/account.service';
 import { CategoryService } from '../../core/services/category.service';
 import { ProfileService } from '../../core/services/profile.service';
 import { LanguageService } from '../../core/services/language.service';
+import { DataVersionService } from '../../core/services/data-version.service';
 import { db } from '../../core/db/database';
 
 describe('SettingsComponent - inline editing', () => {
@@ -791,5 +792,61 @@ describe('SettingsComponent - dismissible alerts', () => {
     dismissOf(successAlert()).click();
     fixture.detectChanges();
     expect(successAlert()).toBeNull();
+  });
+});
+
+describe('SettingsComponent - data version refresh', () => {
+  let fixture: ComponentFixture<SettingsComponent>;
+  let component: SettingsComponent;
+  let accountService: AccountService;
+  let categoryService: CategoryService;
+  let dataVersion: DataVersionService;
+
+  const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 10));
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    await TestBed.configureTestingModule({
+      imports: [SettingsComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(SettingsComponent);
+    component = fixture.componentInstance;
+    accountService = TestBed.inject(AccountService);
+    categoryService = TestBed.inject(CategoryService);
+    dataVersion = TestBed.inject(DataVersionService);
+
+    await accountService.create('Cash', 'EUR', 100000);
+    await component.ngOnInit();
+    fixture.detectChanges();
+  });
+
+  afterEach(async () => {
+    await db.delete();
+  });
+
+  it('reloads accounts and categories when the data version changes while mounted', async () => {
+    expect(component.accounts().some((a) => a.name === 'Bank')).toBe(false);
+
+    await accountService.create('Bank', 'EUR', 0);
+    await categoryService.create('Transport', 'expense');
+
+    dataVersion.bump();
+    fixture.detectChanges();
+    await flush();
+    fixture.detectChanges();
+
+    expect(component.accounts().some((a) => a.name === 'Bank')).toBe(true);
+    expect(component.categories().some((c) => c.name === 'Transport')).toBe(true);
+  });
+
+  it('does not reload while the data version stays unchanged', async () => {
+    await accountService.create('Bank', 'EUR', 0);
+    fixture.detectChanges();
+    await flush();
+    fixture.detectChanges();
+
+    expect(component.accounts().some((a) => a.name === 'Bank')).toBe(false);
   });
 });

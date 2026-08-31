@@ -8,6 +8,7 @@ import { CategoryService } from '../../core/services/category.service';
 import { ProfileService } from '../../core/services/profile.service';
 import { ExchangeRateService } from '../../core/services/exchange-rate.service';
 import { CaptureFormService } from '../../core/services/capture-form.service';
+import { DataVersionService } from '../../core/services/data-version.service';
 import { OfflineError } from '../../core/models/offline-error';
 import { TranslationError, errorCopy } from '../../core/models/translation-error';
 import { Transaction } from '../../core/models/transaction.model';
@@ -78,6 +79,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
   private profileService = inject(ProfileService);
   private exchangeRateService = inject(ExchangeRateService);
   private captureFormService = inject(CaptureFormService);
+  private dataVersion = inject(DataVersionService);
   language = inject(LanguageService);
 
   scope = signal<PeriodScope>(defaultScope());
@@ -197,6 +199,8 @@ export class MovementsComponent implements OnInit, OnDestroy {
     }
   });
 
+  private reloadDataOnVersionChange = this.dataVersion.reloadOnChange(() => this.loadAll());
+
   private prefersReducedMotion(): boolean {
     return (
       typeof window !== 'undefined' &&
@@ -297,6 +301,10 @@ export class MovementsComponent implements OnInit, OnDestroy {
   }
 
   async ngOnInit(): Promise<void> {
+    await this.loadAll();
+  }
+
+  private async loadAll(): Promise<void> {
     this.baseCurrency.set(await this.profileService.getBaseCurrency());
     this.accounts.set(await this.accountService.getActive());
     this.categories.set(await this.categoryService.getActive());
