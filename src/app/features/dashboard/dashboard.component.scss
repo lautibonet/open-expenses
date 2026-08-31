@@ -228,10 +228,6 @@
 }
 
 @media (max-width: 768px) {
-  .page-header {
-    align-items: flex-start;
-    flex-direction: column;
-  }
 
   .kpi-row {
     grid-template-columns: 1fr;
