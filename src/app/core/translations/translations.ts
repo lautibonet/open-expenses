@@ -266,7 +266,6 @@ const en: Record<string, string> = {
   'onboarding.currency.searchLabel': 'Search other currencies',
   'onboarding.currency.searchAria': 'Search other currencies',
   'onboarding.currency.searchPlaceholder': 'e.g. CAD, AUD, INR',
-  'onboarding.currency.symbol': 'Symbol',
   'onboarding.accounts.title': 'Accounts',
   'onboarding.accounts.description':
     'Add where your money is. You can always add more later in Settings.',
@@ -557,7 +556,6 @@ const es: Record<string, string> = {
   'onboarding.currency.searchLabel': 'Buscar otras monedas',
   'onboarding.currency.searchAria': 'Buscar otras monedas',
   'onboarding.currency.searchPlaceholder': 'p. ej. CAD, AUD, MXN',
-  'onboarding.currency.symbol': 'Símbolo',
   'onboarding.accounts.title': 'Cuentas',
   'onboarding.accounts.description':
     'Añade dónde tienes tu dinero. Siempre puedes añadir más en Ajustes.',
