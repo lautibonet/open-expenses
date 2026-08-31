@@ -943,16 +943,6 @@ describe('MovementsComponent - page header and scope control', () => {
     expect(fixture.nativeElement.querySelector('.scope-selects select')).toBeTruthy();
   });
 
-  it('toggles All Time from the scope control and back to the current month', async () => {
-    await component.ngOnInit();
-
-    await component.toggleAllTime();
-    expect(component.scope()).toEqual({ kind: 'all-time' });
-
-    await component.toggleAllTime();
-    expect(component.scope()).toEqual(defaultScope());
-  });
-
   it('leads the content with the Net Flow card', async () => {
     await transactionService.create(accountId, categoryId, 500, new Date(), getCurrentPeriod());
     await component.ngOnInit();
@@ -1166,7 +1156,7 @@ describe('MovementsComponent - shared scope', () => {
     expect(component.scopeMonths()).toContain(7);
   });
 
-  it('should show movements from every period when All time is chosen', async () => {
+  it('should show movements from a chosen past period', async () => {
     await transactionService.create(
       accountId,
       categoryId,
@@ -1190,12 +1180,13 @@ describe('MovementsComponent - shared scope', () => {
     await component.ngOnInit();
     expect(component.movements().length).toBe(0);
 
-    await component.onScopeYearChange('all-time');
-    expect(component.scope().kind).toBe('all-time');
-    expect(component.movements().length).toBe(2);
+    await component.onScopeYearChange(2012);
+    await component.onScopeMonthChange(1);
+    expect(component.scope()).toEqual({ kind: 'month', period: 1, year: 2012 });
+    expect(component.movements().length).toBe(1);
   });
 
-  it('should include movements older than ten years in All time', async () => {
+  it('should include movements older than ten years when their year is selected', async () => {
     const oldYear = getCurrentYear() - 20;
     await transactionService.create(
       accountId,
@@ -1209,7 +1200,8 @@ describe('MovementsComponent - shared scope', () => {
     );
     await component.ngOnInit();
 
-    await component.onScopeYearChange('all-time');
+    await component.onScopeYearChange(oldYear);
+    await component.onScopeMonthChange(1);
     expect(component.movements().length).toBe(1);
     expect((component.movements()[0].data as any).year).toBe(oldYear);
   });
@@ -1267,21 +1259,21 @@ describe('MovementsComponent - shared scope', () => {
     await component.ngOnInit();
     expect(component.scopeAnnouncement()).toBe('');
 
-    await component.onScopeYearChange('all-time');
-    expect(component.scopeAnnouncement()).toBe('All time');
-
     const period = getCurrentPeriod();
+    await component.onScopeYearChange(getCurrentYear() - 1);
+    expect(component.scopeAnnouncement()).toBe(
+      `${MONTH_NAMES[period - 1]} ${getCurrentYear() - 1}`,
+    );
+
     await component.onScopeYearChange(getCurrentYear());
     expect(component.scopeAnnouncement()).toBe(`${MONTH_NAMES[period - 1]} ${getCurrentYear()}`);
   });
 
-  it('should title a heading with the All time label', async () => {
+  it('should title a heading with the current period label', async () => {
     await component.ngOnInit();
     expect(component.scopeLabelText()).toBe(
       `${MONTH_NAMES[getCurrentPeriod() - 1]} ${getCurrentYear()}`,
     );
-    await component.onScopeYearChange('all-time');
-    expect(component.scopeLabelText()).toBe('All time');
   });
 });
 
@@ -2075,52 +2067,38 @@ describe('MovementsComponent - date header sorting', () => {
 
   async function seedDatedTransactions(): Promise<void> {
     const year = getCurrentYear();
-    await transactionService.create(accountId, categoryId, 100, new Date(`${year}-01-05`), 1, null, null, year);
-    await transactionService.create(accountId, categoryId, 200, new Date(`${year}-03-10`), 3, null, null, year);
-    await transactionService.create(accountId, categoryId, 300, new Date(`${year}-02-20`), 2, null, null, year);
+    const period = getCurrentPeriod();
+    await transactionService.create(accountId, categoryId, 100, new Date(`${year}-01-05`), period, null, null, year);
+    await transactionService.create(accountId, categoryId, 200, new Date(`${year}-03-10`), period, null, null, year);
+    await transactionService.create(accountId, categoryId, 300, new Date(`${year}-02-20`), period, null, null, year);
     await component.ngOnInit();
-    await component.onScopeYearChange('all-time');
   }
 
   function movementAmounts(): number[] {
     return component
       .movementView()
-      .filter((r) => r.kind === 'movement')
-      .map((r) => (r.item.data as Transaction).amount);
+      .map((r) => (r.data as Transaction).amount);
   }
 
-  it('groups movements by month in All time while newest first (default)', async () => {
+  it('orders movements newest first by date (default)', async () => {
     await seedDatedTransactions();
     const rows = component.movementView();
-    expect(rows[0].kind).toBe('group');
-    expect(rows.some((r) => r.kind === 'group')).toBe(true);
     expect(movementAmounts()).toEqual([200, 300, 100]);
   });
 
-  it('orders oldest first and drops month groups after clicking the date header', async () => {
+  it('orders oldest first after clicking the date header', async () => {
     await seedDatedTransactions();
     component.toggleSort();
     expect(component.sortDir()).toBe('asc');
-    expect(component.movementView().some((r) => r.kind === 'group')).toBe(false);
     expect(movementAmounts()).toEqual([100, 300, 200]);
   });
 
-  it('returns to newest first with month groups after a second click', async () => {
+  it('returns to newest first after a second click', async () => {
     await seedDatedTransactions();
     component.toggleSort();
     component.toggleSort();
     expect(component.sortDir()).toBe('desc');
-    expect(component.movementView()[0].kind).toBe('group');
     expect(movementAmounts()).toEqual([200, 300, 100]);
-  });
-
-  it('spans month group header rows across the five remaining columns', async () => {
-    await seedDatedTransactions();
-    fixture.detectChanges();
-
-    const groupCell = fixture.nativeElement.querySelector('tr.month-group-row td');
-    expect(groupCell).toBeTruthy();
-    expect(groupCell.getAttribute('colspan')).toBe('5');
   });
 
   it('reflects the sort direction via aria-sort and the header button', async () => {

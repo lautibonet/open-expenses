@@ -6,7 +6,6 @@ import {
   getCurrentPeriod,
   getCurrentYear,
   getPeriodYear,
-  isAllTime,
   isMonthNumber,
   isValidPeriod,
   isValidYear,
@@ -80,16 +79,6 @@ describe('period.type - scope helpers', () => {
         period: getCurrentPeriod(),
         year: getCurrentYear(),
       });
-    });
-  });
-
-  describe('isAllTime', () => {
-    it('should be true for an all-time scope', () => {
-      expect(isAllTime({ kind: 'all-time' })).toBe(true);
-    });
-
-    it('should be false for a month scope', () => {
-      expect(isAllTime({ kind: 'month', period: 1, year: 2026 })).toBe(false);
     });
   });
 

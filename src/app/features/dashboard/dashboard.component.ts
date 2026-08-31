@@ -15,9 +15,7 @@ import {
   PeriodScope,
   defaultScope,
   getCurrentPeriod,
-  getCurrentYear,
   getPeriodYear,
-  isAllTime,
   isMonthNumber,
   scopeOptionsFromMovements,
 } from '../../core/types/period.type';
@@ -166,26 +164,15 @@ export class DashboardComponent implements OnInit {
     }
   }
 
-  async onScopeYearChange(value: number | 'all-time'): Promise<void> {
-    if (typeof value === 'string' && value !== 'all-time') {
-      value = Number(value);
-    }
-    if (value === 'all-time') {
-      await this.setScope({ kind: 'all-time' });
-      return;
-    }
+  async onScopeYearChange(value: number): Promise<void> {
     const current = this.scope();
-    const period = current.kind === 'month' && current.year === value && current.period
-      ? current.period
-      : getCurrentPeriod();
+    const period = current.year === value ? current.period : getCurrentPeriod();
     await this.setScope({ kind: 'month', period, year: value });
   }
 
   async onScopeMonthChange(period: number): Promise<void> {
     const current = this.scope();
-    if (!isAllTime(current)) {
-      await this.setScope({ ...current, period: period as MonthNumber });
-    }
+    await this.setScope({ ...current, period: period as MonthNumber });
   }
 
   private async setScope(scope: PeriodScope): Promise<void> {
@@ -211,18 +198,6 @@ export class DashboardComponent implements OnInit {
     return this.language.scopeLabel(this.scope());
   }
 
-  isAllTimeScope(): boolean {
-    return isAllTime(this.scope());
-  }
-
-  async toggleAllTime(): Promise<void> {
-    if (isAllTime(this.scope())) {
-      await this.onScopeYearChange(getCurrentYear());
-    } else {
-      await this.onScopeYearChange('all-time');
-    }
-  }
-
   savingsRate(): number | null {
     const income = this.avgMonthlyIncome();
     if (income <= 0) return null;
@@ -236,14 +211,12 @@ export class DashboardComponent implements OnInit {
     return Math.round((total / max) * 10000) / 100;
   }
 
-  scopePeriod(): number | null {
-    const s = this.scope();
-    return !isAllTime(s) ? s.period : null;
+  scopePeriod(): MonthNumber {
+    return this.scope().period;
   }
 
-  scopeYearValue(): number | 'all-time' {
-    const s = this.scope();
-    return !isAllTime(s) ? s.year : 'all-time';
+  scopeYearValue(): number {
+    return this.scope().year;
   }
 
   private async computeBaseAmounts(
@@ -299,20 +272,11 @@ export class DashboardComponent implements OnInit {
     const catMap = new Map(allCategories.map(c => [c.id!, c]));
 
     const scope = this.scope();
-    const selectedYear = scope.kind === 'all-time' ? 'All time' : String(scope.year);
+    const selectedYear = String(scope.year);
 
-    const filteredTxns = selectedYear === 'All time'
-      ? allTxns
-      : allTxns.filter(t => String(getPeriodYear(t)) === selectedYear);
+    const filteredTxns = allTxns.filter(t => String(getPeriodYear(t)) === selectedYear);
 
-    const averagesAllTime = selectedYear === 'All time';
-
-    const monthsWithData = new Set(
-      filteredTxns.map(t => averagesAllTime
-        ? `${getPeriodYear(t)}-${t.period}`
-        : t.period
-      )
-    );
+    const monthsWithData = new Set(filteredTxns.map(t => t.period));
 
     if (monthsWithData.size === 0) {
       this.avgMonthlyIncome.set(0);

@@ -7,7 +7,7 @@ import {
   isLanguage,
 } from '../types/language.type';
 import { isCategoryType } from '../models/category.model';
-import { isAllTime, isMonthNumber, PeriodScope } from '../types/period.type';
+import { isMonthNumber, PeriodScope } from '../types/period.type';
 import { translate } from '../translations/translations';
 import { formatDateIn, formatMoneyIn, formatNumberIn } from '../format/format';
 import { TranslateFn } from '../models/translation-error';
@@ -58,9 +58,6 @@ export class LanguageService {
   }
 
   scopeLabel(scope: PeriodScope): string {
-    if (isAllTime(scope)) {
-      return this.t('scope.allTime');
-    }
     return `${this.monthName(scope.period)} ${scope.year}`;
   }
 

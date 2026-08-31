@@ -114,7 +114,7 @@ describe('translations', () => {
   });
 
   it('covers the scope keys', () => {
-    for (const key of ['scope.allTime', 'scope.yearAria', 'scope.monthAria', 'scope.groupAria']) {
+    for (const key of ['scope.yearAria', 'scope.monthAria', 'scope.groupAria']) {
       expect(TRANSLATIONS.en[key]).toBeTruthy();
       expect(TRANSLATIONS.es[key]).toBeTruthy();
     }

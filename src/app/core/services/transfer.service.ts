@@ -161,9 +161,6 @@ export class TransferService {
   }
 
   async getByScope(scope: PeriodScope): Promise<Transfer[]> {
-    if (scope.kind === 'all-time') {
-      return this.getAll();
-    }
     return this.getByPeriod(scope.period, scope.year);
   }
 

@@ -242,8 +242,7 @@
 }
 
 /* Scope control: plain month/year selects side by side — standard fields
-   with the app's 1px border — plus an All Time toggle. Shared by Movements
-   and Stats. */
+   with the app's 1px border. Shared by Movements and Stats. */
 %scope-control {
   display: flex;
   align-items: center;
@@ -257,26 +256,6 @@
 
   select {
     @extend %field;
-  }
-}
-
-%all-time-btn {
-  @extend %caps-label;
-
-  padding: 0 var(--space-md);
-  border: var(--border-hard);
-  background: var(--surface-lowest);
-  color: var(--on-surface-variant);
-  cursor: pointer;
-
-  &:hover {
-    background: var(--surface-container);
-  }
-
-  &.active {
-    background: var(--primary);
-    border-color: var(--on-surface);
-    color: var(--surface-lowest);
   }
 }
 

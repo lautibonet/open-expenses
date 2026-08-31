@@ -25,7 +25,7 @@ models, or user flows**.
 | D10 | **ADR 0008 stands** — tokens stay CSS custom properties in `src/styles.scss`; values replaced. No Tailwind, no new styling architecture. `DESIGN.md` rewritten. |
 | D11 | **Token-first rollout**, then screen-by-screen; `ng test` (Vitest) after each phase. |
 | D12 | **Net Flow card added** on Movements — new read-only UI, derived data only (scope income − expense in base currency). |
-| D13 | **Scope semantics unchanged** (month + year + All Time), dressed in the design's stepper/segmented chrome. No Quarter. |
+| D13 | **Scope is a single Period** (month + year), dressed in the design's stepper/segmented chrome. No Quarter. All Time removed (issue #81). |
 | D14 | Settings stays **inline-save** and **deactivate** (never hard-delete); deactivation uses an ×-style affordance, not destructive remove — updated to a single top-to-bottom card flow with one category per row (type-striped, like the accounts list) and an × → tick/× icon confirmation replacing text buttons (issue #76). No "Save Changes" button. No "Load More Records" pagination. |
 | D15 | **Icons: hand-rolled inline SVGs**, not Material Symbols. The needed set is tiny (chevrons, ↑/↓, pencil, ×, +); the Material Symbols variable woff2 is ~3.5 MB — prohibitive to precache offline for glyphs we would never use — and subsetting it adds tooling and binary-asset upkeep for no gain. Inline SVGs inherit `currentColor`, scale crisply, need no network request, and keep the zero-CDN stance. |
 
@@ -141,9 +141,8 @@ the mobile regime (`headline-lg` 32→24, `display` 48→24).
 
 ### 3.1 Movements (`features/movements/`)
 - Page headline treatment: display type "Movements" + subtitle; period control top-right.
-- **Scope control (D13)**: keep month/year/All Time semantics; restyle as design-style
-  segmented/stepper chrome (‹ › chevrons around month/year, plus an All Time position).
-  `aria-label`s preserved (tests: `select[aria-label]`, `[aria-label="Ámbito: año"]`).
+- **Scope control (D13)**: single Period — month/year selects only, All Time removed
+  (issue #81). `aria-label`s preserved (tests: `select[aria-label]`, `[aria-label="Ámbito: año"]`).
 - **Net Flow card (D12, new)**: bordered card, 4px left stripe, mono numerals: net = scope
   income − expense in base currency; small IN/OUT sub-lines in green/red (D8 reversed); a
   negative net swaps the stripe to the expense red. Derived
@@ -159,8 +158,8 @@ the mobile regime (`headline-lg` 32→24, `display` 48→24).
 - Transfer editor + delete/undo toast: restyled only; 10s undo logic untouched.
 
 ### 3.2 Stats / dashboard (`features/dashboard/`)
-- Headline "Stats" (keep glossary; tests assert the h1) + existing scope select restyled as
-  segmented chrome (month/year/All Time — **no Quarter**, D13).
+- Headline "Stats" (keep glossary; tests assert the h1) + existing scope selects (month/year —
+  **no Quarter**, no All Time, D13).
 - Totals → 3 KPI cards with 4px left stripes: Avg Income (green, D8 reversed), Avg Expense (red), and a
   solid-ink inverted "Net Average / savings-rate" card. Maps current per-category/per-account
   data; conversions keep current failure-warning behavior (error-ramp strip, D8 implication).

@@ -23,7 +23,6 @@ import {
   getCurrentPeriod,
   getCurrentYear,
   getPeriodYear,
-  isAllTime,
   scopeOptionsFromMovements,
 } from '../../core/types/period.type';
 import { LanguageService } from '../../core/services/language.service';
@@ -42,10 +41,6 @@ interface ExchangeRateState {
   rate: number | null;
   date: string;
 }
-
-type MovementViewRow =
-  | { kind: 'group'; key: string; label: string }
-  | { kind: 'movement'; item: MovementItem };
 
 interface PendingDelete {
   item: MovementItem;
@@ -240,29 +235,10 @@ export class MovementsComponent implements OnInit, OnDestroy {
     });
   });
 
-  movementView = computed<MovementViewRow[]>(() => {
+  movementView = computed<MovementItem[]>(() => {
     const items =
       this.sortDir() === 'asc' ? [...this.filteredMovements()].reverse() : this.filteredMovements();
-
-    if (!isAllTime(this.scope()) || this.sortDir() === 'asc') {
-      return items.map((item) => ({ kind: 'movement' as const, item }));
-    }
-
-    const rows: MovementViewRow[] = [];
-    const seen = new Set<string>();
-    for (const item of items) {
-      const key = `${item.data.year}-${item.data.period}`;
-      if (!seen.has(key)) {
-        seen.add(key);
-        rows.push({
-          kind: 'group',
-          key,
-          label: `${this.periodLabel(item.data.period)} ${item.data.year}`,
-        });
-      }
-      rows.push({ kind: 'movement', item });
-    }
-    return rows;
+    return items;
   });
 
   activeFilterCount = computed(() => {
@@ -277,8 +253,8 @@ export class MovementsComponent implements OnInit, OnDestroy {
     this.sortDir.update((d) => (d === 'desc' ? 'asc' : 'desc'));
   }
 
-  trackKey(row: MovementViewRow): string {
-    return row.kind === 'group' ? `group:${row.key}` : `${row.item.type}:${row.item.data.id}`;
+  trackKey(row: MovementItem): string {
+    return `${row.type}:${row.data.id}`;
   }
 
   private matchesSearch(item: MovementItem, query: string): boolean {
@@ -348,39 +324,15 @@ export class MovementsComponent implements OnInit, OnDestroy {
     this.scopeMonths.set(options.months);
   }
 
-  async onScopeYearChange(value: number | 'all-time'): Promise<void> {
-    if (typeof value === 'string' && value !== 'all-time') {
-      value = Number(value);
-    }
-    if (value === 'all-time') {
-      await this.setScope({ kind: 'all-time' });
-      return;
-    }
+  async onScopeYearChange(value: number): Promise<void> {
     const current = this.scope();
-    const period =
-      current.kind === 'month' && current.year === value && current.period
-        ? current.period
-        : getCurrentPeriod();
+    const period = current.year === value ? current.period : getCurrentPeriod();
     await this.setScope({ kind: 'month', period, year: value });
-  }
-
-  isAllTimeScope(): boolean {
-    return isAllTime(this.scope());
-  }
-
-  async toggleAllTime(): Promise<void> {
-    if (isAllTime(this.scope())) {
-      await this.onScopeYearChange(getCurrentYear());
-    } else {
-      await this.onScopeYearChange('all-time');
-    }
   }
 
   async onScopeMonthChange(period: number): Promise<void> {
     const current = this.scope();
-    if (current.kind === 'month') {
-      await this.setScope({ ...current, period: period as MonthNumber });
-    }
+    await this.setScope({ ...current, period: period as MonthNumber });
   }
 
   private async setScope(scope: PeriodScope): Promise<void> {
@@ -392,10 +344,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
 
   private formPeriodYear(): { period: MonthNumber; year: number } {
     const s = this.scope();
-    if (!isAllTime(s)) {
-      return { period: s.period, year: s.year };
-    }
-    return { period: getCurrentPeriod(), year: getCurrentYear() };
+    return { period: s.period, year: s.year };
   }
 
   openTransferForm(id?: number): void {
@@ -813,14 +762,12 @@ export class MovementsComponent implements OnInit, OnDestroy {
     return this.language.periodLabel(period);
   }
 
-  scopePeriod(): number | null {
-    const s = this.scope();
-    return !isAllTime(s) ? s.period : null;
+  scopePeriod(): MonthNumber {
+    return this.scope().period;
   }
 
-  scopeYearValue(): number | 'all-time' {
-    const s = this.scope();
-    return !isAllTime(s) ? s.year : 'all-time';
+  scopeYearValue(): number {
+    return this.scope().year;
   }
 
   isIncomeTransaction(txn: Transaction): boolean {
