@@ -1465,6 +1465,191 @@ describe('MovementsComponent - contextual delete confirmation and undo', () => {
   });
 });
 
+describe('MovementsComponent - icon row actions', () => {
+  let fixture: ComponentFixture<MovementsComponent>;
+  let component: MovementsComponent;
+  let transactionService: TransactionService;
+  let transferService: TransferService;
+  let accountService: AccountService;
+  let categoryService: CategoryService;
+  let accountId: number;
+  let categoryId: number;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    await TestBed.configureTestingModule({
+      imports: [MovementsComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(MovementsComponent);
+    component = fixture.componentInstance;
+    transactionService = TestBed.inject(TransactionService);
+    transferService = TestBed.inject(TransferService);
+    accountService = TestBed.inject(AccountService);
+    categoryService = TestBed.inject(CategoryService);
+
+    const account = await accountService.create('Cash', 'EUR', 100000);
+    accountId = account.id!;
+    const category = await categoryService.create('Food', 'expense');
+    categoryId = category.id!;
+  });
+
+  afterEach(async () => {
+    fixture.destroy();
+    await db.delete();
+  });
+
+  async function seedTransaction(): Promise<Transaction> {
+    return transactionService.create(
+      accountId,
+      categoryId,
+      500,
+      new Date(),
+      getCurrentPeriod(),
+    );
+  }
+
+  async function settle(): Promise<void> {
+    await fixture.whenStable();
+    for (let i = 0; i < 10; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+    fixture.detectChanges();
+  }
+
+  function actionButtons(): HTMLButtonElement[] {
+    return Array.from(
+      fixture.nativeElement.querySelectorAll('tbody td:last-child button'),
+    ) as HTMLButtonElement[];
+  }
+
+  it('renders pencil and trash icon buttons with accessible names', async () => {
+    await seedTransaction();
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const buttons = actionButtons();
+    expect(buttons).toHaveLength(2);
+    expect(buttons[0].getAttribute('aria-label')).toBe('Edit movement');
+    expect(buttons[0].querySelector('svg')).toBeTruthy();
+    expect(buttons[1].getAttribute('aria-label')).toBe('Delete movement');
+    expect(buttons[1].querySelector('svg')).toBeTruthy();
+    expect(buttons[1].classList.contains('danger')).toBe(true);
+    expect(buttons.every((b) => (b.textContent ?? '').trim() === '')).toBe(true);
+  });
+
+  it('swaps the row actions to tick and X icon buttons when trash is clicked', async () => {
+    const txn = await seedTransaction();
+    await component.ngOnInit();
+    fixture.detectChanges();
+    const item = component.movements().find((m) => (m.data as Transaction).id === txn.id)!;
+
+    component.requestDelete(item);
+    fixture.detectChanges();
+
+    const buttons = actionButtons();
+    expect(buttons).toHaveLength(2);
+    expect(buttons[0].getAttribute('aria-label')).toBe('Confirm transaction deletion');
+    expect(buttons[0].querySelector('svg')).toBeTruthy();
+    expect(buttons[1].getAttribute('aria-label')).toBe('Cancel deletion');
+    expect(buttons[1].querySelector('svg')).toBeTruthy();
+    expect(buttons.every((b) => (b.textContent ?? '').trim() === '')).toBe(true);
+  });
+
+  it('keeps the delete prompt off-screen and announces it politely, with no visible message text', async () => {
+    const txn = await seedTransaction();
+    await component.ngOnInit();
+    fixture.detectChanges();
+    const item = component.movements().find((m) => (m.data as Transaction).id === txn.id)!;
+
+    component.requestDelete(item);
+    fixture.detectChanges();
+
+    const actionsCell = fixture.nativeElement.querySelector('tbody td:last-child');
+    const live = actionsCell.querySelector('span[aria-live="polite"]');
+    expect(live).toBeTruthy();
+    expect(live.classList.contains('visually-hidden')).toBe(true);
+    expect(live.textContent).toContain('€500.00');
+    expect(live.textContent).toContain('Cash');
+  });
+
+  it('moves focus to the tick button when the inline confirmation opens', async () => {
+    const txn = await seedTransaction();
+    await component.ngOnInit();
+    fixture.detectChanges();
+    const item = component.movements().find((m) => (m.data as Transaction).id === txn.id)!;
+
+    component.requestDelete(item);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const tick = actionButtons()[0];
+    expect(document.activeElement).toBe(tick);
+  });
+
+  it('deletes from the tick button and exposes the undo', async () => {
+    const txn = await seedTransaction();
+    await component.ngOnInit();
+    fixture.detectChanges();
+    const item = component.movements().find((m) => (m.data as Transaction).id === txn.id)!;
+
+    component.requestDelete(item);
+    fixture.detectChanges();
+    await actionButtons()[0].click();
+    await settle();
+
+    expect(await transactionService.getAll()).toHaveLength(0);
+    expect(component.undo()?.item.data.id).toBe(txn.id);
+  });
+
+  it('cancels from the X button and restores the pencil and trash icons', async () => {
+    const txn = await seedTransaction();
+    await component.ngOnInit();
+    fixture.detectChanges();
+    const item = component.movements().find((m) => (m.data as Transaction).id === txn.id)!;
+
+    component.requestDelete(item);
+    fixture.detectChanges();
+    await actionButtons()[1].click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(component.confirmingDelete()).toBeNull();
+    expect(await transactionService.getAll()).toHaveLength(1);
+    const buttons = actionButtons();
+    expect(buttons[0].getAttribute('aria-label')).toBe('Edit movement');
+    expect(buttons[1].getAttribute('aria-label')).toBe('Delete movement');
+  });
+
+  it('confirms a transfer deletion via tick and X icons', async () => {
+    const acc2 = await accountService.create('Savings', 'EUR', 50000);
+    const tr = await transferService.create(
+      accountId,
+      acc2.id!,
+      1000,
+      new Date(),
+      getCurrentPeriod(),
+    );
+    await component.ngOnInit();
+    fixture.detectChanges();
+    const item = component.movements()[0];
+
+    component.requestDelete(item);
+    fixture.detectChanges();
+
+    const buttons = actionButtons();
+    expect(buttons[0].getAttribute('aria-label')).toBe('Confirm transfer deletion');
+    expect(buttons[1].getAttribute('aria-label')).toBe('Cancel deletion');
+
+    await buttons[0].click();
+    await settle();
+
+    expect(await transferService.getAll()).toHaveLength(0);
+    expect(component.undo()?.item.data.id).toBe(tr.id);
+  });
+});
+
 describe('MovementsComponent - assistive tech', () => {
   let fixture: ComponentFixture<MovementsComponent>;
   let component: MovementsComponent;
