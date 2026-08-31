@@ -5,7 +5,7 @@
   border: var(--border-hard);
   border-left: var(--stripe-income);
   padding: var(--space-md) var(--space-lg);
-  margin-bottom: var(--space-md);
+  margin-bottom: var(--space-lg);
 
   &.negative {
     border-left: var(--stripe-expense);
@@ -16,13 +16,13 @@
   display: flex;
   align-items: center;
   gap: var(--space-sm);
-  padding-bottom: var(--space-sm);
-  border-bottom: var(--border-hard);
   margin-bottom: var(--space-md);
 }
 
 .net-flow-label {
   @extend %caps-label-muted;
+  color: var(--on-surface);
+  margin: 0 0 var(--space-sm);
 }
 
 .net-amount {

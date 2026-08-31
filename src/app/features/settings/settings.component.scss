@@ -34,15 +34,6 @@ app-backup-card {
   h2 {
     @extend %card-header-icon;
   }
-
-  /* Main-column cards carry a title-type header; side cards stay caps. */
-  .card-title {
-    font-size: var(--type-title);
-    font-weight: 600;
-    line-height: var(--leading-title);
-    letter-spacing: normal;
-    text-transform: none;
-  }
 }
 
 /* Add forms: name input, currency/type select and Add button share the

@@ -1,7 +1,5 @@
 <div class="net-flow-card" [class.negative]="netTotal() < 0">
-  <div class="net-flow-head">
-    <span class="net-flow-label">{{ language.t('movements.netFlow') }}</span>
-  </div>
+  <h2 class="net-flow-label">{{ language.t('movements.netFlow') }}</h2>
   <p class="net-amount">{{ netDisplay() }}</p>
   <div class="flow-lines">
     <span class="flow-in">
