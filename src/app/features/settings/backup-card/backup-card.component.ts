@@ -3,11 +3,13 @@ import { DriveBackupService } from '../../../core/services/drive-backup.service'
 import { LanguageService } from '../../../core/services/language.service';
 import { NoBackupFoundError } from '../../../backup/drive-backup-provider';
 import { BackupSnapshot, createSnapshot, stringifySnapshot } from '../../../backup/backup-snapshot';
+import { DismissibleAlertComponent } from '../../../shared/components/dismissible-alert/dismissible-alert.component';
 
 const BACKUP_FILE_NAME = 'open-expenses-backup.json';
 
 @Component({
   selector: 'app-backup-card',
+  imports: [DismissibleAlertComponent],
   templateUrl: './backup-card.component.html',
   styleUrl: './backup-card.component.scss',
 })
@@ -20,6 +22,13 @@ export class BackupCardComponent {
   isBusy = signal(false);
   message = signal('');
   errorMessage = signal('');
+  statusEpoch = signal(0);
+
+  private newStatusCycle(): void {
+    this.statusEpoch.update((n) => n + 1);
+    this.message.set('');
+    this.errorMessage.set('');
+  }
 
   backupDate = computed(() => {
     const pending = this.pendingRestore();
@@ -35,7 +44,7 @@ export class BackupCardComponent {
 
   async downloadBackup(): Promise<void> {
     this.isBusy.set(true);
-    this.errorMessage.set('');
+    this.newStatusCycle();
 
     try {
       const snapshot = await createSnapshot();
@@ -61,11 +70,11 @@ export class BackupCardComponent {
     const file = input.files?.[0] ?? null;
     if (!file) return;
 
+    this.newStatusCycle();
+
     try {
       const snapshot = await this.backupService.parseBackupFile(file);
       this.pendingRestore.set(snapshot);
-      this.errorMessage.set('');
-      this.message.set('');
     } catch (e: unknown) {
       this.pendingRestore.set(null);
       this.errorMessage.set(
@@ -78,8 +87,7 @@ export class BackupCardComponent {
 
   async restoreFromCloud(): Promise<void> {
     this.isBusy.set(true);
-    this.errorMessage.set('');
-    this.message.set('');
+    this.newStatusCycle();
     this.pendingRestore.set(null);
 
     try {
@@ -103,7 +111,7 @@ export class BackupCardComponent {
     if (!snapshot) return;
 
     this.isBusy.set(true);
-    this.errorMessage.set('');
+    this.newStatusCycle();
 
     try {
       await this.backupService.restoreFromSnapshot(snapshot);

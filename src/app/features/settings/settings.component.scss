@@ -44,14 +44,6 @@
   }
 }
 
-.error {
-  @extend %status-strip-error;
-}
-
-.success {
-  @extend %status-strip-primary;
-}
-
 .inline-form {
   display: flex;
   gap: var(--space-sm);

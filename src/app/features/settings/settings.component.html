@@ -6,12 +6,18 @@
     </div>
   </header>
 
-  @if (errorMessage()) {
-    <p class="error" role="alert">{{ errorMessage() }}</p>
-  }
-  @if (successMessage()) {
-    <p class="success" role="status">{{ successMessage() }}</p>
-  }
+  <app-dismissible-alert
+    role="alert"
+    variant="error"
+    [message]="errorMessage()"
+    [resetKey]="statusEpoch()"
+  />
+  <app-dismissible-alert
+    role="status"
+    variant="success"
+    [message]="successMessage()"
+    [resetKey]="statusEpoch()"
+  />
 
   <div class="settings-grid">
     <div class="col-main">

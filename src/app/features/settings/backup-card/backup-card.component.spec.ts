@@ -205,4 +205,41 @@ describe('BackupCardComponent', () => {
     expect(component.pendingRestore()).toBeNull();
     expect(component.errorMessage()).toContain('No backup');
   });
+
+  it('dismisses the failure note and brings it back on the next failure', async () => {
+    const file = new File(['not json'], 'backup.json', { type: 'application/json' });
+    await component.onFileSelected({ target: { files: [file] } } as unknown as Event);
+    fixture.detectChanges();
+
+    const alert = fixture.nativeElement.querySelector('.alert') as HTMLElement;
+    expect(alert).toBeTruthy();
+    expect(alert.textContent).toContain('Invalid backup file');
+
+    (alert.querySelector('.alert-dismiss') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.alert')).toBeNull();
+
+    await component.onFileSelected({ target: { files: [file] } } as unknown as Event);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.alert')).toBeTruthy();
+  });
+
+  it('dismisses the success note', async () => {
+    await accountService.create('Cash', 'EUR', 100);
+
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+
+    await component.downloadBackup();
+    fixture.detectChanges();
+
+    const alert = fixture.nativeElement.querySelector('.alert') as HTMLElement;
+    expect(alert).toBeTruthy();
+    expect(alert.textContent).toContain('downloaded');
+
+    (alert.querySelector('.alert-dismiss') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.alert')).toBeNull();
+  });
 });

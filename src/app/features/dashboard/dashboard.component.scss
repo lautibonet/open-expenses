@@ -149,14 +149,10 @@
   }
 }
 
+/* The conversion-failure strip itself is the shared dismissible alert;
+   only its spacing into the card body is local. */
 .conversion-warning {
-  @extend %caps-label-muted;
-
   margin-top: var(--space-md);
-  padding: var(--space-sm) var(--space-md);
-  background: var(--error-container);
-  border: 1px solid var(--on-error-container);
-  color: var(--on-error-container);
 }
 
 /* Account balances: bordered list; negative balances sit on the

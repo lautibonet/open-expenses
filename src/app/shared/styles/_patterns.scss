@@ -169,6 +169,35 @@
   border: 1px solid var(--on-error-container);
 }
 
+/* Icon-only ×-close affordance for dismissible alerts: inherits the
+   strip's ink, keyboard focusable. The accessible name comes from the
+   `alert.dismiss` translation key. */
+%alert-dismiss {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 2px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: inherit;
+
+  svg {
+    width: 0.75rem;
+    height: 0.75rem;
+  }
+
+  &:hover {
+    opacity: 0.7;
+  }
+
+  &:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+  }
+}
+
 /* Page header: display-type headline + subtitle, with room for the scope
    control on the right. Shared by Movements and Stats. */
 %page-header {

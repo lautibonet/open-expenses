@@ -328,6 +328,30 @@ describe('OnboardingComponent', () => {
     expect(component.errorMessage()).toBe('Invalid backup file');
     expect(navigate).not.toHaveBeenCalled();
   });
+
+  it('dismisses an error note and shows it again on the next failure', () => {
+    vi.stubGlobal('navigator', {
+      language: 'en-GB',
+      languages: ['en-GB'],
+      userAgent: 'vitest',
+    });
+    component.goTo('accounts');
+    fixture.detectChanges();
+
+    component.addAccount();
+    fixture.detectChanges();
+    const alert = fixture.nativeElement.querySelector('.alert') as HTMLElement;
+    expect(alert).toBeTruthy();
+    expect(alert.textContent).toContain('required');
+
+    (alert.querySelector('.alert-dismiss') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.alert')).toBeNull();
+
+    component.addAccount();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.alert')).toBeTruthy();
+  });
 });
 
 describe('OnboardingComponent restore language override', () => {

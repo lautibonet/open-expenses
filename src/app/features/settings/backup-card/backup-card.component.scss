@@ -45,18 +45,9 @@
   display: none;
 }
 
-/* Transient status (working…) and success read as status strips, on the
-   primary tint — same treatment as the Settings page strips. */
-.info,
-.success {
-  @extend %status-strip-primary;
-
-  margin: var(--space-md) 0 0;
-}
-
-.error {
-  @extend %status-strip-error;
-
+/* Dismissible status alerts (working…, success, failure) keep the strip
+   treatment — primary tint for info/success, error ramp for failures. */
+app-dismissible-alert {
   margin: var(--space-md) 0 0;
 }
 
