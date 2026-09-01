@@ -230,6 +230,8 @@ const en: Record<string, string> = {
   'stats.allAccounts': 'All accounts ({currency})',
   'stats.conversionWarning':
     'Foreign currency accounts could not be converted. Total only includes {currency} accounts.',
+  'stats.conversionWarningUnconverted':
+    'Some transactions were captured without a {currency} conversion and count at their face amount.',
   'stats.accountBalances': '{scope} Account Balances',
   'stats.income': 'Income',
   'stats.expenses': 'Expenses',
@@ -534,6 +536,8 @@ const es: Record<string, string> = {
   'stats.allAccounts': 'Todas las cuentas ({currency})',
   'stats.conversionWarning':
     'No se pudieron convertir las cuentas en moneda extranjera. El total solo incluye cuentas en {currency}.',
+  'stats.conversionWarningUnconverted':
+    'Algunas transacciones se registraron sin conversión a {currency} y se contabilizan por su importe nominal.',
   'stats.accountBalances': 'Saldos de cuentas de {scope}',
   'stats.income': 'Ingresos',
   'stats.expenses': 'Gastos',

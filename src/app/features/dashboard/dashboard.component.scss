@@ -174,10 +174,16 @@
   }
 }
 
-/* The conversion-failure strip itself is the shared dismissible alert;
-   only its spacing into the card body is local. */
+/* The conversion-warning strip is the shared dismissible alert, positioned
+   at page level so it vouches for every Base Currency figure on Stats.
+   An empty host (no warning) must leave no gap behind. */
 .conversion-warning {
-  margin-top: var(--space-md);
+  display: block;
+  margin-bottom: var(--space-lg);
+}
+
+.conversion-warning:empty {
+  margin: 0;
 }
 
 /* Account balances: bordered list; negative balances sit on the

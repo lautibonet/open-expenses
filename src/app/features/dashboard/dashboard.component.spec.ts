@@ -282,17 +282,17 @@ describe('DashboardComponent', () => {
       expect(component.totalBalanceBaseCurrency()).toBe(100000);
     });
 
-    it('should set conversionFailed when offline with multi-currency accounts', async () => {
+    it('should flag excluded accounts when offline with multi-currency accounts', async () => {
       await accountService.create('Cash', 'EUR', 100000);
       await accountService.create('USD Account', 'USD', 50000);
       networkService.isOnline.set(false);
 
       await component.ngOnInit();
 
-      expect(component.conversionFailed()).toBe(true);
+      expect(component.conversionDegraded().accountsExcluded).toBe(true);
     });
 
-    it('should set conversionFailed when API call fails', async () => {
+    it('should flag excluded accounts when API call fails', async () => {
       await accountService.create('Cash', 'EUR', 100000);
       await accountService.create('USD Account', 'USD', 50000);
 
@@ -300,19 +300,22 @@ describe('DashboardComponent', () => {
 
       await component.ngOnInit();
 
-      expect(component.conversionFailed()).toBe(true);
+      expect(component.conversionDegraded().accountsExcluded).toBe(true);
     });
 
-    it('should not set conversionFailed when all accounts are base currency', async () => {
+    it('should flag no degradation when all accounts are base currency', async () => {
       await accountService.create('Cash', 'EUR', 100000);
       await accountService.create('Savings', 'EUR', 50000);
 
       await component.ngOnInit();
 
-      expect(component.conversionFailed()).toBe(false);
+      expect(component.conversionDegraded()).toEqual({
+        accountsExcluded: false,
+        unconvertedTransactions: false,
+      });
     });
 
-    it('should not set conversionFailed when conversion succeeds', async () => {
+    it('should flag no degradation when conversion succeeds', async () => {
       await accountService.create('Cash', 'EUR', 100000);
       await accountService.create('USD Account', 'USD', 50000);
 
@@ -326,7 +329,10 @@ describe('DashboardComponent', () => {
 
       await component.ngOnInit();
 
-      expect(component.conversionFailed()).toBe(false);
+      expect(component.conversionDegraded()).toEqual({
+        accountsExcluded: false,
+        unconvertedTransactions: false,
+      });
     });
   });
 });
@@ -1097,6 +1103,154 @@ describe('DashboardComponent - KPI row layout and mono weights', () => {
       expect(el, selector).toBeTruthy();
       expect(getComputedStyle(el!).fontWeight, selector).toBe('500');
     }
+  });
+});
+
+describe('DashboardComponent - conversion degradation warnings', () => {
+  let fixture: ComponentFixture<DashboardComponent>;
+  let component: DashboardComponent;
+  let accountService: AccountService;
+  let categoryService: CategoryService;
+  let transactionService: TransactionService;
+  let networkService: NetworkService;
+
+  beforeEach(async () => {
+    await resetDb();
+    await TestBed.configureTestingModule({
+      imports: [DashboardComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(DashboardComponent);
+    component = fixture.componentInstance;
+    accountService = TestBed.inject(AccountService);
+    categoryService = TestBed.inject(CategoryService);
+    transactionService = TestBed.inject(TransactionService);
+    networkService = TestBed.inject(NetworkService);
+  });
+
+  afterEach(async () => {
+    await new Promise<void>(resolve => setTimeout(resolve, 10));
+    await resetDb();
+  });
+
+  function mockRates(rate: number): void {
+    const mockResponse = {
+      ok: true,
+      json: async () => [
+        { base: 'EUR', quote: 'USD', date: '2026-01-15', rate },
+      ],
+    };
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse as Response);
+  }
+
+  it('surfaces the warning when an offline-captured foreign transaction has no stored conversion', async () => {
+    const usd = await accountService.create('USD Account', 'USD', 0);
+    const incomeCat = await categoryService.create('Payroll', 'income');
+    const period = getCurrentPeriod();
+
+    // Captured offline: no exchange rate, no base amount.
+    await transactionService.create(usd.id!, incomeCat.id!, 100, new Date(), period);
+    mockRates(1.08);
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const warning = fixture.nativeElement.querySelector('.conversion-warning .alert');
+    expect(warning).toBeTruthy();
+    expect(warning.textContent).toContain('EUR');
+  });
+
+  it('keeps the warning hidden when the unconverted transaction sits on a base-currency account', async () => {
+    const eur = await accountService.create('Cash', 'EUR', 0);
+    const incomeCat = await categoryService.create('Payroll', 'income');
+
+    await transactionService.create(eur.id!, incomeCat.id!, 100, new Date(), getCurrentPeriod());
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.conversion-warning .alert')).toBeNull();
+  });
+
+  it('completes yearly KPI sums from the stored exchange rate instead of warning', async () => {
+    const usd = await accountService.create('USD Account', 'USD', 0);
+    const incomeCat = await categoryService.create('Payroll', 'income');
+    const period = getCurrentPeriod();
+
+    // Stored at capture time: 100 USD at 1.08; base amount never persisted.
+    await transactionService.create(usd.id!, incomeCat.id!, 100, new Date(), period, 1.08, null);
+    mockRates(1.08);
+
+    await component.ngOnInit();
+
+    expect(component.yearTotalIncome()).toBe(108);
+    expect(component.conversionDegraded().unconvertedTransactions).toBe(false);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.conversion-warning .alert')).toBeNull();
+  });
+
+  it('completes category breakdown totals from the stored exchange rate', async () => {
+    const usd = await accountService.create('USD Account', 'USD', 0);
+    const food = await categoryService.create('Food', 'expense');
+    const period = getCurrentPeriod();
+
+    await transactionService.create(usd.id!, food.id!, 100, new Date(), period, 1.08, null);
+    mockRates(1.08);
+
+    await component.ngOnInit();
+
+    expect(component.categoryBreakdown()).toEqual([{ name: 'Food', total: 108 }]);
+  });
+
+  it('covers Period-end balances when the unconverted transaction predates the scope', async () => {
+    const usd = await accountService.create('USD Account', 'USD', 0);
+    const incomeCat = await categoryService.create('Payroll', 'income');
+
+    // Prior year: reaches the Period-end total (cumulative) but is outside
+    // the scope year, so only the at-or-before branch can flag it.
+    await transactionService.create(usd.id!, incomeCat.id!, 100, new Date(), 1, null, null, getCurrentYear() - 2);
+    mockRates(1.08);
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.conversion-warning .alert')).toBeTruthy();
+  });
+
+  it('produces one warning, not a stack, when accounts are dropped and conversions are missing', async () => {
+    const usd = await accountService.create('USD Account', 'USD', 50000);
+    const incomeCat = await categoryService.create('Payroll', 'income');
+    const period = getCurrentPeriod();
+
+    await transactionService.create(usd.id!, incomeCat.id!, 100, new Date(), period);
+    networkService.isOnline.set(false);
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const warnings = fixture.nativeElement.querySelectorAll('.conversion-warning');
+    expect(warnings.length).toBe(1);
+
+    const message = warnings[0].textContent;
+    expect(message).toContain('EUR');
+    expect(message).toContain('face amount');
+  });
+
+  it('renders the warning strip above the KPI row so it vouches for every figure', async () => {
+    const usd = await accountService.create('USD Account', 'USD', 50000);
+    networkService.isOnline.set(false);
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const dashboard = fixture.nativeElement.querySelector('.dashboard');
+    const children = Array.from(dashboard.children) as HTMLElement[];
+    const kpiIndex = children.findIndex(el => el.classList.contains('kpi-row'));
+    const warningIndex = children.findIndex(el => el.classList.contains('conversion-warning'));
+
+    expect(warningIndex).toBeGreaterThan(-1);
+    expect(kpiIndex).toBeGreaterThan(-1);
+    expect(warningIndex).toBeLessThan(kpiIndex);
   });
 });
 

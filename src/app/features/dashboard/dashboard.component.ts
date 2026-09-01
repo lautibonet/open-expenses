@@ -24,7 +24,16 @@ import { Transfer } from '../../core/models/transfer.model';
 import { Account } from '../../core/models/account.model';
 import { Category, isIncomeCategory } from '../../core/models/category.model';
 import { DismissibleAlertComponent } from '../../shared/components/dismissible-alert/dismissible-alert.component';
-import { periodEndBalance, periodEndBaseAmount } from '../../core/balances/period-end-balances';
+import {
+  ConversionDegradation,
+  noDegradation,
+  unconvertedTransactionsAffecting,
+} from '../../core/balances/conversion-degradation';
+import {
+  periodEndBalance,
+  periodEndBaseAmount,
+  storedBaseAmount,
+} from '../../core/balances/period-end-balances';
 
 @Component({
   selector: 'app-dashboard',
@@ -61,7 +70,7 @@ export class DashboardComponent implements OnInit {
   categoryBreakdown = signal<{ name: string; total: number }[]>([]);
   accountBalances = signal<{ account: Account; balance: number }[]>([]);
   totalBalanceBaseCurrency = signal(0);
-  conversionFailed = signal(false);
+  conversionDegraded = signal<ConversionDegradation>({ ...noDegradation });
 
   avgMonthlyIncome = signal(0);
   avgMonthlyExpenses = signal(0);
@@ -81,7 +90,7 @@ export class DashboardComponent implements OnInit {
   private reloadDataOnVersionChange = this.dataVersion.reloadOnChange(() => this.loadAll());
 
   async refresh(): Promise<void> {
-    this.conversionFailed.set(false);
+    this.conversionDegraded.set({ ...noDegradation });
     const txns = await this.transactionService.getByScope(this.scope());
     const transfers = await this.transferService.getByScope(this.scope());
 
@@ -92,13 +101,14 @@ export class DashboardComponent implements OnInit {
     const allCategories = await this.categoryService.getAll();
     this.categories.set(allCategories);
     const catMap = new Map(allCategories.map(c => [c.id!, c]));
+    const base = this.baseCurrency();
 
     let income = 0;
     let expenses = 0;
     const catTotals = new Map<number, number>();
 
     for (const t of txns) {
-      const amount = t.baseCurrencyAmount ?? t.amount;
+      const amount = storedBaseAmount(t);
       const cat = catMap.get(t.categoryId);
       if (isIncomeCategory(cat?.type)) {
         income += amount;
@@ -134,7 +144,16 @@ export class DashboardComponent implements OnInit {
     }
     this.accountBalances.set(balances);
 
-    const base = this.baseCurrency();
+    const unconverted = unconvertedTransactionsAffecting(
+      allTxns,
+      new Map(this.accounts().map(a => [a.id!, a])),
+      base,
+      scope,
+    );
+    if (unconverted.length > 0) {
+      this.conversionDegraded.update(d => ({ ...d, unconvertedTransactions: true }));
+    }
+
     const nonBaseCurrencies = [...new Set(
       balances
         .map(b => b.account.currency)
@@ -147,8 +166,7 @@ export class DashboardComponent implements OnInit {
     }
 
     if (!this.networkService.isOnline()) {
-      this.conversionFailed.set(true);
-      this.totalBalanceBaseCurrency.set(this.sumBalances(balances, base));
+      this.excludeForeignAccounts(balances, base);
       return;
     }
 
@@ -158,8 +176,7 @@ export class DashboardComponent implements OnInit {
         b => b.account.currency !== base && !rates.rates.has(b.account.currency),
       );
       if (missingRate) {
-        this.conversionFailed.set(true);
-        this.totalBalanceBaseCurrency.set(this.sumBalances(balances, base));
+        this.excludeForeignAccounts(balances, base);
         return;
       }
 
@@ -177,9 +194,18 @@ export class DashboardComponent implements OnInit {
       }
       this.totalBalanceBaseCurrency.set(Math.round(total * 100) / 100);
     } catch {
-      this.conversionFailed.set(true);
-      this.totalBalanceBaseCurrency.set(this.sumBalances(balances, base));
+      this.excludeForeignAccounts(balances, base);
     }
+  }
+
+  /* Foreign accounts whose Exchange Rate cannot be resolved are left out of
+     the total balance and surface the conversion warning. */
+  private excludeForeignAccounts(
+    balances: { account: Account; balance: number }[],
+    base: string,
+  ): void {
+    this.conversionDegraded.update(d => ({ ...d, accountsExcluded: true }));
+    this.totalBalanceBaseCurrency.set(this.sumBalances(balances, base));
   }
 
   async onScopeYearChange(value: number): Promise<void> {
@@ -233,6 +259,20 @@ export class DashboardComponent implements OnInit {
     return Math.round((total / max) * 10000) / 100;
   }
 
+  conversionWarningMessage(): string {
+    const degraded = this.conversionDegraded();
+    const parts: string[] = [];
+    if (degraded.accountsExcluded) {
+      parts.push(this.language.t('stats.conversionWarning', { currency: this.baseCurrency() }));
+    }
+    if (degraded.unconvertedTransactions) {
+      parts.push(
+        this.language.t('stats.conversionWarningUnconverted', { currency: this.baseCurrency() }),
+      );
+    }
+    return parts.join(' ');
+  }
+
   scopePeriod(): MonthNumber {
     return this.scope().period;
   }
@@ -277,7 +317,7 @@ export class DashboardComponent implements OnInit {
     let totalExpenses = 0;
 
     for (const t of filteredTxns) {
-      const amount = t.baseCurrencyAmount ?? t.amount;
+      const amount = storedBaseAmount(t);
       const cat = catMap.get(t.categoryId);
       if (isIncomeCategory(cat?.type)) {
         totalIncome += amount;

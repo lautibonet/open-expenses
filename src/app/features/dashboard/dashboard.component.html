@@ -31,6 +31,13 @@
     <span class="visually-hidden" aria-live="polite">{{ scopeAnnouncement() }}</span>
   </header>
 
+  <app-dismissible-alert
+    class="conversion-warning"
+    role="alert"
+    variant="error"
+    [message]="conversionWarningMessage()"
+  />
+
   <section class="kpi-row" [attr.aria-label]="language.t('stats.title')">
     <dl class="kpi-card kpi-income">
       <dt class="label">
@@ -92,13 +99,6 @@
       <span class="label">{{ language.t('stats.allAccounts', { currency: baseCurrency() }) }}</span>
       <span class="value">{{ formatMoney(totalBalanceBaseCurrency()) }}</span>
     </div>
-    <app-dismissible-alert
-      class="conversion-warning"
-      role="alert"
-      variant="error"
-      [message]="conversionFailed() ? language.t('stats.conversionWarning', { currency: baseCurrency() }) : ''"
-      [resetKey]="conversionFailed()"
-    />
   </section>
 
   <section class="card">
