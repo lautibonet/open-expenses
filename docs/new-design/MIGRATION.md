@@ -324,8 +324,10 @@ markup hooks, or translation keys changed anywhere in this phase — classes kep
 - Overlap audit: strips are in-flow (no fixed positioning), bottom nav z-30 < top bar z-40 <
   skip link z-50 < undo toast z-60, and the toast offsets by nav height + safe-area inset;
   safe-area insets respected on the nav bar, main area, and toast. Form grids, filter bar,
-  and step tabs collapse/stack at the 768px regime; the movements table scrolls horizontally
-  at 320px.
+  and step tabs collapse/stack at the 768px regime. The movements table scrolled horizontally
+  at 320px; it now stacks into one-thumb row cards below 480px instead (issue #97), with the
+  directional stripe moved to the row edge and 44px row-action touch targets on coarse
+  pointers.
 
 **Deviations from the plan:** none functional. The additions above (`%empty-state`
 dashed treatment, `--nav-bar-size` token, `dvh` viewport height, and the Quick Add compact
