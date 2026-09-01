@@ -154,6 +154,8 @@ The single sanctioned signal family — money out, destructive intent, and every
 
 **The Ledger Green Rule (D8 reversed, ADR 0011).** Income is green (#15803d), expense is Error red, transfers are neutral with a quiet grey stripe. Direction is carried by color *plus* the 4px directional stripes — green, red, grey — which are the movement type's only signal (the Type column was dropped, arrows with it). Green never touches interactive elements; blue never marks money direction.
 
+**The Negative-Stays-Ink Rule.** A sign never flips a color: negative figures render in On Surface ink, whatever the page. Derived figures — the Movements Net Flow net, the Stats Net and Avg Monthly Savings, the year-spine months — are information, not money moving, so they stay ink at every sign; a minus is a fact, not an alarm. Red marks movement direction (expense figures and expense stripes) and warnings only (error strips, destructive confirmations, an overdrawn account balance); green marks money in; grey carries no direction (ADR 0011).
+
 **The Hard Stroke Rule.** Cards and interactive controls are drawn with 1px solid On Surface; hairlines between rows and strips use Outline Variant. Tinted fills are limited to the primary-fixed wash and the error container — never as gratuitous cards.
 
 ## Typography
