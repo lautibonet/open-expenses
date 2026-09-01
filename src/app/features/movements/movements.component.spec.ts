@@ -12,7 +12,7 @@ import { Transaction } from '../../core/models/transaction.model';
 import { Transfer } from '../../core/models/transfer.model';
 import { CaptureFormService } from '../../core/services/capture-form.service';
 import { DataVersionService } from '../../core/services/data-version.service';
-import { MONTH_NAMES, defaultScope, getCurrentPeriod, getCurrentYear } from '../../core/types/period.type';
+import { MONTH_NAMES, MonthNumber, defaultScope, getCurrentPeriod, getCurrentYear } from '../../core/types/period.type';
 
 describe('MovementsComponent - filtering', () => {
   let fixture: ComponentFixture<MovementsComponent>;
@@ -2365,4 +2365,105 @@ describe('MovementsComponent - data version refresh', () => {
 
     expect(component.accounts().some((a) => a.name === 'Bank')).toBe(false);
   });
+});
+
+describe('MovementsComponent - async load gate', () => {
+  let fixture: ComponentFixture<MovementsComponent>;
+  let component: MovementsComponent;
+  let accountService: AccountService;
+  let categoryService: CategoryService;
+  let accountId: number;
+  let categoryId: number;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    await TestBed.configureTestingModule({
+      imports: [MovementsComponent],
+    }).compileComponents();
+
+    accountService = TestBed.inject(AccountService);
+    categoryService = TestBed.inject(CategoryService);
+
+    const account = await accountService.create('Cash', 'EUR', 100000);
+    accountId = account.id!;
+    const category = await categoryService.create('Food', 'expense');
+    categoryId = category.id!;
+
+    // Create the fixture only after seeding: in zoneless tests the initial
+    // change detection is scheduled and flushes on any await, so a fixture
+    // created before seeding would silently finish loading mid-test.
+    fixture = TestBed.createComponent(MovementsComponent);
+    component = fixture.componentInstance;
+  });
+
+  afterEach(async () => {
+    await db.delete();
+  });
+
+  it('first paint shows a busy loading region, never the empty state or net flow card', async () => {
+    fixture.detectChanges();
+    const el: HTMLElement = fixture.nativeElement;
+
+    const loadingRegion = el.querySelector('[aria-busy="true"]');
+    expect(loadingRegion).toBeTruthy();
+    expect(el.textContent).not.toContain('No movements for');
+    expect(el.querySelector('app-net-flow-card')).toBeNull();
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    expect(el.querySelector('[aria-busy="true"]')).toBeNull();
+  });
+
+  it('shows the empty state only once an empty scope has genuinely loaded', async () => {
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).not.toContain('No movements for');
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('No movements for');
+  });
+
+  it('renders the net flow card and rows once a populated scope has loaded', async () => {
+    await transactionServiceStub();
+
+    fixture = TestBed.createComponent(MovementsComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-net-flow-card .net-flow-card')).toBeNull();
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('app-net-flow-card .net-flow-card')).toBeTruthy();
+    expect(fixture.nativeElement.querySelectorAll('tbody tr').length).toBeGreaterThan(0);
+  });
+
+  it('re-enters the busy gate on scope change so the empty state never borrows the old scope', async () => {
+    fixture.detectChanges();
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const otherMonth = ((getCurrentPeriod() % 12) + 1) as MonthNumber;
+    const change = component.onScopeMonthChange(otherMonth);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[aria-busy="true"]')).toBeTruthy();
+    expect(fixture.nativeElement.textContent).not.toContain('No movements for');
+
+    await change;
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[aria-busy="true"]')).toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('No movements for');
+  });
+
+  async function transactionServiceStub(): Promise<void> {
+    const second = await accountService.create('Card', 'EUR', 50000);
+    const transactions = TestBed.inject(TransactionService);
+    const transfers = TestBed.inject(TransferService);
+    await transactions.create(accountId, categoryId, 500, new Date(), getCurrentPeriod());
+    await transfers.create(accountId, second.id!, 1000, new Date(), getCurrentPeriod());
+  }
 });

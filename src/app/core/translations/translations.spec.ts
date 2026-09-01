@@ -131,6 +131,7 @@ describe('translations', () => {
       'movements.title',
       'movements.subtitle',
       'movements.netFlow',
+      'movements.loading',
       'movements.flowIn',
       'movements.flowOut',
       'movements.addTransfer',
