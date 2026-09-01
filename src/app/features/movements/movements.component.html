@@ -297,7 +297,7 @@
                   <span class="visually-hidden">{{ kindLabel(item) }}</span>
                   {{ txn.date | date: 'mediumDate' }}
                 </td>
-                <td>
+                <td [attr.data-label]="language.t('movements.colCategoryTransfer')">
                   <span class="cat-chip">{{ getCategoryName(txn.categoryId) }}</span>
                   @if (txn.note) {
                     <div class="note">{{ txn.note }}</div>
@@ -309,7 +309,7 @@
                 >
                   {{ formatTransactionDisplayAmount(txn) }}
                 </td>
-                <td>{{ getAccountName(txn.accountId) }}</td>
+                <td [attr.data-label]="language.t('movements.colAccount')">{{ getAccountName(txn.accountId) }}</td>
                 <td class="actions-cell">
                   @if (confirmingDelete() === item) {
                     <span class="visually-hidden" aria-live="polite">
@@ -395,14 +395,14 @@
                   <span class="visually-hidden">{{ kindLabel(item) }}</span>
                   {{ tr.date | date: 'mediumDate' }}
                 </td>
-                <td>
+                <td [attr.data-label]="language.t('movements.colCategoryTransfer')">
                   {{ getAccountName(tr.sourceAccountId) }} →
                   {{ getAccountName(tr.destinationAccountId) }}
                 </td>
                 <td class="amount-cell">
                   {{ formatTransferDisplayAmount(tr) }}
                 </td>
-                <td>
+                <td [attr.data-label]="language.t('movements.note')">
                   @if (tr.note) {
                     <span class="note">{{ tr.note }}</span>
                   }

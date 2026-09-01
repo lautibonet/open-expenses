@@ -2852,3 +2852,111 @@ describe('MovementsComponent - capture form draft protection', () => {
     expect(fixture.nativeElement.querySelector('.form-card')).toBeNull();
   });
 });
+
+describe('MovementsComponent - mobile ledger layout', () => {
+  let fixture: ComponentFixture<MovementsComponent>;
+  let component: MovementsComponent;
+  let transactionService: TransactionService;
+  let transferService: TransferService;
+  let accountService: AccountService;
+  let categoryService: CategoryService;
+  let accountId: number;
+  let incomeCategoryId: number;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    await TestBed.configureTestingModule({
+      imports: [MovementsComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(MovementsComponent);
+    component = fixture.componentInstance;
+    transactionService = TestBed.inject(TransactionService);
+    transferService = TestBed.inject(TransferService);
+    accountService = TestBed.inject(AccountService);
+    categoryService = TestBed.inject(CategoryService);
+
+    const acc = await accountService.create('Cash', 'EUR', 100000);
+    accountId = acc.id!;
+    const incomeCat = await categoryService.create('Payroll', 'income');
+    incomeCategoryId = incomeCat.id!;
+  });
+
+  afterEach(async () => {
+    await db.delete();
+  });
+
+  function compiledComponentCss(): string {
+    return Array.from(document.querySelectorAll('style'))
+      .map(s => s.textContent ?? '')
+      .join('\n');
+  }
+
+  async function seedOneTransactionAndOneTransfer(): Promise<void> {
+    const period = getCurrentPeriod();
+    await transactionService.create(accountId, incomeCategoryId, 3000, new Date(), period);
+    const savings = await accountService.create('Savings', 'EUR', 50000);
+    await transferService.create(accountId, savings.id!, 100, new Date(), period, 'savings');
+    await component.ngOnInit();
+    fixture.detectChanges();
+  }
+
+  // jsdom does no layout, so "Edit/Delete are reachable at 375px" can't be
+  // asserted geometrically; the stacked-layout declarations in the compiled
+  // stylesheet are the seam (same approach as the dashboard KPI row spec).
+  it('stacks every row into a one-thumb card below 480px and hides the header row', async () => {
+    await seedOneTransactionAndOneTransfer();
+
+    const css = compiledComponentCss();
+    expect(css).toMatch(
+      /@media \(max-width: 480px\)\s*\{[\s\S]*?thead[^{]*\{[^}]*display:\s*none/,
+    );
+    expect(css).toMatch(
+      /@media \(max-width: 480px\)[\s\S]*?grid-template-areas:\s*['"]date\s+amount['"]/,
+    );
+  });
+
+  it('moves the directional stripe to the row edge and keeps the transfer tint below 480px', async () => {
+    await seedOneTransactionAndOneTransfer();
+
+    // Compiled component CSS carries [_ngcontent-*] scoping attributes
+    // between compound selectors, hence the [^{]* gaps.
+    const css = compiledComponentCss();
+    expect(css).toMatch(
+      /@media \(max-width: 480px\)[\s\S]*?tbody[^{]*tr\.row-income[^{]*\{[^}]*border-left:\s*var\(--stripe-income\)/,
+    );
+    expect(css).toMatch(
+      /@media \(max-width: 480px\)[\s\S]*?tbody[^{]*tr\.row-expense[^{]*\{[^}]*border-left:\s*var\(--stripe-expense\)/,
+    );
+    expect(css).toMatch(
+      /@media \(max-width: 480px\)[\s\S]*?tbody[^{]*tr\.transfer-row[^{]*\{[^}]*border-left:\s*var\(--stripe-transfer\)/,
+    );
+    expect(css).toMatch(
+      /@media \(max-width: 480px\)[\s\S]*?tbody[^{]*tr\.transfer-row[^{]*\{[^}]*background:\s*var\(--background\)/,
+    );
+  });
+
+  it('gives the icon row actions a 44px touch target on coarse pointers', async () => {
+    await seedOneTransactionAndOneTransfer();
+
+    const css = compiledComponentCss();
+    expect(css).toMatch(
+      /@media[^{]*pointer:\s*coarse[^{]*\{[\s\S]*?width:\s*2\.75rem/,
+    );
+  });
+
+  it('labels the ambiguous stacked cells so the headerless rows stay self-describing', async () => {
+    await seedOneTransactionAndOneTransfer();
+
+    const transactionCells = fixture.nativeElement.querySelector('tr.row-income')
+      .querySelectorAll('td');
+    expect(transactionCells[1].getAttribute('data-label')).toBe('Category / Transfer');
+    expect(transactionCells[3].getAttribute('data-label')).toBe('Account');
+
+    const transferCells = fixture.nativeElement.querySelector('tr.transfer-row')
+      .querySelectorAll('td');
+    expect(transferCells[1].getAttribute('data-label')).toBe('Category / Transfer');
+    expect(transferCells[3].getAttribute('data-label')).toBe('Note');
+  });
+});

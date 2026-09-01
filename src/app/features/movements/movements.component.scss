@@ -364,3 +364,119 @@
     bottom: calc(var(--nav-bar-size) + env(safe-area-inset-bottom, 0px) + 0.5rem);
   }
 }
+
+/* Narrow-screen ledger (issue #97): at phone widths the five columns with
+   nowrap mono amounts push Edit/Delete into horizontal scroll, so below 480px
+   each row stacks into a one-thumb card instead of scrolling sideways. The
+   ledger grammar survives: the 4px directional stripe moves from the first
+   cell to the row edge, amounts stay right-aligned mono tabular figures, and
+   transfer rows keep their grey tint. Header cells can't label a stacked row,
+   so the ambiguous cells self-label via data-label rendered as a caps label. */
+@media (max-width: 480px) {
+  .movement-table {
+    table,
+    tbody {
+      display: block;
+    }
+
+    thead {
+      display: none;
+    }
+
+    tbody tr {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-areas:
+        'date amount'
+        'category category'
+        'account account'
+        'actions actions';
+      align-items: baseline;
+      gap: var(--space-xs) var(--space-md);
+      padding: var(--space-sm) var(--space-md);
+      border-bottom: 1px solid var(--surface-container-low);
+    }
+
+    tbody tr:last-child {
+      border-bottom: none;
+    }
+
+    td {
+      display: block;
+      min-width: 0;
+      padding: 0;
+      border-bottom: none;
+      overflow-wrap: break-word;
+    }
+
+    /* The stripe lives on the row edge now; the per-cell borders go. */
+    tbody td:first-child,
+    tbody tr.row-income td:first-child,
+    tbody tr.row-expense td:first-child,
+    tbody tr.transfer-row td:first-child {
+      border-left: none;
+    }
+
+    tbody tr.row-income {
+      border-left: var(--stripe-income);
+    }
+
+    tbody tr.row-expense {
+      border-left: var(--stripe-expense);
+    }
+
+    tbody tr.transfer-row {
+      border-left: var(--stripe-transfer);
+      background: var(--background);
+    }
+
+    td:nth-child(1) {
+      grid-area: date;
+    }
+
+    td:nth-child(2) {
+      grid-area: category;
+    }
+
+    td:nth-child(3) {
+      grid-area: amount;
+    }
+
+    td:nth-child(4) {
+      grid-area: account;
+    }
+
+    td:nth-child(5) {
+      grid-area: actions;
+      text-align: right;
+    }
+
+    td[data-label]::before {
+      /* Mirrors %caps-label-muted: @extend cannot cross a media-query
+         boundary, so the declarations are repeated here. */
+      content: attr(data-label);
+      display: block;
+      margin-bottom: var(--space-xs);
+      font-size: var(--type-label);
+      font-weight: 700;
+      letter-spacing: var(--tracking-caps);
+      text-transform: uppercase;
+      line-height: var(--leading-label);
+      color: var(--on-surface-variant);
+    }
+  }
+}
+
+/* Comfortable touch targets for the icon-only row actions: 44px square on
+   any coarse pointer and at narrow widths, up from the 28px desktop size. */
+@media (pointer: coarse), (max-width: 480px) {
+  .movement-table .icon-btn {
+    width: 2.75rem;
+    height: 2.75rem;
+
+    svg {
+      width: 1.25rem;
+      height: 1.25rem;
+    }
+  }
+}
