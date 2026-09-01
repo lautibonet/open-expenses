@@ -74,6 +74,36 @@
     </dl>
   </section>
 
+  <section class="card net-strip-card">
+    <h2>{{ language.t('stats.netByPeriod', { scope: scopeLabelText() }) }}</h2>
+    @if (yearHasData()) {
+      <div class="net-strip" aria-hidden="true">
+        @for (item of yearNets(); track item.period) {
+          <div class="net-strip-month" [class.current]="item.period === scope().period">
+            <div class="net-track">
+              @if (item.net > 0) {
+                <div class="net-fill up" [style.height.%]="periodFillHeight(item.net)"></div>
+              } @else if (item.net < 0) {
+                <div class="net-fill down" [style.height.%]="periodFillHeight(item.net)"></div>
+              }
+            </div>
+            <span class="net-initial">{{ language.monthInitial(item.period) }}</span>
+          </div>
+        }
+      </div>
+      <ul class="net-strip-figures visually-hidden">
+        @for (item of yearNets(); track item.period) {
+          <li>
+            {{ language.monthName(item.period) }} {{ scope().year }}:
+            {{ formatMoney(item.net) }}
+          </li>
+        }
+      </ul>
+    } @else {
+      <p class="net-strip-zero">{{ language.t('stats.netStripZero', { year: scope().year }) }}</p>
+    }
+  </section>
+
   @if (categoryBreakdown().length > 0) {
     <section class="card">
       <h2>{{ language.t('stats.expensesByCategory', { scope: scopeLabelText() }) }}</h2>

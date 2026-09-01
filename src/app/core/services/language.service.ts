@@ -53,6 +53,10 @@ export class LanguageService {
     return this.t(`month.${period}`);
   }
 
+  monthInitial(period: number): string {
+    return this.monthName(period).charAt(0).toLocaleUpperCase(this.activeLanguage());
+  }
+
   periodLabel(period: number | string): string {
     return isMonthNumber(period) ? this.monthName(period) : String(period);
   }

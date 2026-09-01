@@ -34,6 +34,7 @@ import {
   periodEndBaseAmount,
   storedBaseAmount,
 } from '../../core/balances/period-end-balances';
+import { PeriodNet, netByPeriod } from '../../core/stats/year-nets';
 
 @Component({
   selector: 'app-dashboard',
@@ -75,6 +76,7 @@ export class DashboardComponent implements OnInit {
   avgMonthlyIncome = signal(0);
   avgMonthlyExpenses = signal(0);
   avgMonthlyNet = signal(0);
+  yearNets = signal<PeriodNet[]>([]);
 
   async ngOnInit(): Promise<void> {
     await this.loadAll();
@@ -127,7 +129,7 @@ export class DashboardComponent implements OnInit {
     }
     this.categoryBreakdown.set(breakdown.sort((a, b) => b.total - a.total));
 
-    const isIncome = (t: Transaction) => isIncomeCategory(catMap.get(t.categoryId)?.type);
+    const isIncome = this.incomeClassifier(catMap);
     const [allTxns, allTransfers] = await Promise.all([
       this.transactionService.getAll(),
       this.transferService.getAll(),
@@ -281,6 +283,12 @@ export class DashboardComponent implements OnInit {
     return this.scope().year;
   }
 
+  private incomeClassifier(
+    catMap: Map<number, Category>,
+  ): (transaction: Transaction) => boolean {
+    return (t: Transaction) => isIncomeCategory(catMap.get(t.categoryId)?.type);
+  }
+
   private sumBalances(
     balances: { account: Account; balance: number }[],
     currency?: string,
@@ -310,6 +318,7 @@ export class DashboardComponent implements OnInit {
       this.avgMonthlyIncome.set(0);
       this.avgMonthlyExpenses.set(0);
       this.avgMonthlyNet.set(0);
+      this.yearNets.set([]);
       return;
     }
 
@@ -334,6 +343,17 @@ export class DashboardComponent implements OnInit {
     this.avgMonthlyIncome.set(Math.round(totalIncome / months * 100) / 100);
     this.avgMonthlyExpenses.set(Math.round(totalExpenses / months * 100) / 100);
     this.avgMonthlyNet.set(Math.round((totalIncome - totalExpenses) / months * 100) / 100);
+
+    this.yearNets.set(netByPeriod(allTxns, this.incomeClassifier(catMap), scope.year));
+  }
+
+  /* Bars scale against the year's max Net magnitude; the fill reaches at most
+     half the track so positive Net can grow up and negative Net down from the
+     same baseline. */
+  periodFillHeight(net: number): number {
+    const max = Math.max(...this.yearNets().map(n => Math.abs(n.net)), 0);
+    if (max <= 0) return 0;
+    return Math.round((Math.abs(net) / max) * 50 * 100) / 100;
   }
 
   formatMoney(amount: number): string {

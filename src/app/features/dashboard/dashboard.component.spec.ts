@@ -1106,6 +1106,197 @@ describe('DashboardComponent - KPI row layout and mono weights', () => {
   });
 });
 
+describe('DashboardComponent - year spine (12-month Net strip)', () => {
+  let fixture: ComponentFixture<DashboardComponent>;
+  let component: DashboardComponent;
+  let accountService: AccountService;
+  let categoryService: CategoryService;
+  let transactionService: TransactionService;
+  let languageService: LanguageService;
+
+  beforeEach(async () => {
+    await resetDb();
+    await TestBed.configureTestingModule({
+      imports: [DashboardComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(DashboardComponent);
+    component = fixture.componentInstance;
+    accountService = TestBed.inject(AccountService);
+    categoryService = TestBed.inject(CategoryService);
+    transactionService = TestBed.inject(TransactionService);
+    languageService = TestBed.inject(LanguageService);
+  });
+
+  afterEach(async () => {
+    await new Promise<void>(resolve => setTimeout(resolve, 10));
+    await resetDb();
+  });
+
+  function compiledComponentCss(): string {
+    return Array.from(document.querySelectorAll('style'))
+      .map(s => s.textContent ?? '')
+      .join('\n');
+  }
+
+  async function seedMovement(period: number, amount = 3000): Promise<void> {
+    const acc = await accountService.create('Cash', 'EUR', 0);
+    const incomeCat = await categoryService.create('Payroll', 'income');
+    await transactionService.create(
+      acc.id!, incomeCat.id!, amount, new Date(), period, null, null, getCurrentYear(),
+    );
+  }
+
+  it('renders one track for each of the 12 Periods of the scope year', async () => {
+    await seedMovement(getCurrentPeriod());
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const months = fixture.nativeElement.querySelectorAll('.net-strip .net-strip-month');
+    expect(months.length).toBe(12);
+  });
+
+  it('scales both fills against the year max magnitude, positive up and negative down', async () => {
+    const acc = await accountService.create('Cash', 'EUR', 0);
+    const incomeCat = await categoryService.create('Payroll', 'income');
+    const expenseCat = await categoryService.create('Food', 'expense');
+    const year = getCurrentYear();
+
+    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(`${year}-01-15`), 1, null, null, year);
+    await transactionService.create(acc.id!, expenseCat.id!, 1500, new Date(`${year}-02-15`), 2, null, null, year);
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const january = fixture.nativeElement.querySelector('.net-strip-month:nth-child(1)');
+    const janFill = january.querySelector('.net-fill.up');
+    expect(janFill).toBeTruthy();
+    expect(janFill.style.height).toBe('50%');
+
+    const february = fixture.nativeElement.querySelector('.net-strip-month:nth-child(2)');
+    const febFill = february.querySelector('.net-fill.down');
+    expect(febFill).toBeTruthy();
+    expect(febFill.style.height).toBe('25%');
+  });
+
+  it('leaves zero-Net Periods visible as empty tracks', async () => {
+    const acc = await accountService.create('Cash', 'EUR', 0);
+    const incomeCat = await categoryService.create('Payroll', 'income');
+    const year = getCurrentYear();
+
+    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(`${year}-01-15`), 1, null, null, year);
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const emptyTrack = fixture.nativeElement.querySelector(
+      '.net-strip-month:nth-child(7) .net-track',
+    );
+    expect(emptyTrack).toBeTruthy();
+    expect(emptyTrack.querySelector('.net-fill')).toBeNull();
+  });
+
+  it('keeps negative Periods in ink — the strip never reaches for the error ramp', async () => {
+    await seedMovement(getCurrentPeriod());
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const css = compiledComponentCss();
+    expect(css).toMatch(/\.net-fill[^{]*\{[^}]*background:\s*var\(--on-surface\)/);
+
+    const stripRules = css.match(/\.net-strip[^{]*\{[^}]*\}/g)?.join('\n') ?? '';
+    expect(stripRules).not.toContain('--error');
+  });
+
+  it('marks the scope Period as the current one', async () => {
+    await seedMovement(getCurrentPeriod());
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const currentPeriod = getCurrentPeriod();
+    const current = fixture.nativeElement.querySelector(
+      `.net-strip .net-strip-month:nth-child(${currentPeriod})`,
+    );
+    expect(current.classList).toContain('current');
+
+    const others = fixture.nativeElement.querySelectorAll(
+      '.net-strip .net-strip-month:not(:nth-child(' + currentPeriod + '))',
+    );
+    for (const other of others) {
+      expect(other.classList).not.toContain('current');
+    }
+  });
+
+  it('shows the strip zero state, not an empty block, when the scope year has no movements', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.net-strip')).toBeNull();
+    const zero = fixture.nativeElement.querySelector('.net-strip-zero');
+    expect(zero).toBeTruthy();
+    expect(zero.textContent).toContain(String(getCurrentYear()));
+  });
+
+  it('announces month + Net per Period in an accessible equivalent', async () => {
+    const acc = await accountService.create('Cash', 'EUR', 0);
+    const incomeCat = await categoryService.create('Payroll', 'income');
+    const expenseCat = await categoryService.create('Food', 'expense');
+    const year = getCurrentYear();
+
+    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(`${year}-01-15`), 1, null, null, year);
+    await transactionService.create(acc.id!, expenseCat.id!, 500, new Date(`${year}-02-15`), 2, null, null, year);
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const list = fixture.nativeElement.querySelector('.net-strip-figures');
+    expect(list).toBeTruthy();
+    expect(list.classList).toContain('visually-hidden');
+
+    const items = Array.from(list.querySelectorAll('li') as NodeListOf<HTMLLIElement>);
+    expect(items.length).toBe(12);
+    expect(items[0].textContent).toContain('January');
+    expect(items[0].textContent).toContain(component.formatMoney(3000));
+    expect(items[1].textContent).toContain('February');
+    expect(items[1].textContent).toContain(component.formatMoney(-500));
+  });
+
+  it('takes month initials from the Language service, correct in both Languages', async () => {
+    await seedMovement(getCurrentPeriod());
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    let initials = Array.from(
+      fixture.nativeElement.querySelectorAll('.net-strip .net-initial') as NodeListOf<HTMLElement>,
+    ).map(el => el.textContent?.trim());
+    expect(initials).toEqual(['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D']);
+
+    await languageService.setLanguage('es');
+    fixture.detectChanges();
+
+    initials = Array.from(
+      fixture.nativeElement.querySelectorAll('.net-strip .net-initial') as NodeListOf<HTMLElement>,
+    ).map(el => el.textContent?.trim());
+    expect(initials).toEqual(['E', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D']);
+  });
+
+  it('follows the scope year when the Scope changes', async () => {
+    const acc = await accountService.create('Cash', 'EUR', 0);
+    const incomeCat = await categoryService.create('Payroll', 'income');
+    const year = getCurrentYear();
+
+    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(`${year}-01-15`), 1, null, null, year);
+    await transactionService.create(acc.id!, incomeCat.id!, 4000, new Date('2012-03-15'), 3, null, null, 2012);
+
+    await component.ngOnInit();
+    await component.onScopeYearChange(2012);
+    await component.onScopeMonthChange(3);
+
+    expect(component.yearNets().find(n => n.period === 3)!.net).toBe(4000);
+    expect(component.yearNets().find(n => n.period === 1)!.net).toBe(0);
+  });
+});
+
 describe('DashboardComponent - conversion degradation warnings', () => {
   let fixture: ComponentFixture<DashboardComponent>;
   let component: DashboardComponent;
