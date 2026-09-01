@@ -141,6 +141,22 @@ export class MovementsComponent implements OnInit, OnDestroy {
     return !this.transferSaving();
   });
 
+  transferDisabledReason = computed(() => {
+    if (this.transferSaving()) return '';
+    const f = this.trForm();
+    if (!f.sourceAccountId || !f.destAccountId) {
+      return this.language.t('movements.saveDisabled.accounts');
+    }
+    if (f.sourceAccountId === f.destAccountId) {
+      return this.language.t('movements.saveDisabled.distinct');
+    }
+    if (!(f.sourceAmount > 0)) return this.language.t('movements.saveDisabled.amount');
+    if (this.isTransferForeignCurrency() && this.transferExchangeRateState().loading) {
+      return this.language.t('movements.saveDisabled.rate');
+    }
+    return '';
+  });
+
   filteredDestinationAccounts = computed(() => {
     const sourceId = this.trForm().sourceAccountId;
     if (!sourceId) return this.accounts();
@@ -156,6 +172,12 @@ export class MovementsComponent implements OnInit, OnDestroy {
 
   onDocKeydown(e: KeyboardEvent): void {
     if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return;
+    // Escape must reach the handler even from inside the capture form's
+    // inputs — closing the open form is the point of the shortcut.
+    if (e.key === 'Escape') {
+      this.closeOpenCaptureForm();
+      return;
+    }
     const target = e.target as HTMLElement | null;
     if (
       target &&
@@ -167,9 +189,17 @@ export class MovementsComponent implements OnInit, OnDestroy {
       return;
     }
     if (e.key === 't' || e.key === 'T') {
-      this.openTransferForm();
+      this.toggleTransferForm();
     } else if (e.key === 'n' || e.key === 'N') {
-      this.openQuickAdd();
+      this.toggleQuickAdd();
+    }
+  }
+
+  private closeOpenCaptureForm(): void {
+    if (this.showForm() === 'transaction') {
+      this.toggleQuickAdd();
+    } else if (this.showForm() === 'transfer') {
+      this.toggleTransferForm();
     }
   }
   transferHeading = viewChild<ElementRef<HTMLHeadingElement>>('transferHeading');
@@ -196,11 +226,11 @@ export class MovementsComponent implements OnInit, OnDestroy {
   private openOnCaptureRequest = effect(() => {
     if (this.captureFormService.pendingQuickAddRequests() > 0) {
       this.captureFormService.consumeQuickAddRequests();
-      this.openQuickAdd();
+      this.toggleQuickAdd();
     }
     if (this.captureFormService.pendingTransferRequests() > 0) {
       this.captureFormService.consumeTransferRequests();
-      this.openTransferForm();
+      this.toggleTransferForm();
     }
   });
 

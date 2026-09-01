@@ -44,6 +44,7 @@ describe('translations', () => {
       'shell.settings',
       'shell.storageStatus',
       'shell.quickAdd',
+      'shell.quickAddShortcut',
     ]) {
       expect(TRANSLATIONS.en[key]).toBeTruthy();
       expect(TRANSLATIONS.es[key]).toBeTruthy();
@@ -137,6 +138,12 @@ describe('translations', () => {
       'movements.addTransfer',
       'movements.newTransaction',
       'movements.transferShortcut',
+      'movements.newTransactionShortcut',
+      'movements.saveDisabled.accounts',
+      'movements.saveDisabled.distinct',
+      'movements.saveDisabled.amount',
+      'movements.saveDisabled.rate',
+      'movements.shortcutsHint',
       'movements.sortNewest',
       'movements.sortOldest',
       'movements.editTransferTitle',
@@ -226,6 +233,10 @@ describe('translations', () => {
       'quickAdd.suggestedRate',
       'quickAdd.cancel',
       'quickAdd.save',
+      'quickAdd.saveDisabled.account',
+      'quickAdd.saveDisabled.category',
+      'quickAdd.saveDisabled.amount',
+      'quickAdd.saveDisabled.rate',
       'quickAdd.announcement.saved',
       'quickAdd.announcement.updated',
       'quickAdd.error.offlineRate',

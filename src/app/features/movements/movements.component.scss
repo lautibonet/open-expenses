@@ -107,8 +107,22 @@
 
 .form-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-sm);
   margin-top: var(--space-md);
+}
+
+/* Inline reason next to the disabled Save button (issue #98). */
+.save-hint {
+  @extend %save-hint;
+}
+
+/* Visible keyboard-shortcut documentation for the capture triggers (#98). */
+.shortcut-hint {
+  @extend %caps-label-muted;
+
+  margin-left: auto;
+  text-align: right;
 }
 
 .filter-bar {
@@ -428,6 +442,20 @@
     tbody tr.transfer-row {
       border-left: var(--stripe-transfer);
       background: var(--background);
+    }
+
+    /* Transfer rows merge the note into the route cell (issue #98), so they
+       carry four cells instead of five and skip the account area. */
+    tbody tr.transfer-row {
+      grid-template-areas:
+        'date amount'
+        'category category'
+        'actions actions';
+    }
+
+    tbody tr.transfer-row td:nth-child(4) {
+      grid-area: actions;
+      text-align: right;
     }
 
     td:nth-child(1) {

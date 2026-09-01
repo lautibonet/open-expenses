@@ -2951,12 +2951,307 @@ describe('MovementsComponent - mobile ledger layout', () => {
 
     const transactionCells = fixture.nativeElement.querySelector('tr.row-income')
       .querySelectorAll('td');
-    expect(transactionCells[1].getAttribute('data-label')).toBe('Category / Transfer');
+    expect(transactionCells[1].getAttribute('data-label')).toBe('Category / Accounts');
     expect(transactionCells[3].getAttribute('data-label')).toBe('Account');
+
+    // Transfer rows merge the note into the same slot as transactions (#98),
+    // so they carry one cell fewer than the five-column header grammar.
+    const transferCells = fixture.nativeElement.querySelector('tr.transfer-row')
+      .querySelectorAll('td');
+    expect(transferCells.length).toBe(4);
+    expect(transferCells[1].getAttribute('data-label')).toBe('Category / Accounts');
+    expect(transferCells[1].textContent).toContain('savings');
+  });
+});
+
+describe('MovementsComponent - capture-form consistency', () => {
+  let fixture: ComponentFixture<MovementsComponent>;
+  let component: MovementsComponent;
+  let transactionService: TransactionService;
+  let transferService: TransferService;
+  let accountService: AccountService;
+  let categoryService: CategoryService;
+  let eurAccountId: number;
+  let eurAccountId2: number;
+  let usdAccountId: number;
+  let categoryId: number;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+
+    const mockExchangeRateService = {
+      getRate: vi
+        .fn()
+        .mockResolvedValue({ rate: 1.08, from: 'USD', to: 'EUR', date: '2026-08-26' }),
+    };
+
+    await TestBed.configureTestingModule({
+      imports: [MovementsComponent],
+      providers: [{ provide: ExchangeRateService, useValue: mockExchangeRateService }],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(MovementsComponent);
+    component = fixture.componentInstance;
+    transactionService = TestBed.inject(TransactionService);
+    transferService = TestBed.inject(TransferService);
+    accountService = TestBed.inject(AccountService);
+    categoryService = TestBed.inject(CategoryService);
+
+    const acc1 = await accountService.create('Cash', 'EUR', 100000);
+    eurAccountId = acc1.id!;
+    const acc2 = await accountService.create('Card', 'EUR', 50000);
+    eurAccountId2 = acc2.id!;
+    const acc3 = await accountService.create('Dollars', 'USD', 1000);
+    usdAccountId = acc3.id!;
+    const cat = await categoryService.create('Payroll', 'income');
+    categoryId = cat.id!;
+  });
+
+  afterEach(async () => {
+    await db.delete();
+  });
+
+  function controlsButton(label: string): HTMLButtonElement {
+    return (
+      Array.from(fixture.nativeElement.querySelectorAll('.controls button')) as HTMLButtonElement[]
+    ).find((b) => b.textContent!.trim() === label)!;
+  }
+
+  function quickAddButton(): HTMLButtonElement {
+    return controlsButton('+ Transaction');
+  }
+
+  function transferButton(): HTMLButtonElement {
+    return controlsButton('+ Transfer');
+  }
+
+  function saveHint(): HTMLElement | null {
+    return fixture.nativeElement.querySelector('.save-hint');
+  }
+
+  async function seedNotedRows(): Promise<void> {
+    const period = getCurrentPeriod();
+    await transactionService.create(
+      eurAccountId, categoryId, 3000, new Date(), period, null, null, undefined, 'groceries',
+    );
+    await transferService.create(eurAccountId, eurAccountId2, 100, new Date(), period, 'savings');
+    await component.ngOnInit();
+    fixture.detectChanges();
+  }
+
+  it('renders the transfer note in the same slot as the transaction note', async () => {
+    await seedNotedRows();
+
+    const transactionCells = fixture.nativeElement.querySelector('tr.row-income')
+      .querySelectorAll('td');
+    expect(transactionCells[1].textContent).toContain('groceries');
+    expect(transactionCells[1].querySelector('.note')).toBeTruthy();
+
+    // Same slot: the note lives under the route in the second column, not in
+    // its own cell (it used to land under the Account header on desktop).
+    const transferCells = fixture.nativeElement.querySelector('tr.transfer-row')
+      .querySelectorAll('td');
+    expect(transferCells.length).toBe(4);
+    expect(transferCells[1].querySelector('.note')!.textContent).toContain('savings');
+    // The actions cell spans the freed account column so the row still
+    // aligns with the five-column header grammar.
+    expect(transferCells[3].getAttribute('colspan')).toBe('2');
+  });
+
+  it('labels the note column honestly for both row kinds', async () => {
+    await seedNotedRows();
+
+    const headerCells = fixture.nativeElement.querySelectorAll('thead th');
+    expect(headerCells[1].textContent.trim()).toBe('Category / Accounts');
+
+    const transactionCells = fixture.nativeElement.querySelector('tr.row-income')
+      .querySelectorAll('td');
+    expect(transactionCells[1].getAttribute('data-label')).toBe('Category / Accounts');
 
     const transferCells = fixture.nativeElement.querySelector('tr.transfer-row')
       .querySelectorAll('td');
-    expect(transferCells[1].getAttribute('data-label')).toBe('Category / Transfer');
-    expect(transferCells[3].getAttribute('data-label')).toBe('Note');
+    expect(transferCells[1].getAttribute('data-label')).toBe('Category / Accounts');
+  });
+
+  it('renders the transfer destination amount readonly like the Quick Add equivalent', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    component.openTransferForm();
+    component.trForm.update((f) => ({
+      ...f,
+      sourceAccountId: usdAccountId,
+      destAccountId: eurAccountId,
+      sourceAmount: 250,
+      date: '2026-08-20',
+    }));
+    await component.onTransferSourceChange(usdAccountId);
+    fixture.detectChanges();
+
+    expect(component.trForm().exchangeRate).toBe(1.08);
+    expect(component.trForm().destinationAmount).toBe(270);
+
+    const destInput = fixture.nativeElement.querySelector(
+      '.exchange-rate-grid input.readonly',
+    ) as HTMLInputElement;
+    // NgModel defers the model→view write to a microtask.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(destInput).toBeTruthy();
+    expect(destInput.readOnly).toBe(true);
+    expect(destInput.value).toBe('270');
+  });
+
+  it('states why the transfer save button is disabled next to the button', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    component.openTransferForm();
+    fixture.detectChanges();
+
+    expect(component.canSubmitTransfer()).toBe(false);
+    expect(saveHint()?.textContent).toContain('Enter an amount greater than zero.');
+
+    component.trForm.update((f) => ({ ...f, sourceAmount: 100 }));
+    fixture.detectChanges();
+
+    expect(saveHint()).toBeNull();
+    expect(component.canSubmitTransfer()).toBe(true);
+  });
+
+  it('states why the quick add save button is disabled next to the button', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    component.toggleQuickAdd();
+    fixture.detectChanges();
+
+    const card = component.quickAddCard()!;
+    expect(card.canSubmit()).toBe(false);
+    expect(saveHint()?.textContent).toContain('Enter an amount greater than zero.');
+
+    card.form.update((f) => ({ ...f, amount: 25 }));
+    fixture.detectChanges();
+
+    expect(saveHint()).toBeNull();
+  });
+
+  it('names the two-accounts reason when the transfer route is incomplete', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    component.openTransferForm();
+    // Changing the source to the current destination zeroes the destination,
+    // leaving the route incomplete.
+    component.onTransferSourceChange(eurAccountId2);
+    fixture.detectChanges();
+
+    expect(saveHint()?.textContent).toContain('Choose two accounts.');
+  });
+
+  it('toggles the quick add form with the n key', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    component.onDocKeydown(new KeyboardEvent('keydown', { key: 'n' }));
+    expect(component.showForm()).toBe('transaction');
+
+    component.onDocKeydown(new KeyboardEvent('keydown', { key: 'n' }));
+    expect(component.showForm()).toBe('none');
+  });
+
+  it('toggles the transfer form with the t key', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    component.onDocKeydown(new KeyboardEvent('keydown', { key: 't' }));
+    expect(component.showForm()).toBe('transfer');
+
+    component.onDocKeydown(new KeyboardEvent('keydown', { key: 't' }));
+    expect(component.showForm()).toBe('none');
+  });
+
+  it('closes the open capture form with Escape', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    component.openQuickAdd();
+    component.onDocKeydown(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(component.showForm()).toBe('none');
+
+    component.openTransferForm();
+    component.onDocKeydown(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(component.showForm()).toBe('none');
+
+    component.onDocKeydown(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(component.showForm()).toBe('none');
+  });
+
+  it('keeps typed input when Escape closes the quick add form', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    component.toggleQuickAdd();
+    fixture.detectChanges();
+    component.quickAddCard()!.form.update((f) => ({ ...f, amount: 42, note: 'cinema tickets' }));
+
+    component.onDocKeydown(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(component.showForm()).toBe('none');
+
+    component.toggleQuickAdd();
+    fixture.detectChanges();
+
+    expect(component.quickAddCard()!.form().amount).toBe(42);
+    expect(component.quickAddCard()!.form().note).toBe('cinema tickets');
+  });
+
+  it('keeps typed transfer input when Escape closes the transfer form', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    component.openTransferForm();
+    component.trForm.update((f) => ({ ...f, sourceAmount: 250, note: 'rent split' }));
+
+    component.onDocKeydown(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(component.showForm()).toBe('none');
+
+    component.openTransferForm();
+
+    expect(component.trForm().sourceAmount).toBe(250);
+    expect(component.trForm().note).toBe('rent split');
+  });
+
+  it('toggles the capture form when the sidebar Quick Add action requests it', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+    const captureFormService = TestBed.inject(CaptureFormService);
+
+    captureFormService.requestQuickAdd();
+    fixture.detectChanges();
+    expect(component.showForm()).toBe('transaction');
+
+    captureFormService.requestQuickAdd();
+    fixture.detectChanges();
+    expect(component.showForm()).toBe('none');
+  });
+
+  it('documents the capture shortcuts on the trigger buttons', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    expect(quickAddButton().getAttribute('title')).toBe('Shortcut: N');
+    expect(quickAddButton().getAttribute('aria-keyshortcuts')).toBe('n');
+    expect(transferButton().getAttribute('title')).toBe('Shortcut: T');
+    expect(transferButton().getAttribute('aria-keyshortcuts')).toBe('t');
+  });
+
+  it('shows the capture shortcuts visibly in the controls row', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const hint = fixture.nativeElement.querySelector('.shortcut-hint');
+    expect(hint?.textContent).toContain('N transaction');
+    expect(hint?.textContent).toContain('T transfer');
+    expect(hint?.textContent).toContain('Esc close');
   });
 });
