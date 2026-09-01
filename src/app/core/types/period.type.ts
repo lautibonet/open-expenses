@@ -39,6 +39,21 @@ export function getPeriodYear(movement: { year?: number; date: Date | string }):
   return new Date(movement.date).getFullYear();
 }
 
+export function periodYearFromDate(date: Date | string): {
+  period: MonthNumber;
+  year: number;
+} {
+  if (typeof date === 'string') {
+    const [yearText, monthText] = date.split('-');
+    const month = Number(monthText);
+    if (yearText && month >= 1 && month <= 12) {
+      return { period: month as MonthNumber, year: Number(yearText) };
+    }
+  }
+  const parsed = new Date(date);
+  return { period: (parsed.getMonth() + 1) as MonthNumber, year: parsed.getFullYear() };
+}
+
 export interface MonthScope {
   kind: 'month';
   period: MonthNumber;

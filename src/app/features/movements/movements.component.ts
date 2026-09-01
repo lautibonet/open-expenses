@@ -23,6 +23,7 @@ import {
   getCurrentPeriod,
   getCurrentYear,
   getPeriodYear,
+  periodYearFromDate,
   scopeOptionsFromMovements,
 } from '../../core/types/period.type';
 import { LanguageService } from '../../core/services/language.service';
@@ -56,21 +57,18 @@ interface TransferForm {
   note: string;
 }
 
-function defaultTransferForm(
-  accounts: Account[],
-  periodYear: { period: MonthNumber; year: number },
-): TransferForm {
+function defaultTransferForm(accounts: Account[]): TransferForm {
   const sourceAccountId = accounts[0]?.id ?? 0;
   const destAccountId = accounts[1]?.id ?? accounts[0]?.id ?? 0;
+  const date = new Date().toISOString().split('T')[0];
   return {
     sourceAccountId,
     destAccountId,
     sourceAmount: 0,
     destinationAmount: 0,
     exchangeRate: 1,
-    date: new Date().toISOString().split('T')[0],
-    period: periodYear.period,
-    year: periodYear.year,
+    date,
+    ...periodYearFromDate(date),
     note: '',
   };
 }
@@ -125,8 +123,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
     destinationAmount: 0,
     exchangeRate: 1,
     date: new Date().toISOString().split('T')[0],
-    period: getCurrentPeriod(),
-    year: getCurrentYear(),
+    ...periodYearFromDate(new Date()),
     note: '',
   });
   errorMessage = signal('');
@@ -366,11 +363,6 @@ export class MovementsComponent implements OnInit, OnDestroy {
     }
   }
 
-  private formPeriodYear(): { period: MonthNumber; year: number } {
-    const s = this.scope();
-    return { period: s.period, year: s.year };
-  }
-
   toggleTransferForm(): void {
     if (this.showForm() === 'transfer') {
       this.closeTransferForm();
@@ -396,7 +388,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
   private transferDraftInProgress(): boolean {
     if (this.editingId() !== null) return true;
     const f = this.trForm();
-    const d = defaultTransferForm(this.accounts(), this.formPeriodYear());
+    const d = defaultTransferForm(this.accounts());
     return (
       f.sourceAccountId !== d.sourceAccountId ||
       f.destAccountId !== d.destAccountId ||
@@ -454,7 +446,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
   }
 
   private resetTransferForm(): void {
-    this.trForm.set(defaultTransferForm(this.accounts(), this.formPeriodYear()));
+    this.trForm.set(defaultTransferForm(this.accounts()));
     const { sourceAccountId: srcId, destAccountId: dstId } = this.trForm();
     if (srcId && dstId && srcId !== dstId) {
       this.checkTransferExchangeRate();
@@ -517,7 +509,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
   }
 
   onTransferDateChange(date: string): void {
-    this.trForm.update((f) => ({ ...f, date }));
+    this.trForm.update((f) => ({ ...f, date, ...periodYearFromDate(date) }));
     this.checkTransferExchangeRate();
   }
 

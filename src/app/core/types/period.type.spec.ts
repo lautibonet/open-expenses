@@ -12,6 +12,7 @@ import {
   monthNumberFromName,
   monthsFromData,
   movementIsAtOrBeforePeriod,
+  periodYearFromDate,
   scopeOptionsFromMovements,
   yearsFromData,
 } from './period.type';
@@ -98,6 +99,40 @@ describe('period.type - scope helpers', () => {
       const options = scopeOptionsFromMovements([] as any);
       expect(options.years).toEqual([getCurrentYear()]);
       expect(options.months).toEqual([getCurrentPeriod()]);
+    });
+  });
+
+  describe('periodYearFromDate', () => {
+    it('derives the period and year from a date string', () => {
+      expect(periodYearFromDate('2025-12-22')).toEqual({ period: 12, year: 2025 });
+      expect(periodYearFromDate('2026-03-10')).toEqual({ period: 3, year: 2026 });
+    });
+
+    it('derives the period from month-boundary date strings without timezone drift', () => {
+      expect(periodYearFromDate('2026-01-01')).toEqual({ period: 1, year: 2026 });
+      expect(periodYearFromDate('2025-12-31')).toEqual({ period: 12, year: 2025 });
+      expect(periodYearFromDate('2026-03-01')).toEqual({ period: 3, year: 2026 });
+    });
+
+    it('derives the period and year from a Date object', () => {
+      expect(periodYearFromDate(new Date('2024-07-05T12:00:00'))).toEqual({
+        period: 7,
+        year: 2024,
+      });
+    });
+
+    it('derives the period for every calendar month', () => {
+      for (let month = 0; month < 12; month++) {
+        const date = new Date(2026, month, 15);
+        expect(periodYearFromDate(date)).toEqual({ period: month + 1, year: 2026 });
+      }
+    });
+
+    it('defaults to the current period and year for today', () => {
+      expect(periodYearFromDate(new Date())).toEqual({
+        period: getCurrentPeriod(),
+        year: getCurrentYear(),
+      });
     });
   });
 
