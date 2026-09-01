@@ -73,7 +73,7 @@
   </section>
 
   <section class="card net-strip-card">
-    <h2>{{ language.t('stats.netByPeriod', { scope: scopeLabelText() }) }}</h2>
+    <h2>{{ language.t('stats.netByPeriod', { scope: scope().year }) }}</h2>
     @if (yearHasData()) {
       <div class="net-strip" aria-hidden="true">
         @for (item of yearNets(); track item.period) {
@@ -140,7 +140,6 @@
             <span class="balance-tile" aria-hidden="true">{{ item.account.currency }}</span>
             <div class="balance-meta">
               <span class="account-name">{{ item.account.name }}</span>
-              <span class="account-currency">{{ item.account.currency }}</span>
             </div>
             <span class="balance-amount">{{ formatAccountBalance(item.balance, item.account.currency) }}</span>
           </li>

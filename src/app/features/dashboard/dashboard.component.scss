@@ -34,7 +34,7 @@
 .kpi-card {
   background: var(--surface-lowest);
   border: var(--border-hard);
-  padding: var(--space-md) var(--space-lg);
+  padding: var(--space-md);
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
@@ -106,7 +106,7 @@
 .card {
   background: var(--surface-lowest);
   border: var(--border-hard);
-  padding: var(--space-md) var(--space-lg);
+  padding: var(--space-md);
   margin-bottom: var(--space-lg);
 
   h2 {
@@ -270,7 +270,8 @@
   margin: 0;
 }
 
-/* Account balances: bordered list; negative balances sit on the
+/* Account balances: bordered list; the tile is the row's single currency
+   display — the amount never repeats it. Negative balances sit on the
    error-container tile with error ink on the amount. */
 .balance-list {
   list-style: none;
@@ -311,10 +312,6 @@
     font-size: var(--type-body);
     font-weight: 600;
     color: var(--on-surface);
-  }
-
-  .account-currency {
-    @extend %caps-label-muted;
   }
 }
 
