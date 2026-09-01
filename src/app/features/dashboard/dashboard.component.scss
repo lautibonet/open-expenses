@@ -132,6 +132,79 @@
   }
 }
 
+/* Year spine: the 12-month Net strip. Pure CSS — ink fills on gray tracks,
+   one column per Period of the scope's year. Positive Net grows up from the
+   baseline, negative Net grows down; negative months stay ink (red marks
+   movement direction and warnings only). Zero-Net months show the bare track.
+   Month initials are the Language service's, set in mono. */
+.net-strip {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: var(--space-xs);
+  margin-bottom: var(--space-md);
+}
+
+.net-strip-month {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-xs);
+
+  .net-track {
+    position: relative;
+    width: 100%;
+    height: 4.5rem;
+    background: var(--surface-container-high);
+    border: 1px solid var(--outline-variant);
+    overflow: hidden;
+  }
+
+  .net-fill {
+    position: absolute;
+    left: 0;
+    right: 0;
+    background: var(--on-surface);
+
+    &.up {
+      bottom: 50%;
+    }
+
+    &.down {
+      top: 50%;
+    }
+  }
+
+  .net-initial {
+    @extend %mono-data;
+
+    font-weight: 500;
+    color: var(--on-surface-variant);
+  }
+
+  &.current {
+    .net-track {
+      border: var(--border-hard-thick);
+    }
+
+    .net-initial {
+      color: var(--on-surface);
+    }
+  }
+}
+
+.net-strip-zero {
+  @extend %empty-state;
+
+  margin: 0;
+}
+
+/* Accessible equivalent: announces month + Net per Period. */
+.net-strip-figures {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
 /* Category bars: pure CSS horizontal fills on a gray track — no chart lib. */
 .category-bars {
   list-style: none;
