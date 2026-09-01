@@ -61,6 +61,9 @@
     <span class="shortcut-hint">{{ language.t('movements.shortcutsHint') }}</span>
     <span class="visually-hidden" aria-live="polite">{{ scopeAnnouncement() }}</span>
     <span class="visually-hidden" aria-live="polite">{{ movementAnnouncement() }}</span>
+    <span class="visually-hidden undo-announcement" aria-live="polite">{{
+      undoAnnouncement()
+    }}</span>
   </div>
 
   @if (showForm() === 'transfer') {
@@ -257,6 +260,9 @@
         }
       </select>
     </label>
+    @if (filterCategory() !== null) {
+      <span class="filter-hint">{{ language.t('movements.categoryExcludesTransfers') }}</span>
+    }
     @if (activeFilterCount() > 0) {
       <span class="filter-badge"
         >{{ activeFilterCount() }}<span class="visually-hidden">{{ language.t('movements.filtersActive') }}</span></span
@@ -505,7 +511,9 @@
         <p class="empty">
           {{ language.t('movements.noneForScope', { scope: scopeLabelText() }) }}
           @if (accounts().length > 0 && categories().length > 0) {
-            {{ language.t('movements.useQuickAdd') }}
+            <button class="btn small" (click)="openQuickAdd()">
+              {{ language.t('movements.emptyStateCta') }}
+            </button>
           }
         </p>
       }

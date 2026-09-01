@@ -1,6 +1,6 @@
 import { Component, ElementRef, computed, effect, inject, OnDestroy, OnInit, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { DatePipe } from '@angular/common';
+import { DatePipe, Location } from '@angular/common';
 import { TransactionService } from '../../core/services/transaction.service';
 import { TransferService } from '../../core/services/transfer.service';
 import { AccountService } from '../../core/services/account.service';
@@ -23,6 +23,8 @@ import {
   getCurrentPeriod,
   getCurrentYear,
   getPeriodYear,
+  isMonthNumber,
+  isValidYear,
   periodYearFromDate,
   scopeOptionsFromMovements,
 } from '../../core/types/period.type';
@@ -89,6 +91,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
   private exchangeRateService = inject(ExchangeRateService);
   private captureFormService = inject(CaptureFormService);
   private dataVersion = inject(DataVersionService);
+  private location = inject(Location);
   language = inject(LanguageService);
 
   scope = signal<PeriodScope>(defaultScope());
@@ -111,6 +114,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
 
   confirmingDelete = signal<MovementItem | null>(null);
   undo = signal<PendingDelete | null>(null);
+  undoAnnouncement = signal('');
   undoWindowMs = 10000;
   private undoHandle: ReturnType<typeof setTimeout> | null = null;
 
@@ -317,6 +321,10 @@ export class MovementsComponent implements OnInit, OnDestroy {
   }
 
   async ngOnInit(): Promise<void> {
+    const fromUrl = this.scopeFromUrl();
+    if (fromUrl) {
+      this.scope.set(fromUrl);
+    }
     await this.loadAll();
   }
 
@@ -336,6 +344,22 @@ export class MovementsComponent implements OnInit, OnDestroy {
     } finally {
       this.dataLoaded.set(true);
     }
+  }
+
+  private scopeFromUrl(): PeriodScope | null {
+    const query = this.location.path(true).split('?')[1] ?? '';
+    const params = new URLSearchParams(query);
+    const period = Number(params.get('period'));
+    const year = Number(params.get('year'));
+    if (isMonthNumber(period) && isValidYear(year)) {
+      return { kind: 'month', period, year };
+    }
+    return null;
+  }
+
+  private reflectScopeInUrl(scope: PeriodScope): void {
+    const path = this.location.path().split('?')[0] || '/';
+    this.location.replaceState(`${path}?period=${scope.period}&year=${scope.year}`);
   }
 
   async refresh(): Promise<void> {
@@ -381,6 +405,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
 
   private async setScope(scope: PeriodScope): Promise<void> {
     this.scope.set(scope);
+    this.reflectScopeInUrl(scope);
     this.scopeAnnouncement.set(this.language.scopeLabel(scope));
     // Re-enter the busy gate so the new scope's empty state and Net figures
     // never render from the previous scope's data.
@@ -788,6 +813,9 @@ export class MovementsComponent implements OnInit, OnDestroy {
 
   private setUndo(pending: PendingDelete): void {
     this.undo.set(pending);
+    this.undoAnnouncement.set(
+      this.language.t('movements.undoWindow', { seconds: this.undoWindowMs / 1000 }),
+    );
     this.scheduleUndoAutoDismiss();
   }
 
@@ -795,7 +823,10 @@ export class MovementsComponent implements OnInit, OnDestroy {
     if (this.undoHandle !== null) {
       clearTimeout(this.undoHandle);
     }
-    this.undoHandle = setTimeout(() => this.clearUndo(), this.undoWindowMs);
+    this.undoHandle = setTimeout(() => {
+      this.clearUndo();
+      this.undoAnnouncement.set(this.language.t('movements.undoWindowClosed'));
+    }, this.undoWindowMs);
   }
 
   pauseUndo(): void {
@@ -817,6 +848,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
       this.undoHandle = null;
     }
     this.undo.set(null);
+    this.undoAnnouncement.set('');
   }
 
   ngOnDestroy(): void {
