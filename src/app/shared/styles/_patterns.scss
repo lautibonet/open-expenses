@@ -278,6 +278,16 @@
   cursor: not-allowed;
 }
 
+/* Inline reason beside a disabled Save button (issue #98): muted caption
+   pushed to the far edge of the form-actions row. */
+%save-hint {
+  margin: 0;
+  margin-right: auto;
+  align-self: center;
+  font-size: var(--type-caption);
+  color: var(--on-surface-variant);
+}
+
 /* The blue-tint well for exchange-rate capture. */
 %exchange-well {
   margin-top: 0.75rem;

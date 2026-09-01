@@ -48,8 +48,14 @@ label {
 
 .form-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-sm);
   margin-top: var(--space-md);
+}
+
+/* Inline reason next to the disabled Save button (issue #98). */
+.save-hint {
+  @extend %save-hint;
 }
 
 .form-grid {

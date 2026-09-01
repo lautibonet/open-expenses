@@ -343,6 +343,45 @@ describe('QuickAddCardComponent', () => {
     expect(component.errorMessage()).toBe('Boom');
   });
 
+  it('explains why the save button is disabled while the form is incomplete', async () => {
+    await component.ngOnInit();
+
+    component.form.update((f) => ({ ...f, accountId: 0 }));
+    expect(component.disabledReason()).toBe('Choose an account first.');
+
+    component.form.update((f) => ({ ...f, accountId: 1, categoryId: 0 }));
+    expect(component.disabledReason()).toBe('Choose a category first.');
+
+    component.form.update((f) => ({ ...f, categoryId: 10, amount: 0 }));
+    expect(component.disabledReason()).toBe('Enter an amount greater than zero.');
+
+    component.form.update((f) => ({ ...f, amount: 25 }));
+    expect(component.disabledReason()).toBe('');
+  });
+
+  it('explains why the save button is disabled while the rate is missing', async () => {
+    await component.ngOnInit();
+    component.onAccountChange(2);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    component.form.update((f) => ({ ...f, amount: 25 }));
+
+    component.rateState.set({ loading: true, error: '', rate: null, date: '' });
+    component.form.update((f) => ({ ...f, exchangeRate: null }));
+    expect(component.disabledReason()).toBe('The exchange rate is needed before saving.');
+
+    component.rateState.set({ loading: false, error: '', rate: 1.08, date: '2026-08-26' });
+    component.form.update((f) => ({ ...f, exchangeRate: 1.08 }));
+    expect(component.disabledReason()).toBe('');
+  });
+
+  it('stays quiet about the disabled save while a save is in flight', async () => {
+    await component.ngOnInit();
+    component.form.update((f) => ({ ...f, amount: 0 }));
+    component.saving.set(true);
+
+    expect(component.disabledReason()).toBe('');
+  });
+
   function tagControls(root: HTMLElement): Element[] {
     return Array.from(root.querySelectorAll('input, select')).filter((el) => {
       const name = el.getAttribute('name') ?? '';

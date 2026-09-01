@@ -84,7 +84,12 @@
   </nav>
 
   <div class="sidebar-actions">
-    <button type="button" class="quick-add" (click)="goToQuickAdd()">
+    <button
+      type="button"
+      class="quick-add"
+      (click)="goToQuickAdd()"
+      [title]="language.t('shell.quickAddShortcut')"
+    >
       {{ language.t('shell.quickAdd') }}
     </button>
     <div class="backup-block" role="group" [attr.aria-label]="language.t('backup.sidebar.ariaLabel')">

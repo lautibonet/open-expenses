@@ -163,6 +163,9 @@
       }
 
       <div class="form-actions">
+        @if (disabledReason(); as reason) {
+          <p class="save-hint" role="status">{{ reason }}</p>
+        }
         <button type="button" class="btn" (click)="cancel()">
           {{ language.t('quickAdd.cancel') }}
         </button>

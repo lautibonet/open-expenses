@@ -56,7 +56,8 @@
       class="btn"
       (click)="toggleQuickAdd()"
       [attr.aria-expanded]="showForm() === 'transaction'"
-      [title]="language.t('movements.newTransaction')"
+      aria-keyshortcuts="n"
+      [title]="language.t('movements.newTransactionShortcut')"
     >
       {{ language.t('movements.newTransaction') }}
     </button>
@@ -64,10 +65,12 @@
       class="btn"
       (click)="toggleTransferForm()"
       [attr.aria-expanded]="showForm() === 'transfer'"
+      aria-keyshortcuts="t"
       [title]="language.t('movements.transferShortcut')"
     >
       {{ language.t('movements.addTransfer') }}
     </button>
+    <span class="shortcut-hint">{{ language.t('movements.shortcutsHint') }}</span>
     <span class="visually-hidden" aria-live="polite">{{ scopeAnnouncement() }}</span>
     <span class="visually-hidden" aria-live="polite">{{ movementAnnouncement() }}</span>
   </div>
@@ -191,7 +194,8 @@
               <input
                 type="number"
                 [ngModel]="trForm().destinationAmount"
-                (ngModelChange)="trForm.update((f) => ({ ...f, destinationAmount: +$event }))"
+                readonly
+                class="readonly"
               />
             </label>
           </div>
@@ -214,6 +218,9 @@
         <p class="error" [title]="errorDetail()">{{ errorMessage() }}</p>
       }
       <div class="form-actions">
+        @if (transferDisabledReason(); as reason) {
+          <p class="save-hint" role="status">{{ reason }}</p>
+        }
         <button class="btn" (click)="cancelForm()">{{ language.t('movements.cancel') }}</button>
         <button class="btn primary" (click)="saveTransfer()" [disabled]="!canSubmitTransfer()">
           {{ language.t('movements.save') }}
@@ -398,16 +405,14 @@
                 <td [attr.data-label]="language.t('movements.colCategoryTransfer')">
                   {{ getAccountName(tr.sourceAccountId) }} →
                   {{ getAccountName(tr.destinationAccountId) }}
+                  @if (tr.note) {
+                    <div class="note">{{ tr.note }}</div>
+                  }
                 </td>
                 <td class="amount-cell">
                   {{ formatTransferDisplayAmount(tr) }}
                 </td>
-                <td [attr.data-label]="language.t('movements.note')">
-                  @if (tr.note) {
-                    <span class="note">{{ tr.note }}</span>
-                  }
-                </td>
-                <td class="actions-cell">
+                <td class="actions-cell" colspan="2">
                   @if (confirmingDelete() === item) {
                     <span class="visually-hidden" aria-live="polite">
                       {{ deleteConfirmationLabel(confirmingDelete()!) }}

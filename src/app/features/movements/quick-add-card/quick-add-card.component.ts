@@ -144,6 +144,20 @@ export class QuickAddCardComponent implements OnInit, AfterViewInit {
     return true;
   });
 
+  disabledReason = computed(() => {
+    if (this.saving()) return '';
+    const f = this.form();
+    if (!f.accountId) return this.language.t('quickAdd.saveDisabled.account');
+    if (!f.categoryId) return this.language.t('quickAdd.saveDisabled.category');
+    if (f.amount <= 0) return this.language.t('quickAdd.saveDisabled.amount');
+    if (this.isForeignCurrency()) {
+      if (this.rateState().loading || f.exchangeRate === null) {
+        return this.language.t('quickAdd.saveDisabled.rate');
+      }
+    }
+    return '';
+  });
+
   ngOnInit(): void {
     const draft = this.initialDraft();
     if (draft) {
