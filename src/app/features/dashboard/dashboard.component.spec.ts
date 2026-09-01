@@ -506,6 +506,16 @@ describe('DashboardComponent - shared scope', () => {
     await resetDb();
   });
 
+  let seedCounter = 0;
+
+  async function seedIncome(period: number, year: number = getCurrentYear()): Promise<void> {
+    const acc = await accountService.create(`Cash ${++seedCounter}`, 'EUR', 0);
+    const cat = await categoryService.create(`Payroll ${seedCounter}`, 'income');
+    await transactionService.create(
+      acc.id!, cat.id!, 3000, new Date(`${year}-${String(period).padStart(2, '0')}-15`), period, null, null, year,
+    );
+  }
+
   it('should default to the current month scope', async () => {
     await component.ngOnInit();
     expect(component.scope()).toEqual(defaultScope());
@@ -631,6 +641,7 @@ describe('DashboardComponent - shared scope', () => {
   });
 
   it('renders the KPI row as three cards: income, expenses, net', async () => {
+    await seedIncome(getCurrentPeriod());
     await component.ngOnInit();
     fixture.detectChanges();
 
@@ -665,17 +676,18 @@ describe('DashboardComponent - shared scope', () => {
     expect(netValue.textContent).toContain(component.formatMoney(4500));
   });
 
-  it('hides the average line when the scope year has no data', async () => {
+  it('shows the KPI empty state, not zero cards, when the scope year has no movements', async () => {
     await component.ngOnInit();
     fixture.detectChanges();
 
-    const incomeValue = fixture.nativeElement.querySelector('.kpi-card.kpi-income .value');
-    expect(incomeValue.textContent).toContain(component.formatMoney(0));
-    expect(fixture.nativeElement.querySelector('.kpi-card.kpi-income .secondary')).toBeNull();
-    expect(fixture.nativeElement.querySelector('.kpi-card.kpi-net .secondary')).toBeNull();
+    expect(fixture.nativeElement.querySelectorAll('.kpi-card').length).toBe(0);
+    const empty = fixture.nativeElement.querySelector('.kpi-row .empty-state');
+    expect(empty).toBeTruthy();
+    expect(empty.textContent).toContain(String(getCurrentYear()));
   });
 
   it('visually states the scope year as a caps label on every KPI card', async () => {
+    await seedIncome(getCurrentPeriod());
     await component.ngOnInit();
     fixture.detectChanges();
 
@@ -690,9 +702,11 @@ describe('DashboardComponent - shared scope', () => {
   });
 
   it('keeps the KPI scope label in sync when the scope year changes', async () => {
+    await seedIncome(getCurrentPeriod());
+    const previousYear = getCurrentYear() - 1;
+    await seedIncome(1, previousYear);
     await component.ngOnInit();
     fixture.detectChanges();
-    const previousYear = getCurrentYear() - 1;
     await component.onScopeYearChange(previousYear);
     fixture.detectChanges();
 
@@ -812,6 +826,14 @@ describe('DashboardComponent - page header, scope control and restyled cards', (
     networkService = TestBed.inject(NetworkService);
   });
 
+  function cardByHeading(text: string): HTMLElement | null {
+    const headings = Array.from(
+      fixture.nativeElement.querySelectorAll('h2') as NodeListOf<HTMLElement>,
+    );
+    const heading = headings.find(h => h.textContent?.includes(text));
+    return heading ? (heading.closest('section') as HTMLElement | null) : null;
+  }
+
   afterEach(async () => {
     await new Promise<void>(resolve => setTimeout(resolve, 10));
     await resetDb();
@@ -904,6 +926,40 @@ describe('DashboardComponent - page header, scope control and restyled cards', (
 
     expect(component.categoryBarWidth(1500)).toBe(100);
     expect(component.categoryBarWidth(500)).toBeCloseTo(33.33, 2);
+  });
+
+  it('keeps the category card, showing the empty state, when the Period has no expenses', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const card = cardByHeading('Expenses by Category');
+    expect(card).toBeTruthy();
+    expect(card!.querySelector('.category-bars')).toBeNull();
+    const empty = card!.querySelector('.empty-state');
+    expect(empty).toBeTruthy();
+    expect(empty!.textContent).toContain(String(getCurrentYear()));
+  });
+
+  it('shows the empty state in the balances card when there are no accounts', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const card = cardByHeading('Account Balances');
+    expect(card).toBeTruthy();
+    expect(card!.querySelector('.balance-list')).toBeNull();
+    const empty = card!.querySelector('.empty-state');
+    expect(empty).toBeTruthy();
+  });
+
+  it('styles the Stats empty states with the shared empty-state pattern', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const css = Array.from(document.querySelectorAll('style'))
+      .map(s => s.textContent ?? '')
+      .join('\n');
+    expect(css).toMatch(/\.empty-state[^{]*\{[^}]*border:\s*1px dashed var\(--outline\)/);
+    expect(css).toMatch(/\.empty-state[^{]*\{[^}]*color:\s*var\(--on-surface-variant\)/);
   });
 
   it('shows negative account balances on error tiles', async () => {

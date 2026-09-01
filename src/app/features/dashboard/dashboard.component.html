@@ -39,39 +39,37 @@
   />
 
   <section class="kpi-row" [attr.aria-label]="language.t('stats.title')">
-    <dl class="kpi-card kpi-income">
-      <dt class="label">
-        <span class="metric">{{ language.t('stats.income') }}</span>
-        <span class="scope">{{ kpiScopeLabel() }}</span>
-      </dt>
-      <dd class="value">{{ formatMoney(yearTotalIncome()) }}</dd>
-      @if (yearHasData()) {
+    @if (yearHasData()) {
+      <dl class="kpi-card kpi-income">
+        <dt class="label">
+          <span class="metric">{{ language.t('stats.income') }}</span>
+          <span class="scope">{{ kpiScopeLabel() }}</span>
+        </dt>
+        <dd class="value">{{ formatMoney(yearTotalIncome()) }}</dd>
         <dd class="secondary">{{ avgCaption(avgMonthlyIncome()) }}</dd>
-      }
-    </dl>
-    <dl class="kpi-card kpi-expense">
-      <dt class="label">
-        <span class="metric">{{ language.t('stats.expenses') }}</span>
-        <span class="scope">{{ kpiScopeLabel() }}</span>
-      </dt>
-      <dd class="value">{{ formatMoney(yearTotalExpenses()) }}</dd>
-      @if (yearHasData()) {
+      </dl>
+      <dl class="kpi-card kpi-expense">
+        <dt class="label">
+          <span class="metric">{{ language.t('stats.expenses') }}</span>
+          <span class="scope">{{ kpiScopeLabel() }}</span>
+        </dt>
+        <dd class="value">{{ formatMoney(yearTotalExpenses()) }}</dd>
         <dd class="secondary">{{ avgCaption(avgMonthlyExpenses()) }}</dd>
-      }
-    </dl>
-    <dl class="kpi-card kpi-net">
-      <dt class="label">
-        <span class="metric">{{ language.t('stats.net') }}</span>
-        <span class="scope">{{ kpiScopeLabel() }}</span>
-      </dt>
-      <dd class="value">{{ formatMoney(yearTotalNet()) }}</dd>
-      @if (yearHasData()) {
+      </dl>
+      <dl class="kpi-card kpi-net">
+        <dt class="label">
+          <span class="metric">{{ language.t('stats.net') }}</span>
+          <span class="scope">{{ kpiScopeLabel() }}</span>
+        </dt>
+        <dd class="value">{{ formatMoney(yearTotalNet()) }}</dd>
         <dd class="secondary">{{ avgCaption(avgMonthlyNet()) }}</dd>
-      }
-      @if (savingsRate(); as rate) {
-        <dd class="savings-rate">{{ language.t('stats.savingsRate', { rate }) }}</dd>
-      }
-    </dl>
+        @if (savingsRate(); as rate) {
+          <dd class="savings-rate">{{ language.t('stats.savingsRate', { rate }) }}</dd>
+        }
+      </dl>
+    } @else {
+      <p class="empty-state">{{ language.t('stats.kpiZero', { year: scope().year }) }}</p>
+    }
   </section>
 
   <section class="card net-strip-card">
@@ -104,9 +102,9 @@
     }
   </section>
 
-  @if (categoryBreakdown().length > 0) {
-    <section class="card">
-      <h2>{{ language.t('stats.expensesByCategory', { scope: scopeLabelText() }) }}</h2>
+  <section class="card">
+    <h2>{{ language.t('stats.expensesByCategory', { scope: scopeLabelText() }) }}</h2>
+    @if (categoryBreakdown().length > 0) {
       <ul class="category-bars">
         @for (item of categoryBreakdown(); track item.name) {
           <li class="category-bar-row">
@@ -120,8 +118,10 @@
           </li>
         }
       </ul>
-    </section>
-  }
+    } @else {
+      <p class="empty-state">{{ language.t('stats.categoryZero', { scope: scopeLabelText() }) }}</p>
+    }
+  </section>
 
   <section class="card">
     <h2>{{ language.t('stats.totalBalance', { scope: scopeLabelText() }) }}</h2>
@@ -133,17 +133,21 @@
 
   <section class="card">
     <h2>{{ language.t('stats.accountBalances', { scope: scopeLabelText() }) }}</h2>
-    <ul class="balance-list">
-      @for (item of accountBalances(); track item.account.id) {
-        <li class="balance-row" [class.negative]="item.balance < 0">
-          <span class="balance-tile" aria-hidden="true">{{ item.account.currency }}</span>
-          <div class="balance-meta">
-            <span class="account-name">{{ item.account.name }}</span>
-            <span class="account-currency">{{ item.account.currency }}</span>
-          </div>
-          <span class="balance-amount">{{ formatAccountBalance(item.balance, item.account.currency) }}</span>
-        </li>
-      }
-    </ul>
+    @if (accountBalances().length > 0) {
+      <ul class="balance-list">
+        @for (item of accountBalances(); track item.account.id) {
+          <li class="balance-row" [class.negative]="item.balance < 0">
+            <span class="balance-tile" aria-hidden="true">{{ item.account.currency }}</span>
+            <div class="balance-meta">
+              <span class="account-name">{{ item.account.name }}</span>
+              <span class="account-currency">{{ item.account.currency }}</span>
+            </div>
+            <span class="balance-amount">{{ formatAccountBalance(item.balance, item.account.currency) }}</span>
+          </li>
+        }
+      </ul>
+    } @else {
+      <p class="empty-state">{{ language.t('stats.noAccounts') }}</p>
+    }
   </section>
 </div>
