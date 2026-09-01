@@ -195,6 +195,10 @@ export class DashboardComponent implements OnInit {
     return this.language.scopeLabel(this.scope());
   }
 
+  kpiScopeLabel(): string {
+    return this.language.t('stats.kpiScope', { year: this.scope().year });
+  }
+
   savingsRate(): number | null {
     const income = this.avgMonthlyIncome();
     if (income <= 0) return null;

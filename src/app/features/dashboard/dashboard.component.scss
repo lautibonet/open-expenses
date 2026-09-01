@@ -35,8 +35,17 @@
   flex-direction: column;
   gap: var(--space-sm);
 
+  dt,
+  dd {
+    margin: 0;
+  }
+
   .label {
     @extend %caps-label-muted;
+
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
   }
 
   .value {

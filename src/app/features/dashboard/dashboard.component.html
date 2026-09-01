@@ -32,30 +32,39 @@
   </header>
 
   <section class="kpi-row" [attr.aria-label]="language.t('stats.title')">
-    <div class="kpi-card kpi-income">
-      <span class="label">{{ language.t('stats.income') }}</span>
-      <span class="value">{{ formatMoney(yearTotalIncome()) }}</span>
+    <dl class="kpi-card kpi-income">
+      <dt class="label">
+        <span class="metric">{{ language.t('stats.income') }}</span>
+        <span class="scope">{{ kpiScopeLabel() }}</span>
+      </dt>
+      <dd class="value">{{ formatMoney(yearTotalIncome()) }}</dd>
       @if (yearHasData()) {
-        <span class="secondary">{{ avgCaption(avgMonthlyIncome()) }}</span>
+        <dd class="secondary">{{ avgCaption(avgMonthlyIncome()) }}</dd>
       }
-    </div>
-    <div class="kpi-card kpi-expense">
-      <span class="label">{{ language.t('stats.expenses') }}</span>
-      <span class="value">{{ formatMoney(yearTotalExpenses()) }}</span>
+    </dl>
+    <dl class="kpi-card kpi-expense">
+      <dt class="label">
+        <span class="metric">{{ language.t('stats.expenses') }}</span>
+        <span class="scope">{{ kpiScopeLabel() }}</span>
+      </dt>
+      <dd class="value">{{ formatMoney(yearTotalExpenses()) }}</dd>
       @if (yearHasData()) {
-        <span class="secondary">{{ avgCaption(avgMonthlyExpenses()) }}</span>
+        <dd class="secondary">{{ avgCaption(avgMonthlyExpenses()) }}</dd>
       }
-    </div>
-    <div class="kpi-card kpi-net">
-      <span class="label">{{ language.t('stats.net') }}</span>
-      <span class="value">{{ formatMoney(yearTotalNet()) }}</span>
+    </dl>
+    <dl class="kpi-card kpi-net">
+      <dt class="label">
+        <span class="metric">{{ language.t('stats.net') }}</span>
+        <span class="scope">{{ kpiScopeLabel() }}</span>
+      </dt>
+      <dd class="value">{{ formatMoney(yearTotalNet()) }}</dd>
       @if (yearHasData()) {
-        <span class="secondary">{{ avgCaption(avgMonthlyNet()) }}</span>
+        <dd class="secondary">{{ avgCaption(avgMonthlyNet()) }}</dd>
       }
       @if (savingsRate(); as rate) {
-        <span class="savings-rate">{{ language.t('stats.savingsRate', { rate }) }}</span>
+        <dd class="savings-rate">{{ language.t('stats.savingsRate', { rate }) }}</dd>
       }
-    </div>
+    </dl>
   </section>
 
   @if (categoryBreakdown().length > 0) {

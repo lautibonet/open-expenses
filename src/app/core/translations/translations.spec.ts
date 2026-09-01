@@ -243,6 +243,7 @@ describe('translations', () => {
       'stats.net',
       'stats.avgCaption',
       'stats.savingsRate',
+      'stats.kpiScope',
     ]) {
       expect(TRANSLATIONS.en[key]).toBeTruthy();
       expect(TRANSLATIONS.es[key]).toBeTruthy();
