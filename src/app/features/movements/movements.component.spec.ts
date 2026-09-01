@@ -801,6 +801,42 @@ describe('MovementsComponent - period year', () => {
     expect(component.trForm().year).toBe(getCurrentYear());
   });
 
+  it('should re-derive the transfer period and year when the date changes', async () => {
+    await component.ngOnInit();
+
+    component.onTransferDateChange('2025-12-22');
+    expect(component.trForm().date).toBe('2025-12-22');
+    expect(component.trForm().period).toBe(12);
+    expect(component.trForm().year).toBe(2025);
+
+    component.onTransferDateChange('2026-03-10');
+    expect(component.trForm().period).toBe(3);
+    expect(component.trForm().year).toBe(2026);
+  });
+
+  it('should keep a manually overridden transfer period and year after the date derivation', async () => {
+    await component.ngOnInit();
+
+    component.onTransferDateChange('2026-03-10');
+    component.trForm.update((f) => ({ ...f, period: 1, year: 2024 }));
+
+    expect(component.trForm().period).toBe(1);
+    expect(component.trForm().year).toBe(2024);
+  });
+
+  it('should file a transfer captured today under an old scope under today\'s period', async () => {
+    await component.ngOnInit();
+    component.openTransferForm();
+    component.scope.set({ kind: 'month', period: 3, year: 2025 });
+
+    component.cancelForm();
+    component.openTransferForm();
+
+    expect(component.trForm().date).toBe(new Date().toISOString().split('T')[0]);
+    expect(component.trForm().period).toBe(getCurrentPeriod());
+    expect(component.trForm().year).toBe(getCurrentYear());
+  });
+
   it('should filter movements by the selected period year', async () => {
     const period = getCurrentPeriod();
     await transactionService.create(

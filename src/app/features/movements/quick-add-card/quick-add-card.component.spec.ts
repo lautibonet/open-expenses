@@ -5,6 +5,7 @@ import { LanguageService } from '../../../core/services/language.service';
 import { Account } from '../../../core/models/account.model';
 import { Category } from '../../../core/models/category.model';
 import { Transaction } from '../../../core/models/transaction.model';
+import { getCurrentPeriod, getCurrentYear } from '../../../core/types/period.type';
 
 const STORAGE_KEY = 'open-expenses.quick-add.last-selection';
 
@@ -152,6 +153,39 @@ describe('QuickAddCardComponent', () => {
 
     expect(exchangeRateService.getRate).toHaveBeenCalledWith('USD', 'EUR', '2026-01-15');
     expect(component.form().exchangeRate).toBe(1.12);
+  });
+
+  it('re-derives the period and year when the date changes', async () => {
+    await component.ngOnInit();
+
+    await component.onDateChange('2025-12-22');
+
+    expect(component.form().date).toBe('2025-12-22');
+    expect(component.form().period).toBe(12);
+    expect(component.form().year).toBe(2025);
+
+    await component.onDateChange('2026-03-10');
+
+    expect(component.form().period).toBe(3);
+    expect(component.form().year).toBe(2026);
+  });
+
+  it('keeps a manually overridden period and year after the date derivation', async () => {
+    await component.ngOnInit();
+
+    await component.onDateChange('2026-03-10');
+    component.form.update((f) => ({ ...f, period: 1, year: 2024 }));
+
+    expect(component.form().period).toBe(1);
+    expect(component.form().year).toBe(2024);
+  });
+
+  it('defaults the period and year from today, not any browsed scope', async () => {
+    await component.ngOnInit();
+
+    expect(component.form().date).toBe(new Date().toISOString().split('T')[0]);
+    expect(component.form().period).toBe(getCurrentPeriod());
+    expect(component.form().year).toBe(getCurrentYear());
   });
 
   it('persists the last-used account and category to localStorage on save', async () => {

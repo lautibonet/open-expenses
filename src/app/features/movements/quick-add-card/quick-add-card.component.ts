@@ -19,11 +19,11 @@ import { ExchangeRateService } from '../../../core/services/exchange-rate.servic
 import { OfflineError } from '../../../core/models/offline-error';
 import { LanguageService } from '../../../core/services/language.service';
 import {
-  getCurrentPeriod,
   getCurrentYear,
   isMonthNumber,
   MONTH_NUMBERS,
   MonthNumber,
+  periodYearFromDate,
 } from '../../../core/types/period.type';
 
 export interface TransactionFormPayload {
@@ -83,8 +83,7 @@ function defaultFormState(accountId = 0, categoryId = 0): TransactionFormState {
     categoryId,
     amount: 0,
     date: today(),
-    period: getCurrentPeriod(),
-    year: getCurrentYear(),
+    ...periodYearFromDate(today()),
     note: '',
     exchangeRate: null,
     baseCurrencyAmount: null,
@@ -197,7 +196,7 @@ export class QuickAddCardComponent implements OnInit, AfterViewInit {
   }
 
   onDateChange(value: string): void {
-    this.form.update((f) => ({ ...f, date: value }));
+    this.form.update((f) => ({ ...f, date: value, ...periodYearFromDate(value) }));
     this.checkRate(this.form().accountId, value);
   }
 
@@ -245,14 +244,16 @@ export class QuickAddCardComponent implements OnInit, AfterViewInit {
   private handleEditInput(t: Transaction | null): void {
     if (!t) return;
 
+    const date = new Date(t.date).toISOString().split('T')[0];
+    const fallback = periodYearFromDate(date);
     this.editingId.set(t.id ?? null);
     this.form.set({
       accountId: t.accountId,
       categoryId: t.categoryId,
       amount: t.amount,
-      date: new Date(t.date).toISOString().split('T')[0],
-      period: isMonthNumber(t.period) ? t.period : getCurrentPeriod(),
-      year: t.year || getCurrentYear(),
+      date,
+      period: isMonthNumber(t.period) ? t.period : fallback.period,
+      year: t.year || fallback.year,
       note: t.note ?? '',
       exchangeRate: t.exchangeRate,
       baseCurrencyAmount: t.baseCurrencyAmount,
