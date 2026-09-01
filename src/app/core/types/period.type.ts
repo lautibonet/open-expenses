@@ -93,3 +93,14 @@ export function scopeOptionsFromMovements(movements: ScopeAwareMovement[]): Scop
     months: monthsFromData(movements),
   };
 }
+
+export function movementIsAtOrBeforePeriod(
+  movement: ScopeAwareMovement,
+  scope: PeriodScope,
+): boolean {
+  if (!isMonthNumber(movement.period)) {
+    return false;
+  }
+  const year = getPeriodYear(movement);
+  return year < scope.year || (year === scope.year && movement.period <= scope.period);
+}

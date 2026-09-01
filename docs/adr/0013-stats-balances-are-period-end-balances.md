@@ -1,0 +1,7 @@
+# Stats balances are Period-end balances
+
+The Stats total balance and per-account balances are cumulative balances as of the END of the selected Scope's Period: each account's initial balance plus every movement whose stored Period (month together with its stored year, per ADR 0007) is at or before the selected Period. The heading that claims the Scope's Period ("Total balance of September 2026") therefore states the truth instead of labeling an all-time figure with a Period it does not have.
+
+This rescopes spec story #41, which asked for period-end balances. It supersedes the all-time behavior described for the total balance until now: there is no All Time Scope variant. Selecting the latest Period with movements reproduces the previous all-time figure exactly, so period-end subsumes all-time — an empty later Period naturally holds the last non-empty balance, and a Period before any movement shows initial balances only.
+
+Cross-currency figures use the conversions stored on the movements (ADR 0005): the base-currency total accumulates each movement's stored `baseCurrencyAmount` (falling back to the movement's stored `exchangeRate`, then its face amount when nothing was stored), and never re-converts movement amounts at read time with a fetched rate. Only initial balances, which carry no stored conversion, are converted using the current exchange rate. The consequence is that the balance for a given Period is stable regardless of when it is viewed, instead of drifting with the latest rates.
