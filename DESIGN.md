@@ -146,7 +146,7 @@ The single sanctioned signal family — money out, destructive intent, and every
 
 ### Income
 
-- **Income** (#15803d): the ledger green revived (D8 reversed) — income figures (movement amount cells, the Net Flow IN line) and the income directional stripe. Green means money in and nothing else: it never marks action, warning, or information. Transfers stay neutral: neutral ink amounts, quiet grey stripe.
+- **Income** (#15803d): the ledger green revived (D8 reversed) — income figures (movement amount cells, the Net Flow IN line) and the income directional stripe. Green means money in and nothing else: it never marks action, warning, or information. Transfers stay neutral: neutral ink amounts, quiet grey stripe. The Net Flow card's edge stripe is that grey stripe too: its Net is a derived figure — information, not money moving — so a green-flagged negative Net would break the Negative-Stays-Ink Rule below.
 
 ### Name Rules
 

@@ -1,5 +1,7 @@
 <div class="net-flow-card">
-  <h2 class="net-flow-label">{{ language.t('movements.netFlow') }}</h2>
+  <h2 class="net-flow-label">
+    {{ language.t('movements.netFlow', { scope: language.scopeLabel(scope()) }) }}
+  </h2>
   <p class="net-amount">{{ netDisplay() }}</p>
   <div class="flow-lines">
     <span class="flow-in">
@@ -17,4 +19,11 @@
       {{ language.t('movements.flowOut') }}
     </span>
   </div>
+  <app-dismissible-alert
+    class="net-flow-warning"
+    role="alert"
+    variant="error"
+    [message]="conversionWarningMessage()"
+    [resetKey]="scope()"
+  />
 </div>
