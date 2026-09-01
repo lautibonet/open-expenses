@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { readFileSync } from 'node:fs';
 import { DashboardComponent } from './dashboard.component';
 import { TransactionService } from '../../core/services/transaction.service';
 import { TransferService } from '../../core/services/transfer.service';
@@ -604,16 +605,25 @@ describe('DashboardComponent - shared scope', () => {
     expect(labels).toContain('Scope month');
   });
 
-  it('should name the scope in every card heading', async () => {
+  it('should name the scope in every month-scoped card heading', async () => {
     await component.ngOnInit();
     fixture.detectChanges();
 
     const expectedLabel = `${MONTH_NAMES[getCurrentPeriod() - 1]} ${getCurrentYear()}`;
-    const headings = Array.from(fixture.nativeElement.querySelectorAll('h2') as NodeListOf<HTMLElement>);
-    expect(headings.length).toBeGreaterThan(0);
-    for (const h of headings) {
+    const monthHeadings = Array.from(
+      fixture.nativeElement.querySelectorAll(
+        'section.card:not(.net-strip-card) h2',
+      ) as NodeListOf<HTMLElement>,
+    );
+    expect(monthHeadings.length).toBeGreaterThan(0);
+    for (const h of monthHeadings) {
       expect(h.textContent).toContain(expectedLabel);
     }
+
+    // The year spine covers the whole scope year, so its heading states the
+    // year scope instead of the month scope.
+    const stripHeading = fixture.nativeElement.querySelector('.net-strip-card h2');
+    expect(stripHeading.textContent).toContain(String(getCurrentYear()));
   });
 
   it('should render the page heading as an h1', async () => {
@@ -1264,6 +1274,16 @@ describe('DashboardComponent - year spine (12-month Net strip)', () => {
     expect(stripRules).not.toContain('--error');
   });
 
+  it('heads the year spine with the year scope, not the month scope', async () => {
+    await seedMovement(getCurrentPeriod());
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const heading = fixture.nativeElement.querySelector('.net-strip-card h2');
+    expect(heading.textContent).toContain(String(getCurrentYear()));
+    expect(heading.textContent).not.toContain(MONTH_NAMES[getCurrentPeriod() - 1]);
+  });
+
   it('marks the scope Period as the current one', async () => {
     await seedMovement(getCurrentPeriod());
     await component.ngOnInit();
@@ -1549,5 +1569,68 @@ describe('DashboardComponent - data version refresh', () => {
     fixture.detectChanges();
 
     expect(component.accounts().some((a) => a.name === 'Bank')).toBe(false);
+  });
+});
+
+describe('DashboardComponent - Stats design-spec conformance', () => {
+  let fixture: ComponentFixture<DashboardComponent>;
+  let component: DashboardComponent;
+  let accountService: AccountService;
+
+  beforeEach(async () => {
+    await resetDb();
+    await TestBed.configureTestingModule({
+      imports: [DashboardComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(DashboardComponent);
+    component = fixture.componentInstance;
+    accountService = TestBed.inject(AccountService);
+  });
+
+  afterEach(async () => {
+    await new Promise<void>(resolve => setTimeout(resolve, 10));
+    await resetDb();
+  });
+
+  function compiledComponentCss(): string {
+    return Array.from(document.querySelectorAll('style'))
+      .map(s => s.textContent ?? '')
+      .join('\n');
+  }
+
+  // DESIGN.md Cards & Containers: white surface, 1px hard border, 1rem
+  // horizontal padding. jsdom does no layout, so the compiled declaration is
+  // the seam; the token's own value is asserted so the var cannot silently
+  // drift away from the spec.
+  it('pads every Stats card to the 1rem design-spec padding', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const tokens = readFileSync('src/styles.scss', 'utf-8');
+    expect(tokens).toMatch(/--space-md:\s*1rem/);
+
+    const css = compiledComponentCss();
+    expect(css).toMatch(/\.kpi-card[^{]*\{[^}]*padding:\s*var\(--space-md\)/);
+    expect(css).toMatch(/\.card[^{]*\{[^}]*padding:\s*var\(--space-md\)/);
+  });
+
+  /* The mono tile is the row's single currency display; the amount renders
+     the locale symbol (€/$) as part of the monetary figure. What must appear
+     once is the currency code, so this counts code occurrences in the row. */
+  it('shows each balance row its currency exactly once', async () => {
+    await accountService.create('Cash', 'EUR', 100000);
+    await accountService.create('Credit Card', 'EUR', 0);
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const rows = fixture.nativeElement.querySelectorAll('.balance-row');
+    expect(rows.length).toBe(2);
+
+    for (const row of rows) {
+      const text = (row as HTMLElement).textContent ?? '';
+      expect(text.split('EUR').length - 1, text).toBe(1);
+    }
   });
 });
