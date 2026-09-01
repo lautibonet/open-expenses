@@ -840,6 +840,16 @@ export class MovementsComponent implements OnInit, OnDestroy {
     return isIncomeCategory(type);
   }
 
+  kindLabel(item: MovementItem): string {
+    if (this.isTransaction(item)) {
+      const kind = this.isIncomeTransaction(this.getTransactionData(item))
+        ? 'type.income'
+        : 'type.expense';
+      return this.language.t(kind);
+    }
+    return this.language.t('type.transfer');
+  }
+
   isForeignCurrencyTransaction(txn: Transaction): boolean {
     const account = this.accounts().find((a) => a.id === txn.accountId);
     return !!account && account.currency !== this.baseCurrency();

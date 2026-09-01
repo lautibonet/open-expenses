@@ -292,7 +292,10 @@
                 [class.row-income]="income"
                 [class.row-expense]="!income"
               >
-                <td>{{ txn.date | date: 'mediumDate' }}</td>
+                <td>
+                  <span class="visually-hidden">{{ kindLabel(item) }}</span>
+                  {{ txn.date | date: 'mediumDate' }}
+                </td>
                 <td>
                   <span class="cat-chip">{{ getCategoryName(txn.categoryId) }}</span>
                   @if (txn.note) {
@@ -387,7 +390,10 @@
             } @else {
               @let tr = getTransferData(item);
               <tr class="transfer-row">
-                <td>{{ tr.date | date: 'mediumDate' }}</td>
+                <td>
+                  <span class="visually-hidden">{{ kindLabel(item) }}</span>
+                  {{ tr.date | date: 'mediumDate' }}
+                </td>
                 <td>
                   {{ getAccountName(tr.sourceAccountId) }} →
                   {{ getAccountName(tr.destinationAccountId) }}

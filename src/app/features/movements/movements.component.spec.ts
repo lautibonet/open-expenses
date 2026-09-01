@@ -2037,6 +2037,82 @@ describe('MovementsComponent - ledger table styling', () => {
   });
 });
 
+describe('MovementsComponent - row kind announcements', () => {
+  let fixture: ComponentFixture<MovementsComponent>;
+  let component: MovementsComponent;
+  let transactionService: TransactionService;
+  let transferService: TransferService;
+  let accountService: AccountService;
+  let categoryService: CategoryService;
+  let accountId: number;
+  let incomeCategoryId: number;
+  let expenseCategoryId: number;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    await TestBed.configureTestingModule({
+      imports: [MovementsComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(MovementsComponent);
+    component = fixture.componentInstance;
+    transactionService = TestBed.inject(TransactionService);
+    transferService = TestBed.inject(TransferService);
+    accountService = TestBed.inject(AccountService);
+    categoryService = TestBed.inject(CategoryService);
+
+    const acc = await accountService.create('Cash', 'EUR', 100000);
+    accountId = acc.id!;
+    const incomeCat = await categoryService.create('Payroll', 'income');
+    incomeCategoryId = incomeCat.id!;
+    const expenseCat = await categoryService.create('Food', 'expense');
+    expenseCategoryId = expenseCat.id!;
+  });
+
+  afterEach(async () => {
+    await db.delete();
+  });
+
+  async function seedOneOfEachKind(): Promise<void> {
+    const period = getCurrentPeriod();
+    await transactionService.create(accountId, incomeCategoryId, 3000, new Date(), period);
+    await transactionService.create(accountId, expenseCategoryId, 500, new Date(), period);
+    const savings = await accountService.create('Savings', 'EUR', 50000);
+    await transferService.create(accountId, savings.id!, 100, new Date(), period);
+    await component.ngOnInit();
+    fixture.detectChanges();
+  }
+
+  function kindAnnouncement(row: Element | null): string {
+    expect(row).toBeTruthy();
+    const badge = row!.querySelector('.visually-hidden');
+    expect(badge).toBeTruthy();
+    return (badge!.textContent ?? '').trim();
+  }
+
+  it('announces each row kind to assistive technology', async () => {
+    await seedOneOfEachKind();
+
+    expect(kindAnnouncement(fixture.nativeElement.querySelector('tr.row-income'))).toBe('Income');
+    expect(kindAnnouncement(fixture.nativeElement.querySelector('tr.row-expense'))).toBe('Expense');
+    expect(kindAnnouncement(fixture.nativeElement.querySelector('tr.transfer-row'))).toBe(
+      'Transfer',
+    );
+  });
+
+  it('announces row kinds localized in Spanish', async () => {
+    await TestBed.inject(LanguageService).setLanguage('es');
+    await seedOneOfEachKind();
+
+    expect(kindAnnouncement(fixture.nativeElement.querySelector('tr.row-income'))).toBe('Ingreso');
+    expect(kindAnnouncement(fixture.nativeElement.querySelector('tr.row-expense'))).toBe('Gasto');
+    expect(kindAnnouncement(fixture.nativeElement.querySelector('tr.transfer-row'))).toBe(
+      'Transferencia',
+    );
+  });
+});
+
 describe('MovementsComponent - date header sorting', () => {
   let fixture: ComponentFixture<MovementsComponent>;
   let component: MovementsComponent;
