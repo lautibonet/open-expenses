@@ -524,6 +524,62 @@ describe('DashboardComponent - shared scope', () => {
     expect(fixture.nativeElement.querySelector('.kpi-card.kpi-net .secondary')).toBeNull();
   });
 
+  it('visually states the scope year as a caps label on every KPI card', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const scopes = Array.from(
+      fixture.nativeElement.querySelectorAll('.kpi-card dt .scope') as NodeListOf<HTMLElement>,
+    );
+    expect(scopes.length).toBe(3);
+    for (const scope of scopes) {
+      expect(scope.textContent).toContain(String(getCurrentYear()));
+      expect(scope.textContent).toContain('YEAR TO DATE');
+    }
+  });
+
+  it('keeps the KPI scope label in sync when the scope year changes', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+    const previousYear = getCurrentYear() - 1;
+    await component.onScopeYearChange(previousYear);
+    fixture.detectChanges();
+
+    const scope = fixture.nativeElement.querySelector('.kpi-card.kpi-income dt .scope');
+    expect(scope.textContent).toContain(String(previousYear));
+  });
+
+  it('associates each KPI label, year and value in a definition list per card', async () => {
+    const acc = await accountService.create('Cash', 'EUR', 0);
+    const incomeCat = await categoryService.create('Payroll', 'income');
+    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(), getCurrentPeriod());
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const cards = Array.from(
+      fixture.nativeElement.querySelectorAll('dl.kpi-card') as NodeListOf<HTMLDListElement>,
+    );
+    expect(cards.length).toBe(3);
+
+    for (const card of cards) {
+      const terms = card.querySelectorAll('dt');
+      expect(terms.length).toBe(1);
+      const term = terms[0];
+      expect(term.textContent).toContain(String(getCurrentYear()));
+
+      const value = card.querySelector('dd.value');
+      expect(value).toBeTruthy();
+      expect(value!.textContent?.trim()).not.toBe('');
+    }
+
+    const incomeCard = fixture.nativeElement.querySelector('dl.kpi-card.kpi-income');
+    expect(incomeCard.querySelector('dt').textContent).toContain('Income');
+    expect(incomeCard.querySelector('dd.value').textContent).toContain(
+      component.formatMoney(component.yearTotalIncome()),
+    );
+  });
+
   it('hides the savings rate when there is no income', async () => {
     await component.ngOnInit();
     fixture.detectChanges();
