@@ -24,6 +24,7 @@ import { Transfer } from '../../core/models/transfer.model';
 import { Account } from '../../core/models/account.model';
 import { Category, isIncomeCategory } from '../../core/models/category.model';
 import { DismissibleAlertComponent } from '../../shared/components/dismissible-alert/dismissible-alert.component';
+import { periodEndBalance, periodEndBaseAmount } from '../../core/balances/period-end-balances';
 
 @Component({
   selector: 'app-dashboard',
@@ -116,19 +117,19 @@ export class DashboardComponent implements OnInit {
     }
     this.categoryBreakdown.set(breakdown.sort((a, b) => b.total - a.total));
 
+    const isIncome = (t: Transaction) => isIncomeCategory(catMap.get(t.categoryId)?.type);
+    const [allTxns, allTransfers] = await Promise.all([
+      this.transactionService.getAll(),
+      this.transferService.getAll(),
+    ]);
+
+    const scope = this.scope();
     const balances: { account: Account; balance: number }[] = [];
     for (const acc of this.accounts()) {
-      const txnsAll = await this.transactionService.getByAccount(acc.id!);
-      const transfersAll = await this.transferService.getAll();
-      let balance = acc.initialBalance;
-      for (const t of txnsAll) {
-        const cat = catMap.get(t.categoryId);
-        balance += isIncomeCategory(cat?.type) ? t.amount : -t.amount;
-      }
-      for (const tr of transfersAll) {
-        if (tr.sourceAccountId === acc.id) balance -= tr.sourceAmount;
-        if (tr.destinationAccountId === acc.id) balance += tr.destinationAmount;
-      }
+      const balance = periodEndBalance(
+        { account: acc, transactions: allTxns, transfers: allTransfers, isIncome },
+        scope,
+      );
       balances.push({ account: acc, balance });
     }
     this.accountBalances.set(balances);
@@ -153,8 +154,28 @@ export class DashboardComponent implements OnInit {
 
     try {
       const rates = await this.exchangeRateService.getRates(base, nonBaseCurrencies);
-      const baseAmounts = await this.computeBaseAmounts(balances, catMap, rates, base);
-      this.totalBalanceBaseCurrency.set(baseAmounts.reduce((sum, b) => sum + b.amount, 0));
+      const missingRate = balances.some(
+        b => b.account.currency !== base && !rates.rates.has(b.account.currency),
+      );
+      if (missingRate) {
+        this.conversionFailed.set(true);
+        this.totalBalanceBaseCurrency.set(this.sumBalances(balances, base));
+        return;
+      }
+
+      let total = 0;
+      for (const b of balances) {
+        const acc = b.account;
+        const initialInBase = acc.currency === base
+          ? acc.initialBalance
+          : Math.round(acc.initialBalance / rates.rates.get(acc.currency)! * 100) / 100;
+        total += periodEndBaseAmount(
+          { account: acc, transactions: allTxns, transfers: allTransfers, isIncome },
+          scope,
+          initialInBase,
+        );
+      }
+      this.totalBalanceBaseCurrency.set(Math.round(total * 100) / 100);
     } catch {
       this.conversionFailed.set(true);
       this.totalBalanceBaseCurrency.set(this.sumBalances(balances, base));
@@ -218,44 +239,6 @@ export class DashboardComponent implements OnInit {
 
   scopeYearValue(): number {
     return this.scope().year;
-  }
-
-  private async computeBaseAmounts(
-    balances: { account: Account; balance: number }[],
-    catMap: Map<number, Category>,
-    rates: { rates: Map<string, number> },
-    base: string,
-  ): Promise<{ account: Account; amount: number }[]> {
-    const results: { account: Account; amount: number }[] = [];
-
-    for (const b of balances) {
-      if (b.account.currency === base) {
-        results.push({ account: b.account, amount: b.balance });
-        continue;
-      }
-
-      const rate = rates.rates.get(b.account.currency);
-      if (!rate) continue;
-
-      const txnsAll = await this.transactionService.getByAccount(b.account.id!);
-      const transfersAll = await this.transferService.getAll();
-
-      let baseAmount = Math.round(b.account.initialBalance / rate * 100) / 100;
-
-      for (const t of txnsAll) {
-        const cat = catMap.get(t.categoryId);
-        const sign = isIncomeCategory(cat?.type) ? 1 : -1;
-        baseAmount += sign * (t.baseCurrencyAmount ?? Math.round(t.amount / rate * 100) / 100);
-      }
-      for (const tr of transfersAll) {
-        if (tr.sourceAccountId === b.account.id) baseAmount -= tr.baseCurrencyAmount;
-        if (tr.destinationAccountId === b.account.id) baseAmount += tr.baseCurrencyAmount;
-      }
-
-      results.push({ account: b.account, amount: Math.round(baseAmount * 100) / 100 });
-    }
-
-    return results;
   }
 
   private sumBalances(

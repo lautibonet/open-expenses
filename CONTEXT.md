@@ -13,7 +13,7 @@ A movement of money between two of the user's own accounts. Structurally separat
 _Avoid_: Movement, internal transfer
 
 **Account (CashAccount)**:
-A named place where the user holds money, defined by a name, a currency, and an initial balance. Current balance is computed from initial balance plus all Transactions and Transfers.
+A named place where the user holds money, defined by a name, a currency, and an initial balance. Its balance is computed from the initial balance plus Transactions and Transfers up to a given point in time; on Stats it is reported as of the end of the Scope's Period.
 _Avoid_: Wallet, bank account, source
 
 **Category**:
@@ -25,7 +25,7 @@ A calendar month (January through December) assigned to a Transaction or Transfe
 _Avoid_: Cycle, fiscal period, date range
 
 **Scope**:
-The reporting window chosen on the Stats and Movements screens: a single Period (a month together with its year). Filtering by Scope always uses the stored Period year, never the movement's date. Aggregations that span multiple Periods are not filtered by the Scope's Period: the total balance covers all history, while yearly totals and averages follow the Scope's year.
+The reporting window chosen on the Stats and Movements screens: a single Period (a month together with its year). Filtering by Scope always uses the stored Period year, never the movement's date. Aggregations that span multiple Periods are not narrowed to the Scope's month: the total and per-account balances are cumulative balances as of the end of the Scope's Period (initial balances plus every movement whose stored Period is at or before it), while yearly totals and averages follow the Scope's year. There is no All Time Scope: selecting the latest Period shows the all-time figure.
 _Avoid_: Filter, range, timeframe, selection, All Time
 
 **Base Currency**:
@@ -49,7 +49,7 @@ Income minus Expenses aggregated over an aggregation window — a single Period 
 _Avoid_: profit, earnings, balance
 
 **Stats** (formerly Dashboard):
-A read-only summary screen showing a total balance in base currency (sum of all account balances, non-base converted using latest rate), yearly totals and monthly averages of Income, Expenses, and Net for the Scope's year, per-category expense breakdown, and per-account balances (current and period-end). Reached via the `/dashboard` route.
+A read-only summary screen showing a total balance in Base Currency as of the end of the Scope's Period (per-account balances accumulated from initial balances and movements at or before that Period; cross-currency movements counted at their stored conversions), yearly totals and monthly averages of Income, Expenses, and Net for the Scope's year, per-category expense breakdown, and per-account balances as of the end of the Scope's Period. Reached via the `/dashboard` route.
 _Avoid_: overview, summary page
 
 **Language**:

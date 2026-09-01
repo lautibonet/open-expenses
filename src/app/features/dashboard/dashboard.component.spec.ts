@@ -256,8 +256,9 @@ describe('DashboardComponent', () => {
 
       await component.ngOnInit();
 
-      // baseAmount = 100000/1.1 + 5000/1.1 = 105000/1.1
-      const expected = Math.round(105000 / 1.1 * 100) / 100;
+      // Initial balance converts at the latest rate; the movement without a
+      // stored conversion counts at its face amount (no read-time conversion).
+      const expected = Math.round(100000 / 1.1 * 100) / 100 + 5000;
       expect(component.totalBalanceBaseCurrency()).toBeCloseTo(expected, 0);
     });
 
@@ -327,6 +328,150 @@ describe('DashboardComponent', () => {
 
       expect(component.conversionFailed()).toBe(false);
     });
+  });
+});
+
+describe('DashboardComponent - period-end balances', () => {
+  let fixture: ComponentFixture<DashboardComponent>;
+  let component: DashboardComponent;
+  let accountService: AccountService;
+  let categoryService: CategoryService;
+  let transactionService: TransactionService;
+  let transferService: TransferService;
+
+  beforeEach(async () => {
+    await resetDb();
+    await TestBed.configureTestingModule({
+      imports: [DashboardComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(DashboardComponent);
+    component = fixture.componentInstance;
+    accountService = TestBed.inject(AccountService);
+    categoryService = TestBed.inject(CategoryService);
+    transactionService = TestBed.inject(TransactionService);
+    transferService = TestBed.inject(TransferService);
+  });
+
+  afterEach(async () => {
+    await new Promise<void>(resolve => setTimeout(resolve, 10));
+    await resetDb();
+  });
+
+  it('shows balances as of the end of the selected Period', async () => {
+    const acc = await accountService.create('Cash', 'EUR', 1000);
+    const incomeCat = await categoryService.create('Payroll', 'income');
+    const year = getCurrentYear();
+
+    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(), getCurrentPeriod(), null, null, year);
+    await transactionService.create(acc.id!, incomeCat.id!, 700, new Date(), 12, null, null, year);
+
+    await component.ngOnInit();
+    expect(component.accountBalances().find(b => b.account.id === acc.id)!.balance).toBe(4000);
+    expect(component.totalBalanceBaseCurrency()).toBe(4000);
+
+    await component.onScopeMonthChange(12);
+    expect(component.accountBalances().find(b => b.account.id === acc.id)!.balance).toBe(4700);
+    expect(component.totalBalanceBaseCurrency()).toBe(4700);
+  });
+
+  it('shows initial balances only for Periods before any movement', async () => {
+    const acc = await accountService.create('Cash', 'EUR', 100000);
+    const incomeCat = await categoryService.create('Payroll', 'income');
+    const year = getCurrentYear();
+
+    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(), getCurrentPeriod(), null, null, year);
+
+    await component.ngOnInit();
+    await component.onScopeYearChange(year - 1);
+    await component.onScopeMonthChange(1);
+
+    expect(component.accountBalances().find(b => b.account.id === acc.id)!.balance).toBe(100000);
+    expect(component.totalBalanceBaseCurrency()).toBe(100000);
+  });
+
+  it('keeps an empty future Period at the last non-empty balance', async () => {
+    const acc = await accountService.create('Cash', 'EUR', 1000);
+    const incomeCat = await categoryService.create('Payroll', 'income');
+    const year = getCurrentYear();
+
+    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(), 1, null, null, year);
+
+    await component.ngOnInit();
+    const atCurrent = component.totalBalanceBaseCurrency();
+
+    await component.onScopeMonthChange(12);
+    expect(component.accountBalances().find(b => b.account.id === acc.id)!.balance).toBe(4000);
+    expect(component.totalBalanceBaseCurrency()).toBe(atCurrent);
+  });
+
+  it('reproduces the all-time figure when the latest Period is selected (regression)', async () => {
+    const a = await accountService.create('Cash', 'EUR', 1000);
+    const b = await accountService.create('Savings', 'EUR', 0);
+    const incomeCat = await categoryService.create('Payroll', 'income');
+    const expenseCat = await categoryService.create('Food', 'expense');
+    const year = getCurrentYear();
+
+    await transactionService.create(a.id!, incomeCat.id!, 3000, new Date(), 1, null, null, year - 1);
+    await transactionService.create(a.id!, expenseCat.id!, 500, new Date(), 6, null, null, year);
+    await transferService.create(a.id!, b.id!, 300, new Date(), 3, '', 1, year);
+
+    await component.ngOnInit();
+    await component.onScopeYearChange(year);
+    await component.onScopeMonthChange(getCurrentPeriod());
+
+    const balances = component.accountBalances();
+    expect(balances.find(x => x.account.id === a.id)!.balance).toBe(3200);
+    expect(balances.find(x => x.account.id === b.id)!.balance).toBe(300);
+    expect(component.totalBalanceBaseCurrency()).toBe(3500);
+  });
+
+  it('reproduces the all-time figure for cross-currency accounts via stored conversions', async () => {
+    const eur = await accountService.create('Cash', 'EUR', 1000);
+    const usd = await accountService.create('USD Account', 'USD', 0);
+    const incomeCat = await categoryService.create('Payroll', 'income');
+    const expenseCat = await categoryService.create('Food', 'expense');
+    const year = getCurrentYear();
+
+    // Stored at capture time: 100 USD at 1.08 = 108 EUR.
+    await transactionService.create(usd.id!, incomeCat.id!, 100, new Date(), 2, 1.08, 108, year);
+    await transactionService.create(eur.id!, expenseCat.id!, 200, new Date(), 5, null, null, year);
+
+    const mockResponse = {
+      ok: true,
+      json: async () => [
+        { base: 'EUR', quote: 'USD', date: '2026-01-15', rate: 2.0 },
+      ],
+    };
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse as Response);
+
+    await component.ngOnInit();
+    await component.onScopeMonthChange(getCurrentPeriod());
+
+    // All-time: 1000 - 200 + 108 (stored) = 908, not 1000 - 200 + 50 (read-time).
+    expect(component.totalBalanceBaseCurrency()).toBe(908);
+  });
+
+  it('totals cross-currency balances using stored conversions, not read-time re-conversion', async () => {
+    const usd = await accountService.create('USD Account', 'USD', 0);
+    const incomeCat = await categoryService.create('Payroll', 'income');
+    const period = getCurrentPeriod();
+
+    // Stored at capture time: 100 USD at 1.08 = 108 EUR.
+    await transactionService.create(usd.id!, incomeCat.id!, 100, new Date(), period, 1.08, 108);
+
+    // Latest rate would re-convert 100 USD at 2.0 = 50; the stored 108 must win.
+    const mockResponse = {
+      ok: true,
+      json: async () => [
+        { base: 'EUR', quote: 'USD', date: '2026-01-15', rate: 2.0 },
+      ],
+    };
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse as Response);
+
+    await component.ngOnInit();
+
+    expect(component.totalBalanceBaseCurrency()).toBe(108);
   });
 });
 
