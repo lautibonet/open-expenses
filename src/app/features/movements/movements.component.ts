@@ -88,6 +88,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
   categories = signal<Category[]>([]);
   allCategoriesForNameResolution = signal<Category[]>([]);
   movements = signal<MovementItem[]>([]);
+  dataLoaded = signal(false);
   baseCurrency = signal('EUR');
 
   showForm = signal<'none' | 'transfer' | 'transaction'>('none');
@@ -281,17 +282,21 @@ export class MovementsComponent implements OnInit, OnDestroy {
   }
 
   private async loadAll(): Promise<void> {
-    this.baseCurrency.set(await this.profileService.getBaseCurrency());
-    this.accounts.set(await this.accountService.getActive());
-    this.categories.set(await this.categoryService.getActive());
-    this.allCategoriesForNameResolution.set(await this.categoryService.getAll());
-    if (this.accounts().length > 0) {
-      const first = this.accounts()[0].id!;
-      const second = this.accounts()[1]?.id;
-      this.trForm.update((f) => ({ ...f, sourceAccountId: first, destAccountId: second ?? first }));
+    try {
+      this.baseCurrency.set(await this.profileService.getBaseCurrency());
+      this.accounts.set(await this.accountService.getActive());
+      this.categories.set(await this.categoryService.getActive());
+      this.allCategoriesForNameResolution.set(await this.categoryService.getAll());
+      if (this.accounts().length > 0) {
+        const first = this.accounts()[0].id!;
+        const second = this.accounts()[1]?.id;
+        this.trForm.update((f) => ({ ...f, sourceAccountId: first, destAccountId: second ?? first }));
+      }
+      await this.refresh();
+      await this.applyScopeOptions();
+    } finally {
+      this.dataLoaded.set(true);
     }
-    await this.refresh();
-    await this.applyScopeOptions();
   }
 
   async refresh(): Promise<void> {
@@ -338,8 +343,15 @@ export class MovementsComponent implements OnInit, OnDestroy {
   private async setScope(scope: PeriodScope): Promise<void> {
     this.scope.set(scope);
     this.scopeAnnouncement.set(this.language.scopeLabel(scope));
-    await this.refresh();
-    await this.applyScopeOptions();
+    // Re-enter the busy gate so the new scope's empty state and Net figures
+    // never render from the previous scope's data.
+    this.dataLoaded.set(false);
+    try {
+      await this.refresh();
+      await this.applyScopeOptions();
+    } finally {
+      this.dataLoaded.set(true);
+    }
   }
 
   private formPeriodYear(): { period: MonthNumber; year: number } {

@@ -288,6 +288,15 @@
   @extend %empty-state;
 }
 
+/* Same card surface as %empty-state, but with the Hard Stroke Rule's solid
+   border: the dashed outline is reserved for the "nothing here yet" state,
+   and while loading the ledger must not claim emptiness. */
+.loading-state {
+  @extend %empty-state;
+
+  border: var(--border-hard);
+}
+
 .error {
   color: var(--error);
   margin: 0.5rem 0;
