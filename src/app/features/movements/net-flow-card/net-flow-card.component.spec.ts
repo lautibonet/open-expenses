@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { NetFlowCardComponent, MovementItem } from './net-flow-card.component';
+import { LanguageService } from '../../../core/services/language.service';
 import { TransactionService } from '../../../core/services/transaction.service';
 import { TransferService } from '../../../core/services/transfer.service';
 import { AccountService } from '../../../core/services/account.service';
@@ -34,6 +35,7 @@ describe('NetFlowCardComponent', () => {
     fixture.componentRef.setInput('accounts', []);
     fixture.componentRef.setInput('categories', []);
     fixture.componentRef.setInput('baseCurrency', 'EUR');
+    fixture.componentRef.setInput('scope', defaultScope());
     transactionService = TestBed.inject(TransactionService);
     transferService = TestBed.inject(TransferService);
     accountService = TestBed.inject(AccountService);
@@ -185,5 +187,52 @@ describe('NetFlowCardComponent', () => {
     const amount = fixture.nativeElement.querySelector('.net-amount').textContent;
     expect(amount).not.toContain('+');
     expect(amount).toContain('0.00');
+  });
+
+  it('names the Scope Period in the heading', async () => {
+    const period = getCurrentPeriod();
+    const year = defaultScope().year;
+    await transactionService.create(eurAccountId, incomeCategoryId, 1000, new Date(), period);
+    fixture.componentRef.setInput('scope', { kind: 'month', period, year });
+    await render();
+
+    const language = TestBed.inject(LanguageService);
+    const heading = fixture.nativeElement.querySelector('.net-flow-label').textContent;
+    expect(heading).toContain('Net Flow');
+    expect(heading).toContain(language.scopeLabel({ kind: 'month', period, year }));
+  });
+
+  it('shows the conversion warning when an unconverted foreign transaction is included', async () => {
+    const period = getCurrentPeriod();
+    await transactionService.create(
+      usdAccountId,
+      expenseCategoryId,
+      10,
+      new Date(),
+      period,
+      null,
+      null,
+    );
+    await render();
+
+    const warning = fixture.nativeElement.querySelector('.net-flow-warning .alert');
+    expect(warning).toBeTruthy();
+    expect(warning.textContent).toContain('face amount');
+  });
+
+  it('hides the conversion warning when every foreign transaction is converted', async () => {
+    const period = getCurrentPeriod();
+    await transactionService.create(
+      usdAccountId,
+      expenseCategoryId,
+      10,
+      new Date(),
+      period,
+      1.08,
+      10.8,
+    );
+    await render();
+
+    expect(fixture.nativeElement.querySelector('.net-flow-warning .alert')).toBeFalsy();
   });
 });
