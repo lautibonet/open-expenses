@@ -6,10 +6,6 @@
   border-left: var(--stripe-income);
   padding: var(--space-md) var(--space-lg);
   margin-bottom: var(--space-lg);
-
-  &.negative {
-    border-left: var(--stripe-expense);
-  }
 }
 
 .net-flow-head {
