@@ -19,10 +19,14 @@
 /* KPI row: the design's three summary cards. The year total is the headline
    figure with the monthly average demoted to a secondary line beneath it.
    Income keeps a green stripe, expense an error-red stripe, and net is the
-   inverted solid-ink card. */
+   inverted solid-ink card.
+   Tracks are minmax(0, 1fr), not bare 1fr: a 1fr track's minimum is
+   min-content, so an unbreakable mono figure ("29.087,62 EUR") can blow the
+   row out past the page column. Clamping the minimum to 0 keeps the row
+   edges aligned with the cards above and below at any figure size. */
 .kpi-row {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-md);
   margin-bottom: var(--space-lg);
 }
@@ -52,7 +56,9 @@
     @extend %mono-data;
 
     font-size: var(--type-headline);
-    font-weight: 700;
+    /* JetBrains Mono ships only weight 500: requesting more synthesizes
+       faux bold with wider glyphs, worsening the grid blowout. */
+    font-weight: 500;
     color: var(--on-surface);
   }
 
@@ -60,6 +66,7 @@
     @extend %mono-data;
 
     font-size: var(--type-caption);
+    font-weight: 500;
     color: var(--on-surface-variant);
   }
 
@@ -90,6 +97,7 @@
     .savings-rate {
       @extend %mono-data;
 
+      font-weight: 500;
       color: var(--surface-container-highest);
     }
   }
@@ -119,7 +127,7 @@
     @extend %mono-data;
 
     font-size: var(--type-title);
-    font-weight: 600;
+    font-weight: 500;
     color: var(--on-surface);
   }
 }
@@ -194,6 +202,7 @@
 .balance-tile {
   @extend %mono-data;
 
+  font-weight: 500;
   display: grid;
   place-items: center;
   min-width: 2.5rem;
@@ -223,7 +232,7 @@
   @extend %mono-data;
 
   margin-left: auto;
-  font-weight: 600;
+  font-weight: 500;
   text-align: right;
   white-space: nowrap;
 }
@@ -243,6 +252,6 @@
 @media (max-width: 768px) {
 
   .kpi-row {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }

@@ -1023,6 +1023,83 @@ describe('DashboardComponent - translations', () => {
   });
 });
 
+describe('DashboardComponent - KPI row layout and mono weights', () => {
+  let fixture: ComponentFixture<DashboardComponent>;
+  let component: DashboardComponent;
+  let accountService: AccountService;
+  let categoryService: CategoryService;
+  let transactionService: TransactionService;
+
+  beforeEach(async () => {
+    await resetDb();
+    await TestBed.configureTestingModule({
+      imports: [DashboardComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(DashboardComponent);
+    component = fixture.componentInstance;
+    accountService = TestBed.inject(AccountService);
+    categoryService = TestBed.inject(CategoryService);
+    transactionService = TestBed.inject(TransactionService);
+  });
+
+  afterEach(async () => {
+    await new Promise<void>(resolve => setTimeout(resolve, 10));
+    await resetDb();
+  });
+
+  async function renderWithData(): Promise<void> {
+    const acc = await accountService.create('Cash', 'EUR', 100000);
+    const incomeCat = await categoryService.create('Payroll', 'income');
+    const expenseCat = await categoryService.create('Food', 'expense');
+    // Six-figure yearly total: "1.234.567,89 EUR" — the widest headline the
+    // grid must absorb without widening the row.
+    await transactionService.create(acc.id!, incomeCat.id!, 123456789, new Date(), getCurrentPeriod());
+    await transactionService.create(acc.id!, expenseCat.id!, 500, new Date(), getCurrentPeriod());
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+  }
+
+  function compiledComponentCss(): string {
+    return Array.from(document.querySelectorAll('style'))
+      .map(s => s.textContent ?? '')
+      .join('\n');
+  }
+
+  // jsdom does no layout, so row alignment can't be asserted geometrically;
+  // the shrinkable-track declaration in the compiled stylesheet is the seam.
+  it('keeps the KPI row tracks shrinkable so wide figures cannot widen the row', async () => {
+    await renderWithData();
+
+    const css = compiledComponentCss();
+    expect(css).toMatch(/\.kpi-row[^{]*\{[^}]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
+    expect(css).toMatch(/@media[^{]*\{[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\)/);
+  });
+
+  it('renders every mono figure on Stats at the data spec weight (500, no faux bold)', async () => {
+    await renderWithData();
+
+    const figures = [
+      '.kpi-card.kpi-income .value',
+      '.kpi-card.kpi-expense .value',
+      '.kpi-card.kpi-net .value',
+      '.kpi-card .secondary',
+      '.kpi-card .savings-rate',
+      '.stat .value',
+      '.category-bar-row .cat-amount',
+      '.balance-tile',
+      '.balance-amount',
+    ] as const;
+
+    for (const selector of figures) {
+      const el = fixture.nativeElement.querySelector(selector) as HTMLElement | null;
+      expect(el, selector).toBeTruthy();
+      expect(getComputedStyle(el!).fontWeight, selector).toBe('500');
+    }
+  });
+});
+
 describe('DashboardComponent - data version refresh', () => {
   let fixture: ComponentFixture<DashboardComponent>;
   let component: DashboardComponent;
