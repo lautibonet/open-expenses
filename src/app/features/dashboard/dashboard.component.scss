@@ -198,6 +198,17 @@
   margin: 0;
 }
 
+/* The shared empty-state pattern (same as Movements): dashed border on a flat
+   surface, centered muted ink. In the KPI row's grid the empty state spans
+   all three tracks so it keeps the full column width. */
+.empty-state {
+  @extend %empty-state;
+}
+
+.kpi-row .empty-state {
+  grid-column: 1 / -1;
+}
+
 /* Accessible equivalent: announces month + Net per Period. */
 .net-strip-figures {
   margin: 0;
