@@ -18,8 +18,6 @@ export class App implements OnInit {
     const completed = await this.profileService.isOnboardingCompleted();
     if (!completed) {
       this.router.navigate(['/onboarding']);
-    } else {
-      this.router.navigate(['/movements']);
     }
   }
 }
