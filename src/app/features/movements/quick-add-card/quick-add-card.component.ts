@@ -39,18 +39,24 @@ export interface TransactionFormPayload {
   note: string;
 }
 
+export interface RateState {
+  loading: boolean;
+  error: string;
+  rate: number | null;
+  date: string;
+}
+
+export interface QuickAddDraft {
+  form: TransactionFormState;
+  editingId: number | null;
+  rateState: RateState;
+}
+
 const STORAGE_KEY = 'open-expenses.quick-add.last-selection';
 
 interface LastSelection {
   accountId: number;
   categoryId: number;
-}
-
-interface RateState {
-  loading: boolean;
-  error: string;
-  rate: number | null;
-  date: string;
 }
 
 interface TransactionFormState {
@@ -64,6 +70,8 @@ interface TransactionFormState {
   exchangeRate: number | null;
   baseCurrencyAmount: number | null;
 }
+
+export type { TransactionFormState };
 
 const round2 = (n: number): number => Math.round(n * 100) / 100;
 
@@ -100,6 +108,7 @@ export class QuickAddCardComponent implements OnInit, AfterViewInit {
   categories = input<Category[]>([]);
   baseCurrency = input('EUR');
   editTransaction = input<Transaction | null>(null);
+  initialDraft = input<QuickAddDraft | null>(null);
 
   save = output<TransactionFormPayload>();
   close = output<void>();
@@ -137,6 +146,14 @@ export class QuickAddCardComponent implements OnInit, AfterViewInit {
   });
 
   ngOnInit(): void {
+    const draft = this.initialDraft();
+    if (draft) {
+      this.editingId.set(draft.editingId);
+      this.form.set(draft.form);
+      this.rateState.set(draft.rateState);
+      this.selectionInitialized = true;
+      return;
+    }
     this.applyStoredSelection();
   }
 
@@ -153,6 +170,14 @@ export class QuickAddCardComponent implements OnInit, AfterViewInit {
 
   focusAmount(): void {
     this.amountInput()?.nativeElement?.focus();
+  }
+
+  draft(): QuickAddDraft {
+    return {
+      form: this.form(),
+      editingId: this.editingId(),
+      rateState: this.rateState(),
+    };
   }
 
   onAmountChange(value: number): void {

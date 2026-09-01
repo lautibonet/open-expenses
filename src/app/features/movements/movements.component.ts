@@ -28,6 +28,8 @@ import {
 import { LanguageService } from '../../core/services/language.service';
 import {
   QuickAddCardComponent,
+  QuickAddDraft,
+  RateState,
   TransactionFormPayload,
 } from './quick-add-card/quick-add-card.component';
 import {
@@ -35,12 +37,7 @@ import {
   MovementItem,
 } from './net-flow-card/net-flow-card.component';
 
-interface ExchangeRateState {
-  loading: boolean;
-  error: string;
-  rate: number | null;
-  date: string;
-}
+const EMPTY_RATE_STATE: RateState = { loading: false, error: '', rate: null, date: '' };
 
 interface PendingDelete {
   item: MovementItem;
@@ -57,6 +54,25 @@ interface TransferForm {
   period: MonthNumber;
   year: number;
   note: string;
+}
+
+function defaultTransferForm(
+  accounts: Account[],
+  periodYear: { period: MonthNumber; year: number },
+): TransferForm {
+  const sourceAccountId = accounts[0]?.id ?? 0;
+  const destAccountId = accounts[1]?.id ?? accounts[0]?.id ?? 0;
+  return {
+    sourceAccountId,
+    destAccountId,
+    sourceAmount: 0,
+    destinationAmount: 0,
+    exchangeRate: 1,
+    date: new Date().toISOString().split('T')[0],
+    period: periodYear.period,
+    year: periodYear.year,
+    note: '',
+  };
 }
 
 @Component({
@@ -93,18 +109,14 @@ export class MovementsComponent implements OnInit, OnDestroy {
 
   showForm = signal<'none' | 'transfer' | 'transaction'>('none');
   editingId = signal<number | null>(null);
+  quickAddRestore = signal<QuickAddDraft | null>(null);
 
   confirmingDelete = signal<MovementItem | null>(null);
   undo = signal<PendingDelete | null>(null);
   undoWindowMs = 10000;
   private undoHandle: ReturnType<typeof setTimeout> | null = null;
 
-  transferExchangeRateState = signal<ExchangeRateState>({
-    loading: false,
-    error: '',
-    rate: null,
-    date: '',
-  });
+  transferExchangeRateState = signal<RateState>({ ...EMPTY_RATE_STATE });
 
   trForm = signal<TransferForm>({
     sourceAccountId: 0,
@@ -359,14 +371,56 @@ export class MovementsComponent implements OnInit, OnDestroy {
     return { period: s.period, year: s.year };
   }
 
+  toggleTransferForm(): void {
+    if (this.showForm() === 'transfer') {
+      this.closeTransferForm();
+    } else {
+      this.openTransferForm();
+    }
+  }
+
+  closeTransferForm(): void {
+    this.showForm.set('none');
+  }
+
+  private captureQuickAddDraft(): void {
+    const card = this.quickAddCard();
+    if (!card) return;
+    const draft = card.draft();
+    this.quickAddRestore.set({
+      ...draft,
+      rateState: { ...draft.rateState, loading: false },
+    });
+  }
+
+  private transferDraftInProgress(): boolean {
+    if (this.editingId() !== null) return true;
+    const f = this.trForm();
+    const d = defaultTransferForm(this.accounts(), this.formPeriodYear());
+    return (
+      f.sourceAccountId !== d.sourceAccountId ||
+      f.destAccountId !== d.destAccountId ||
+      f.sourceAmount !== d.sourceAmount ||
+      f.destinationAmount !== d.destinationAmount ||
+      f.exchangeRate !== d.exchangeRate ||
+      f.date !== d.date ||
+      f.period !== d.period ||
+      f.year !== d.year ||
+      f.note !== d.note
+    );
+  }
+
   openTransferForm(id?: number): void {
+    if (this.showForm() === 'transaction') {
+      this.captureQuickAddDraft();
+    }
     this.showForm.set('transfer');
-    this.editingId.set(id ?? null);
     this.editTransaction.set(null);
     this.errorMessage.set('');
     this.errorDetail.set('');
-    this.transferExchangeRateState.set({ loading: false, error: '', rate: null, date: '' });
     if (id) {
+      this.editingId.set(id);
+      this.transferExchangeRateState.set({ ...EMPTY_RATE_STATE });
       this.transferService.getById(id).then((t) => {
         if (t) {
           this.trForm.set({
@@ -393,29 +447,25 @@ export class MovementsComponent implements OnInit, OnDestroy {
           }
         }
       });
-    } else {
-      const srcId = this.accounts()[0]?.id ?? 0;
-      const dstId = this.accounts()[1]?.id ?? this.accounts()[0]?.id ?? 0;
-      this.trForm.set({
-        sourceAccountId: srcId,
-        destAccountId: dstId,
-        sourceAmount: 0,
-        destinationAmount: 0,
-        exchangeRate: 1,
-        date: new Date().toISOString().split('T')[0],
-        period: this.formPeriodYear().period,
-        year: this.formPeriodYear().year,
-        note: '',
-      });
-      if (srcId && dstId && srcId !== dstId) {
-        this.checkTransferExchangeRate();
-      }
+    } else if (!this.transferDraftInProgress()) {
+      this.transferExchangeRateState.set({ ...EMPTY_RATE_STATE });
+      this.resetTransferForm();
+    }
+  }
+
+  private resetTransferForm(): void {
+    this.trForm.set(defaultTransferForm(this.accounts(), this.formPeriodYear()));
+    const { sourceAccountId: srcId, destAccountId: dstId } = this.trForm();
+    if (srcId && dstId && srcId !== dstId) {
+      this.checkTransferExchangeRate();
     }
   }
 
   toggleQuickAdd(): void {
     if (this.showForm() === 'transaction') {
-      this.closeQuickAdd();
+      this.captureQuickAddDraft();
+      this.showForm.set('none');
+      this.editTransaction.set(null);
     } else {
       this.openQuickAdd();
     }
@@ -433,11 +483,13 @@ export class MovementsComponent implements OnInit, OnDestroy {
   openQuickAddForEdit(txn: Transaction): void {
     this.showForm.set('transaction');
     this.editTransaction.set(txn);
+    this.quickAddRestore.set(null);
   }
 
   closeQuickAdd(): void {
     this.showForm.set('none');
     this.editTransaction.set(null);
+    this.quickAddRestore.set(null);
   }
 
   cancelForm(): void {
@@ -446,7 +498,8 @@ export class MovementsComponent implements OnInit, OnDestroy {
     this.editTransaction.set(null);
     this.errorMessage.set('');
     this.errorDetail.set('');
-    this.transferExchangeRateState.set({ loading: false, error: '', rate: null, date: '' });
+    this.transferExchangeRateState.set({ ...EMPTY_RATE_STATE });
+    this.resetTransferForm();
   }
 
   clearFilters(): void {
@@ -498,7 +551,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
     const f = this.trForm();
 
     if (!src || !dst || src.currency === dst.currency) {
-      this.transferExchangeRateState.set({ loading: false, error: '', rate: null, date: '' });
+      this.transferExchangeRateState.set({ ...EMPTY_RATE_STATE });
       this.computeTransferDestinationAmount();
       return;
     }

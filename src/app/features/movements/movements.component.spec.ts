@@ -2467,3 +2467,276 @@ describe('MovementsComponent - async load gate', () => {
     await transfers.create(accountId, second.id!, 1000, new Date(), getCurrentPeriod());
   }
 });
+
+describe('MovementsComponent - capture form draft protection', () => {
+  let fixture: ComponentFixture<MovementsComponent>;
+  let component: MovementsComponent;
+  let transferService: TransferService;
+  let accountService: AccountService;
+  let categoryService: CategoryService;
+  let accountId1: number;
+  let accountId2: number;
+  let categoryId: number;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    await TestBed.configureTestingModule({
+      imports: [MovementsComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(MovementsComponent);
+    component = fixture.componentInstance;
+    transferService = TestBed.inject(TransferService);
+    accountService = TestBed.inject(AccountService);
+    categoryService = TestBed.inject(CategoryService);
+
+    const acc1 = await accountService.create('Cash', 'EUR', 100000);
+    accountId1 = acc1.id!;
+    const acc2 = await accountService.create('Card', 'EUR', 50000);
+    accountId2 = acc2.id!;
+    const cat = await categoryService.create('Food', 'expense');
+    categoryId = cat.id!;
+  });
+
+  afterEach(async () => {
+    await db.delete();
+  });
+
+  function transferButton(): HTMLButtonElement {
+    return (
+      Array.from(fixture.nativeElement.querySelectorAll('.controls button')) as HTMLButtonElement[]
+    ).find((b) => b.textContent!.trim() === '+ Transfer')!;
+  }
+
+  function quickAddButton(): HTMLButtonElement {
+    return (
+      Array.from(fixture.nativeElement.querySelectorAll('.controls button')) as HTMLButtonElement[]
+    ).find((b) => b.textContent!.trim() === '+ Transaction')!;
+  }
+
+  it('toggles the transfer form closed and back open via the + Transfer button', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    transferButton().click();
+    fixture.detectChanges();
+    expect(component.showForm()).toBe('transfer');
+    expect(transferButton().getAttribute('aria-expanded')).toBe('true');
+
+    transferButton().click();
+    fixture.detectChanges();
+    expect(component.showForm()).toBe('none');
+    expect(transferButton().getAttribute('aria-expanded')).toBe('false');
+
+    transferButton().click();
+    fixture.detectChanges();
+    expect(component.showForm()).toBe('transfer');
+  });
+
+  it('preserves typed transfer input across a toggle close and reopen', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    component.openTransferForm();
+    component.trForm.update((f) => ({ ...f, sourceAmount: 250, note: 'rent split' }));
+
+    component.toggleTransferForm();
+    expect(component.showForm()).toBe('none');
+
+    component.openTransferForm();
+
+    expect(component.showForm()).toBe('transfer');
+    expect(component.trForm().sourceAmount).toBe(250);
+    expect(component.trForm().note).toBe('rent split');
+  });
+
+  it('keeps the transfer draft when switching to Quick Add and back', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    component.openTransferForm();
+    component.trForm.update((f) => ({ ...f, sourceAmount: 90, note: 'bus pass' }));
+
+    component.openQuickAdd();
+    expect(component.showForm()).toBe('transaction');
+
+    component.openTransferForm();
+
+    expect(component.showForm()).toBe('transfer');
+    expect(component.trForm().sourceAmount).toBe(90);
+    expect(component.trForm().note).toBe('bus pass');
+  });
+
+  it('preserves typed Quick Add input when switching to the transfer form and back', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    component.toggleQuickAdd();
+    fixture.detectChanges();
+    const card = component.quickAddCard()!;
+    card.form.update((f) => ({ ...f, amount: 42, note: 'cinema tickets' }));
+
+    component.openTransferForm();
+    fixture.detectChanges();
+    expect(component.showForm()).toBe('transfer');
+    expect(fixture.nativeElement.querySelector('app-quick-add-card')).toBeNull();
+
+    component.toggleQuickAdd();
+    fixture.detectChanges();
+    const restored = component.quickAddCard()!;
+
+    expect(restored.form().amount).toBe(42);
+    expect(restored.form().note).toBe('cinema tickets');
+    expect(restored.editingId()).toBeNull();
+  });
+
+  it('preserves transfer input even when only the accounts were changed', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    component.openTransferForm();
+    component.onTransferSourceChange(accountId2);
+
+    component.toggleTransferForm();
+    component.openTransferForm();
+
+    expect(component.showForm()).toBe('transfer');
+    expect(component.trForm().sourceAccountId).toBe(accountId2);
+    expect(component.trForm().sourceAmount).toBe(0);
+  });
+
+  it('never restores a Quick Add draft stuck in a loading rate fetch', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    component.toggleQuickAdd();
+    fixture.detectChanges();
+    const card = component.quickAddCard()!;
+    card.form.update((f) => ({ ...f, amount: 42 }));
+    card.rateState.set({ loading: true, error: '', rate: null, date: '' });
+
+    component.openTransferForm();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-quick-add-card')).toBeNull();
+
+    component.toggleQuickAdd();
+    fixture.detectChanges();
+
+    expect(component.quickAddCard()!.form().amount).toBe(42);
+    expect(component.quickAddCard()!.rateState().loading).toBe(false);
+  });
+
+  it('clears the Quick Add draft once the card is cancelled', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    component.toggleQuickAdd();
+    fixture.detectChanges();
+    component.quickAddCard()!.form.update((f) => ({ ...f, amount: 42, note: 'cinema tickets' }));
+
+    component.openTransferForm();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-quick-add-card')).toBeNull();
+
+    component.toggleQuickAdd();
+    fixture.detectChanges();
+    expect(component.quickAddCard()!.form().amount).toBe(42);
+
+    component.quickAddCard()!.cancel();
+    fixture.detectChanges();
+
+    component.toggleQuickAdd();
+    fixture.detectChanges();
+
+    expect(component.quickAddCard()!.form().amount).toBe(0);
+    expect(component.quickAddCard()!.form().note).toBe('');
+  });
+
+  it('starts a fresh transfer form after a saved transfer', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    component.openTransferForm();
+    component.trForm.update((f) => ({
+      ...f,
+      sourceAccountId: accountId1,
+      destAccountId: accountId2,
+      sourceAmount: 300,
+      note: 'savings',
+    }));
+    await component.saveTransfer();
+
+    component.openTransferForm();
+
+    expect(component.showForm()).toBe('transfer');
+    expect(component.trForm().sourceAmount).toBe(0);
+    expect(component.trForm().note).toBe('');
+    expect(component.editingId()).toBeNull();
+  });
+
+  it('still prefills the transfer form when editing an existing transfer', async () => {
+    const t = await transferService.create(
+      accountId1,
+      accountId2,
+      500,
+      new Date('2025-12-22'),
+      1,
+      'savings',
+    );
+    await component.ngOnInit();
+
+    component.openTransferForm(t.id!);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    expect(component.showForm()).toBe('transfer');
+    expect(component.editingId()).toBe(t.id);
+    expect(component.trForm().sourceAccountId).toBe(accountId1);
+    expect(component.trForm().destAccountId).toBe(accountId2);
+    expect(component.trForm().sourceAmount).toBe(500);
+    expect(component.trForm().note).toBe('savings');
+  });
+
+  it('reopening a toggled-closed transfer edit keeps the edit context and typed input', async () => {
+    const t = await transferService.create(
+      accountId1,
+      accountId2,
+      500,
+      new Date('2025-12-22'),
+      1,
+      'savings',
+    );
+    await component.ngOnInit();
+
+    component.openTransferForm(t.id!);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    component.trForm.update((f) => ({ ...f, sourceAmount: 750 }));
+
+    component.toggleTransferForm();
+    component.openTransferForm();
+
+    expect(component.editingId()).toBe(t.id);
+    expect(component.trForm().sourceAmount).toBe(750);
+    expect(component.trForm().note).toBe('savings');
+  });
+
+  it('keeps only one capture form open when switching in either direction', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    quickAddButton().click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-quick-add-card')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.form-card')).toBeNull();
+
+    transferButton().click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-quick-add-card')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.form-card')).toBeTruthy();
+
+    quickAddButton().click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-quick-add-card')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.form-card')).toBeNull();
+  });
+});

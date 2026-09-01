@@ -235,6 +235,57 @@ describe('QuickAddCardComponent', () => {
     expect(saved.amount).toBe(130);
   });
 
+  it('restores a saved draft instead of the stored selection when initialDraft is provided', async () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ accountId: 2, categoryId: 11 }));
+    fixture.componentRef.setInput('initialDraft', {
+      form: {
+        ...component.form(),
+        accountId: 1,
+        categoryId: 10,
+        amount: 42,
+        note: 'cinema tickets',
+      },
+      editingId: null,
+      rateState: { loading: false, error: '', rate: null, date: '' },
+    });
+
+    await component.ngOnInit();
+
+    expect(component.editingId()).toBeNull();
+    expect(component.form().accountId).toBe(1);
+    expect(component.form().categoryId).toBe(10);
+    expect(component.form().amount).toBe(42);
+    expect(component.form().note).toBe('cinema tickets');
+  });
+
+  it('restores an edit draft so the payload keeps the id', async () => {
+    fixture.componentRef.setInput('initialDraft', {
+      form: {
+        ...component.form(),
+        accountId: 2,
+        categoryId: 11,
+        amount: 60,
+        note: 'drafted edit',
+        exchangeRate: 1.1,
+        baseCurrencyAmount: 66,
+      },
+      editingId: 7,
+      rateState: { loading: false, error: '', rate: 1.1, date: 'stored' },
+    });
+
+    await component.ngOnInit();
+
+    expect(component.editingId()).toBe(7);
+    expect(component.form().amount).toBe(60);
+    expect(component.rateState().rate).toBe(1.1);
+
+    let saved: any;
+    component.save.subscribe((data) => (saved = data));
+    component.onSubmit();
+
+    expect(saved.id).toBe(7);
+  });
+
   it('emits close when the user cancels', async () => {
     await component.ngOnInit();
     let closed = false;
