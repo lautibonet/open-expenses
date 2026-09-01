@@ -1,4 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { Location } from '@angular/common';
+import { provideRouter } from '@angular/router';
 import { MovementsComponent } from './movements.component';
 import { TransactionService } from '../../core/services/transaction.service';
 import { TransferService } from '../../core/services/transfer.service';
@@ -131,6 +133,24 @@ describe('MovementsComponent - filtering', () => {
     expect(component.activeFilterCount()).toBe(1);
     component.filterAccount.set(accountId2);
     expect(component.activeFilterCount()).toBe(2);
+  });
+
+  it('states that Transfers are excluded while a category filter is active', async () => {
+    await seedMovements();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).not.toContain('Transfers are not shown');
+
+    component.filterCategory.set(categoryId1);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain(
+      'Transfers are not shown while a category filter is active',
+    );
+
+    component.clearFilters();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).not.toContain('Transfers are not shown');
   });
 });
 
@@ -1493,6 +1513,59 @@ describe('MovementsComponent - contextual delete confirmation and undo', () => {
     expect(component.undo()).toBeNull();
   });
 
+  it('announces the undo window when a deletion is confirmed', async () => {
+    const txn = await transactionService.create(
+      accountId,
+      categoryId,
+      500,
+      new Date(),
+      getCurrentPeriod(),
+    );
+    await component.ngOnInit();
+    const item = component.movements().find((m) => (m.data as Transaction).id === txn.id)!;
+
+    component.requestDelete(item);
+    await component.confirmDelete();
+    fixture.detectChanges();
+
+    expect(component.undoAnnouncement()).toContain('10 seconds');
+    const live = fixture.nativeElement.querySelector('.undo-announcement');
+    expect(live).toBeTruthy();
+  });
+
+  it('announces when the undo window expires', async () => {
+    component.undoWindowMs = 20;
+    component.undo.set({
+      item: { type: 'transaction', data: { id: 1 } as Transaction },
+      snapshot: {} as Transaction,
+    });
+    component.scheduleUndoAutoDismiss();
+
+    await new Promise((resolve) => setTimeout(resolve, 60));
+
+    expect(component.undoAnnouncement()).toContain('Undo window closed');
+  });
+
+  it('does not announce an expiry when the toast is dismissed manually', async () => {
+    const txn = await transactionService.create(
+      accountId,
+      categoryId,
+      500,
+      new Date(),
+      getCurrentPeriod(),
+    );
+    await component.ngOnInit();
+    const item = component.movements().find((m) => (m.data as Transaction).id === txn.id)!;
+
+    component.requestDelete(item);
+    await component.confirmDelete();
+    component.dismissUndo();
+
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    expect(component.undoAnnouncement()).not.toContain('Undo window closed');
+  });
+
   it('should dismiss the undo toast via its close affordance without undoing', async () => {
     const txn = await transactionService.create(
       accountId,
@@ -2538,6 +2611,21 @@ describe('MovementsComponent - async load gate', () => {
     expect(fixture.nativeElement.textContent).toContain('No movements for');
   });
 
+  it('offers an actionable button as the empty state next step', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const cta = fixture.nativeElement.querySelector('.empty button') as HTMLButtonElement;
+    expect(cta).toBeTruthy();
+
+    cta.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    expect(component.showForm()).toBe('transaction');
+  });
+
   it('renders the net flow card and rows once a populated scope has loaded', async () => {
     await transactionServiceStub();
 
@@ -3253,5 +3341,70 @@ describe('MovementsComponent - capture-form consistency', () => {
     expect(hint?.textContent).toContain('N transaction');
     expect(hint?.textContent).toContain('T transfer');
     expect(hint?.textContent).toContain('Esc close');
+  });
+});
+
+describe('MovementsComponent - scope URL state', () => {
+  let fixture: ComponentFixture<MovementsComponent>;
+  let component: MovementsComponent;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    await TestBed.configureTestingModule({
+      imports: [MovementsComponent],
+      providers: [provideRouter([])],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(MovementsComponent);
+    component = fixture.componentInstance;
+  });
+
+  afterEach(async () => {
+    await db.delete();
+  });
+
+  it('restores the Scope from period and year query params', async () => {
+    TestBed.inject(Location).replaceState('/movements?period=3&year=2025');
+
+    await component.ngOnInit();
+
+    expect(component.scope()).toEqual({ kind: 'month', period: 3, year: 2025 });
+  });
+
+  it('ignores malformed or out-of-range scope params and falls back to the current Scope', async () => {
+    TestBed.inject(Location).replaceState('/movements?period=13&year=notayear');
+
+    await component.ngOnInit();
+
+    expect(component.scope()).toEqual(defaultScope());
+  });
+
+  it('keeps the current Scope for legacy links without params', async () => {
+    await component.ngOnInit();
+
+    expect(component.scope()).toEqual(defaultScope());
+  });
+
+  it('reflects a Scope change in the URL as period and year query params', async () => {
+    await component.ngOnInit();
+
+    const otherMonth = ((getCurrentPeriod() % 12) + 1) as MonthNumber;
+    await component.onScopeMonthChange(otherMonth);
+
+    const url = TestBed.inject(Location).path(true);
+    expect(url).toContain(`period=${otherMonth}`);
+    expect(url).toContain(`year=${getCurrentYear()}`);
+  });
+
+  it('reflects a year change in the URL too', async () => {
+    await component.ngOnInit();
+
+    const lastYear = getCurrentYear() - 1;
+    await component.onScopeYearChange(lastYear);
+
+    const url = TestBed.inject(Location).path(true);
+    expect(url).toContain(`period=${getCurrentPeriod()}`);
+    expect(url).toContain(`year=${lastYear}`);
   });
 });

@@ -127,6 +127,13 @@ describe('translations', () => {
     }
   });
 
+  it('drops the abandoned visible-sort strings', () => {
+    expect(TRANSLATIONS.en['movements.sortNewest']).toBeUndefined();
+    expect(TRANSLATIONS.en['movements.sortOldest']).toBeUndefined();
+    expect(TRANSLATIONS.es['movements.sortNewest']).toBeUndefined();
+    expect(TRANSLATIONS.es['movements.sortOldest']).toBeUndefined();
+  });
+
   it('covers the movements keys', () => {
     for (const key of [
       'movements.title',
@@ -144,8 +151,7 @@ describe('translations', () => {
       'movements.saveDisabled.amount',
       'movements.saveDisabled.rate',
       'movements.shortcutsHint',
-      'movements.sortNewest',
-      'movements.sortOldest',
+      'movements.sortByDateAria',
       'movements.editTransferTitle',
       'movements.newTransferTitle',
       'movements.transferNeedsTwoAccounts',
@@ -189,7 +195,7 @@ describe('translations', () => {
       'movements.undo',
       'movements.noMatchFilters',
       'movements.noneForScope',
-      'movements.useQuickAdd',
+      'movements.emptyStateCta',
       'movements.unknown',
       'movements.error.offlineRate',
       'movements.error.rateFetch',
