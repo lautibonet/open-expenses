@@ -49,7 +49,7 @@ Income minus Expenses aggregated over an aggregation window — a single Period 
 _Avoid_: profit, earnings, balance
 
 **Stats** (formerly Dashboard):
-A read-only summary screen showing a total balance in Base Currency as of the end of the Scope's Period (per-account balances accumulated from initial balances and movements at or before that Period; cross-currency movements counted at their stored conversions), yearly totals and monthly averages of Income, Expenses, and Net for the Scope's year, per-category expense breakdown, and per-account balances as of the end of the Scope's Period. Reached via the `/dashboard` route.
+A read-only summary screen showing a total balance in Base Currency as of the end of the Scope's Period (per-account balances accumulated from initial balances and movements at or before that Period; cross-currency movements counted at their stored conversions), yearly totals and monthly averages of Income, Expenses, and Net for the Scope's year, per-category expense breakdown, and per-account balances as of the end of the Scope's Period. Reached via the `/stats` route (legacy `/dashboard` redirects here).
 _Avoid_: overview, summary page
 
 **Language**:

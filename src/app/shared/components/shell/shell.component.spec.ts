@@ -121,12 +121,12 @@ describe('ShellComponent', () => {
     }
   });
 
-  it('keeps the Stats tab linked to the dashboard route', () => {
+  it('keeps the Stats tab linked to the stats route', () => {
     const links = Array.from(fixture.nativeElement.querySelectorAll('a.tab'));
     const statsLink = links.find(
       (a) => (a as HTMLAnchorElement).textContent?.trim() === 'Stats',
     ) as HTMLAnchorElement;
-    expect(statsLink.getAttribute('href')).toBe('/dashboard');
+    expect(statsLink.getAttribute('href')).toBe('/stats');
   });
 
   it('renders the navigation labels in the active language', async () => {

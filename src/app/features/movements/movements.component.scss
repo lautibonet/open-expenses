@@ -207,7 +207,7 @@
 
   /* 4px directional stripe on every data row's left edge: green income,
      red expense, grey transfer — the type's only signal since the Type
-      column went away (D8 reversed). Month group headers stay unstriped. */
+      column went away (D8 reversed). */
   tbody td:first-child {
     border-left: 4px solid transparent;
   }

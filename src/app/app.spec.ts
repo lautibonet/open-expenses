@@ -45,8 +45,8 @@ describe('App boot landing', () => {
     });
 
     it('keeps a deep link on Stats', async () => {
-      await bootAt('/dashboard');
-      expect(router.url).toBe('/dashboard');
+      await bootAt('/stats');
+      expect(router.url).toBe('/stats');
     });
 
     it('keeps a deep link on Settings', async () => {
@@ -72,7 +72,7 @@ describe('App boot landing', () => {
     });
 
     it('takes priority over a deep link to Stats', async () => {
-      await bootAt('/dashboard');
+      await bootAt('/stats');
       expect(router.url).toBe('/onboarding');
     });
 
