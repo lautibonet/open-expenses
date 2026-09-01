@@ -44,6 +44,7 @@
       [categories]="categories()"
       [baseCurrency]="baseCurrency()"
       [editTransaction]="editTransaction()"
+      [initialDraft]="quickAddRestore()"
       (save)="onSaveTransaction($event)"
       (close)="closeQuickAdd()"
     />
@@ -58,7 +59,12 @@
     >
       {{ language.t('movements.newTransaction') }}
     </button>
-    <button class="btn" (click)="openTransferForm()" [title]="language.t('movements.transferShortcut')">
+    <button
+      class="btn"
+      (click)="toggleTransferForm()"
+      [attr.aria-expanded]="showForm() === 'transfer'"
+      [title]="language.t('movements.transferShortcut')"
+    >
       {{ language.t('movements.addTransfer') }}
     </button>
     <span class="visually-hidden" aria-live="polite">{{ scopeAnnouncement() }}</span>
