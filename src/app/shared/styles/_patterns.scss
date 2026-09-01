@@ -132,8 +132,8 @@
   color: var(--on-surface);
 }
 
-/* Card header: caps label separated from the card body by a 1px line
-   (design: "headers within cards are separated by a horizontal line"). */
+/* Card header: caps label kept apart from the card body by spacing only;
+   the original design brief's 1px divider was deliberately dropped. */
 %card-header {
   @extend %caps-label;
 

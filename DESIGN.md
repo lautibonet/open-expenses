@@ -215,7 +215,7 @@ Corners are **zero everywhere**: buttons, inputs, cards, modals, chips, and the 
 - **Disabled:** 0.6 opacity, default cursor, no press.
 
 ### Cards / Containers
-- **Card:** Surface Lowest, 1px hard black border, 1rem padding. The universal unit of Stats and Settings content.
+- **Card:** Surface Lowest, 1px hard black border, 1rem padding. The universal unit of Stats and Settings content. Card headers separate from the body by spacing alone — no internal divider rule (dropped deliberately: internal rules are reserved for data structure, i.e. table rows).
 - **Form Card:** Background fill (#f9f9f9), 1px hard black border, 1rem padding. The raised well for transaction/transfer editors.
 - **Tinted Well:** Primary Fixed fill with a 1px Primary border (exchange-rate capture); headers inside are caps labels in On Primary Fixed.
 - Warning strips and destructive-confirmation wells: Error Container fill, 1px On Error Container hairline, On Error Container text.
@@ -234,7 +234,7 @@ Corners are **zero everywhere**: buttons, inputs, cards, modals, chips, and the 
 - **Backup Banner:** a non-interactive full-width status strip (Primary Fixed fill, Primary bottom hairline) with its content aligned to the centered content column via the chrome gutter. Status reads left: the method label ("Google Drive") in Primary Deep at 600, with the relative-time caption beneath it; a compact primary **Back up** button (`%btn-primary`/`%btn-small`) sits pinned right and is the strip's only interactive element. Offline, it degrades to Surface Container Low with the method and caption in On Surface and renders a genuinely disabled neutral button. Backup failures render an error strip in the error-container family below the banner, announced via `role="alert"`, with a small outline-danger Dismiss button. Its sibling Install Prompt uses the same strip language.
 - **Movement Rows:** no Type column and no direction arrows — the 4px left edge stripe is the type's only signal: green (income), red (expense), grey (transfer). Amounts always render positive in JetBrains Mono, colored only by direction: Income green, Error red; transfers stay neutral ink. Actions are icon-only: pencil Edit, trash Delete (outline danger); Delete swaps the pair for tick (confirm, outline danger) / X (cancel) icon buttons with the prompt announced off-screen, and the Undo Toast covers recovery.
 - **Undo Toast:** a fixed, bottom-center Surface Lowest strip with a hard black border pairing the deleted-movement label with a small Undo button. It presses like every button; it never floats.
-- **Tables:** headers are caps labels in On Surface Variant, rows separated by 1px Surface Container Low rules; Date is the first column and month group header rows span the full count; transfer rows tint Background and carry the grey stripe; amount cells are mono and colored only by direction; inactive rows dim to 0.6 opacity.
+- **Tables:** headers are caps labels in On Surface Variant, rows separated by 1px Surface Container Low rules; Date is the first column; transfer rows tint Background and carry the grey stripe; amount cells are mono and colored only by direction; inactive rows dim to 0.6 opacity.
 
 ## Do's and Don'ts
 
