@@ -197,6 +197,13 @@ describe('translations', () => {
     }
   });
 
+  it('covers the movement row kind keys', () => {
+    for (const key of ['type.income', 'type.expense', 'type.transfer']) {
+      expect(TRANSLATIONS.en[key]).toBeTruthy();
+      expect(TRANSLATIONS.es[key]).toBeTruthy();
+    }
+  });
+
   it('covers the quick add keys', () => {
     for (const key of [
       'quickAdd.noAccounts',
