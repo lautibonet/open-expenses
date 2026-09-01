@@ -3043,10 +3043,11 @@ describe('MovementsComponent - mobile ledger layout', () => {
     expect(transactionCells[3].getAttribute('data-label')).toBe('Account');
 
     // Transfer rows merge the note into the same slot as transactions (#98),
-    // so they carry one cell fewer than the five-column header grammar.
+    // and carry the same five-cell grammar so the action buttons sit in the
+    // Actions column instead of straddling Account and Actions.
     const transferCells = fixture.nativeElement.querySelector('tr.transfer-row')
       .querySelectorAll('td');
-    expect(transferCells.length).toBe(4);
+    expect(transferCells.length).toBe(5);
     expect(transferCells[1].getAttribute('data-label')).toBe('Category / Accounts');
     expect(transferCells[1].textContent).toContain('savings');
   });
@@ -3140,11 +3141,27 @@ describe('MovementsComponent - capture-form consistency', () => {
     // its own cell (it used to land under the Account header on desktop).
     const transferCells = fixture.nativeElement.querySelector('tr.transfer-row')
       .querySelectorAll('td');
-    expect(transferCells.length).toBe(4);
+    expect(transferCells.length).toBe(5);
     expect(transferCells[1].querySelector('.note')!.textContent).toContain('savings');
-    // The actions cell spans the freed account column so the row still
-    // aligns with the five-column header grammar.
-    expect(transferCells[3].getAttribute('colspan')).toBe('2');
+    // The actions cell no longer spans the account column: the transfer
+    // buttons render in the Actions column exactly where the transaction
+    // buttons render.
+    expect(transferCells[3].getAttribute('colspan')).toBeNull();
+    expect(transferCells[4].classList.contains('actions-cell')).toBe(true);
+  });
+
+  it('aligns the action buttons of both row kinds in the Actions column', async () => {
+    await seedNotedRows();
+
+    const transactionCells = fixture.nativeElement.querySelector('tr.row-income')
+      .querySelectorAll('td');
+    const transferCells = fixture.nativeElement.querySelector('tr.transfer-row')
+      .querySelectorAll('td');
+
+    expect(transactionCells.length).toBe(transferCells.length);
+    expect(transactionCells[4].classList.contains('actions-cell')).toBe(true);
+    expect(transferCells[4].classList.contains('actions-cell')).toBe(true);
+    expect(transferCells[3].getAttribute('colspan')).toBeNull();
   });
 
   it('labels the note column honestly for both row kinds', async () => {

@@ -418,7 +418,8 @@
                 <td class="amount-cell">
                   {{ formatTransferDisplayAmount(tr) }}
                 </td>
-                <td class="actions-cell" colspan="2">
+                <td></td>
+                <td class="actions-cell">
                   @if (confirmingDelete() === item) {
                     <span class="visually-hidden" aria-live="polite">
                       {{ deleteConfirmationLabel(confirmingDelete()!) }}

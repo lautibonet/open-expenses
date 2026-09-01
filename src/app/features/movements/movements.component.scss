@@ -451,8 +451,9 @@
       background: var(--background);
     }
 
-    /* Transfer rows merge the note into the route cell (issue #98), so they
-       carry four cells instead of five and skip the account area. */
+    /* Transfer rows carry the same five-cell grammar as transactions so the
+       action buttons land in the Actions column on desktop; the empty account
+       slot is hidden here and the route cell keeps the full width. */
     tbody tr.transfer-row {
       grid-template-areas:
         'date amount'
@@ -461,8 +462,7 @@
     }
 
     tbody tr.transfer-row td:nth-child(4) {
-      grid-area: actions;
-      text-align: right;
+      display: none;
     }
 
     td:nth-child(1) {
