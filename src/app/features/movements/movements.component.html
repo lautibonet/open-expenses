@@ -39,18 +39,6 @@
     />
   }
 
-  @if (showForm() === 'transaction') {
-    <app-quick-add-card
-      [accounts]="accounts()"
-      [categories]="categories()"
-      [baseCurrency]="baseCurrency()"
-      [editTransaction]="editTransaction()"
-      [initialDraft]="quickAddRestore()"
-      (save)="onSaveTransaction($event)"
-      (close)="closeQuickAdd()"
-    />
-  }
-
   <div class="controls">
     <button
       class="btn"
@@ -227,6 +215,18 @@
         </button>
       </div>
     </div>
+  }
+
+  @if (showForm() === 'transaction') {
+    <app-quick-add-card
+      [accounts]="accounts()"
+      [categories]="categories()"
+      [baseCurrency]="baseCurrency()"
+      [editTransaction]="editTransaction()"
+      [initialDraft]="quickAddRestore()"
+      (save)="onSaveTransaction($event)"
+      (close)="closeQuickAdd()"
+    />
   }
 
   <div class="filter-bar">
