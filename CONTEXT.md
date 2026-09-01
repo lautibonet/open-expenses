@@ -25,7 +25,7 @@ A calendar month (January through December) assigned to a Transaction or Transfe
 _Avoid_: Cycle, fiscal period, date range
 
 **Scope**:
-The reporting window chosen on the Stats and Movements screens: a single Period (a month together with its year). Filtering by Scope always uses the stored Period year, never the movement's date. Aggregations that span multiple Periods (total balance, yearly averages, per-year totals) are independent of Scope.
+The reporting window chosen on the Stats and Movements screens: a single Period (a month together with its year). Filtering by Scope always uses the stored Period year, never the movement's date. Aggregations that span multiple Periods are not filtered by the Scope's Period: the total balance covers all history, while yearly totals and averages follow the Scope's year.
 _Avoid_: Filter, range, timeframe, selection, All Time
 
 **Base Currency**:
@@ -44,8 +44,12 @@ _Avoid_: Feed, timeline, history
 The full Transaction capture form on the Movements screen — account, category, amount, note, date, and period shown all at once, with no compact/expanded distinction. Hidden by default and revealed by the New Transaction button or the sidebar Quick Add action; it closes after a successful save, and only one capture form (Quick Add or Transfer) is open at a time. Used for both recording and editing a Transaction.
 _Avoid_: Quick entry, mini form, inline add, more options
 
+**Net**:
+Income minus Expenses aggregated over an aggregation window — a single Period or a whole year — reported in Base Currency. A positive Net means money kept; a negative Net means money overspent. The Savings Rate shown on Stats is Net divided by Income. Never a kind of Transaction or Transfer.
+_Avoid_: profit, earnings, balance
+
 **Stats** (formerly Dashboard):
-A read-only summary screen showing a total balance in base currency (sum of all account balances, non-base converted using latest rate), period totals, per-category expense breakdown, yearly averages, and per-account balances (current and period-end). Reached via the `/dashboard` route.
+A read-only summary screen showing a total balance in base currency (sum of all account balances, non-base converted using latest rate), yearly totals and monthly averages of Income, Expenses, and Net for the Scope's year, per-category expense breakdown, and per-account balances (current and period-end). Reached via the `/dashboard` route.
 _Avoid_: overview, summary page
 
 **Language**:

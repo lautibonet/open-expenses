@@ -33,16 +33,25 @@
 
   <section class="kpi-row" [attr.aria-label]="language.t('stats.title')">
     <div class="kpi-card kpi-income">
-      <span class="label">{{ language.t('stats.avgIncome') }}</span>
-      <span class="value">{{ formatMoney(avgMonthlyIncome()) }}</span>
+      <span class="label">{{ language.t('stats.income') }}</span>
+      <span class="value">{{ formatMoney(yearTotalIncome()) }}</span>
+      @if (yearHasData()) {
+        <span class="secondary">{{ avgCaption(avgMonthlyIncome()) }}</span>
+      }
     </div>
     <div class="kpi-card kpi-expense">
-      <span class="label">{{ language.t('stats.avgExpenses') }}</span>
-      <span class="value">{{ formatMoney(avgMonthlyExpenses()) }}</span>
+      <span class="label">{{ language.t('stats.expenses') }}</span>
+      <span class="value">{{ formatMoney(yearTotalExpenses()) }}</span>
+      @if (yearHasData()) {
+        <span class="secondary">{{ avgCaption(avgMonthlyExpenses()) }}</span>
+      }
     </div>
     <div class="kpi-card kpi-net">
-      <span class="label">{{ language.t('stats.netAverage') }}</span>
-      <span class="value">{{ formatMoney(avgMonthlySavings()) }}</span>
+      <span class="label">{{ language.t('stats.net') }}</span>
+      <span class="value">{{ formatMoney(yearTotalNet()) }}</span>
+      @if (yearHasData()) {
+        <span class="secondary">{{ avgCaption(avgMonthlyNet()) }}</span>
+      }
       @if (savingsRate(); as rate) {
         <span class="savings-rate">{{ language.t('stats.savingsRate', { rate }) }}</span>
       }

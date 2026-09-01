@@ -238,9 +238,10 @@ describe('translations', () => {
       'stats.allAccounts',
       'stats.conversionWarning',
       'stats.accountBalances',
-      'stats.avgIncome',
-      'stats.avgExpenses',
-      'stats.netAverage',
+      'stats.income',
+      'stats.expenses',
+      'stats.net',
+      'stats.avgCaption',
       'stats.savingsRate',
     ]) {
       expect(TRANSLATIONS.en[key]).toBeTruthy();

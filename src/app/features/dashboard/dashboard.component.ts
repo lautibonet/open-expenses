@@ -53,9 +53,10 @@ export class DashboardComponent implements OnInit {
   categories = signal<Category[]>([]);
   baseCurrency = signal('EUR');
 
-  totalIncome = signal(0);
-  totalExpenses = signal(0);
-  netIncome = signal(0);
+  yearTotalIncome = signal(0);
+  yearTotalExpenses = signal(0);
+  yearTotalNet = signal(0);
+  yearHasData = signal(false);
   categoryBreakdown = signal<{ name: string; total: number }[]>([]);
   accountBalances = signal<{ account: Account; balance: number }[]>([]);
   totalBalanceBaseCurrency = signal(0);
@@ -63,7 +64,7 @@ export class DashboardComponent implements OnInit {
 
   avgMonthlyIncome = signal(0);
   avgMonthlyExpenses = signal(0);
-  avgMonthlySavings = signal(0);
+  avgMonthlyNet = signal(0);
 
   async ngOnInit(): Promise<void> {
     await this.loadAll();
@@ -105,10 +106,6 @@ export class DashboardComponent implements OnInit {
         catTotals.set(t.categoryId, (catTotals.get(t.categoryId) ?? 0) + amount);
       }
     }
-
-    this.totalIncome.set(income);
-    this.totalExpenses.set(expenses);
-    this.netIncome.set(income - expenses);
 
     const breakdown: { name: string; total: number }[] = [];
     for (const [catId, total] of catTotals) {
@@ -201,7 +198,7 @@ export class DashboardComponent implements OnInit {
   savingsRate(): number | null {
     const income = this.avgMonthlyIncome();
     if (income <= 0) return null;
-    return Math.round((this.avgMonthlySavings() / income) * 100);
+    return Math.round((this.avgMonthlyNet() / income) * 100);
   }
 
   categoryBarWidth(total: number): number {
@@ -279,9 +276,13 @@ export class DashboardComponent implements OnInit {
     const monthsWithData = new Set(filteredTxns.map(t => t.period));
 
     if (monthsWithData.size === 0) {
+      this.yearTotalIncome.set(0);
+      this.yearTotalExpenses.set(0);
+      this.yearTotalNet.set(0);
+      this.yearHasData.set(false);
       this.avgMonthlyIncome.set(0);
       this.avgMonthlyExpenses.set(0);
-      this.avgMonthlySavings.set(0);
+      this.avgMonthlyNet.set(0);
       return;
     }
 
@@ -299,13 +300,21 @@ export class DashboardComponent implements OnInit {
     }
 
     const months = monthsWithData.size;
+    this.yearTotalIncome.set(totalIncome);
+    this.yearTotalExpenses.set(totalExpenses);
+    this.yearTotalNet.set(totalIncome - totalExpenses);
+    this.yearHasData.set(true);
     this.avgMonthlyIncome.set(Math.round(totalIncome / months * 100) / 100);
     this.avgMonthlyExpenses.set(Math.round(totalExpenses / months * 100) / 100);
-    this.avgMonthlySavings.set(Math.round((totalIncome - totalExpenses) / months * 100) / 100);
+    this.avgMonthlyNet.set(Math.round((totalIncome - totalExpenses) / months * 100) / 100);
   }
 
   formatMoney(amount: number): string {
     return this.language.formatMoney(amount, this.baseCurrency());
+  }
+
+  avgCaption(amount: number): string {
+    return this.language.t('stats.avgCaption', { amount: this.formatMoney(amount) });
   }
 
   formatAccountBalance(amount: number, currency: string): string {

@@ -71,7 +71,7 @@ describe('DashboardComponent', () => {
     expect(component.formatAccountBalance(usdBalance!.balance, usdBalance!.account.currency)).toContain('$');
   });
 
-  it('should keep period totals in base currency', async () => {
+  it('should keep year totals in base currency', async () => {
     const acc = await accountService.create('Cash', 'EUR', 0);
     const cat = await categoryService.create('Payroll', 'income');
     const period = getCurrentPeriod();
@@ -80,10 +80,10 @@ describe('DashboardComponent', () => {
     await component.ngOnInit();
 
     expect(component.formatMoney(3000)).toContain('€');
-    expect(component.totalIncome()).toBe(3000);
+    expect(component.yearTotalIncome()).toBe(3000);
   });
 
-  it('should include a Dec-dated movement in the January report of its period year', async () => {
+  it('should include a Dec-dated movement in the selected year report of its period year', async () => {
     const acc = await accountService.create('Cash', 'EUR', 0);
     const incomeCat = await categoryService.create('Payroll', 'income');
     await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date('2025-12-22'), 1, null, null, 2026);
@@ -92,7 +92,7 @@ describe('DashboardComponent', () => {
     await component.onScopeYearChange(2026);
     await component.onScopeMonthChange(1);
 
-    expect(component.totalIncome()).toBe(3000);
+    expect(component.yearTotalIncome()).toBe(3000);
   });
 
   it('should exclude a Dec-dated movement from the date year report', async () => {
@@ -104,7 +104,7 @@ describe('DashboardComponent', () => {
     await component.onScopeYearChange(2025);
     await component.onScopeMonthChange(1);
 
-    expect(component.totalIncome()).toBe(0);
+    expect(component.yearTotalIncome()).toBe(0);
   });
 
   describe('monthly averages follow the page scope', () => {
@@ -161,7 +161,7 @@ describe('DashboardComponent', () => {
 
       await component.ngOnInit();
 
-      expect(component.avgMonthlySavings()).toBe(2400);
+      expect(component.avgMonthlyNet()).toBe(2400);
     });
 
     it('should show zero averages when no data exists', async () => {
@@ -170,7 +170,7 @@ describe('DashboardComponent', () => {
 
       expect(component.avgMonthlyIncome()).toBe(0);
       expect(component.avgMonthlyExpenses()).toBe(0);
-      expect(component.avgMonthlySavings()).toBe(0);
+      expect(component.avgMonthlyNet()).toBe(0);
     });
 
     it('should compute yearly averages against the period year, not the date year', async () => {
@@ -383,20 +383,21 @@ describe('DashboardComponent - shared scope', () => {
     expect(component.scopeMonths()).toContain(5);
   });
 
-  it('should show only the selected period totals', async () => {
+  it('should show only the selected year totals', async () => {
     const acc = await accountService.create('Cash', 'EUR', 0);
     const incomeCat = await categoryService.create('Payroll', 'income');
+    const year = getCurrentYear();
     await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date('2012-01-15'), 1, null, null, 2012);
-    await transactionService.create(acc.id!, incomeCat.id!, 4000, new Date('2026-03-15'), 3);
+    await transactionService.create(acc.id!, incomeCat.id!, 4000, new Date(`${year}-03-15`), 3);
 
     await component.ngOnInit();
-    expect(component.totalIncome()).toBe(0);
+    expect(component.yearTotalIncome()).toBe(4000);
 
     await component.onScopeYearChange(2012);
     await component.onScopeMonthChange(1);
 
     expect(component.scope()).toEqual({ kind: 'month', period: 1, year: 2012 });
-    expect(component.totalIncome()).toBe(3000);
+    expect(component.yearTotalIncome()).toBe(3000);
   });
 
   it('should include movements older than ten years when their year is selected', async () => {
@@ -409,7 +410,7 @@ describe('DashboardComponent - shared scope', () => {
     await component.onScopeYearChange(oldYear);
     await component.onScopeMonthChange(1);
 
-    expect(component.totalIncome()).toBe(3000);
+    expect(component.yearTotalIncome()).toBe(3000);
   });
 
   it('should announce the scope to assistive tech on change', async () => {
@@ -461,7 +462,7 @@ describe('DashboardComponent - shared scope', () => {
     expect(headings.length).toBe(1);
   });
 
-  it('renders the Net Average as the inverted savings KPI card', async () => {
+  it('renders Net as the inverted savings KPI card', async () => {
     const acc = await accountService.create('Cash', 'EUR', 0);
     const incomeCat = await categoryService.create('Payroll', 'income');
     const expenseCat = await categoryService.create('Food', 'expense');
@@ -474,11 +475,11 @@ describe('DashboardComponent - shared scope', () => {
 
     const net = fixture.nativeElement.querySelector('.kpi-card.kpi-net .value');
     expect(net).toBeTruthy();
-    expect(net.textContent).toContain(component.formatMoney(component.avgMonthlySavings()));
-    expect(component.avgMonthlySavings()).toBe(2500);
+    expect(net.textContent).toContain(component.formatMoney(component.yearTotalNet()));
+    expect(component.yearTotalNet()).toBe(2500);
   });
 
-  it('renders the KPI row as three cards: avg income, avg expense, net average', async () => {
+  it('renders the KPI row as three cards: income, expenses, net', async () => {
     await component.ngOnInit();
     fixture.detectChanges();
 
@@ -487,6 +488,40 @@ describe('DashboardComponent - shared scope', () => {
     expect(fixture.nativeElement.querySelector('.kpi-card.kpi-income .value')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('.kpi-card.kpi-expense .value')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('.kpi-card.kpi-net .value')).toBeTruthy();
+  });
+
+  it('renders the year total as the KPI headline with the monthly average beneath', async () => {
+    const acc = await accountService.create('Cash', 'EUR', 0);
+    const incomeCat = await categoryService.create('Payroll', 'income');
+    const expenseCat = await categoryService.create('Food', 'expense');
+    const year = getCurrentYear();
+
+    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(`${year}-01-15`), 1);
+    await transactionService.create(acc.id!, incomeCat.id!, 2000, new Date(`${year}-02-15`), 2);
+    await transactionService.create(acc.id!, expenseCat.id!, 500, new Date(`${year}-01-15`), 1);
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const incomeValue = fixture.nativeElement.querySelector('.kpi-card.kpi-income .value');
+    expect(incomeValue.textContent).toContain(component.formatMoney(5000));
+
+    const incomeSecondary = fixture.nativeElement.querySelector('.kpi-card.kpi-income .secondary');
+    expect(incomeSecondary.textContent).toContain('AVG');
+    expect(incomeSecondary.textContent).toContain(component.formatMoney(2500));
+
+    const netValue = fixture.nativeElement.querySelector('.kpi-card.kpi-net .value');
+    expect(netValue.textContent).toContain(component.formatMoney(4500));
+  });
+
+  it('hides the average line when the scope year has no data', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const incomeValue = fixture.nativeElement.querySelector('.kpi-card.kpi-income .value');
+    expect(incomeValue.textContent).toContain(component.formatMoney(0));
+    expect(fixture.nativeElement.querySelector('.kpi-card.kpi-income .secondary')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.kpi-card.kpi-net .secondary')).toBeNull();
   });
 
   it('hides the savings rate when there is no income', async () => {
@@ -542,9 +577,9 @@ describe('DashboardComponent - shared scope', () => {
     fixture.detectChanges();
 
     expect(component.scope()).toEqual({ kind: 'month', period: getCurrentPeriod(), year });
-    expect(component.totalIncome()).toBe(3000);
-    expect(component.totalExpenses()).toBe(0);
-    expect(component.netIncome()).toBe(3000);
+    expect(component.yearTotalIncome()).toBe(3000);
+    expect(component.yearTotalExpenses()).toBe(0);
+    expect(component.yearTotalNet()).toBe(3000);
   });
 });
 
@@ -589,7 +624,7 @@ describe('DashboardComponent - page header, scope control and restyled cards', (
     expect(h1.textContent.trim()).toBe('Stats');
 
     const subtitle = fixture.nativeElement.querySelector('.page-header .subtitle');
-    expect(subtitle.textContent.trim()).toBe('Your averages, expenses and balances at a glance.');
+    expect(subtitle.textContent.trim()).toBe('Your totals, averages and balances at a glance.');
   });
 
   it('keeps accessible names on the year and month scope selects', async () => {
@@ -764,10 +799,12 @@ describe('DashboardComponent - translations', () => {
 
     const text = fixture.nativeElement.textContent;
     expect(text).toContain('Estadísticas');
+    expect(text).toContain('Tus totales, medias y saldos de un vistazo.');
     expect(text).toContain('Gastos de');
-    expect(text).toContain('Media de ingresos');
-    expect(text).toContain('Media de gastos');
-    expect(text).toContain('Media neta');
+    expect(text).toContain('Ingresos');
+    expect(text).toContain('Gastos');
+    expect(text).toContain('Neto');
+    expect(text).toContain('MEDIA');
     expect(text).toContain('Saldo total de');
     expect(text).toContain('Saldos de cuentas de');
     expect(fixture.nativeElement.querySelector('[aria-label="Ámbito: año"]')).toBeTruthy();

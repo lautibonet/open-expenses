@@ -16,9 +16,10 @@
   @extend %scope-selects;
 }
 
-/* KPI row: the design's three summary cards. Income keeps a green
-   stripe, expense an error-red stripe, and the net average is the inverted
-   solid-ink card. */
+/* KPI row: the design's three summary cards. The year total is the headline
+   figure with the monthly average demoted to a secondary line beneath it.
+   Income keeps a green stripe, expense an error-red stripe, and net is the
+   inverted solid-ink card. */
 .kpi-row {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -46,6 +47,13 @@
     color: var(--on-surface);
   }
 
+  .secondary {
+    @extend %mono-data;
+
+    font-size: var(--type-caption);
+    color: var(--on-surface-variant);
+  }
+
   &.kpi-income {
     border-left: var(--stripe-income);
   }
@@ -64,6 +72,10 @@
 
     .value {
       color: var(--surface-lowest);
+    }
+
+    .secondary {
+      color: var(--surface-container-highest);
     }
 
     .savings-rate {
