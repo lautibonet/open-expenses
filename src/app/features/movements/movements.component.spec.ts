@@ -3853,7 +3853,237 @@ describe('MovementsComponent - mobile capture sheet (#103)', () => {
     fixture.detectChanges();
 
     expect(component.showForm()).toBe('transfer');
-    expect(fixture.nativeElement.querySelector('app-bottom-sheet')).toBeNull();
+    // The transfer presents in its own sheet on mobile (#104); Quick Add is gone.
+    expect(sheetEl()).toBeTruthy();
+    expect(sheetEl().querySelector('.form-card')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('app-quick-add-card')).toBeNull();
+  });
+});
+
+describe('MovementsComponent - mobile transfer sheet (#104)', () => {
+  let fixture: ComponentFixture<MovementsComponent>;
+  let component: MovementsComponent;
+  let transferService: TransferService;
+  let accountService: AccountService;
+  let exchangeRateService: ExchangeRateService;
+  let accountId: number;
+  let accountId2: number;
+  let usdAccountId: number;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    stubMatchMedia(true);
+
+    const mockExchangeRateService = {
+      getRate: vi
+        .fn()
+        .mockResolvedValue({ rate: 1.08, from: 'USD', to: 'EUR', date: '2026-08-26' }),
+    };
+
+    await TestBed.configureTestingModule({
+      imports: [MovementsComponent],
+      providers: [{ provide: ExchangeRateService, useValue: mockExchangeRateService }],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(MovementsComponent);
+    component = fixture.componentInstance;
+    transferService = TestBed.inject(TransferService);
+    accountService = TestBed.inject(AccountService);
+    exchangeRateService = TestBed.inject(ExchangeRateService);
+
+    const acc1 = await accountService.create('Cash', 'EUR', 100000);
+    accountId = acc1.id!;
+    const acc2 = await accountService.create('Savings', 'EUR', 50000);
+    accountId2 = acc2.id!;
+    const usdAcc = await accountService.create('Dollars', 'USD', 1000);
+    usdAccountId = usdAcc.id!;
+  });
+
+  afterEach(async () => {
+    await db.delete();
+    vi.restoreAllMocks();
+  });
+
+  function sheetEl(): HTMLElement {
+    return fixture.nativeElement.querySelector('app-bottom-sheet .sheet') as HTMLElement;
+  }
+
+  function compiledComponentCss(): string {
+    return Array.from(document.querySelectorAll('style'))
+      .map((s) => s.textContent ?? '')
+      .join('\n');
+  }
+
+  it('opens the Transfer form inside the bottom sheet on mobile', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    component.openTransferForm();
+    fixture.detectChanges();
+
+    expect(component.showForm()).toBe('transfer');
+    const sheet = sheetEl();
+    expect(sheet).toBeTruthy();
+    expect(sheet.getAttribute('role')).toBe('dialog');
+    expect(sheet.getAttribute('aria-modal')).toBe('true');
+    expect(sheet.getAttribute('aria-label')).toBe('Transfer form');
+    expect(sheet.querySelector('.form-card')).toBeTruthy();
+    expect(sheet.querySelector('.form-grid')).toBeTruthy();
+  });
+
+  it('opens the sheet prefilled when editing a transfer on mobile and saves the edit', async () => {
+    const t = await transferService.create(
+      accountId,
+      accountId2,
+      500,
+      new Date('2025-12-22'),
+      1,
+      'savings',
+    );
+    await component.ngOnInit();
+
+    component.openTransferForm(t.id!);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    fixture.detectChanges();
+
+    expect(component.showForm()).toBe('transfer');
+    expect(sheetEl()).toBeTruthy();
+    expect(component.editingId()).toBe(t.id);
+    expect(component.trForm().sourceAmount).toBe(500);
+    expect(component.trForm().note).toBe('savings');
+
+    component.trForm.update((f) => ({ ...f, sourceAmount: 750 }));
+    await component.saveTransfer();
+
+    expect(component.showForm()).toBe('none');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-bottom-sheet')).toBeNull();
+    const transfers = await transferService.getAll();
+    expect(transfers).toHaveLength(1);
+    expect(transfers[0].sourceAmount).toBe(750);
+  });
+
+  it('saves a same-currency transfer from the sheet with no exchange-rate section', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    component.openTransferForm();
+    component.trForm.update((f) => ({
+      ...f,
+      sourceAccountId: accountId,
+      destAccountId: accountId2,
+      sourceAmount: 300,
+      note: 'rent',
+    }));
+    fixture.detectChanges();
+
+    expect(sheetEl()!.querySelector('.exchange-rate-section')).toBeNull();
+
+    await component.saveTransfer();
+    fixture.detectChanges();
+
+    expect(component.showForm()).toBe('none');
+    const transfers = await transferService.getAll();
+    expect(transfers).toHaveLength(1);
+    expect(transfers[0].sourceAmount).toBe(300);
+  });
+
+  it('shows the exchange-rate capture only for cross-currency transfers in the sheet', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    component.openTransferForm();
+    component.trForm.update((f) => ({
+      ...f,
+      destAccountId: accountId,
+      sourceAmount: 100,
+      date: '2026-08-20',
+    }));
+    await component.onTransferSourceChange(usdAccountId);
+    fixture.detectChanges();
+
+    expect(exchangeRateService.getRate).toHaveBeenCalledWith('USD', 'EUR', '2026-08-20');
+    expect(component.trForm().exchangeRate).toBe(1.08);
+    expect(sheetEl()!.querySelector('.exchange-rate-section')).toBeTruthy();
+
+    await component.saveTransfer();
+
+    const transfers = await transferService.getAll();
+    expect(transfers).toHaveLength(1);
+    expect(transfers[0].exchangeRate).toBe(1.08);
+  });
+
+  it('saves a cross-currency transfer edit from the sheet with the stored rate prefilled', async () => {
+    const t = await transferService.create(
+      usdAccountId,
+      accountId,
+      100,
+      new Date('2025-12-22'),
+      1,
+      'abroad',
+      1.05,
+    );
+    await component.ngOnInit();
+
+    component.openTransferForm(t.id!);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    fixture.detectChanges();
+
+    expect(sheetEl()!.querySelector('.exchange-rate-section')).toBeTruthy();
+    expect(component.trForm().exchangeRate).toBe(1.05);
+
+    component.trForm.update((f) => ({ ...f, sourceAmount: 200, destinationAmount: 210 }));
+    await component.saveTransfer();
+
+    const transfers = await transferService.getAll();
+    expect(transfers).toHaveLength(1);
+    expect(transfers[0].sourceAmount).toBe(200);
+    expect(transfers[0].destinationAmount).toBe(210);
+    expect(transfers[0].exchangeRate).toBe(1.05);
+  });
+
+  it('dismisses the transfer sheet on drag-down without saving', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    component.openTransferForm();
+    fixture.detectChanges();
+
+    const handle = sheetEl().querySelector('.sheet-handle') as HTMLElement;
+    handle.dispatchEvent(pointerEvent('pointerdown', 10));
+    handle.dispatchEvent(pointerEvent('pointermove', 10 + 200));
+    handle.dispatchEvent(pointerEvent('pointerup', 10 + 200));
+    fixture.detectChanges();
+
+    expect(component.showForm()).toBe('none');
+    expect(fixture.nativeElement.querySelector('app-bottom-sheet')).toBeNull();
+    expect(await transferService.getAll()).toHaveLength(0);
+  });
+
+  it('keeps the transfer form inline on the desktop layout (no sheet)', async () => {
+    stubMatchMedia(false);
+    fixture = TestBed.createComponent(MovementsComponent);
+    component = fixture.componentInstance;
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    component.openTransferForm();
+    fixture.detectChanges();
+
+    expect(component.showForm()).toBe('transfer');
+    expect(component.isMobileLayout()).toBe(false);
+    expect(fixture.nativeElement.querySelector('app-bottom-sheet')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.form-card')).toBeTruthy();
+  });
+
+  it('pins the transfer Cancel/Save to the sheet bottom below 768px', async () => {
+    await component.ngOnInit();
+
+    const css = compiledComponentCss();
+    expect(css).toMatch(
+      /@media \(max-width: 768px\)[\s\S]*?\.form-actions[^{]*\{[^}]*position:\s*sticky[^}]*bottom:\s*0/,
+    );
   });
 });

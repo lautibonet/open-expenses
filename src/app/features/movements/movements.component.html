@@ -68,6 +68,19 @@
   </div>
 
   @if (showForm() === 'transfer') {
+    @if (isMobileLayout()) {
+      <app-bottom-sheet
+        [label]="language.t('movements.transferSheetAria')"
+        (dismissed)="cancelForm()"
+      >
+        <ng-container [ngTemplateOutlet]="transferForm" />
+      </app-bottom-sheet>
+    } @else {
+      <ng-container [ngTemplateOutlet]="transferForm" />
+    }
+  }
+
+  <ng-template #transferForm>
     <div class="form-card">
       <h3 #transferHeading tabindex="-1">
         {{ editingId() ? language.t('movements.editTransferTitle') : language.t('movements.newTransferTitle') }}
@@ -219,7 +232,7 @@
         </button>
       </div>
     </div>
-  }
+  </ng-template>
 
   @if (showForm() === 'transaction') {
     @if (isMobileLayout()) {

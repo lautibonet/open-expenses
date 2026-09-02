@@ -219,14 +219,7 @@ test.describe('movements capture sheet on a phone (#103)', () => {
 
     // Cancel/Save sit pinned at the sheet's bottom edge, reachable without
     // scrolling the form body.
-    const sheetBox = (await sheet.boundingBox())!;
-    for (const name of ['Cancel', 'Save']) {
-      const box = (await sheet.getByRole('button', { name }).boundingBox())!;
-      expect(box.y + box.height, `${name} must sit at the sheet bottom`).toBeGreaterThan(
-        sheetBox.y + sheetBox.height - 96,
-      );
-      expect(box.y + box.height).toBeLessThanOrEqual(sheetBox.y + sheetBox.height);
-    }
+    await expectActionsPinned(sheet);
 
     await sheet.locator('input[name="amount"]').fill('12.5');
     await sheet.getByRole('button', { name: 'Save' }).click();
@@ -288,6 +281,94 @@ test.describe('movements capture sheet on a phone (#103)', () => {
 
     await expect(page.locator('app-bottom-sheet')).toHaveCount(0);
     await expect(page.locator('.movement-table')).toContainText('20.00');
+  });
+});
+
+test.describe('movements transfer capture sheet on a phone (#104)', () => {
+  test('+ Transfer opens the sheet with the form one-column and actions pinned', async ({
+    page,
+  }) => {
+    await completeOnboarding(page, { secondAccount: true });
+
+    await page.getByRole('button', { name: '+ Transfer' }).click();
+    const sheet = page.locator('app-bottom-sheet .sheet');
+    await expect(sheet).toBeVisible();
+    await awaitSheetSettled(page);
+    await expect(sheet).toHaveAttribute('role', 'dialog');
+    await expect(sheet).toHaveAttribute('aria-modal', 'true');
+    await expect(sheet).toHaveAttribute('aria-label', 'Transfer form');
+    await expect(sheet.locator('.form-card')).toBeVisible();
+
+    // Same one-column presentation as Quick Add.
+    const gridColumns = await sheet
+      .locator('.form-grid')
+      .evaluate((el) => getComputedStyle(el).gridTemplateColumns);
+    expect(gridColumns.split(' ').length).toBe(1);
+
+    // Same-currency transfer: no exchange-rate capture appears.
+    await expect(sheet.locator('.exchange-rate-section')).toHaveCount(0);
+
+    await expectActionsPinned(sheet);
+  });
+
+  test('a same-currency transfer saves from the sheet and lands in the ledger', async ({
+    page,
+  }) => {
+    await completeOnboarding(page, { secondAccount: true });
+
+    await page.getByRole('button', { name: '+ Transfer' }).click();
+    const sheet = page.locator('app-bottom-sheet .sheet');
+    await expect(sheet).toBeVisible();
+    await awaitSheetSettled(page);
+
+    await sheet.locator('.form-card input[type="number"]').first().fill('40');
+    await sheet.getByRole('button', { name: 'Save' }).click();
+
+    await expect(page.locator('app-bottom-sheet')).toHaveCount(0);
+    await expect(
+      page.locator('.movement-table tbody tr.transfer-row').first(),
+    ).toBeVisible();
+    await expect(page.locator('.movement-table')).toContainText('40.00');
+  });
+
+  test('editing a transfer opens the sheet prefilled and saves the edit', async ({ page }) => {
+    await completeOnboarding(page, { secondAccount: true });
+    await addTransfer(page, '40.00');
+
+    const row = page.locator('.movement-table tbody tr.transfer-row').first();
+    await row.getByRole('button', { name: 'Edit movement' }).click();
+
+    const sheet = page.locator('app-bottom-sheet .sheet');
+    await expect(sheet).toBeVisible();
+    await awaitSheetSettled(page);
+    await expect(sheet.getByRole('heading')).toContainText('Edit Transfer');
+
+    await sheet.locator('input[name="amount"], input[type="number"]').first().fill('55');
+    await sheet.getByRole('button', { name: 'Save' }).click();
+
+    await expect(page.locator('app-bottom-sheet')).toHaveCount(0);
+    await expect(page.locator('.movement-table')).toContainText('55.00');
+  });
+
+  test('dragging the handle down dismisses the transfer sheet without saving', async ({
+    page,
+  }) => {
+    await completeOnboarding(page, { secondAccount: true });
+
+    await page.getByRole('button', { name: '+ Transfer' }).click();
+    const sheet = page.locator('app-bottom-sheet .sheet');
+    await expect(sheet).toBeVisible();
+    await awaitSheetSettled(page);
+
+    const handle = page.locator('.sheet-handle');
+    const box = (await handle.boundingBox())!;
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2 + 200, { steps: 5 });
+    await page.mouse.up();
+
+    await expect(page.locator('app-bottom-sheet')).toHaveCount(0);
+    await expect(page.locator('.movement-table tbody tr')).toHaveCount(0);
   });
 });
 
@@ -380,6 +461,28 @@ async function addTransaction(page: import('@playwright/test').Page, amount: str
   await expect(page.locator('.quick-add-form')).toBeHidden();
 }
 
+async function addTransfer(page: import('@playwright/test').Page, amount: string) {
+  await page.getByRole('button', { name: '+ Transfer' }).click();
+  const form = page.locator('.form-card');
+  await expect(form).toBeVisible();
+  await form.locator('input[type="number"]').first().fill(amount);
+  await form.getByRole('button', { name: 'Save' }).click();
+  await expect(page.locator('app-bottom-sheet')).toHaveCount(0);
+}
+
+/* The sheet slides up over 0.2s; the pinned-action geometry is only honest
+   once the entrance animation has finished. */
+async function expectActionsPinned(sheet: import('@playwright/test').Locator) {
+  const sheetBox = (await sheet.boundingBox())!;
+  for (const name of ['Cancel', 'Save']) {
+    const box = (await sheet.getByRole('button', { name }).boundingBox())!;
+    expect(box.y + box.height, `${name} must sit at the sheet bottom`).toBeGreaterThan(
+      sheetBox.y + sheetBox.height - 96,
+    );
+    expect(box.y + box.height).toBeLessThanOrEqual(sheetBox.y + sheetBox.height);
+  }
+}
+
 async function expectNoHorizontalOverflow(page: import('@playwright/test').Page) {
   const overflow = await page.evaluate(() => ({
     scrollWidth: document.documentElement.scrollWidth,
@@ -393,7 +496,7 @@ async function expectNoHorizontalOverflow(page: import('@playwright/test').Page)
 
 async function completeOnboarding(
   page: import('@playwright/test').Page,
-  opts: { longCategory?: boolean } = {},
+  opts: { longCategory?: boolean; secondAccount?: boolean } = {},
 ) {
   await page.goto('/');
 
@@ -410,6 +513,11 @@ async function completeOnboarding(
   await page.getByPlaceholder('Account name').fill('Checking');
   await page.getByPlaceholder('Initial balance').fill('100');
   await page.getByRole('button', { name: 'Add', exact: true }).click();
+  if (opts.secondAccount) {
+    await page.getByPlaceholder('Account name').fill('Savings');
+    await page.getByPlaceholder('Initial balance').fill('50');
+    await page.getByRole('button', { name: 'Add', exact: true }).click();
+  }
   await page.getByRole('button', { name: 'Continue' }).click();
 
   // 5. Categories: defaults are prefilled; optionally rename one to a very long name
