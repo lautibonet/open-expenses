@@ -397,25 +397,8 @@
   font-size: var(--type-caption);
 }
 
-.exchange-rate-section {
-  @extend %exchange-well;
-}
-
-.exchange-rate-grid {
-  @extend %capture-rate-grid;
-}
-
-.rate-status {
-  @extend %rate-status;
-}
-
-.rate-error {
-  @extend %rate-error;
-}
-
-.rate-source {
-  @extend %rate-source;
-}
+/* The exchange-rate well's own styling lives in the shared well component
+   (#108). */
 
 @media (max-width: 768px) {
 
@@ -423,8 +406,7 @@
     flex-wrap: wrap;
   }
 
-  .form-grid,
-  .exchange-rate-grid {
+  .form-grid {
     @include capture-grids-single-column;
   }
 

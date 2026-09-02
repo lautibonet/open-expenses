@@ -9,6 +9,10 @@ import { getCurrentPeriod, getCurrentYear } from '../../../core/types/period.typ
 
 const STORAGE_KEY = 'open-expenses.quick-add.last-selection';
 
+function flush(ms = 10): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function makeAccount(id: number, name: string, currency: string): Account {
   return { id, name, currency, initialBalance: 0, active: true, createdAt: new Date() };
 }
@@ -125,8 +129,10 @@ describe('QuickAddCardComponent', () => {
 
   it('emits a save payload with the fetched rate for a foreign-currency transaction', async () => {
     await component.ngOnInit();
+    fixture.detectChanges();
     component.onAccountChange(2);
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    fixture.detectChanges();
+    await flush();
 
     component.form.update((f) => ({ ...f, amount: 100 }));
     let saved: any;
@@ -142,8 +148,10 @@ describe('QuickAddCardComponent', () => {
   it('blocks submit until a foreign-currency rate is available and accepts a manual entry', async () => {
     exchangeRateService.getRate.mockRejectedValue(new Error('offline'));
     await component.ngOnInit();
+    fixture.detectChanges();
     component.onAccountChange(2);
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    fixture.detectChanges();
+    await flush();
 
     component.form.update((f) => ({ ...f, amount: 100 }));
     let saved: any;
@@ -163,15 +171,19 @@ describe('QuickAddCardComponent', () => {
 
   it('re-fetches the rate when the date changes on a foreign-currency account', async () => {
     await component.ngOnInit();
+    fixture.detectChanges();
     component.onAccountChange(2);
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    fixture.detectChanges();
+    await flush();
     expect(exchangeRateService.getRate).toHaveBeenCalledWith('USD', 'EUR', component.form().date);
 
     exchangeRateService.getRate.mockResolvedValueOnce({
       rate: 1.12, from: 'USD', to: 'EUR', date: '2026-01-15',
     });
 
-    await component.onDateChange('2026-01-15');
+    component.onDateChange('2026-01-15');
+    fixture.detectChanges();
+    await flush();
 
     expect(exchangeRateService.getRate).toHaveBeenCalledWith('USD', 'EUR', '2026-01-15');
     expect(component.form().exchangeRate).toBe(1.12);
@@ -330,6 +342,7 @@ describe('QuickAddCardComponent', () => {
     });
 
     await component.ngOnInit();
+    fixture.detectChanges();
 
     expect(component.editingId()).toBe(7);
     expect(component.form().amount).toBe(60);

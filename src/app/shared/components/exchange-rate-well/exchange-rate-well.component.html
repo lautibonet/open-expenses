@@ -1,0 +1,47 @@
+@if (visible()) {
+  <div class="exchange-rate-section">
+    <h4>{{ language.t(labels().heading) }}</h4>
+    @if (state().loading) {
+      <p class="rate-status">{{ language.t(labels().fetching) }}</p>
+    }
+    @if (state().error) {
+      <p class="rate-error">{{ state().error }}</p>
+    }
+    <div class="exchange-rate-grid">
+      <label>
+        {{ language.t(labels().pair, { from: from(), to: to() }) }}
+        <input
+          type="number"
+          step="0.0001"
+          [ngModel]="state().rate"
+          (ngModelChange)="onRateInput($event)"
+          name="rate"
+          [attr.aria-label]="rateAriaLabel()"
+        />
+      </label>
+      <label>
+        {{ language.t(labels().equivalent, { currency: to() }) }}
+        <input
+          type="number"
+          [ngModel]="equivalent()"
+          readonly
+          class="readonly"
+          name="equiv"
+          [attr.aria-label]="equivalentAriaLabel()"
+        />
+      </label>
+    </div>
+    @if (state().rate !== null) {
+      <p class="rate-source">
+        {{
+          language.t(labels().suggested, {
+            from: from(),
+            rate: state().rate!,
+            to: to(),
+            date: state().date,
+          })
+        }}
+      </p>
+    }
+  </div>
+}

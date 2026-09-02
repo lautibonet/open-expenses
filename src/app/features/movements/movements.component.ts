@@ -7,10 +7,8 @@ import { TransferService } from '../../core/services/transfer.service';
 import { AccountService } from '../../core/services/account.service';
 import { CategoryService } from '../../core/services/category.service';
 import { ProfileService } from '../../core/services/profile.service';
-import { ExchangeRateService } from '../../core/services/exchange-rate.service';
 import { CaptureFormService } from '../../core/services/capture-form.service';
 import { DataVersionService } from '../../core/services/data-version.service';
-import { OfflineError } from '../../core/models/offline-error';
 import { TranslationError, errorCopy } from '../../core/models/translation-error';
 import { Transaction } from '../../core/models/transaction.model';
 import { Transfer } from '../../core/models/transfer.model';
@@ -32,9 +30,14 @@ import {
 import { LanguageService } from '../../core/services/language.service';
 import { BottomSheetComponent } from '../../shared/components/bottom-sheet/bottom-sheet.component';
 import {
+  ExchangeRateWellComponent,
+  ExchangeRateWellLabels,
+  RateSeed,
+  RateState,
+} from '../../shared/components/exchange-rate-well/exchange-rate-well.component';
+import {
   QuickAddCardComponent,
   QuickAddDraft,
-  RateState,
   TransactionFormPayload,
 } from './quick-add-card/quick-add-card.component';
 import {
@@ -43,6 +46,20 @@ import {
 } from './net-flow-card/net-flow-card.component';
 
 const EMPTY_RATE_STATE: RateState = { loading: false, error: '', rate: null, date: '' };
+
+/* The well renders the Transfer Form's own copy; the aria labels are shared
+   with the Transaction Form's generic rate-field labels. */
+const TRANSFER_RATE_LABELS: ExchangeRateWellLabels = {
+  heading: 'movements.exchangeRate',
+  fetching: 'movements.fetchingRate',
+  pair: 'movements.exchangeRatePair',
+  equivalent: 'movements.destAmount',
+  suggested: 'movements.suggestedRate',
+  rateAria: 'quickAdd.exchangeRateAria',
+  equivalentAria: 'quickAdd.equivalentAria',
+  errorOffline: 'movements.error.offlineRate',
+  errorFetch: 'movements.error.rateFetch',
+};
 
 interface PendingDelete {
   item: MovementItem;
@@ -97,7 +114,7 @@ function defaultTransferForm(accounts: Account[]): TransferForm {
 
 @Component({
   selector: 'app-movements',
-  imports: [FormsModule, DatePipe, NgTemplateOutlet, QuickAddCardComponent, NetFlowCardComponent, BottomSheetComponent],
+  imports: [FormsModule, DatePipe, NgTemplateOutlet, QuickAddCardComponent, NetFlowCardComponent, BottomSheetComponent, ExchangeRateWellComponent],
   templateUrl: './movements.component.html',
   styleUrl: './movements.component.scss',
   host: { '(document:keydown)': 'onDocKeydown($event)' },
@@ -108,7 +125,6 @@ export class MovementsComponent implements OnInit, OnDestroy {
   private accountService = inject(AccountService);
   private categoryService = inject(CategoryService);
   private profileService = inject(ProfileService);
-  private exchangeRateService = inject(ExchangeRateService);
   private captureFormService = inject(CaptureFormService);
   private dataVersion = inject(DataVersionService);
   private location = inject(Location);
@@ -160,6 +176,8 @@ export class MovementsComponent implements OnInit, OnDestroy {
   private undoHandle: ReturnType<typeof setTimeout> | null = null;
 
   transferExchangeRateState = signal<RateState>({ ...EMPTY_RATE_STATE });
+  transferRateSeed = signal<RateSeed | null>(null);
+  transferRateLabels = TRANSFER_RATE_LABELS;
 
   trForm = signal<TransferForm>({
     sourceAccountId: 0,
@@ -545,6 +563,14 @@ export class MovementsComponent implements OnInit, OnDestroy {
   }
 
   closeTransferForm(): void {
+    /* The form (and its well) is destroyed on close; if the draft continues,
+       seed the reopened well with the captured rate state. */
+    const s = this.transferExchangeRateState();
+    this.transferRateSeed.set({
+      rate: s.rate,
+      date: s.date,
+      error: s.error || undefined,
+    });
     this.showForm.set('none');
   }
 
@@ -585,7 +611,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
     this.errorDetail.set('');
     if (id) {
       this.editingId.set(id);
-      this.transferExchangeRateState.set({ ...EMPTY_RATE_STATE });
+      this.transferRateSeed.set(null);
       this.transferService.getById(id).then((t) => {
         if (t) {
           this.trForm.set({
@@ -599,31 +625,21 @@ export class MovementsComponent implements OnInit, OnDestroy {
             year: getPeriodYear(t),
             note: t.note,
           });
-          if (t.sourceAccountId !== t.destinationAccountId) {
-            const src = this.accounts().find((a) => a.id === t.sourceAccountId);
-            const dst = this.accounts().find((a) => a.id === t.destinationAccountId);
-            if (src && dst && src.currency !== dst.currency) {
-              this.transferExchangeRateState.update((s) => ({
-                ...s,
-                rate: t.exchangeRate,
-                date: 'stored',
-              }));
-            }
+          const src = this.accounts().find((a) => a.id === t.sourceAccountId);
+          const dst = this.accounts().find((a) => a.id === t.destinationAccountId);
+          if (src && dst && src.currency !== dst.currency) {
+            this.transferRateSeed.set({ rate: t.exchangeRate, date: 'stored' });
           }
         }
       });
     } else if (!this.transferDraftInProgress()) {
-      this.transferExchangeRateState.set({ ...EMPTY_RATE_STATE });
+      this.transferRateSeed.set(null);
       this.resetTransferForm();
     }
   }
 
   private resetTransferForm(): void {
     this.trForm.set(defaultTransferForm(this.accounts()));
-    const { sourceAccountId: srcId, destAccountId: dstId } = this.trForm();
-    if (srcId && dstId && srcId !== dstId) {
-      this.checkTransferExchangeRate();
-    }
   }
 
   toggleQuickAdd(): void {
@@ -664,6 +680,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
     this.errorMessage.set('');
     this.errorDetail.set('');
     this.transferExchangeRateState.set({ ...EMPTY_RATE_STATE });
+    this.transferRateSeed.set(null);
     this.resetTransferForm();
   }
 
@@ -678,12 +695,10 @@ export class MovementsComponent implements OnInit, OnDestroy {
       const destAccountId = f.destAccountId === sourceId ? 0 : f.destAccountId;
       return { ...f, sourceAccountId: sourceId, destAccountId };
     });
-    this.checkTransferExchangeRate();
   }
 
   onTransferDateChange(date: string): void {
     this.trForm.update((f) => ({ ...f, date, ...periodYearFromDate(date) }));
-    this.checkTransferExchangeRate();
   }
 
   isTransferForeignCurrency(): boolean {
@@ -711,36 +726,12 @@ export class MovementsComponent implements OnInit, OnDestroy {
     this.computeTransferDestinationAmount();
   }
 
-  async checkTransferExchangeRate(): Promise<void> {
-    const { src, dst } = this.getTransferAccounts();
-    const f = this.trForm();
-
-    if (!src || !dst || src.currency === dst.currency) {
-      this.transferExchangeRateState.set({ ...EMPTY_RATE_STATE });
-      this.computeTransferDestinationAmount();
-      return;
+  onTransferRateStateChange(state: RateState): void {
+    this.transferExchangeRateState.set(state);
+    if (state.rate !== null) {
+      this.trForm.update((f) => ({ ...f, exchangeRate: state.rate! }));
     }
-
-    this.transferExchangeRateState.update((s) => ({ ...s, loading: true, error: '' }));
-
-    try {
-      const result = await this.exchangeRateService.getRate(src.currency, dst.currency, f.date);
-      this.transferExchangeRateState.update((s) => ({
-        ...s,
-        rate: result.rate,
-        date: result.date,
-      }));
-      this.trForm.update((form) => ({ ...f, exchangeRate: result.rate }));
-      this.computeTransferDestinationAmount();
-    } catch (e: unknown) {
-      const msg =
-        e instanceof OfflineError
-          ? this.language.t('movements.error.offlineRate')
-          : this.language.t('movements.error.rateFetch');
-      this.transferExchangeRateState.update((s) => ({ ...s, error: msg }));
-    } finally {
-      this.transferExchangeRateState.update((s) => ({ ...s, loading: false }));
-    }
+    this.computeTransferDestinationAmount();
   }
 
   private computeTransferDestinationAmount(): void {
