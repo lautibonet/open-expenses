@@ -99,27 +99,17 @@
   color: var(--on-surface-variant);
 }
 
+/* The Transfer Form renders from the shared capture-form blocks (#107) —
+   the same placeholders the Transaction Form extends, so the two capture
+   forms render identically (ADR 0014). Where the two had drifted, the
+   Transaction Form's look won: the minmax(0, 1fr) overflow guard (#100)
+   and the --space-md spacing tokens. */
 .form-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-md);
-
-  label {
-    @extend %stacked-label;
-
-    input,
-    select {
-      @extend %field;
-      margin-top: var(--space-xs);
-    }
-  }
+  @extend %capture-form-grid;
 }
 
 .form-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-sm);
-  margin-top: var(--space-md);
+  @extend %capture-form-actions;
 }
 
 /* Inline reason next to the disabled Save button (issue #98). */
@@ -412,22 +402,7 @@
 }
 
 .exchange-rate-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-md);
-
-  label {
-    @extend %stacked-label;
-
-    input {
-      @extend %field;
-      margin-top: var(--space-xs);
-
-      &.readonly {
-        @extend %readonly-field;
-      }
-    }
-  }
+  @extend %capture-rate-grid;
 }
 
 .rate-status {
@@ -450,31 +425,26 @@
 
   .form-grid,
   .exchange-rate-grid {
-    grid-template-columns: 1fr;
+    @include capture-grids-single-column;
   }
 
-  /* The transfer card fills the capture sheet (#104): same treatment as the
-     Quick Add card — no page margin, full-height flex so the actions pin. */
+  /* The transfer card fills the capture sheet (#104): same treatment as
+     the Transaction card — no page margin, full-height flex so the
+     actions pin, and the same --space-md gutter the shared sheet-actions
+     block bleeds over (#107). */
   .form-card {
     margin-bottom: 0;
     min-height: 100%;
     display: flex;
     flex-direction: column;
+    padding: var(--space-md);
   }
 
   /* Cancel/Save stay pinned to the sheet's bottom edge (#104): reachable
-     without scrolling, whatever the form's height. */
+     without scrolling, whatever the form's height — the shared block the
+     Transaction form includes too (#107). */
   .form-actions {
-    position: sticky;
-    bottom: 0;
-    z-index: 1;
-    margin: auto calc(-1 * var(--space-lg)) calc(-1 * var(--space-lg));
-    padding: var(--space-lg);
-    background: var(--background);
-    border-top: 1px solid var(--outline-variant);
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
+    @include capture-sheet-actions;
   }
 
   .filter-panel {

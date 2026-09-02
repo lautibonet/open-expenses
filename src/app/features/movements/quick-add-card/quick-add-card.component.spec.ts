@@ -67,6 +67,28 @@ describe('QuickAddCardComponent', () => {
     expect(el.textContent).not.toContain('More...');
   });
 
+  // jsdom does no layout, so "amount, note and date inputs are exactly as
+  // wide as the dropdown fields inside the sheet" is asserted at the
+  // compiled-stylesheet seam (#107).
+  it('resolves text-like inputs and selects to the same rendered width (box-sizing)', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const css = Array.from(document.querySelectorAll('style'))
+      .map((s) => s.textContent ?? '')
+      .join('\n');
+    // Angular's emulated encapsulation inserts [_ngcontent-*] attributes
+    // between the selector parts, so the descendant chain is matched
+    // piecewise.
+    expect(css).toMatch(
+      /\.form-grid[^{]*label[^{]*input[^{]*\{[^}]*box-sizing:\s*border-box/,
+    );
+    expect(css).toMatch(
+      /\.form-grid[^{]*label[^{]*select[^{]*\{[^}]*box-sizing:\s*border-box/,
+    );
+    expect(css).toMatch(/\.form-grid[^{]*label[^{]*input[^{]*\{[^}]*width:\s*100%/);
+  });
+
   it('starts with the first account and category when nothing was stored', async () => {
     await component.ngOnInit();
     expect(component.form().accountId).toBe(1);

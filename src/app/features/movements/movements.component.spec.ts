@@ -4086,4 +4086,52 @@ describe('MovementsComponent - mobile transfer sheet (#104)', () => {
       /@media \(max-width: 768px\)[\s\S]*?\.form-actions[^{]*\{[^}]*position:\s*sticky[^}]*bottom:\s*0/,
     );
   });
+
+  // jsdom does no layout, so "inputs and selects resolve to the same
+  // rendered width" is asserted at the compiled-stylesheet seam (same
+  // approach as the stacked-ledger spec above).
+  it('gives the transfer form grids the minmax(0, 1fr) overflow guard (#107)', async () => {
+    await component.ngOnInit();
+
+    const css = compiledComponentCss();
+    expect(css).toMatch(
+      /\.form-grid[^{]*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s*minmax\(0,\s*1fr\)/,
+    );
+    expect(css).toMatch(
+      /\.exchange-rate-grid[^{]*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s*minmax\(0,\s*1fr\)/,
+    );
+  });
+
+  it('resolves transfer-form text inputs and selects to the same rendered width (box-sizing)', async () => {
+    await component.ngOnInit();
+
+    const css = compiledComponentCss();
+    // Angular's emulated encapsulation inserts [_ngcontent-*] attributes
+    // between the selector parts, so the descendant chain is matched
+    // piecewise.
+    expect(css).toMatch(
+      /\.form-grid[^{]*label[^{]*input[^{]*\{[^}]*box-sizing:\s*border-box/,
+    );
+    expect(css).toMatch(
+      /\.form-grid[^{]*label[^{]*select[^{]*\{[^}]*box-sizing:\s*border-box/,
+    );
+  });
+
+  it('stops the movements filter search input overflowing its card (same root cause)', async () => {
+    await component.ngOnInit();
+
+    const css = compiledComponentCss();
+    expect(css).toMatch(
+      /\.filter-search[^{]*input[^{]*\{[^}]*box-sizing:\s*border-box/,
+    );
+  });
+
+  it('pins the transfer sheet actions with the transaction form spacing tokens (#107)', async () => {
+    await component.ngOnInit();
+
+    const css = compiledComponentCss();
+    expect(css).toMatch(
+      /@media \(max-width: 768px\)[\s\S]*?\.form-actions[^{]*\{[^}]*calc\(-1 \* var\(--space-md\)\)/,
+    );
+  });
 });

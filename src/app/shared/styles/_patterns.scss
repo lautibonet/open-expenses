@@ -276,6 +276,12 @@
 }
 
 %field {
+  /* border-box: a width:100% text input and its neighboring select must
+     resolve to the same rendered width. content-box inflates inputs by
+     their padding and border, which pushed the capture forms' amount,
+     note and date fields past the bottom sheet's edge on mobile — and
+     latently overflowed the movements filter search input (#107). */
+  box-sizing: border-box;
   padding: 0.5rem;
   border: var(--border-hard);
   border-radius: var(--radius-sm);
@@ -350,4 +356,88 @@
   font-size: var(--type-tag);
   color: var(--on-surface-variant);
   margin: 0.5rem 0 0;
+}
+
+/* ─── Capture-form blocks (#107) ───────────────────────────────────────
+   The Transaction Form and the Transfer Form render from one visual
+   grammar (ADR 0014): these blocks exist here, once, and each capture
+   form extends them. Where the two forms' styles had drifted, the
+   Transaction Form's look won — the minmax(0, 1fr) overflow guard and
+   the --space-md spacing tokens. */
+
+/* The two-column capture field grid. minmax(0, 1fr) tracks: a wide
+   selected category or note must never push a field past the viewport
+   edge (#100). */
+%capture-form-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-md);
+
+  label {
+    @extend %stacked-label;
+    min-width: 0;
+
+    input,
+    select {
+      @extend %field;
+      margin-top: var(--space-xs);
+      width: 100%;
+    }
+  }
+}
+
+/* The capture form's Cancel/Save row. */
+%capture-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin-top: var(--space-md);
+}
+
+/* The field grid inside the exchange-rate well — same overflow guard as
+   the form grid (#100). */
+%capture-rate-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-md);
+
+  label {
+    @extend %stacked-label;
+    min-width: 0;
+
+    input {
+      @extend %field;
+      margin-top: var(--space-xs);
+      width: 100%;
+
+      &.readonly {
+        @extend %readonly-field;
+      }
+    }
+  }
+}
+
+/* The two-column grids cannot fit a 375px phone (#100, #104): one column
+   below the sheet breakpoint. A mixin because @extend cannot cross a
+   media-query boundary. */
+@mixin capture-grids-single-column {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* Cancel/Save pinned to the bottom sheet's edge (#103, #104): reachable
+   without scrolling, whatever the form's height. The negative margin and
+   padding bleed over the capture card's --space-md gutter so the bar
+   spans the card full-width. A mixin because @extend cannot cross a
+   media-query boundary. */
+@mixin capture-sheet-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  margin: auto calc(-1 * var(--space-md)) calc(-1 * var(--space-md));
+  padding: var(--space-md);
+  background: var(--background);
+  border-top: 1px solid var(--outline-variant);
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
 }
