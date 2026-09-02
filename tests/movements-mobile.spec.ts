@@ -80,6 +80,90 @@ test.describe('movements on a phone (coarse pointer)', () => {
     // The Save button must be reachable and clickable without scrolling sideways.
     await expect(form.getByRole('button', { name: 'Save' })).toBeVisible();
   });
+
+  test('first movement row clears the fold without scrolling (#102)', async ({ page }) => {
+    await completeOnboarding(page);
+    await addTransaction(page, '12.50');
+
+    const row = page.locator('.movement-table tbody tr:not(.day-divider)').first();
+    await expect(row).toBeVisible();
+
+    // The fixed bottom nav bar eats the foot of the viewport, so the row
+    // must clear viewport minus the nav bar, not just the raw height.
+    const navSize = await page.evaluate(
+      () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--nav-bar-size')) * 16,
+    );
+    const box = (await row.boundingBox())!;
+    expect(
+      box.y + box.height,
+      `first movement row bottom (${box.y + box.height}px) must clear the fold above the nav bar (${812 - navSize}px)`,
+    ).toBeLessThanOrEqual(812 - navSize);
+    expect(await page.evaluate(() => window.scrollY)).toBe(0);
+  });
+
+  test('page subtitle occupies one line and the scope pair carries a caps label (#102)', async ({
+    page,
+  }) => {
+    await completeOnboarding(page);
+
+    const subtitle = page.locator('.page-header .subtitle');
+    const height = await subtitle.evaluate((el) => el.getBoundingClientRect().height);
+    // One line of body-lg (1.125rem × 1.6) is 28.8px; two lines would be ~58px.
+    expect(height, 'subtitle must render as a single line').toBeLessThanOrEqual(30);
+
+    await expect(page.locator('.scope-control .scope-label')).toHaveText('Scope');
+  });
+
+  test('filter card stays collapsed, expands on demand, chips carry active filters (#102)', async ({
+    page,
+  }) => {
+    await completeOnboarding(page);
+    await addTransaction(page, '12.50');
+
+    // Collapsed by default: no panel, one search row with the toggle.
+    await expect(page.locator('.filter-panel')).toHaveCount(0);
+    await expect(page.locator('.filter-bar input[type="search"]')).toBeVisible();
+    const toggle = page.locator('.filter-toggle');
+    await expect(toggle).toContainText('Filters');
+
+    // Expanding reveals the selects; both show their All… option by default.
+    await toggle.click();
+    const panel = page.locator('.filter-panel');
+    await expect(panel).toBeVisible();
+    const selects = panel.locator('select');
+    await expect(selects).toHaveCount(2);
+    const categoryLabel = await selects
+      .nth(0)
+      .evaluate((el: HTMLSelectElement) => el.selectedOptions[0]?.textContent?.trim());
+    expect(categoryLabel).toBe('All categories');
+    const accountLabel = await selects
+      .nth(1)
+      .evaluate((el: HTMLSelectElement) => el.selectedOptions[0]?.textContent?.trim());
+    expect(accountLabel).toBe('All accounts');
+
+    // Activate a category filter, collapse: the chip and the badge appear.
+    await selects.nth(0).selectOption({ label: 'Misc' });
+    await toggle.click();
+    await expect(panel).toHaveCount(0);
+    const chip = page.locator('.filter-chip');
+    await expect(chip).toHaveCount(1);
+    await expect(chip).toContainText('Misc');
+    const badge = page.locator('.filter-badge');
+    await expect(badge).toBeVisible();
+
+    // Badge is outline/neutral, not action blue.
+    const badgeStyles = await badge.evaluate((el) => {
+      const s = getComputedStyle(el);
+      return { background: s.backgroundColor, borderColor: s.borderColor };
+    });
+    expect(badgeStyles.background).toBe('rgb(255, 255, 255)');
+    expect(badgeStyles.background).not.toBe('rgb(0, 62, 199)');
+
+    // Tapping the chip removes that filter.
+    await chip.click();
+    await expect(page.locator('.filter-chip')).toHaveCount(0);
+    await expect(page.locator('.filter-badge')).toHaveCount(0);
+  });
 });
 
 test.describe('movements on desktop (fine pointer)', () => {
@@ -112,6 +196,23 @@ test.describe('movements on desktop (fine pointer)', () => {
 
     await expectNoHorizontalOverflow(page);
   });
+
+  test('filter selects show their All… option by default (#102)', async ({ page }) => {
+    await completeOnboarding(page);
+
+    await page.locator('.filter-toggle').click();
+    const selects = page.locator('.filter-panel select');
+    await expect(selects).toHaveCount(2);
+
+    const categoryLabel = await selects
+      .nth(0)
+      .evaluate((el: HTMLSelectElement) => el.selectedOptions[0]?.textContent?.trim());
+    expect(categoryLabel).toBe('All categories');
+    const accountLabel = await selects
+      .nth(1)
+      .evaluate((el: HTMLSelectElement) => el.selectedOptions[0]?.textContent?.trim());
+    expect(accountLabel).toBe('All accounts');
+  });
 });
 
 async function expectHeightAtLeast(locator: import('@playwright/test').Locator, min: number) {
@@ -120,6 +221,15 @@ async function expectHeightAtLeast(locator: import('@playwright/test').Locator, 
     box.height,
     `expected button "${await locator.textContent()}" to be at least ${min}px tall`,
   ).toBeGreaterThanOrEqual(min);
+}
+
+async function addTransaction(page: import('@playwright/test').Page, amount: string) {
+  await page.getByRole('button', { name: '+ Transaction' }).click();
+  const form = page.locator('.quick-add-form');
+  await expect(form).toBeVisible();
+  await form.locator('input[name="amount"]').fill(amount);
+  await form.getByRole('button', { name: 'Save' }).click();
+  await expect(page.locator('.quick-add-form')).toBeHidden();
 }
 
 async function expectNoHorizontalOverflow(page: import('@playwright/test').Page) {

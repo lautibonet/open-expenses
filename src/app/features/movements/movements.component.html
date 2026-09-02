@@ -6,6 +6,7 @@
     </div>
 
     <div class="scope-control" role="group" [attr.aria-label]="language.t('scope.groupAria')">
+      <span class="scope-label" aria-hidden="true">{{ language.t('scope.label') }}</span>
       <div class="scope-selects">
         <select
           [ngModel]="scopePeriod()"
@@ -233,41 +234,70 @@
   }
 
   <div class="filter-bar">
-    <label>
-      {{ language.t('movements.search') }}
-      <input
-        type="search"
-        [ngModel]="searchQuery()"
-        (ngModelChange)="searchQuery.set($event)"
-        [placeholder]="language.t('movements.searchPlaceholder')"
-      />
-    </label>
-    <label>
-      {{ language.t('movements.category') }}
-      <select [ngModel]="filterCategory()" (ngModelChange)="filterCategory.set(+$event || null)">
-        <option [value]="0">{{ language.t('movements.allCategories') }}</option>
-        @for (cat of categories(); track cat.id) {
-          <option [value]="cat.id">{{ cat.name }}</option>
+    <div class="filter-summary">
+      <label class="filter-search">
+        <span class="visually-hidden">{{ language.t('movements.search') }}</span>
+        <input
+          type="search"
+          [ngModel]="searchQuery()"
+          (ngModelChange)="searchQuery.set($event)"
+          [placeholder]="language.t('movements.searchPlaceholder')"
+        />
+      </label>
+      @if (!filtersExpanded()) {
+        @for (chip of activeFilters(); track chip.kind) {
+          <button
+            class="filter-chip"
+            (click)="removeFilter(chip.kind)"
+            [attr.aria-label]="language.t('movements.removeFilterAria', { filter: chip.label })"
+          >
+            {{ chip.label }}
+            <svg aria-hidden="true" viewBox="0 0 10 10" focusable="false">
+              <path d="M2 2l6 6M8 2 2 8" fill="none" stroke="currentColor" stroke-width="1.5" />
+            </svg>
+          </button>
         }
-      </select>
-    </label>
-    <label>
-      {{ language.t('movements.account') }}
-      <select [ngModel]="filterAccount()" (ngModelChange)="filterAccount.set(+$event || null)">
-        <option [value]="0">{{ language.t('movements.allAccounts') }}</option>
-        @for (acc of accounts(); track acc.id) {
-          <option [value]="acc.id">{{ acc.name }}</option>
-        }
-      </select>
-    </label>
-    @if (filterCategory() !== null) {
-      <span class="filter-hint">{{ language.t('movements.categoryExcludesTransfers') }}</span>
-    }
-    @if (activeFilterCount() > 0) {
-      <span class="filter-badge"
-        >{{ activeFilterCount() }}<span class="visually-hidden">{{ language.t('movements.filtersActive') }}</span></span
+      }
+      <button
+        class="btn small filter-toggle"
+        (click)="toggleFilters()"
+        [attr.aria-expanded]="filtersExpanded()"
       >
-      <button class="btn small" (click)="clearFilters()">{{ language.t('movements.clearFilters') }}</button>
+        {{ filtersExpanded() ? language.t('movements.hideFilters') : language.t('movements.showFilters') }}
+        @if (activeFilterCount() > 0) {
+          <span class="filter-badge"
+            >{{ activeFilterCount() }}<span class="visually-hidden">{{ language.t('movements.filtersActive') }}</span></span
+          >
+        }
+      </button>
+    </div>
+    @if (filtersExpanded()) {
+      <div class="filter-panel">
+        <label>
+          {{ language.t('movements.category') }}
+          <select [ngModel]="filterCategory() ?? 0" (ngModelChange)="filterCategory.set(+$event || null)">
+            <option [value]="0">{{ language.t('movements.allCategories') }}</option>
+            @for (cat of categories(); track cat.id) {
+              <option [value]="cat.id">{{ cat.name }}</option>
+            }
+          </select>
+        </label>
+        <label>
+          {{ language.t('movements.account') }}
+          <select [ngModel]="filterAccount() ?? 0" (ngModelChange)="filterAccount.set(+$event || null)">
+            <option [value]="0">{{ language.t('movements.allAccounts') }}</option>
+            @for (acc of accounts(); track acc.id) {
+              <option [value]="acc.id">{{ acc.name }}</option>
+            }
+          </select>
+        </label>
+        @if (filterCategory() !== null) {
+          <span class="filter-hint">{{ language.t('movements.categoryExcludesTransfers') }}</span>
+        }
+        @if (activeFilterCount() > 0) {
+          <button class="btn small" (click)="clearFilters()">{{ language.t('movements.clearFilters') }}</button>
+        }
+      </div>
     }
   </div>
 

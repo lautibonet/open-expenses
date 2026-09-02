@@ -137,6 +137,7 @@ describe('MovementsComponent - filtering', () => {
 
   it('states that Transfers are excluded while a category filter is active', async () => {
     await seedMovements();
+    component.toggleFilters(); // the hint lives inside the revealed filter panel (#102)
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).not.toContain('Transfers are not shown');
 
@@ -3597,5 +3598,114 @@ describe('MovementsComponent - scope URL state', () => {
     const url = TestBed.inject(Location).path(true);
     expect(url).toContain(`period=${getCurrentPeriod()}`);
     expect(url).toContain(`year=${lastYear}`);
+  });
+});
+
+describe('MovementsComponent - filter card disclosure (#102)', () => {
+  let fixture: ComponentFixture<MovementsComponent>;
+  let component: MovementsComponent;
+  let accountId: number;
+  let categoryId: number;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    await TestBed.configureTestingModule({
+      imports: [MovementsComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(MovementsComponent);
+    component = fixture.componentInstance;
+    const acc = await TestBed.inject(AccountService).create('Cash', 'EUR', 100000);
+    accountId = acc.id!;
+    const cat = await TestBed.inject(CategoryService).create('Food', 'expense');
+    categoryId = cat.id!;
+  });
+
+  afterEach(async () => {
+    await db.delete();
+  });
+
+  it('starts collapsed and reveals the selects only on demand', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    expect(component.filtersExpanded()).toBe(false);
+    expect(fixture.nativeElement.querySelector('.filter-panel')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.filter-toggle')).toBeTruthy();
+
+    component.toggleFilters();
+    fixture.detectChanges();
+
+    expect(component.filtersExpanded()).toBe(true);
+    expect(fixture.nativeElement.querySelector('.filter-panel')).toBeTruthy();
+    expect(fixture.nativeElement.querySelectorAll('.filter-panel select').length).toBe(2);
+  });
+
+  it('shows the All… option on both filter selects by default', async () => {
+    await component.ngOnInit();
+    component.toggleFilters();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const selects = fixture.nativeElement.querySelectorAll(
+      '.filter-panel select',
+    ) as NodeListOf<HTMLSelectElement>;
+    expect(selects.length).toBe(2);
+    expect(selects[0].value).toBe('0');
+    expect(selects[1].value).toBe('0');
+  });
+
+  it('lists active filters as chips while collapsed and hides them when expanded', async () => {
+    await component.ngOnInit();
+    component.filterCategory.set(categoryId);
+    component.searchQuery.set('cash');
+    fixture.detectChanges();
+
+    const chips = fixture.nativeElement.querySelectorAll('.filter-chip');
+    expect(chips.length).toBe(2);
+    expect(chips[0].textContent).toContain('Category');
+    expect(chips[1].textContent).toContain('Search');
+
+    component.toggleFilters();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelectorAll('.filter-chip').length).toBe(0);
+  });
+
+  it('carries the active filter count on the toggle as a badge', async () => {
+    await component.ngOnInit();
+    component.filterAccount.set(accountId);
+    fixture.detectChanges();
+
+    const badge = fixture.nativeElement.querySelector('.filter-toggle .filter-badge');
+    expect(badge?.textContent).toContain('1');
+    expect(badge?.textContent).toContain('filters active');
+  });
+
+  it('removes a single filter from its chip', async () => {
+    await component.ngOnInit();
+    component.filterCategory.set(categoryId);
+    component.filterAccount.set(accountId);
+    component.searchQuery.set('cash');
+
+    component.removeFilter('category');
+    expect(component.filterCategory()).toBeNull();
+    expect(component.filterAccount()).toBe(accountId);
+    expect(component.searchQuery()).toBe('cash');
+
+    component.removeFilter('search');
+    expect(component.searchQuery()).toBe('');
+
+    component.removeFilter('account');
+    expect(component.filterAccount()).toBeNull();
+  });
+
+  it('renders the scope selectors as one labeled pair', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const label = fixture.nativeElement.querySelector('.scope-control .scope-label');
+    expect(label?.textContent?.trim()).toBe('Scope');
   });
 });
