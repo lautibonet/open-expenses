@@ -40,9 +40,13 @@ _Avoid_: Conversion rate, FX rate
 The unified display of Transactions and Transfers in a single chronological list. Each row carries a colored edge stripe identifying its kind: green for Income, red for Expense, grey for Transfer. Amounts are always positive; cross-currency items show both original and converted amounts (e.g. `$10.00 → €8.57`).
 _Avoid_: Feed, timeline, history
 
-**Quick Add**:
-The full Transaction capture form on the Movements screen — account, category, amount, note, date, and period shown all at once, with no compact/expanded distinction. Hidden by default and revealed by the New Transaction button, the sidebar Quick Add action, or the mobile bottom nav's center capture slot. On mobile it presents as a bottom sheet that slides up over the screen, with the fields in one column scrolling inside and Cancel/Save pinned to the sheet's bottom edge; on desktop it reveals inline. It closes after a successful save or by dismissal (Cancel or drag-down), and only one capture form (Quick Add or Transfer) is open at a time. Used for both recording and editing a Transaction.
-_Avoid_: Quick entry, mini form, inline add, more options
+**Transaction Form**:
+The Transaction capture form on the Movements screen — account, category, amount, note, date, and period shown all at once, with no compact/expanded distinction. Revealed by the New Transaction button, the sidebar capture action, or the mobile bottom nav's center capture slot; presents as a bottom sheet on mobile and inline on desktop. Used for both recording and editing a Transaction.
+_Avoid_: Quick Add, quick entry, mini form, inline add, more options
+
+**Transfer Form**:
+The Transfer capture form on the Movements screen — source account, destination account, source and destination amounts, note, date, and period shown all at once. Revealed by the Add Transfer button; presents as a bottom sheet on mobile and inline on desktop, like the Transaction Form. Used for both recording and editing a Transfer.
+_Avoid_: Transfer dialog, move-money form
 
 **Net**:
 Income minus Expenses aggregated over an aggregation window — a single Period or a whole year — reported in Base Currency. A positive Net means money kept; a negative Net means money overspent. The Savings Rate shown on Stats is Net divided by Income. Never a kind of Transaction or Transfer.
