@@ -43,7 +43,7 @@
   <div class="controls">
     <button
       class="btn"
-      (click)="toggleQuickAdd()"
+      (click)="toggleTransactionForm()"
       [attr.aria-expanded]="showForm() === 'transaction'"
       aria-keyshortcuts="n"
       [title]="language.t('movements.newTransactionShortcut')"
@@ -94,26 +94,26 @@
   @if (showForm() === 'transaction') {
     @if (isMobileLayout()) {
       <app-bottom-sheet
-        [label]="language.t('quickAdd.sheetAria')"
-        (dismissed)="closeQuickAdd()"
+        [label]="language.t('transactionForm.sheetAria')"
+        (dismissed)="closeTransactionForm()"
       >
-        <ng-container [ngTemplateOutlet]="quickAddForm" />
+        <ng-container [ngTemplateOutlet]="transactionForm" />
       </app-bottom-sheet>
     } @else {
-      <ng-container [ngTemplateOutlet]="quickAddForm" />
+      <ng-container [ngTemplateOutlet]="transactionForm" />
     }
   }
 
-  <ng-template #quickAddForm>
-    <app-quick-add-card
+  <ng-template #transactionForm>
+    <app-transaction-form
       [accounts]="accounts()"
       [categories]="categories()"
       [baseCurrency]="baseCurrency()"
       [editTransaction]="editTransaction()"
-      [initialDraft]="quickAddRestore()"
+      [initialDraft]="transactionRestore()"
       [inSheet]="isMobileLayout()"
       (saved)="onTransactionSaved($event)"
-      (close)="closeQuickAdd()"
+      (close)="closeTransactionForm()"
     />
   </ng-template>
 
@@ -284,7 +284,7 @@
                   } @else {
                     <button
                       class="btn small icon-btn"
-                      (click)="openQuickAddForEdit(txn)"
+                      (click)="openTransactionFormForEdit(txn)"
                       [attr.aria-label]="language.t('movements.editMovementAria')"
                       [title]="language.t('movements.editMovementAria')"
                     >
@@ -431,7 +431,7 @@
         <p class="empty">
           {{ language.t('movements.noneForScope', { scope: scopeLabelText() }) }}
           @if (accounts().length > 0 && categories().length > 0) {
-            <button class="btn small" (click)="openQuickAdd()">
+            <button class="btn small" (click)="openTransactionForm()">
               {{ language.t('movements.emptyStateCta') }}
             </button>
           }

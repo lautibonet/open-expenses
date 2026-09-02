@@ -111,11 +111,11 @@ describe('ShellComponent', () => {
     expect(kinds).toEqual(['Movements', 'Stats', 'capture', 'Settings']);
 
     const capture = nav.querySelector('button.capture-slot') as HTMLButtonElement;
-    expect(capture.getAttribute('aria-label')).toBe('+ Quick Add');
+    expect(capture.getAttribute('aria-label')).toBe('+ New Transaction');
     expect(capture.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
   });
 
-  it('opens Quick Add from the capture slot', async () => {
+  it('opens the Transaction Form from the capture slot', async () => {
     const captureFormService = TestBed.inject(CaptureFormService);
     const router = TestBed.inject(Router);
     vi.spyOn(router, 'url', 'get').mockReturnValue('/movements');
@@ -126,7 +126,7 @@ describe('ShellComponent', () => {
     capture.click();
     await fixture.whenStable();
 
-    expect(captureFormService.pendingQuickAddRequests()).toBe(1);
+    expect(captureFormService.pendingTransactionFormRequests()).toBe(1);
   });
 
   it('names each nav tab accessibly and renders an icon beside its label', () => {
@@ -180,44 +180,44 @@ describe('ShellComponent', () => {
     expect(brand.querySelector('.wordmark')?.textContent?.trim()).toBe('Open Expenses');
   });
 
-  it('routes the Quick Add CTA to Movements when used from another page', async () => {
+  it('routes the New Transaction CTA to Movements when used from another page', async () => {
     const router = TestBed.inject(Router);
     const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
 
-    await fixture.componentInstance.goToQuickAdd();
+    await fixture.componentInstance.goToTransactionForm();
 
     expect(navigate).toHaveBeenCalledWith(['/movements']);
   });
 
-  it('does not re-navigate when Quick Add is used on Movements', async () => {
+  it('does not re-navigate when New Transaction is used on Movements', async () => {
     const router = TestBed.inject(Router);
     const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
     vi.spyOn(router, 'url', 'get').mockReturnValue('/movements');
 
-    await fixture.componentInstance.goToQuickAdd();
+    await fixture.componentInstance.goToTransactionForm();
 
     expect(navigate).not.toHaveBeenCalled();
   });
 
-  it('requests the Quick Add form open when used on Movements', async () => {
+  it('requests the Transaction Form open when used on Movements', async () => {
     const captureFormService = TestBed.inject(CaptureFormService);
     const router = TestBed.inject(Router);
     vi.spyOn(router, 'url', 'get').mockReturnValue('/movements');
 
-    await fixture.componentInstance.goToQuickAdd();
+    await fixture.componentInstance.goToTransactionForm();
 
-    expect(captureFormService.pendingQuickAddRequests()).toBe(1);
+    expect(captureFormService.pendingTransactionFormRequests()).toBe(1);
   });
 
-  it('routes to Movements and requests the Quick Add form open from another page', async () => {
+  it('routes to Movements and requests the Transaction Form open from another page', async () => {
     const captureFormService = TestBed.inject(CaptureFormService);
     const router = TestBed.inject(Router);
     const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
 
-    await fixture.componentInstance.goToQuickAdd();
+    await fixture.componentInstance.goToTransactionForm();
 
     expect(navigate).toHaveBeenCalledWith(['/movements']);
-    expect(captureFormService.pendingQuickAddRequests()).toBe(1);
+    expect(captureFormService.pendingTransactionFormRequests()).toBe(1);
   });
 
   it("routes to Movements and opens the transfer form when 't' is pressed elsewhere", async () => {
@@ -231,7 +231,7 @@ describe('ShellComponent', () => {
     expect(captureFormService.pendingTransferRequests()).toBe(1);
   });
 
-  it("routes to Movements and requests Quick Add when 'n' is pressed on another page", async () => {
+  it("routes to Movements and requests the Transaction Form when 'n' is pressed on another page", async () => {
     const captureFormService = TestBed.inject(CaptureFormService);
     const router = TestBed.inject(Router);
     const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
@@ -239,7 +239,7 @@ describe('ShellComponent', () => {
     await fixture.componentInstance.onDocKeydown(new KeyboardEvent('keydown', { key: 'n' }));
 
     expect(navigate).toHaveBeenCalledWith(['/movements']);
-    expect(captureFormService.pendingQuickAddRequests()).toBe(1);
+    expect(captureFormService.pendingTransactionFormRequests()).toBe(1);
   });
 
   it('leaves the shortcuts to the Movements page when it is active', async () => {
@@ -250,7 +250,7 @@ describe('ShellComponent', () => {
     fixture.componentInstance.onDocKeydown(new KeyboardEvent('keydown', { key: 'n' }));
     fixture.componentInstance.onDocKeydown(new KeyboardEvent('keydown', { key: 't' }));
 
-    expect(captureFormService.pendingQuickAddRequests()).toBe(0);
+    expect(captureFormService.pendingTransactionFormRequests()).toBe(0);
     expect(captureFormService.pendingTransferRequests()).toBe(0);
   });
 });

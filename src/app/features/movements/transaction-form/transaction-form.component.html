@@ -1,26 +1,26 @@
-<div class="quick-add">
+<div class="transaction-form">
   @if (accounts().length === 0) {
-    <p class="empty-state">{{ language.t('quickAdd.noAccounts') }}</p>
+    <p class="empty-state">{{ language.t('transactionForm.noAccounts') }}</p>
   } @else if (categories().length === 0) {
-    <p class="empty-state">{{ language.t('quickAdd.noCategories') }}</p>
+    <p class="empty-state">{{ language.t('transactionForm.noCategories') }}</p>
   } @else {
-    <form class="quick-add-form" (ngSubmit)="onSubmit()">
+    <form class="transaction-form-form" (ngSubmit)="onSubmit()">
       <h3 #formHeading tabindex="-1">
         {{
           editingId()
-            ? language.t('quickAdd.editTransactionTitle')
-            : language.t('quickAdd.newTransactionTitle')
+            ? language.t('transactionForm.editTransactionTitle')
+            : language.t('transactionForm.newTransactionTitle')
         }}
       </h3>
 
       <div class="form-grid">
         <label>
-          {{ language.t('quickAdd.account') }}
+          {{ language.t('transactionForm.account') }}
           <select
             [ngModel]="form().accountId"
             (ngModelChange)="onAccountChange(+$event)"
             name="account"
-            [attr.aria-label]="language.t('quickAdd.account')"
+            [attr.aria-label]="language.t('transactionForm.account')"
           >
             @for (acc of accounts(); track acc.id) {
               <option [value]="acc.id">{{ acc.name }} ({{ acc.currency }})</option>
@@ -28,12 +28,12 @@
           </select>
         </label>
         <label>
-          {{ language.t('quickAdd.category') }}
+          {{ language.t('transactionForm.category') }}
           <select
             [ngModel]="form().categoryId"
             (ngModelChange)="onCategoryChange(+$event)"
             name="category"
-            [attr.aria-label]="language.t('quickAdd.category')"
+            [attr.aria-label]="language.t('transactionForm.category')"
           >
             @for (cat of categories(); track cat.id) {
               <option [value]="cat.id">
@@ -43,7 +43,7 @@
           </select>
         </label>
         <label class="amount-field">
-          {{ language.t('quickAdd.amount') }}
+          {{ language.t('transactionForm.amount') }}
           <input
             #amountInput
             type="number"
@@ -53,36 +53,36 @@
             [ngModel]="form().amount"
             (ngModelChange)="onAmountChange(+$event || 0); onAmountOrRateChange()"
             name="amount"
-            [attr.aria-label]="language.t('quickAdd.amount')"
+            [attr.aria-label]="language.t('transactionForm.amount')"
           />
         </label>
         <label>
-          {{ language.t('quickAdd.note') }}
+          {{ language.t('transactionForm.note') }}
           <input
             type="text"
             [ngModel]="form().note"
             (ngModelChange)="form.update((f) => ({ ...f, note: $event }))"
             name="note"
-            [attr.aria-label]="language.t('quickAdd.note')"
+            [attr.aria-label]="language.t('transactionForm.note')"
           />
         </label>
         <label>
-          {{ language.t('quickAdd.date') }}
+          {{ language.t('transactionForm.date') }}
           <input
             type="date"
             [ngModel]="form().date"
             (ngModelChange)="onDateChange($event)"
             name="date"
-            [attr.aria-label]="language.t('quickAdd.date')"
+            [attr.aria-label]="language.t('transactionForm.date')"
           />
         </label>
         <label>
-          {{ language.t('quickAdd.period') }}
+          {{ language.t('transactionForm.period') }}
           <select
             [ngModel]="form().period"
             (ngModelChange)="form.update((f) => ({ ...f, period: $event }))"
             name="period"
-            [attr.aria-label]="language.t('quickAdd.period')"
+            [attr.aria-label]="language.t('transactionForm.period')"
           >
             @for (month of months; track month) {
               <option [ngValue]="month">{{ language.monthName(month) }}</option>
@@ -90,12 +90,12 @@
           </select>
         </label>
         <label>
-          {{ language.t('quickAdd.year') }}
+          {{ language.t('transactionForm.year') }}
           <select
             [ngModel]="form().year"
             (ngModelChange)="form.update((f) => ({ ...f, year: +$event }))"
             name="year"
-            [attr.aria-label]="language.t('quickAdd.year')"
+            [attr.aria-label]="language.t('transactionForm.year')"
           >
             @for (yr of years; track yr) {
               <option [value]="yr">{{ yr }}</option>
@@ -122,10 +122,10 @@
           <p class="save-hint" role="status">{{ reason }}</p>
         }
         <button type="button" class="btn" (click)="cancel()">
-          {{ language.t('quickAdd.cancel') }}
+          {{ language.t('transactionForm.cancel') }}
         </button>
         <button type="submit" class="btn primary" [disabled]="!canSubmit()">
-          {{ language.t('quickAdd.save') }}
+          {{ language.t('transactionForm.save') }}
         </button>
       </div>
     </form>

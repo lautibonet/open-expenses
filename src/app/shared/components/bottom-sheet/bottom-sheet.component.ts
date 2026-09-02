@@ -14,7 +14,7 @@ import { Component, ElementRef, signal, input, output, viewChild } from '@angula
 export class BottomSheetComponent {
   static readonly DISMISS_THRESHOLD_PX = 96;
 
-  /** Accessible name for the dialog (e.g. "Quick Add"). */
+  /** Accessible name for the dialog (e.g. "Transaction form"). */
   label = input('');
 
   dismissed = output<void>();

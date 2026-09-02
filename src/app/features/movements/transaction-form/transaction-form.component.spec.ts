@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { QuickAddCardComponent } from './quick-add-card.component';
+import { TransactionFormComponent } from './transaction-form.component';
 import { ExchangeRateService } from '../../../core/services/exchange-rate.service';
 import { LanguageService } from '../../../core/services/language.service';
 import { TransactionService } from '../../../core/services/transaction.service';
@@ -11,7 +11,7 @@ import { Transaction } from '../../../core/models/transaction.model';
 import { db } from '../../../core/db/database';
 import { getCurrentPeriod, getCurrentYear } from '../../../core/types/period.type';
 
-const STORAGE_KEY = 'open-expenses.quick-add.last-selection';
+const STORAGE_KEY = 'open-expenses.transaction-form.last-selection';
 
 function flush(ms = 10): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -25,9 +25,9 @@ function makeCategory(id: number, name: string, type: 'income' | 'expense'): Cat
   return { id, name, type, active: true, createdAt: new Date() };
 }
 
-describe('QuickAddCardComponent', () => {
-  let fixture: ComponentFixture<QuickAddCardComponent>;
-  let component: QuickAddCardComponent;
+describe('TransactionFormComponent', () => {
+  let fixture: ComponentFixture<TransactionFormComponent>;
+  let component: TransactionFormComponent;
   let exchangeRateService: { getRate: ReturnType<typeof vi.fn> };
   let transactionService: TransactionService;
   let eurAccount: Account;
@@ -47,7 +47,7 @@ describe('QuickAddCardComponent', () => {
     };
 
     await TestBed.configureTestingModule({
-      imports: [QuickAddCardComponent],
+      imports: [TransactionFormComponent],
       providers: [{ provide: ExchangeRateService, useValue: exchangeRateService }],
     }).compileComponents();
 
@@ -64,7 +64,7 @@ describe('QuickAddCardComponent', () => {
     food = { ...makeCategory(foodCat.id!, 'Food', 'expense') };
     payroll = { ...makeCategory(payrollCat.id!, 'Payroll', 'income') };
 
-    fixture = TestBed.createComponent(QuickAddCardComponent);
+    fixture = TestBed.createComponent(TransactionFormComponent);
     component = fixture.componentInstance;
     fixture.componentRef.setInput('accounts', [eurAccount, usdAccount]);
     fixture.componentRef.setInput('categories', [food, payroll]);
@@ -499,9 +499,9 @@ describe('QuickAddCardComponent', () => {
   });
 });
 
-describe('QuickAddCardComponent - translations', () => {
-  let fixture: ComponentFixture<QuickAddCardComponent>;
-  let component: QuickAddCardComponent;
+describe('TransactionFormComponent - translations', () => {
+  let fixture: ComponentFixture<TransactionFormComponent>;
+  let component: TransactionFormComponent;
 
   beforeEach(async () => {
     localStorage.clear();
@@ -512,11 +512,11 @@ describe('QuickAddCardComponent - translations', () => {
       getRate: vi.fn().mockResolvedValue({ rate: 1.08, from: 'USD', to: 'EUR', date: '2026-08-26' }),
     };
     await TestBed.configureTestingModule({
-      imports: [QuickAddCardComponent],
+      imports: [TransactionFormComponent],
       providers: [{ provide: ExchangeRateService, useValue: exchangeRateService }],
     }).compileComponents();
 
-    fixture = TestBed.createComponent(QuickAddCardComponent);
+    fixture = TestBed.createComponent(TransactionFormComponent);
     component = fixture.componentInstance;
     fixture.componentRef.setInput('accounts', []);
     fixture.componentRef.setInput('categories', []);

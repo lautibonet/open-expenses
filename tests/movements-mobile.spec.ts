@@ -25,13 +25,13 @@ test.describe('movements on a phone (coarse pointer)', () => {
     await expectHeightAtLeast(newTransaction, 44);
     await expectHeightAtLeast(newTransfer, 44);
 
-    // Capture form buttons too: Quick Add (transaction) Cancel/Save.
+    // Capture form buttons too: New Transaction (transaction form) Cancel/Save.
     await newTransaction.click();
-    const quickAddForm = page.locator('.quick-add-form');
-    await expect(quickAddForm).toBeVisible();
-    await expectHeightAtLeast(quickAddForm.getByRole('button', { name: 'Cancel' }), 44);
-    await expectHeightAtLeast(quickAddForm.getByRole('button', { name: 'Save' }), 44);
-    await quickAddForm.getByRole('button', { name: 'Cancel' }).click();
+    const transactionForm = page.locator('.transaction-form-form');
+    await expect(transactionForm).toBeVisible();
+    await expectHeightAtLeast(transactionForm.getByRole('button', { name: 'Cancel' }), 44);
+    await expectHeightAtLeast(transactionForm.getByRole('button', { name: 'Save' }), 44);
+    await transactionForm.getByRole('button', { name: 'Cancel' }).click();
 
     // Transfer form Cancel/Save.
     await newTransfer.click();
@@ -64,11 +64,11 @@ test.describe('movements on a phone (coarse pointer)', () => {
     await expect(hint).toBeHidden();
   });
 
-  test('Quick Add fits the viewport with the widest category and a long note', async ({ page }) => {
+  test('Transaction Form fits the viewport with the widest category and a long note', async ({ page }) => {
     await completeOnboarding(page, { longCategory: true });
 
     await page.getByRole('button', { name: '+ Transaction' }).click();
-    const form = page.locator('.quick-add-form');
+    const form = page.locator('.transaction-form-form');
     await expect(form).toBeVisible();
 
     // Select the widest category and type a long note.
@@ -175,7 +175,7 @@ test.describe('movements capture sheet on a phone (#103)', () => {
 
     const capture = page.locator('nav.tab-bar button.capture-slot');
     await expect(capture).toBeVisible();
-    await expect(capture).toHaveAccessibleName('+ Quick Add');
+    await expect(capture).toHaveAccessibleName('+ New Transaction');
     await expectHeightAtLeast(capture, 44);
 
     const styles = await capture.evaluate((el) => {
@@ -299,7 +299,7 @@ test.describe('movements transfer capture sheet on a phone (#104)', () => {
     await expect(sheet).toHaveAttribute('aria-label', 'Transfer form');
     await expect(sheet.locator('.form-card')).toBeVisible();
 
-    // Same one-column presentation as Quick Add.
+    // Same one-column presentation as the Transaction Form.
     const gridColumns = await sheet
       .locator('.form-grid')
       .evaluate((el) => getComputedStyle(el).gridTemplateColumns);
@@ -394,15 +394,15 @@ test.describe('movements on desktop (fine pointer)', () => {
     await expect(page.locator('nav.tab-bar button.capture-slot')).toBeHidden();
 
     await page.getByRole('button', { name: '+ Transaction' }).click();
-    await expect(page.locator('.quick-add-form')).toBeVisible();
+    await expect(page.locator('.transaction-form-form')).toBeVisible();
     await expect(page.locator('app-bottom-sheet')).toHaveCount(0);
   });
 
-  test('Quick Add stays two-column on desktop and fits the viewport', async ({ page }) => {
+  test('Transaction Form stays two-column on desktop and fits the viewport', async ({ page }) => {
     await completeOnboarding(page, { longCategory: true });
 
     await page.getByRole('button', { name: '+ Transaction' }).click();
-    const form = page.locator('.quick-add-form');
+    const form = page.locator('.transaction-form-form');
     await expect(form).toBeVisible();
 
     const gridColumns = await form
@@ -454,11 +454,11 @@ async function expectHeightAtLeast(locator: import('@playwright/test').Locator, 
 
 async function addTransaction(page: import('@playwright/test').Page, amount: string) {
   await page.getByRole('button', { name: '+ Transaction' }).click();
-  const form = page.locator('.quick-add-form');
+  const form = page.locator('.transaction-form-form');
   await expect(form).toBeVisible();
   await form.locator('input[name="amount"]').fill(amount);
   await form.getByRole('button', { name: 'Save' }).click();
-  await expect(page.locator('.quick-add-form')).toBeHidden();
+  await expect(page.locator('.transaction-form-form')).toBeHidden();
 }
 
 async function addTransfer(page: import('@playwright/test').Page, amount: string) {

@@ -60,9 +60,9 @@
     <button
       type="button"
       class="capture-slot"
-      (click)="goToQuickAdd()"
-      [attr.aria-label]="language.t('shell.quickAdd')"
-      [title]="language.t('shell.quickAdd')"
+      (click)="goToTransactionForm()"
+      [attr.aria-label]="language.t('shell.newTransaction')"
+      [title]="language.t('shell.newTransaction')"
     >
       <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
         <path
@@ -103,11 +103,11 @@
   <div class="sidebar-actions">
     <button
       type="button"
-      class="quick-add"
-      (click)="goToQuickAdd()"
-      [title]="language.t('shell.quickAddShortcut')"
+      class="new-transaction"
+      (click)="goToTransactionForm()"
+      [title]="language.t('shell.newTransactionShortcut')"
     >
-      {{ language.t('shell.quickAdd') }}
+      {{ language.t('shell.newTransaction') }}
     </button>
     <div class="backup-block" role="group" [attr.aria-label]="language.t('backup.sidebar.ariaLabel')">
       <button

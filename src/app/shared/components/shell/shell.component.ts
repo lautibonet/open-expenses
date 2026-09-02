@@ -42,9 +42,9 @@ export class ShellComponent {
     document.getElementById('main-content')?.focus();
   }
 
-  async goToQuickAdd(): Promise<void> {
+  async goToTransactionForm(): Promise<void> {
     await this.navigateToMovementsIfNeeded();
-    this.captureFormService.requestQuickAdd();
+    this.captureFormService.requestTransactionForm();
   }
 
   async goToTransferForm(): Promise<void> {
@@ -77,7 +77,7 @@ export class ShellComponent {
     }
     if (this.router.url.startsWith('/movements')) return;
     if (e.key === 'n' || e.key === 'N') {
-      await this.goToQuickAdd();
+      await this.goToTransactionForm();
     } else if (e.key === 't' || e.key === 'T') {
       await this.goToTransferForm();
     }

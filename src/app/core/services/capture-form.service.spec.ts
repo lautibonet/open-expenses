@@ -10,24 +10,24 @@ describe('CaptureFormService', () => {
   });
 
   it('starts with no pending requests', () => {
-    expect(service.pendingQuickAddRequests()).toBe(0);
+    expect(service.pendingTransactionFormRequests()).toBe(0);
     expect(service.pendingTransferRequests()).toBe(0);
   });
 
   it('counts each request per capture form', () => {
-    service.requestQuickAdd();
-    service.requestQuickAdd();
+    service.requestTransactionForm();
+    service.requestTransactionForm();
     service.requestTransfer();
-    expect(service.pendingQuickAddRequests()).toBe(2);
+    expect(service.pendingTransactionFormRequests()).toBe(2);
     expect(service.pendingTransferRequests()).toBe(1);
   });
 
   it('consumes pending requests so they do not re-fire later', () => {
-    service.requestQuickAdd();
+    service.requestTransactionForm();
     service.requestTransfer();
-    service.consumeQuickAddRequests();
+    service.consumeTransactionFormRequests();
     service.consumeTransferRequests();
-    expect(service.pendingQuickAddRequests()).toBe(0);
+    expect(service.pendingTransactionFormRequests()).toBe(0);
     expect(service.pendingTransferRequests()).toBe(0);
   });
 });

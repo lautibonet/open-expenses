@@ -32,7 +32,7 @@ import {
   periodYearFromDate,
 } from '../../../core/types/period.type';
 
-export interface QuickAddDraft {
+export interface TransactionFormDraft {
   form: TransactionFormState;
   editingId: number | null;
   rateState: RateState;
@@ -40,18 +40,18 @@ export interface QuickAddDraft {
 
 /* The well renders the Transaction Form's own copy (issue #98/#108). */
 const RATE_LABELS: ExchangeRateWellLabels = {
-  heading: 'quickAdd.exchangeRate',
-  fetching: 'quickAdd.fetchingRate',
-  pair: 'quickAdd.exchangeRatePair',
-  equivalent: 'quickAdd.equivalent',
-  suggested: 'quickAdd.suggestedRate',
-  rateAria: 'quickAdd.exchangeRateAria',
-  equivalentAria: 'quickAdd.equivalentAria',
-  errorOffline: 'quickAdd.error.offlineRate',
-  errorFetch: 'quickAdd.error.rateFetch',
+  heading: 'transactionForm.exchangeRate',
+  fetching: 'transactionForm.fetchingRate',
+  pair: 'transactionForm.exchangeRatePair',
+  equivalent: 'transactionForm.equivalent',
+  suggested: 'transactionForm.suggestedRate',
+  rateAria: 'transactionForm.exchangeRateAria',
+  equivalentAria: 'transactionForm.equivalentAria',
+  errorOffline: 'transactionForm.error.offlineRate',
+  errorFetch: 'transactionForm.error.rateFetch',
 };
 
-const STORAGE_KEY = 'open-expenses.quick-add.last-selection';
+const STORAGE_KEY = 'open-expenses.transaction-form.last-selection';
 
 interface LastSelection {
   accountId: number;
@@ -90,12 +90,12 @@ function defaultFormState(accountId = 0, categoryId = 0): TransactionFormState {
 }
 
 @Component({
-  selector: 'app-quick-add-card',
+  selector: 'app-transaction-form',
   imports: [FormsModule, ExchangeRateWellComponent],
-  templateUrl: './quick-add-card.component.html',
-  styleUrl: './quick-add-card.component.scss',
+  templateUrl: './transaction-form.component.html',
+  styleUrl: './transaction-form.component.scss',
 })
-export class QuickAddCardComponent implements OnInit, AfterViewInit {
+export class TransactionFormComponent implements OnInit, AfterViewInit {
   language = inject(LanguageService);
   private transactionService = inject(TransactionService);
 
@@ -106,7 +106,7 @@ export class QuickAddCardComponent implements OnInit, AfterViewInit {
   categories = input<Category[]>([]);
   baseCurrency = input('EUR');
   editTransaction = input<Transaction | null>(null);
-  initialDraft = input<QuickAddDraft | null>(null);
+  initialDraft = input<TransactionFormDraft | null>(null);
   /* Hosted inside the mobile capture bottom sheet (#103): the sheet already
      covers the screen, so the heading's scroll-into-view must not scroll
      the page behind it. */
@@ -152,12 +152,12 @@ export class QuickAddCardComponent implements OnInit, AfterViewInit {
   disabledReason = computed(() => {
     if (this.saving()) return '';
     const f = this.form();
-    if (!f.accountId) return this.language.t('quickAdd.saveDisabled.account');
-    if (!f.categoryId) return this.language.t('quickAdd.saveDisabled.category');
-    if (f.amount <= 0) return this.language.t('quickAdd.saveDisabled.amount');
+    if (!f.accountId) return this.language.t('transactionForm.saveDisabled.account');
+    if (!f.categoryId) return this.language.t('transactionForm.saveDisabled.category');
+    if (f.amount <= 0) return this.language.t('transactionForm.saveDisabled.amount');
     if (this.isForeignCurrency()) {
       if (this.rateState().loading || f.exchangeRate === null) {
-        return this.language.t('quickAdd.saveDisabled.rate');
+        return this.language.t('transactionForm.saveDisabled.rate');
       }
     }
     return '';
@@ -194,7 +194,7 @@ export class QuickAddCardComponent implements OnInit, AfterViewInit {
     this.amountInput()?.nativeElement?.focus();
   }
 
-  draft(): QuickAddDraft {
+  draft(): TransactionFormDraft {
     return {
       form: this.form(),
       editingId: this.editingId(),
@@ -232,7 +232,7 @@ export class QuickAddCardComponent implements OnInit, AfterViewInit {
   async onSubmit(): Promise<void> {
     if (!this.canSubmit()) {
       if (this.isForeignCurrency() && !this.rateState().loading && this.form().exchangeRate === null) {
-        this.errorMessage.set(this.language.t('quickAdd.error.rateFetch'));
+        this.errorMessage.set(this.language.t('transactionForm.error.rateFetch'));
       }
       return;
     }
@@ -275,7 +275,7 @@ export class QuickAddCardComponent implements OnInit, AfterViewInit {
     } catch (e: unknown) {
       this.saving.set(false);
       this.errorMessage.set(
-        errorCopy(e, this.language.translateFn, 'quickAdd.error.failedToSave'),
+        errorCopy(e, this.language.translateFn, 'transactionForm.error.failedToSave'),
       );
     }
   }
