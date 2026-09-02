@@ -16,17 +16,6 @@
   }
 }
 
-label {
-  @extend %stacked-label;
-
-  input,
-  select {
-    @extend %field;
-    margin-top: var(--space-xs);
-    background: var(--surface-lowest);
-  }
-}
-
 /* The primary capture figure: the shared mono-data pattern, semibold. */
 .amount-field input {
   @extend %mono-data;
@@ -46,11 +35,15 @@ label {
   }
 }
 
+/* The field grid, actions row, and rate grid come from the shared
+   capture-form blocks (#107): the Transfer Form renders from the same
+   placeholders, so the two capture forms cannot drift (ADR 0014). */
+.form-grid {
+  @extend %capture-form-grid;
+}
+
 .form-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-sm);
-  margin-top: var(--space-md);
+  @extend %capture-form-actions;
 }
 
 /* Comfortable touch targets for the capture form's Cancel/Save (#100): 44px
@@ -67,24 +60,6 @@ label {
   @extend %save-hint;
 }
 
-.form-grid {
-  display: grid;
-  /* minmax(0, 1fr) tracks: a wide selected category or note must never push
-     the field past the viewport edge (#100). */
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: var(--space-md);
-
-  label {
-    min-width: 0;
-
-    input,
-    select {
-      margin-top: var(--space-xs);
-      width: 100%;
-    }
-  }
-}
-
 /* Cross-currency well: the blue fixed tint with a primary stroke — fetch,
    confirm and override of the suggested rate all live here. */
 .exchange-rate-section {
@@ -92,16 +67,7 @@ label {
 }
 
 .exchange-rate-grid {
-  display: grid;
-  /* Same overflow guard as .form-grid (#100). */
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: var(--space-md);
-
-  label input {
-    &.readonly {
-      @extend %readonly-field;
-    }
-  }
+  @extend %capture-rate-grid;
 }
 
 .rate-status {
@@ -121,11 +87,11 @@ label {
 }
 
 @media (max-width: 768px) {
-  /* Same one-column treatment the Transfer form's grid already receives:
-     the two-column field grid cannot fit a 375px phone (#100). */
+  /* One-column field grids on the phone (#100): the shared treatment the
+     Transfer form's grids receive too. */
   .form-grid,
   .exchange-rate-grid {
-    grid-template-columns: minmax(0, 1fr);
+    @include capture-grids-single-column;
   }
 
   /* The card fills the bottom sheet (#103), so the page-level margin drops. */
@@ -143,17 +109,9 @@ label {
   }
 
   /* Cancel/Save stay pinned to the sheet's bottom edge: reachable without
-     scrolling, whatever the form's height (#103). */
+     scrolling, whatever the form's height (#103) — the shared block the
+     Transfer form includes too (#107). */
   .form-actions {
-    position: sticky;
-    bottom: 0;
-    z-index: 1;
-    margin: auto calc(-1 * var(--space-md)) calc(-1 * var(--space-md));
-    padding: var(--space-md);
-    background: var(--background);
-    border-top: 1px solid var(--outline-variant);
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
+    @include capture-sheet-actions;
   }
 }
