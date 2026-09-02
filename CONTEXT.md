@@ -41,7 +41,7 @@ The unified display of Transactions and Transfers in a single chronological list
 _Avoid_: Feed, timeline, history
 
 **Quick Add**:
-The full Transaction capture form on the Movements screen — account, category, amount, note, date, and period shown all at once, with no compact/expanded distinction. Hidden by default and revealed by the New Transaction button or the sidebar Quick Add action; it closes after a successful save, and only one capture form (Quick Add or Transfer) is open at a time. Used for both recording and editing a Transaction.
+The full Transaction capture form on the Movements screen — account, category, amount, note, date, and period shown all at once, with no compact/expanded distinction. Hidden by default and revealed by the New Transaction button, the sidebar Quick Add action, or the mobile bottom nav's center capture slot. On mobile it presents as a bottom sheet that slides up over the screen, with the fields in one column scrolling inside and Cancel/Save pinned to the sheet's bottom edge; on desktop it reveals inline. It closes after a successful save or by dismissal (Cancel or drag-down), and only one capture form (Quick Add or Transfer) is open at a time. Used for both recording and editing a Transaction.
 _Avoid_: Quick entry, mini form, inline add, more options
 
 **Net**:

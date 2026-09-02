@@ -108,6 +108,10 @@ export class QuickAddCardComponent implements OnInit, AfterViewInit {
   baseCurrency = input('EUR');
   editTransaction = input<Transaction | null>(null);
   initialDraft = input<QuickAddDraft | null>(null);
+  /* Hosted inside the mobile capture bottom sheet (#103): the sheet already
+     covers the screen, so the heading's scroll-into-view must not scroll
+     the page behind it. */
+  inSheet = input(false);
 
   save = output<TransactionFormPayload>();
   close = output<void>();
@@ -172,7 +176,7 @@ export class QuickAddCardComponent implements OnInit, AfterViewInit {
 
   ngAfterViewInit(): void {
     const heading = this.formHeading()?.nativeElement;
-    if (heading && typeof heading.scrollIntoView === 'function') {
+    if (!this.inSheet() && heading && typeof heading.scrollIntoView === 'function') {
       heading.scrollIntoView({
         behavior: this.prefersReducedMotion() ? 'auto' : 'smooth',
         block: 'start',

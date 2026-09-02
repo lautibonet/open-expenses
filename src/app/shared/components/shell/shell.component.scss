@@ -139,6 +139,13 @@ $sidebar-width: 256px;
   overflow-wrap: anywhere;
 }
 
+/* Capture slot (#103): exists only in the mobile bottom nav, where it is
+   the single blue action; the desktop sidebar keeps its Quick Add CTA and
+   three-link nav, so the slot never renders there. */
+.capture-slot {
+  display: none;
+}
+
 /* ===== Mobile top bar (<= 768px) — hidden on desktop ===== */
 
 .top-bar {
@@ -228,6 +235,41 @@ $sidebar-width: 256px;
        anchor's aria-label, so the visible label can drop. */
     .tab-label {
       display: none;
+    }
+  }
+
+  /* The nav's center capture slot (#103): the one blue element on mobile —
+     square, zero radius, Primary Container fill with the hard border and
+     press interaction every button carries (%btn-base's properties are
+     repeated by hand: @extend cannot cross a media-query boundary). Same
+     nav height as the tabs. */
+  .capture-slot {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    min-height: var(--nav-bar-size);
+    padding: 0;
+    background: var(--primary-container);
+    color: var(--surface-lowest);
+    border: var(--border-hard);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    box-shadow: var(--shadow-press);
+
+    svg {
+      width: 1.5rem;
+      height: 1.5rem;
+    }
+
+    &:hover {
+      background: var(--primary-deep);
+      color: var(--surface-lowest);
+    }
+
+    &:active {
+      box-shadow: none;
+      transform: translate(2px, 2px);
     }
   }
 

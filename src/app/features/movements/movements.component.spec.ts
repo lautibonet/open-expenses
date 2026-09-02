@@ -2373,6 +2373,19 @@ describe('MovementsComponent - Quick Add capture form', () => {
     expect(component.showForm()).toBe('none');
   });
 
+  it('keeps Quick Add inline on the desktop layout (no bottom sheet)', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    component.toggleQuickAdd();
+    fixture.detectChanges();
+
+    expect(component.showForm()).toBe('transaction');
+    expect(component.isMobileLayout()).toBe(false);
+    expect(fixture.nativeElement.querySelector('app-bottom-sheet')).toBeNull();
+    expect(fixture.nativeElement.querySelector('app-quick-add-card')).toBeTruthy();
+  });
+
   it('opens only one capture form at a time', async () => {
     await component.ngOnInit();
 
@@ -3707,5 +3720,140 @@ describe('MovementsComponent - filter card disclosure (#102)', () => {
 
     const label = fixture.nativeElement.querySelector('.scope-control .scope-label');
     expect(label?.textContent?.trim()).toBe('Scope');
+  });
+});
+
+function stubMatchMedia(matches: boolean): void {
+  const listeners = new Set<(event: MediaQueryListEvent) => void>();
+  (window as any).matchMedia = vi.fn().mockImplementation((query: string) => ({
+    matches,
+    media: query,
+    addEventListener: (_: string, cb: (event: MediaQueryListEvent) => void) =>
+      listeners.add(cb),
+    removeEventListener: (_: string, cb: (event: MediaQueryListEvent) => void) =>
+      listeners.delete(cb),
+  }));
+  (window as any).__matchMediaListeners = listeners;
+}
+
+function pointerEvent(type: string, clientY: number, pointerId = 1): PointerEvent {
+  const event = new Event(type, { bubbles: true }) as PointerEvent;
+  Object.defineProperty(event, 'clientY', { value: clientY });
+  Object.defineProperty(event, 'pointerId', { value: pointerId });
+  return event;
+}
+
+describe('MovementsComponent - mobile capture sheet (#103)', () => {
+  let fixture: ComponentFixture<MovementsComponent>;
+  let component: MovementsComponent;
+  let transactionService: TransactionService;
+  let accountService: AccountService;
+  let categoryService: CategoryService;
+  let accountId: number;
+  let categoryId: number;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    stubMatchMedia(true);
+
+    await TestBed.configureTestingModule({
+      imports: [MovementsComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(MovementsComponent);
+    component = fixture.componentInstance;
+    transactionService = TestBed.inject(TransactionService);
+    accountService = TestBed.inject(AccountService);
+    categoryService = TestBed.inject(CategoryService);
+
+    const account = await accountService.create('Cash', 'EUR', 100000);
+    accountId = account.id!;
+    const category = await categoryService.create('Food', 'expense');
+    categoryId = category.id!;
+  });
+
+  afterEach(async () => {
+    await db.delete();
+  });
+
+  function sheetEl(): HTMLElement {
+    return fixture.nativeElement.querySelector('app-bottom-sheet .sheet') as HTMLElement;
+  }
+
+  it('opens Quick Add inside the bottom sheet on mobile', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    component.toggleQuickAdd();
+    fixture.detectChanges();
+
+    expect(component.showForm()).toBe('transaction');
+    expect(component.isMobileLayout()).toBe(true);
+
+    const sheet = sheetEl();
+    expect(sheet).toBeTruthy();
+    expect(sheet.getAttribute('role')).toBe('dialog');
+    expect(sheet.getAttribute('aria-modal')).toBe('true');
+    expect(sheet.getAttribute('aria-label')).toBeTruthy();
+    expect(sheet.querySelector('app-quick-add-card')).toBeTruthy();
+  });
+
+  it('opens the sheet prefilled when editing a transaction on mobile', async () => {
+    const t = await transactionService.create(
+      accountId,
+      categoryId,
+      1200,
+      new Date(),
+      getCurrentPeriod(),
+      null,
+      null,
+      getCurrentYear(),
+      'coffee',
+    );
+    await component.ngOnInit();
+
+    component.openQuickAddForEdit(t);
+    fixture.detectChanges();
+
+    expect(component.showForm()).toBe('transaction');
+    const sheet = sheetEl();
+    expect(sheet).toBeTruthy();
+    expect(component.quickAddCard()!.editingId()).toBe(t.id);
+    expect(component.quickAddCard()!.form().amount).toBe(1200);
+    expect(component.quickAddCard()!.form().note).toBe('coffee');
+  });
+
+  it('dismisses the sheet on drag-down without saving', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    component.toggleQuickAdd();
+    fixture.detectChanges();
+
+    const handle = sheetEl().querySelector('.sheet-handle') as HTMLElement;
+    handle.dispatchEvent(pointerEvent('pointerdown', 10));
+    handle.dispatchEvent(pointerEvent('pointermove', 10 + 200));
+    handle.dispatchEvent(pointerEvent('pointerup', 10 + 200));
+    fixture.detectChanges();
+
+    expect(component.showForm()).toBe('none');
+    expect(fixture.nativeElement.querySelector('app-bottom-sheet')).toBeNull();
+    expect(await transactionService.getAll()).toHaveLength(0);
+  });
+
+  it('keeps only one capture form open at a time on mobile', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    component.toggleQuickAdd();
+    expect(component.showForm()).toBe('transaction');
+
+    component.openTransferForm();
+    fixture.detectChanges();
+
+    expect(component.showForm()).toBe('transfer');
+    expect(fixture.nativeElement.querySelector('app-bottom-sheet')).toBeNull();
+    expect(fixture.nativeElement.querySelector('app-quick-add-card')).toBeNull();
   });
 });

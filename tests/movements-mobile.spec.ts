@@ -166,6 +166,131 @@ test.describe('movements on a phone (coarse pointer)', () => {
   });
 });
 
+test.describe('movements capture sheet on a phone (#103)', () => {
+  test('bottom nav carries the capture slot as the single blue action', async ({ page }) => {
+    await completeOnboarding(page);
+    // Park the virtual mouse away from the nav bar: the click that finished
+    // onboarding leaves it hovering the page, and :hover deepens the slot.
+    await page.mouse.move(0, 200);
+
+    const capture = page.locator('nav.tab-bar button.capture-slot');
+    await expect(capture).toBeVisible();
+    await expect(capture).toHaveAccessibleName('+ Quick Add');
+    await expectHeightAtLeast(capture, 44);
+
+    const styles = await capture.evaluate((el) => {
+      const s = getComputedStyle(el);
+      return {
+        background: s.backgroundColor,
+        borderRadius: s.borderRadius,
+        borderWidth: s.borderWidth,
+      };
+    });
+    expect(styles.background).toBe('rgb(0, 82, 255)');
+    expect(styles.borderRadius).toBe('0px');
+    expect(parseFloat(styles.borderWidth)).toBeGreaterThanOrEqual(1);
+
+    // The slot is the only blue-filled element in the nav bar.
+    const blueChildren = await page.locator('nav.tab-bar').evaluate((nav) =>
+      Array.from(nav.querySelectorAll('a, button')).filter(
+        (el) => getComputedStyle(el).backgroundColor === 'rgb(0, 82, 255)',
+      ).length,
+    );
+    expect(blueChildren).toBe(1);
+  });
+
+  test('capture slot opens the sheet; Save/Cancel pinned; save lands in the ledger', async ({
+    page,
+  }) => {
+    await completeOnboarding(page);
+
+    await page.locator('nav.tab-bar button.capture-slot').click();
+    const sheet = page.locator('app-bottom-sheet .sheet');
+    await expect(sheet).toBeVisible();
+    await awaitSheetSettled(page);
+    await expect(sheet).toHaveAttribute('role', 'dialog');
+    await expect(sheet).toHaveAttribute('aria-modal', 'true');
+
+    // One-column field grid inside the sheet.
+    const gridColumns = await sheet
+      .locator('.form-grid')
+      .evaluate((el) => getComputedStyle(el).gridTemplateColumns);
+    expect(gridColumns.split(' ').length).toBe(1);
+
+    // Cancel/Save sit pinned at the sheet's bottom edge, reachable without
+    // scrolling the form body.
+    const sheetBox = (await sheet.boundingBox())!;
+    for (const name of ['Cancel', 'Save']) {
+      const box = (await sheet.getByRole('button', { name }).boundingBox())!;
+      expect(box.y + box.height, `${name} must sit at the sheet bottom`).toBeGreaterThan(
+        sheetBox.y + sheetBox.height - 96,
+      );
+      expect(box.y + box.height).toBeLessThanOrEqual(sheetBox.y + sheetBox.height);
+    }
+
+    await sheet.locator('input[name="amount"]').fill('12.5');
+    await sheet.getByRole('button', { name: 'Save' }).click();
+
+    await expect(page.locator('app-bottom-sheet')).toHaveCount(0);
+    await expect(
+      page.locator('.movement-table tbody tr:not(.day-divider)').first(),
+    ).toBeVisible();
+    await expect(page.locator('.movement-table')).toContainText('12.50');
+  });
+
+  test('Cancel dismisses the sheet without saving', async ({ page }) => {
+    await completeOnboarding(page);
+
+    await page.getByRole('button', { name: '+ Transaction' }).click();
+    const sheet = page.locator('app-bottom-sheet .sheet');
+    await expect(sheet).toBeVisible();
+    await sheet.locator('input[name="amount"]').fill('12.5');
+    await sheet.getByRole('button', { name: 'Cancel' }).click();
+
+    await expect(page.locator('app-bottom-sheet')).toHaveCount(0);
+    await expect(page.locator('.movement-table tbody tr')).toHaveCount(0);
+  });
+
+  test('dragging the handle down dismisses the sheet without saving', async ({ page }) => {
+    await completeOnboarding(page);
+
+    await page.getByRole('button', { name: '+ Transaction' }).click();
+    const sheet = page.locator('app-bottom-sheet .sheet');
+    await expect(sheet).toBeVisible();
+    await awaitSheetSettled(page);
+
+    const handle = page.locator('.sheet-handle');
+    const box = (await handle.boundingBox())!;
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2 + 200, { steps: 5 });
+    await page.mouse.up();
+
+    await expect(page.locator('app-bottom-sheet')).toHaveCount(0);
+    await expect(page.locator('.movement-table tbody tr')).toHaveCount(0);
+  });
+
+  test('editing a transaction opens the same sheet prefilled and saves', async ({ page }) => {
+    await completeOnboarding(page);
+    await addTransaction(page, '12.50');
+
+    const row = page.locator('.movement-table tbody tr:not(.day-divider)').first();
+    await row.getByRole('button', { name: 'Edit movement' }).click();
+
+    const sheet = page.locator('app-bottom-sheet .sheet');
+    await expect(sheet).toBeVisible();
+    await awaitSheetSettled(page);
+    const amount = sheet.locator('input[name="amount"]');
+    await expect(amount).toHaveValue('12.5');
+
+    await amount.fill('20');
+    await sheet.getByRole('button', { name: 'Save' }).click();
+
+    await expect(page.locator('app-bottom-sheet')).toHaveCount(0);
+    await expect(page.locator('.movement-table')).toContainText('20.00');
+  });
+});
+
 test.describe('movements on desktop (fine pointer)', () => {
   test.describe.configure({ mode: 'serial' });
 
@@ -180,6 +305,16 @@ test.describe('movements on desktop (fine pointer)', () => {
     expect(box.height).toBeLessThan(44);
 
     await expect(page.locator('.shortcut-hint')).toBeVisible();
+  });
+
+  test('desktop has no capture slot in the sidebar and no sheet on capture', async ({ page }) => {
+    await completeOnboarding(page);
+
+    await expect(page.locator('nav.tab-bar button.capture-slot')).toBeHidden();
+
+    await page.getByRole('button', { name: '+ Transaction' }).click();
+    await expect(page.locator('.quick-add-form')).toBeVisible();
+    await expect(page.locator('app-bottom-sheet')).toHaveCount(0);
   });
 
   test('Quick Add stays two-column on desktop and fits the viewport', async ({ page }) => {
@@ -214,6 +349,19 @@ test.describe('movements on desktop (fine pointer)', () => {
     expect(accountLabel).toBe('All accounts');
   });
 });
+
+/* The sheet slides up over 0.2s; geometry-sensitive steps (measuring, drag
+   starts) must wait until the entrance animation has finished. */
+async function awaitSheetSettled(page: import('@playwright/test').Page) {
+  await page.waitForFunction(
+    () => {
+      const el = document.querySelector('app-bottom-sheet .sheet');
+      return el !== null && el.getAnimations().length === 0;
+    },
+    undefined,
+    { timeout: 2000 },
+  );
+}
 
 async function expectHeightAtLeast(locator: import('@playwright/test').Locator, min: number) {
   const box = (await locator.boundingBox())!;

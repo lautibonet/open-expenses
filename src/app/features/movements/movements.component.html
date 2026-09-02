@@ -222,16 +222,30 @@
   }
 
   @if (showForm() === 'transaction') {
+    @if (isMobileLayout()) {
+      <app-bottom-sheet
+        [label]="language.t('quickAdd.sheetAria')"
+        (dismissed)="closeQuickAdd()"
+      >
+        <ng-container [ngTemplateOutlet]="quickAddForm" />
+      </app-bottom-sheet>
+    } @else {
+      <ng-container [ngTemplateOutlet]="quickAddForm" />
+    }
+  }
+
+  <ng-template #quickAddForm>
     <app-quick-add-card
       [accounts]="accounts()"
       [categories]="categories()"
       [baseCurrency]="baseCurrency()"
       [editTransaction]="editTransaction()"
       [initialDraft]="quickAddRestore()"
+      [inSheet]="isMobileLayout()"
       (save)="onSaveTransaction($event)"
       (close)="closeQuickAdd()"
     />
-  }
+  </ng-template>
 
   <div class="filter-bar">
     <div class="filter-summary">

@@ -102,6 +102,33 @@ describe('ShellComponent', () => {
     expect(links).toEqual(['Movements', 'Stats', 'Settings']);
   });
 
+  it('renders the capture slot between Stats and Settings in the nav bar', () => {
+    const nav = fixture.nativeElement.querySelector('nav.tab-bar') as HTMLElement;
+    const children = Array.from(nav.querySelectorAll('a.tab, button.capture-slot'));
+    const kinds = children.map((el) =>
+      el.tagName === 'A' ? (el as HTMLElement).textContent?.trim() : 'capture',
+    );
+    expect(kinds).toEqual(['Movements', 'Stats', 'capture', 'Settings']);
+
+    const capture = nav.querySelector('button.capture-slot') as HTMLButtonElement;
+    expect(capture.getAttribute('aria-label')).toBe('+ Quick Add');
+    expect(capture.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
+  });
+
+  it('opens Quick Add from the capture slot', async () => {
+    const captureFormService = TestBed.inject(CaptureFormService);
+    const router = TestBed.inject(Router);
+    vi.spyOn(router, 'url', 'get').mockReturnValue('/movements');
+
+    const capture = fixture.nativeElement.querySelector(
+      'button.capture-slot',
+    ) as HTMLButtonElement;
+    capture.click();
+    await fixture.whenStable();
+
+    expect(captureFormService.pendingQuickAddRequests()).toBe(1);
+  });
+
   it('names each nav tab accessibly and renders an icon beside its label', () => {
     const links = Array.from(
       fixture.nativeElement.querySelectorAll('a.tab') as NodeListOf<HTMLAnchorElement>,

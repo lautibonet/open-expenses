@@ -1,0 +1,22 @@
+<div
+  #sheet
+  class="sheet"
+  role="dialog"
+  aria-modal="true"
+  [attr.aria-label]="label() || null"
+  [class.sheet-dragging]="dragDistance() > 0"
+  [style.transform]="'translateY(' + dragDistance() + 'px)'"
+>
+  <div
+    class="sheet-handle"
+    (pointerdown)="onHandlePointerDown($event)"
+    (pointermove)="onHandlePointerMove($event)"
+    (pointerup)="onHandlePointerUp($event)"
+    (pointercancel)="onHandlePointerCancel($event)"
+  >
+    <span class="sheet-handle-bar" aria-hidden="true"></span>
+  </div>
+  <div class="sheet-body">
+    <ng-content />
+  </div>
+</div>

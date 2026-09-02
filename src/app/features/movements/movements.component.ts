@@ -1,6 +1,7 @@
-import { Component, ElementRef, computed, effect, inject, OnDestroy, OnInit, signal, viewChild } from '@angular/core';
+import { Component, DestroyRef, ElementRef, computed, effect, inject, OnDestroy, OnInit, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DatePipe, Location } from '@angular/common';
+import { NgTemplateOutlet } from '@angular/common';
 import { TransactionService } from '../../core/services/transaction.service';
 import { TransferService } from '../../core/services/transfer.service';
 import { AccountService } from '../../core/services/account.service';
@@ -29,6 +30,7 @@ import {
   scopeOptionsFromMovements,
 } from '../../core/types/period.type';
 import { LanguageService } from '../../core/services/language.service';
+import { BottomSheetComponent } from '../../shared/components/bottom-sheet/bottom-sheet.component';
 import {
   QuickAddCardComponent,
   QuickAddDraft,
@@ -95,7 +97,7 @@ function defaultTransferForm(accounts: Account[]): TransferForm {
 
 @Component({
   selector: 'app-movements',
-  imports: [FormsModule, DatePipe, QuickAddCardComponent, NetFlowCardComponent],
+  imports: [FormsModule, DatePipe, NgTemplateOutlet, QuickAddCardComponent, NetFlowCardComponent, BottomSheetComponent],
   templateUrl: './movements.component.html',
   styleUrl: './movements.component.scss',
   host: { '(document:keydown)': 'onDocKeydown($event)' },
@@ -129,6 +131,27 @@ export class MovementsComponent implements OnInit, OnDestroy {
   showForm = signal<'none' | 'transfer' | 'transaction'>('none');
   editingId = signal<number | null>(null);
   quickAddRestore = signal<QuickAddDraft | null>(null);
+
+  /* Mobile regime (#103): below the 768px breakpoint the transaction capture
+     renders inside a bottom sheet instead of the inline form card; the
+     transfer editor stays inline. Desktop keeps the inline reveal. */
+  private mobileMediaQuery: MediaQueryList | null =
+    typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+      ? window.matchMedia('(max-width: 768px)')
+      : null;
+  readonly isMobileLayout = signal<boolean>(this.mobileMediaQuery?.matches ?? false);
+
+  constructor() {
+    const mediaQuery = this.mobileMediaQuery;
+    if (mediaQuery && typeof mediaQuery.addEventListener === 'function') {
+      const listener = (event: MediaQueryListEvent): void =>
+        this.isMobileLayout.set(event.matches);
+      mediaQuery.addEventListener('change', listener);
+      inject(DestroyRef).onDestroy(() =>
+        mediaQuery.removeEventListener('change', listener),
+      );
+    }
+  }
 
   confirmingDelete = signal<MovementItem | null>(null);
   undo = signal<PendingDelete | null>(null);
