@@ -51,6 +51,22 @@
   line-height: var(--leading-data);
 }
 
+/* Hides content visually while keeping it available to screen readers —
+   the same declarations as the global .visually-hidden class, as a mixin so
+   selectors that cannot carry the class (pseudo-elements, layout-critical
+   cells) can adopt it. Works inside media queries, unlike @extend. */
+@mixin sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 %btn-base {
   padding: 0.5rem 1rem;
   border: var(--border-hard);

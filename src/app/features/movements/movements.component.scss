@@ -277,6 +277,13 @@
     }
   }
 
+  /* Mobile-only day dividers (#101): the rows are grouped per day below 480px.
+     On desktop the table's Date column already carries this, so the divider
+     rows never render here. */
+  tr.day-divider {
+    display: none;
+  }
+
   td.actions-cell {
     text-align: center;
     white-space: nowrap;
@@ -394,13 +401,16 @@
   }
 }
 
-/* Narrow-screen ledger (issue #97): at phone widths the five columns with
+/* Narrow-screen ledger (#97, #101): at phone widths the five columns with
    nowrap mono amounts push Edit/Delete into horizontal scroll, so below 480px
    each row stacks into a one-thumb card instead of scrolling sideways. The
-   ledger grammar survives: the 4px directional stripe moves from the first
-   cell to the row edge, amounts stay right-aligned mono tabular figures, and
-   transfer rows keep their grey tint. Header cells can't label a stacked row,
-   so the ambiguous cells self-label via data-label rendered as a caps label. */
+   ledger grammar survives: rows group under caps-label day dividers that
+   announce each day, the 4px directional stripe moves from the first cell to
+   the row edge, amounts stay right-aligned mono tabular figures, and transfer
+   rows keep their grey tint. The per-row caps data-labels and date cell become
+   visually hidden — announced to screen readers, never shown — so the card
+   compresses toward a receipt: amount, one muted category/account line, and
+   44px actions aligned right. */
 @media (max-width: 480px) {
   .movement-table {
     table,
@@ -412,13 +422,31 @@
       display: none;
     }
 
+    /* The day divider announces each section: caps label in the muted
+       metadata ink (mirrors %caps-label-muted; @extend cannot cross a
+       media-query boundary). */
+    tbody tr.day-divider {
+      display: block;
+      padding: var(--space-sm) var(--space-md);
+      background: var(--surface-container-low);
+      font-size: var(--type-label);
+      font-weight: 700;
+      letter-spacing: var(--tracking-caps);
+      text-transform: uppercase;
+      line-height: var(--leading-label);
+      color: var(--on-surface-variant);
+
+      td {
+        padding: 0;
+      }
+    }
+
     tbody tr {
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
       grid-template-areas:
-        'date amount'
-        'category category'
-        'account account'
+        'amount amount'
+        'category account'
         'actions actions';
       align-items: baseline;
       gap: var(--space-xs) var(--space-md);
@@ -464,7 +492,7 @@
        slot is hidden here and the route cell keeps the full width. */
     tbody tr.transfer-row {
       grid-template-areas:
-        'date amount'
+        'amount amount'
         'category category'
         'actions actions';
     }
@@ -473,8 +501,11 @@
       display: none;
     }
 
-    td:nth-child(1) {
-      grid-area: date;
+    /* The day divider above each section already announces the date, so the
+       row's own date cell drops out of the card but stays in the DOM for
+       screen readers. */
+    tbody tr:not(.day-divider) td:nth-child(1) {
+      @include sr-only;
     }
 
     td:nth-child(2) {
@@ -487,6 +518,8 @@
 
     td:nth-child(4) {
       grid-area: account;
+      color: var(--on-surface-variant);
+      text-align: right;
     }
 
     td:nth-child(5) {
@@ -494,18 +527,22 @@
       text-align: right;
     }
 
+    /* Amounts step up to 1rem on the compact card; direction colors and the
+       mono tabular figures are untouched. */
+    td {
+      &.income,
+      &.expense,
+      &.amount-cell {
+        font-size: var(--type-body);
+      }
+    }
+
+    /* The caps data-labels stay announced to screen readers via the existing
+       data-label mechanism, but are clipped from view: the divider carries the
+       date and the compact card reads as a receipt. */
     td[data-label]::before {
-      /* Mirrors %caps-label-muted: @extend cannot cross a media-query
-         boundary, so the declarations are repeated here. */
       content: attr(data-label);
-      display: block;
-      margin-bottom: var(--space-xs);
-      font-size: var(--type-label);
-      font-weight: 700;
-      letter-spacing: var(--tracking-caps);
-      text-transform: uppercase;
-      line-height: var(--leading-label);
-      color: var(--on-surface-variant);
+      @include sr-only;
     }
   }
 }
