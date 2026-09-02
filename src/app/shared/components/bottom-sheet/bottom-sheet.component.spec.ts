@@ -12,9 +12,14 @@ function pointerEvent(type: string, clientY: number, pointerId = 1): PointerEven
 @Component({
   imports: [BottomSheetComponent],
   template: `
+    <button class="outside-before" type="button">Outside before</button>
     <app-bottom-sheet label="Capture form">
       <div class="projected">Projected</div>
+      <input class="sheet-first" type="text" aria-label="First field" />
+      <button class="sheet-middle" type="button">Save</button>
+      <input class="sheet-last" type="text" aria-label="Last field" />
     </app-bottom-sheet>
+    <button class="outside-after" type="button">Outside after</button>
   `,
 })
 class TestHostComponent {
@@ -43,6 +48,14 @@ describe('BottomSheetComponent', () => {
     handleEl().dispatchEvent(pointerEvent('pointerdown', fromY, pointerId));
     handleEl().dispatchEvent(pointerEvent('pointermove', toY, pointerId));
     handleEl().dispatchEvent(pointerEvent('pointerup', toY, pointerId));
+  }
+
+  function sheetEl(): HTMLElement {
+    return fixture.nativeElement.querySelector('.sheet') as HTMLElement;
+  }
+
+  function keydownEvent(key: string, shiftKey = false): KeyboardEvent {
+    return new KeyboardEvent('keydown', { key, shiftKey, bubbles: true, cancelable: true });
   }
 
   it('renders as a modal dialog with an accessible name and the projected content', () => {
@@ -125,5 +138,64 @@ describe('BottomSheetComponent', () => {
     fixture.detectChanges();
     const sheet = fixture.nativeElement.querySelector('.sheet') as HTMLElement;
     expect(sheet.style.transform).toBe('translateY(0px)');
+  });
+
+  describe('modal semantics (#106)', () => {
+    it('locks body scroll while the sheet is open and restores it on close', () => {
+      expect(document.body.style.overflow).toBe('hidden');
+
+      fixture.destroy();
+
+      expect(document.body.style.overflow).toBe('');
+    });
+
+    it('wraps Tab from the last focusable element back to the first inside the sheet', () => {
+      const last = fixture.nativeElement.querySelector('.sheet-last') as HTMLElement;
+      last.focus();
+      expect(document.activeElement).toBe(last);
+
+      sheetEl().dispatchEvent(keydownEvent('Tab'));
+
+      const first = fixture.nativeElement.querySelector('.sheet-first') as HTMLElement;
+      expect(document.activeElement).toBe(first);
+    });
+
+    it('wraps Shift+Tab from the first focusable element to the last inside the sheet', () => {
+      const first = fixture.nativeElement.querySelector('.sheet-first') as HTMLElement;
+      first.focus();
+      expect(document.activeElement).toBe(first);
+
+      sheetEl().dispatchEvent(keydownEvent('Tab', true));
+
+      const last = fixture.nativeElement.querySelector('.sheet-last') as HTMLElement;
+      expect(document.activeElement).toBe(last);
+    });
+
+    it('leaves Tab between inner elements to native focus ordering', () => {
+      const first = fixture.nativeElement.querySelector('.sheet-first') as HTMLElement;
+      first.focus();
+
+      const event = keydownEvent('Tab');
+      sheetEl().dispatchEvent(event);
+
+      // The trap only hijacks the wrap-around edges; jsdom does not
+      // implement native Tab movement, so focus stays put.
+      expect(event.defaultPrevented).toBe(false);
+      expect(document.activeElement).toBe(first);
+    });
+
+    it('pulls focus into the sheet when Tab arrives while focus is outside it', () => {
+      const outside = fixture.nativeElement.querySelector('.outside-before') as HTMLElement;
+      outside.focus();
+      expect(document.activeElement).toBe(outside);
+
+      // Dispatch from the outside element itself: the trap listens at
+      // document level, so a real Tab pressed with focus behind the sheet
+      // is caught even though the keydown never passes through the sheet.
+      outside.dispatchEvent(keydownEvent('Tab'));
+
+      const first = fixture.nativeElement.querySelector('.sheet-first') as HTMLElement;
+      expect(document.activeElement).toBe(first);
+    });
   });
 });
