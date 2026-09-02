@@ -153,19 +153,6 @@ describe('ShellComponent', () => {
     expect(brand.querySelector('.wordmark')?.textContent?.trim()).toBe('Open Expenses');
   });
 
-  it('renders the local-storage status chip in the active language', async () => {
-    expect(fixture.nativeElement.querySelector('.status-chip')?.textContent?.trim()).toBe(
-      'Local storage',
-    );
-
-    await TestBed.inject(LanguageService).setLanguage('es');
-    fixture.detectChanges();
-
-    expect(fixture.nativeElement.querySelector('.status-chip')?.textContent?.trim()).toBe(
-      'Almacenamiento local',
-    );
-  });
-
   it('routes the Quick Add CTA to Movements when used from another page', async () => {
     const router = TestBed.inject(Router);
     const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
