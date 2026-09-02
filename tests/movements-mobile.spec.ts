@@ -81,6 +81,31 @@ test.describe('movements on a phone (coarse pointer)', () => {
     await expect(form.getByRole('button', { name: 'Save' })).toBeVisible();
   });
 
+  test('active filter chip keeps the search field usable (#105)', async ({ page }) => {
+    await completeOnboarding(page);
+    await addTransaction(page, '12.50');
+
+    await page.locator('.filter-toggle').click();
+    await page.locator('.filter-panel select').nth(0).selectOption({ label: 'Misc' });
+    await page.locator('.filter-toggle').click();
+    await expect(page.locator('.filter-panel')).toHaveCount(0);
+    await expect(page.locator('.filter-chip')).toBeVisible();
+
+    // The search field must never collapse into an empty square when the
+    // chips share the summary row on a 375px screen. The floor is the point
+    // where only a sliver (the old ~40px empty square) remains — the wrap
+    // fix gives it its own full-width row (~295px).
+    const searchWidth = await page
+      .locator('.filter-bar input[type="search"]')
+      .evaluate((el) => el.getBoundingClientRect().width);
+    expect(
+      searchWidth,
+      `search input collapsed to ${searchWidth}px with an active chip`,
+    ).toBeGreaterThanOrEqual(120);
+
+    await expectNoHorizontalOverflow(page);
+  });
+
   test('first movement row clears the fold without scrolling (#102)', async ({ page }) => {
     await completeOnboarding(page);
     await addTransaction(page, '12.50');
