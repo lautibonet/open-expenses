@@ -16,6 +16,10 @@ import { CaptureFormService } from '../../core/services/capture-form.service';
 import { DataVersionService } from '../../core/services/data-version.service';
 import { MONTH_NAMES, MonthNumber, defaultScope, getCurrentPeriod, getCurrentYear } from '../../core/types/period.type';
 
+function flush(ms = 10): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 describe('MovementsComponent - filtering', () => {
   let fixture: ComponentFixture<MovementsComponent>;
   let component: MovementsComponent;
@@ -475,6 +479,10 @@ describe('MovementsComponent - transfer exchange rate', () => {
 
   it('should fetch exchange rate when source account changes to foreign currency', async () => {
     await component.ngOnInit();
+    fixture.detectChanges();
+
+    component.openTransferForm();
+    fixture.detectChanges();
     component.trForm.update((f) => ({
       ...f,
       sourceAccountId: usdAccountId,
@@ -483,6 +491,8 @@ describe('MovementsComponent - transfer exchange rate', () => {
     }));
 
     await component.onTransferSourceChange(usdAccountId);
+    fixture.detectChanges();
+    await flush();
 
     expect(exchangeRateService.getRate).toHaveBeenCalledWith('USD', 'EUR', '2026-08-20');
     expect(component.trForm().exchangeRate).toBe(1.08);
@@ -490,6 +500,10 @@ describe('MovementsComponent - transfer exchange rate', () => {
 
   it('should re-fetch exchange rate when transfer date changes', async () => {
     await component.ngOnInit();
+    fixture.detectChanges();
+
+    component.openTransferForm();
+    fixture.detectChanges();
     component.trForm.update((f) => ({
       ...f,
       sourceAccountId: usdAccountId,
@@ -497,6 +511,9 @@ describe('MovementsComponent - transfer exchange rate', () => {
       date: '2026-08-20',
     }));
     await component.onTransferSourceChange(usdAccountId);
+    fixture.detectChanges();
+    await flush();
+    expect(component.trForm().exchangeRate).toBe(1.08);
 
     vi.mocked(exchangeRateService.getRate).mockResolvedValueOnce({
       rate: 1.12,
@@ -506,6 +523,8 @@ describe('MovementsComponent - transfer exchange rate', () => {
     });
 
     await component.onTransferDateChange('2026-01-15');
+    fixture.detectChanges();
+    await flush();
 
     expect(exchangeRateService.getRate).toHaveBeenCalledWith('USD', 'EUR', '2026-01-15');
     expect(component.trForm().exchangeRate).toBe(1.12);
@@ -513,6 +532,10 @@ describe('MovementsComponent - transfer exchange rate', () => {
 
   it('should auto-calculate destination amount from source amount and rate', async () => {
     await component.ngOnInit();
+    fixture.detectChanges();
+
+    component.openTransferForm();
+    fixture.detectChanges();
     component.trForm.update((f) => ({
       ...f,
       sourceAccountId: usdAccountId,
@@ -521,12 +544,16 @@ describe('MovementsComponent - transfer exchange rate', () => {
       date: '2026-08-20',
     }));
     await component.onTransferSourceChange(usdAccountId);
+    fixture.detectChanges();
+    await flush();
 
     expect(component.trForm().exchangeRate).toBe(1.08);
   });
 
   it('should show suggested rate text in transfer form', async () => {
     await component.ngOnInit();
+    fixture.detectChanges();
+
     component.openTransferForm();
     component.trForm.update((f) => ({
       ...f,
@@ -536,6 +563,8 @@ describe('MovementsComponent - transfer exchange rate', () => {
       date: '2026-08-20',
     }));
     await component.onTransferSourceChange(usdAccountId);
+    fixture.detectChanges();
+    await flush();
     fixture.detectChanges();
 
     const rateText = fixture.nativeElement.querySelector('.rate-source');
@@ -547,21 +576,30 @@ describe('MovementsComponent - transfer exchange rate', () => {
 
   it('should not fetch rate when source and destination are same currency', async () => {
     await component.ngOnInit();
+    fixture.detectChanges();
+
     component.trForm.update((f) => ({
       ...f,
-      sourceAccountId: eurAccountId,
-      destAccountId: eurAccountId,
+      sourceAccountId: usdAccountId,
+      destAccountId: usdAccountId,
       sourceAmount: 500,
       date: '2026-08-20',
     }));
+    // A draft is in progress, so opening keeps the same-currency pair.
+    component.openTransferForm();
+    fixture.detectChanges();
+    await flush();
 
-    await component.onTransferSourceChange(eurAccountId);
-
+    expect(exchangeRateService.getRate).not.toHaveBeenCalled();
     expect(component.trForm().exchangeRate).toBe(1);
   });
 
   it('should allow manual override of exchange rate', async () => {
     await component.ngOnInit();
+    fixture.detectChanges();
+
+    component.openTransferForm();
+    fixture.detectChanges();
     component.trForm.update((f) => ({
       ...f,
       sourceAccountId: usdAccountId,
@@ -570,6 +608,8 @@ describe('MovementsComponent - transfer exchange rate', () => {
       date: '2026-08-20',
     }));
     await component.onTransferSourceChange(usdAccountId);
+    fixture.detectChanges();
+    await flush();
     expect(component.trForm().exchangeRate).toBe(1.08);
 
     component.trForm.update((f) => ({ ...f, exchangeRate: 1.15 }));
@@ -3381,6 +3421,8 @@ describe('MovementsComponent - capture-form consistency', () => {
     }));
     await component.onTransferSourceChange(usdAccountId);
     fixture.detectChanges();
+    await flush();
+    fixture.detectChanges();
 
     expect(component.trForm().exchangeRate).toBe(1.08);
     expect(component.trForm().destinationAmount).toBe(270);
@@ -4002,6 +4044,7 @@ describe('MovementsComponent - mobile transfer sheet (#104)', () => {
     }));
     await component.onTransferSourceChange(usdAccountId);
     fixture.detectChanges();
+    await new Promise((resolve) => setTimeout(resolve, 10));
 
     expect(exchangeRateService.getRate).toHaveBeenCalledWith('USD', 'EUR', '2026-08-20');
     expect(component.trForm().exchangeRate).toBe(1.08);
@@ -4092,6 +4135,17 @@ describe('MovementsComponent - mobile transfer sheet (#104)', () => {
   // approach as the stacked-ledger spec above).
   it('gives the transfer form grids the minmax(0, 1fr) overflow guard (#107)', async () => {
     await component.ngOnInit();
+    fixture.detectChanges();
+
+    // The rate-grid rules compile with the shared well (#108), so render it
+    // once with a cross-currency pair.
+    component.openTransferForm();
+    component.trForm.update((f) => ({
+      ...f,
+      sourceAccountId: usdAccountId,
+      destAccountId: accountId,
+    }));
+    fixture.detectChanges();
 
     const css = compiledComponentCss();
     expect(css).toMatch(

@@ -10,6 +10,10 @@ const movementsScss = readFileSync(
   resolve('src/app/features/movements/movements.component.scss'),
   'utf-8',
 );
+const rateWellScss = readFileSync(
+  resolve('src/app/shared/components/exchange-rate-well/exchange-rate-well.component.scss'),
+  'utf-8',
+);
 
 // Issue #107: the Transaction Form and the Transfer Form render from one
 // visual grammar. The capture-form style blocks exist once, in the shared
@@ -34,8 +38,17 @@ describe('shared capture-form style placeholders (#107)', () => {
   ])('the %s extends the shared blocks instead of owning copies', (_name, scss) => {
     expect(scss).toMatch(/\.form-grid\s*\{[^}]*@extend %capture-form-grid/);
     expect(scss).toMatch(/\.form-actions\s*\{[^}]*@extend %capture-form-actions/);
-    expect(scss).toMatch(/\.exchange-rate-grid\s*\{[^}]*@extend %capture-rate-grid/);
     expect(scss).toMatch(/@include capture-sheet-actions/);
+  });
+
+  // Issue #108: the well is a shared component; it — not the capture forms —
+  // extends the exchange-rate placeholders.
+  it('the shared Exchange Rate Well extends the rate blocks instead of owning copies', () => {
+    expect(rateWellScss).toMatch(/\.exchange-rate-section\s*\{[^}]*@extend %exchange-well/);
+    expect(rateWellScss).toMatch(/\.exchange-rate-grid\s*\{[^}]*@extend %capture-rate-grid/);
+    expect(rateWellScss).toMatch(/\.rate-status\s*\{[^}]*@extend %rate-status/);
+    expect(rateWellScss).toMatch(/\.rate-error\s*\{[^}]*@extend %rate-error/);
+    expect(rateWellScss).toMatch(/\.rate-source\s*\{[^}]*@extend %rate-source/);
   });
 
   it('deletes the per-component copies', () => {
@@ -45,6 +58,9 @@ describe('shared capture-form style placeholders (#107)', () => {
       expect(scss).not.toMatch(/grid-template-columns:\s*1fr\s+1fr/);
       expect(scss).not.toMatch(/position:\s*sticky/);
       expect(scss).not.toMatch(/form-actions[^{]*\{[^}]*flex-wrap:\s*wrap/);
+      // The well blocks live in the shared well component now (#108).
+      expect(scss).not.toMatch(/@extend %exchange-well/);
+      expect(scss).not.toMatch(/@extend %capture-rate-grid/);
     }
   });
 

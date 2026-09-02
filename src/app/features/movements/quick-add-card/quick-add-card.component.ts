@@ -15,8 +15,12 @@ import { FormsModule } from '@angular/forms';
 import { Account } from '../../../core/models/account.model';
 import { Category } from '../../../core/models/category.model';
 import { Transaction } from '../../../core/models/transaction.model';
-import { ExchangeRateService } from '../../../core/services/exchange-rate.service';
-import { OfflineError } from '../../../core/models/offline-error';
+import {
+  ExchangeRateWellComponent,
+  ExchangeRateWellLabels,
+  RateSeed,
+  RateState,
+} from '../../../shared/components/exchange-rate-well/exchange-rate-well.component';
 import { LanguageService } from '../../../core/services/language.service';
 import {
   getCurrentYear,
@@ -39,18 +43,24 @@ export interface TransactionFormPayload {
   note: string;
 }
 
-export interface RateState {
-  loading: boolean;
-  error: string;
-  rate: number | null;
-  date: string;
-}
-
 export interface QuickAddDraft {
   form: TransactionFormState;
   editingId: number | null;
   rateState: RateState;
 }
+
+/* The well renders the Transaction Form's own copy (issue #98/#108). */
+const RATE_LABELS: ExchangeRateWellLabels = {
+  heading: 'quickAdd.exchangeRate',
+  fetching: 'quickAdd.fetchingRate',
+  pair: 'quickAdd.exchangeRatePair',
+  equivalent: 'quickAdd.equivalent',
+  suggested: 'quickAdd.suggestedRate',
+  rateAria: 'quickAdd.exchangeRateAria',
+  equivalentAria: 'quickAdd.equivalentAria',
+  errorOffline: 'quickAdd.error.offlineRate',
+  errorFetch: 'quickAdd.error.rateFetch',
+};
 
 const STORAGE_KEY = 'open-expenses.quick-add.last-selection';
 
@@ -92,12 +102,11 @@ function defaultFormState(accountId = 0, categoryId = 0): TransactionFormState {
 
 @Component({
   selector: 'app-quick-add-card',
-  imports: [FormsModule],
+  imports: [FormsModule, ExchangeRateWellComponent],
   templateUrl: './quick-add-card.component.html',
   styleUrl: './quick-add-card.component.scss',
 })
 export class QuickAddCardComponent implements OnInit, AfterViewInit {
-  private exchangeRateService = inject(ExchangeRateService);
   language = inject(LanguageService);
 
   private selectionInitialized = false;
@@ -126,6 +135,8 @@ export class QuickAddCardComponent implements OnInit, AfterViewInit {
   form = signal<TransactionFormState>(defaultFormState());
 
   rateState = signal<RateState>({ loading: false, error: '', rate: null, date: '' });
+  rateSeed = signal<RateSeed | null>(null);
+  rateLabels = RATE_LABELS;
   errorMessage = signal('');
   saving = signal(false);
 
@@ -167,7 +178,11 @@ export class QuickAddCardComponent implements OnInit, AfterViewInit {
     if (draft) {
       this.editingId.set(draft.editingId);
       this.form.set(draft.form);
-      this.rateState.set(draft.rateState);
+      this.rateSeed.set({
+        rate: draft.rateState.rate,
+        date: draft.rateState.date,
+        error: draft.rateState.error || undefined,
+      });
       this.selectionInitialized = true;
       return;
     }
@@ -204,9 +219,7 @@ export class QuickAddCardComponent implements OnInit, AfterViewInit {
 
   onAccountChange(value: number): void {
     this.form.update((f) => ({ ...f, accountId: value }));
-    this.rateState.set({ loading: false, error: '', rate: null, date: '' });
     this.errorMessage.set('');
-    this.checkRate(value, this.form().date);
   }
 
   onCategoryChange(value: number): void {
@@ -215,7 +228,6 @@ export class QuickAddCardComponent implements OnInit, AfterViewInit {
 
   onDateChange(value: string): void {
     this.form.update((f) => ({ ...f, date: value, ...periodYearFromDate(value) }));
-    this.checkRate(this.form().accountId, value);
   }
 
   onAmountOrRateChange(): void {
@@ -255,10 +267,6 @@ export class QuickAddCardComponent implements OnInit, AfterViewInit {
     this.errorMessage.set(message);
   }
 
-  getAccountCurrency(accountId: number): string {
-    return this.accounts().find((a) => a.id === accountId)?.currency ?? '';
-  }
-
   private handleEditInput(t: Transaction | null): void {
     if (!t) return;
 
@@ -276,10 +284,7 @@ export class QuickAddCardComponent implements OnInit, AfterViewInit {
       exchangeRate: t.exchangeRate,
       baseCurrencyAmount: t.baseCurrencyAmount,
     });
-    this.resetRate();
-    if (t.exchangeRate) {
-      this.rateState.update((s) => ({ ...s, rate: t.exchangeRate, date: 'stored' }));
-    }
+    this.resetRateSeed(t.exchangeRate != null ? { rate: t.exchangeRate, date: 'stored' } : null);
     this.errorMessage.set('');
   }
 
@@ -304,10 +309,6 @@ export class QuickAddCardComponent implements OnInit, AfterViewInit {
     }
 
     this.form.set(defaultFormState(accountId, categoryId));
-
-    if (accountId) {
-      this.checkRate(accountId, this.form().date);
-    }
   }
 
   private prefersReducedMotion(): boolean {
@@ -318,39 +319,15 @@ export class QuickAddCardComponent implements OnInit, AfterViewInit {
     );
   }
 
-  private resetRate(): void {
+  private resetRateSeed(seed: RateSeed | null = null): void {
+    this.rateSeed.set(seed);
     this.rateState.set({ loading: false, error: '', rate: null, date: '' });
   }
 
-  private async checkRate(accountId: number, date?: string): Promise<void> {
-    const account = this.accounts().find((a) => a.id === accountId);
-    if (!account || account.currency === this.baseCurrency()) {
-      this.form.update((f) => ({ ...f, exchangeRate: null, baseCurrencyAmount: null }));
-      this.resetRate();
-      return;
-    }
-
-    this.rateState.update((s) => ({ ...s, loading: true, error: '' }));
-
-    try {
-      const result = await this.exchangeRateService.getRate(
-        account.currency,
-        this.baseCurrency(),
-        date,
-      );
-      this.rateState.update((s) => ({ ...s, rate: result.rate, date: result.date }));
-      this.form.update((f) => ({ ...f, exchangeRate: result.rate }));
-      this.recomputeBaseCurrencyAmount();
-    } catch (e: unknown) {
-      const msg =
-        e instanceof OfflineError
-          ? this.language.t('quickAdd.error.offlineRate')
-          : this.language.t('quickAdd.error.rateFetch');
-      this.rateState.update((s) => ({ ...s, error: msg }));
-      this.form.update((f) => ({ ...f, exchangeRate: null, baseCurrencyAmount: null }));
-    } finally {
-      this.rateState.update((s) => ({ ...s, loading: false }));
-    }
+  onWellStateChange(state: RateState): void {
+    this.rateState.set(state);
+    this.form.update((f) => ({ ...f, exchangeRate: state.rate }));
+    this.recomputeBaseCurrencyAmount();
   }
 
   private recomputeBaseCurrencyAmount(): void {
