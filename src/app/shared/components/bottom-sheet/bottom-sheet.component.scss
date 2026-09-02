@@ -1,0 +1,78 @@
+:host {
+  display: contents;
+}
+
+.sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 70;
+  display: flex;
+  flex-direction: column;
+  height: 85dvh;
+  background: var(--surface-lowest);
+  /* Modals carry the doubled stroke: 2px (DESIGN.md, Hard Stroke Rule). */
+  border-top: 2px solid var(--on-surface);
+  animation: sheet-slide-up 0.2s ease-out;
+
+  &.sheet-dragging {
+    /* Follow the finger 1:1 while dragging; the slide-up only plays on open. */
+    animation: none;
+    transition: none;
+  }
+
+  &:not(.sheet-dragging) {
+    transition: transform 0.15s ease-out;
+  }
+}
+
+@keyframes sheet-slide-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.sheet-handle {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-sm) 0;
+  cursor: grab;
+  touch-action: none;
+
+  &:active {
+    cursor: grabbing;
+  }
+}
+
+/* The handle is the drag-to-dismiss affordance (#103): on touch it meets the
+   same 44px thumb minimum as every other primary control. */
+@media (pointer: coarse) {
+  .sheet-handle {
+    min-height: 2.75rem;
+  }
+}
+
+.sheet-handle-bar {
+  width: 3rem;
+  height: 4px;
+  background: var(--outline-variant);
+}
+
+.sheet-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet {
+    animation: none;
+  }
+}
