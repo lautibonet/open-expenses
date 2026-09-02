@@ -117,12 +117,20 @@
   @extend %save-hint;
 }
 
-/* Visible keyboard-shortcut documentation for the capture triggers (#98). */
+/* Visible keyboard-shortcut documentation for the capture triggers (#98).
+   Hidden on coarse pointers (#100): the legend documents keyboard keys,
+   which a touch screen has no use for; it stays inline on desktop. */
 .shortcut-hint {
   @extend %caps-label-muted;
 
   margin-left: auto;
   text-align: right;
+}
+
+@media (pointer: coarse) {
+  .shortcut-hint {
+    display: none;
+  }
 }
 
 .filter-bar {
@@ -513,5 +521,14 @@
       width: 1.25rem;
       height: 1.25rem;
     }
+  }
+
+  /* Same 44px minimum for the text-bearing primary actions (#100): New
+     Transaction / New Transfer and the capture forms' Cancel/Save. Only the
+     height grows — min-height keeps the press shadow and desktop layout
+     untouched at fine pointers. */
+  .controls .btn,
+  .form-actions .btn {
+    min-height: 2.75rem;
   }
 }

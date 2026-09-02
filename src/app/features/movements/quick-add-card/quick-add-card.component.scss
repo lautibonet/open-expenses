@@ -53,6 +53,15 @@ label {
   margin-top: var(--space-md);
 }
 
+/* Comfortable touch targets for the capture form's Cancel/Save (#100): 44px
+   minimum height on coarse pointers and narrow widths, matching the row
+   icon buttons. The press shadow shed on :active comes from %btn-base. */
+@media (pointer: coarse), (max-width: 480px) {
+  .form-actions .btn {
+    min-height: 2.75rem;
+  }
+}
+
 /* Inline reason next to the disabled Save button (issue #98). */
 .save-hint {
   @extend %save-hint;
@@ -60,13 +69,18 @@ label {
 
 .form-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* minmax(0, 1fr) tracks: a wide selected category or note must never push
+     the field past the viewport edge (#100). */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: var(--space-md);
 
   label {
+    min-width: 0;
+
     input,
     select {
       margin-top: var(--space-xs);
+      width: 100%;
     }
   }
 }
@@ -79,7 +93,8 @@ label {
 
 .exchange-rate-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* Same overflow guard as .form-grid (#100). */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: var(--space-md);
 
   label input {
@@ -106,7 +121,10 @@ label {
 }
 
 @media (max-width: 768px) {
+  /* Same one-column treatment the Transfer form's grid already receives:
+     the two-column field grid cannot fit a 375px phone (#100). */
+  .form-grid,
   .exchange-rate-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
