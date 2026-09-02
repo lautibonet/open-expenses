@@ -297,8 +297,12 @@
             </tr>
           </thead>
           <tbody>
-            @for (row of movementView(); track trackKey(row)) {
-            @let item = row;
+            @for (section of movementDaySections(); track section.key) {
+              <tr class="day-divider">
+                <td colspan="5">{{ section.label }}</td>
+              </tr>
+              @for (row of section.items; track trackKey(row)) {
+              @let item = row;
               @if (isTransaction(item)) {
                 @let txn = getTransactionData(item);
               @let income = isIncomeTransaction(txn);
@@ -497,6 +501,7 @@
                   }
                 </td>
               </tr>
+              }
               }
             }
           </tbody>

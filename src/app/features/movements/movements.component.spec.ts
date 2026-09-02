@@ -769,7 +769,13 @@ describe('MovementsComponent - direction arrows and display amounts', () => {
     await component.ngOnInit();
     fixture.detectChanges();
 
-    const rows = fixture.nativeElement.querySelectorAll('tbody tr');
+    // One caps day divider announces the shared day; the two data rows follow.
+    const dividers = fixture.nativeElement.querySelectorAll('tbody tr.day-divider');
+    expect(dividers.length).toBe(1);
+
+    const rows = Array.from(
+      fixture.nativeElement.querySelectorAll('tbody tr'),
+    ).filter((row: any) => !row.classList.contains('day-divider'));
     expect(rows.length).toBe(2);
 
     expect(fixture.nativeElement.querySelectorAll('td.arrow').length).toBe(0);
@@ -1701,7 +1707,9 @@ describe('MovementsComponent - icon row actions', () => {
     component.requestDelete(item);
     fixture.detectChanges();
 
-    const actionsCell = fixture.nativeElement.querySelector('tbody td:last-child');
+    const actionsCell = fixture.nativeElement.querySelector(
+      'tbody tr:not(.day-divider) td:last-child',
+    );
     const live = actionsCell.querySelector('span[aria-live="polite"]');
     expect(live).toBeTruthy();
     expect(live.classList.contains('visually-hidden')).toBe(true);
@@ -3001,7 +3009,53 @@ describe('MovementsComponent - mobile ledger layout', () => {
       /@media \(max-width: 480px\)\s*\{[\s\S]*?thead[^{]*\{[^}]*display:\s*none/,
     );
     expect(css).toMatch(
-      /@media \(max-width: 480px\)[\s\S]*?grid-template-areas:\s*['"]date\s+amount['"]/,
+      /@media \(max-width: 480px\)[\s\S]*?grid-template-areas:\s*['"]amount\s+amount[^'"]*['"]/,
+    );
+  });
+
+  it('groups the ledger under day dividers that only render on mobile', async () => {
+    await seedOneTransactionAndOneTransfer();
+
+    const css = compiledComponentCss();
+    // Desktop: the divider row is hidden, the table stays untouched.
+    expect(css).toMatch(/day-divider[^{]*\{[^}]*display:\s*none/);
+    // Mobile: the divider announces the day as a caps label.
+    expect(css).toMatch(
+      /@media \(max-width: 480px\)[\s\S]*?tr\.day-divider[^{]*\{[^}]*display:\s*block/,
+    );
+    expect(css).toMatch(
+      /@media \(max-width: 480px\)[\s\S]*?tr\.day-divider[^{]*\{[^}]*text-transform:\s*uppercase/,
+    );
+  });
+
+  it('hides the per-row caps labels and date cell below 480px while keeping them for screen readers', async () => {
+    await seedOneTransactionAndOneTransfer();
+
+    const css = compiledComponentCss();
+    // The data-label mechanism stays (announced), only clipped from view.
+    expect(css).toMatch(
+      /@media \(max-width: 480px\)[\s\S]*?td\[data-label\][^{]*::before\s*\{[^}]*content:\s*attr\(data-label\)[^}]*clip:\s*rect\(0/,
+    );
+    // The row's own date cell drops out visually; the day divider carries it.
+    expect(css).toMatch(
+      /@media \(max-width: 480px\)[\s\S]*?td[^{]*:nth-child\(1\)[^{]*\{[^}]*clip:\s*rect\(0/,
+    );
+  });
+
+  it('renders mobile amounts at 1rem mono with category and account on one muted line', async () => {
+    await seedOneTransactionAndOneTransfer();
+
+    const css = compiledComponentCss();
+    expect(css).toMatch(
+      /@media \(max-width: 480px\)[\s\S]*?font-size:\s*var\(--type-body\)/,
+    );
+    // Category and account share one grid line.
+    expect(css).toMatch(
+      /@media \(max-width: 480px\)[\s\S]*?grid-template-areas:[^;]*category\s+account/,
+    );
+    // The shared line reads as muted metadata.
+    expect(css).toMatch(
+      /@media \(max-width: 480px\)[\s\S]*?td[^{]*:nth-child\(4\)[^{]*\{[^}]*color:\s*var\(--on-surface-variant\)/,
     );
   });
 
@@ -3050,6 +3104,126 @@ describe('MovementsComponent - mobile ledger layout', () => {
     expect(transferCells.length).toBe(5);
     expect(transferCells[1].getAttribute('data-label')).toBe('Category / Accounts');
     expect(transferCells[1].textContent).toContain('savings');
+  });
+});
+
+describe('MovementsComponent - day sections', () => {
+  let fixture: ComponentFixture<MovementsComponent>;
+  let component: MovementsComponent;
+  let transactionService: TransactionService;
+  let transferService: TransferService;
+  let accountService: AccountService;
+  let categoryService: CategoryService;
+  let accountId: number;
+  let categoryId: number;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    await TestBed.configureTestingModule({
+      imports: [MovementsComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(MovementsComponent);
+    component = fixture.componentInstance;
+    transactionService = TestBed.inject(TransactionService);
+    transferService = TestBed.inject(TransferService);
+    accountService = TestBed.inject(AccountService);
+    categoryService = TestBed.inject(CategoryService);
+
+    const acc = await accountService.create('Cash', 'EUR', 100000);
+    accountId = acc.id!;
+    const cat = await categoryService.create('Food', 'expense');
+    categoryId = cat.id!;
+  });
+
+  afterEach(async () => {
+    await db.delete();
+  });
+
+  function localDayKey(date: Date): string {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  async function seedAcrossTwoDays(): Promise<void> {
+    const period = getCurrentPeriod();
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    await transactionService.create(accountId, categoryId, 500, new Date(), period);
+    await transactionService.create(accountId, categoryId, 300, new Date(), period);
+    await transactionService.create(accountId, categoryId, 200, yesterday, period);
+    await component.ngOnInit();
+  }
+
+  it('groups movements into day sections in view order, newest day first', async () => {
+    await seedAcrossTwoDays();
+
+    const sections = component.movementDaySections();
+    expect(sections.length).toBe(2);
+
+    const today = new Date();
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    expect(sections[0].key).toBe(localDayKey(today));
+    expect(sections[0].items.length).toBe(2);
+    expect(sections[1].key).toBe(localDayKey(yesterday));
+    expect(sections[1].items.length).toBe(1);
+  });
+
+  it('preserves the movement order within each day section', async () => {
+    await seedAcrossTwoDays();
+
+    const today = new Date();
+    const todayItems = component.movementDaySections()[0].items;
+    expect(todayItems.map((i) => (i.data as Transaction).amount)).toEqual(
+      component
+        .movementView()
+        .filter((i) => localDayKey(i.data.date) === localDayKey(today))
+        .map((i) => (i.data as Transaction).amount),
+    );
+  });
+
+  it('flips section order with the date sort direction', async () => {
+    await seedAcrossTwoDays();
+    component.toggleSort();
+
+    const sections = component.movementDaySections();
+    const today = new Date();
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    expect(sections[0].key).toBe(localDayKey(yesterday));
+    expect(sections[1].key).toBe(localDayKey(today));
+  });
+
+  it('labels each section with its localized day', async () => {
+    await seedAcrossTwoDays();
+
+    const today = new Date();
+    const label = component.movementDaySections()[0].label;
+    expect(label).toBe(
+      component.language.formatDate(today, {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      }),
+    );
+  });
+
+  it('renders one caps day divider row per distinct day in the tbody', async () => {
+    await seedAcrossTwoDays();
+    fixture.detectChanges();
+
+    const dividers = fixture.nativeElement.querySelectorAll('tbody tr.day-divider');
+    expect(dividers.length).toBe(2);
+    expect(dividers[0].textContent.trim()).toBe(component.movementDaySections()[0].label);
+  });
+
+  it('renders no divider rows when the ledger is empty', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelectorAll('tbody tr.day-divider').length).toBe(0);
   });
 });
 

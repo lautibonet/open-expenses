@@ -59,6 +59,19 @@ interface TransferForm {
   note: string;
 }
 
+interface MovementDaySection {
+  key: string;
+  label: string;
+  items: MovementItem[];
+}
+
+function localDayKey(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function defaultTransferForm(accounts: Account[]): TransferForm {
   const sourceAccountId = accounts[0]?.id ?? 0;
   const destAccountId = accounts[1]?.id ?? accounts[0]?.id ?? 0;
@@ -283,6 +296,35 @@ export class MovementsComponent implements OnInit, OnDestroy {
     const items =
       this.sortDir() === 'asc' ? [...this.filteredMovements()].reverse() : this.filteredMovements();
     return items;
+  });
+
+  /* Mobile ledger sections (#101): rows grouped under one divider per day,
+     in movementView order so the date sort direction carries through. The
+     divider announces the day on mobile; the desktop table hides it. */
+  movementDaySections = computed<MovementDaySection[]>(() => {
+    const sections: MovementDaySection[] = [];
+    const byKey = new Map<string, MovementDaySection>();
+    for (const item of this.movementView()) {
+      const date = item.data.date instanceof Date ? item.data.date : new Date(item.data.date);
+      const key = localDayKey(date);
+      let section = byKey.get(key);
+      if (!section) {
+        section = {
+          key,
+          label: this.language.formatDate(date, {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+          }),
+          items: [],
+        };
+        byKey.set(key, section);
+        sections.push(section);
+      }
+      section.items.push(item);
+    }
+    return sections;
   });
 
   activeFilterCount = computed(() => {
