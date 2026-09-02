@@ -472,6 +472,9 @@
     padding: var(--space-lg);
     background: var(--background);
     border-top: 1px solid var(--outline-variant);
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
   }
 
   .filter-panel {
