@@ -2,14 +2,14 @@
 
 /* The capture card: a design card — flat surface, hard black stroke, square.
    Same hook class the Movements page layout expects. */
-.quick-add {
+.transaction-form {
   background: var(--background);
   border: var(--border-hard);
   padding: var(--space-md);
   margin-bottom: var(--space-md);
 }
 
-.quick-add-form {
+.transaction-form-form {
   /* Form title: caps label over a 1px separator. */
   h3 {
     @extend %card-header;
@@ -78,14 +78,14 @@
   }
 
   /* The card fills the bottom sheet (#103), so the page-level margin drops. */
-  .quick-add {
+  .transaction-form {
     margin-bottom: 0;
     min-height: 100%;
     display: flex;
     flex-direction: column;
   }
 
-  .quick-add-form {
+  .transaction-form-form {
     display: flex;
     flex-direction: column;
     flex: 1;

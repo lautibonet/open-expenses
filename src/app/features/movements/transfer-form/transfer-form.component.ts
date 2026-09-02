@@ -56,8 +56,8 @@ const RATE_LABELS: ExchangeRateWellLabels = {
   pair: 'movements.exchangeRatePair',
   equivalent: 'movements.destAmount',
   suggested: 'movements.suggestedRate',
-  rateAria: 'quickAdd.exchangeRateAria',
-  equivalentAria: 'quickAdd.equivalentAria',
+  rateAria: 'transactionForm.exchangeRateAria',
+  equivalentAria: 'transactionForm.equivalentAria',
   errorOffline: 'movements.error.offlineRate',
   errorFetch: 'movements.error.rateFetch',
 };

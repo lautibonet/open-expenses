@@ -2,8 +2,8 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const patternsScss = readFileSync(resolve('src/app/shared/styles/_patterns.scss'), 'utf-8');
-const quickAddScss = readFileSync(
-  resolve('src/app/features/movements/quick-add-card/quick-add-card.component.scss'),
+const transactionFormScss = readFileSync(
+  resolve('src/app/features/movements/transaction-form/transaction-form.component.scss'),
   'utf-8',
 );
 const transferFormScss = readFileSync(
@@ -33,7 +33,7 @@ describe('shared capture-form style placeholders (#107)', () => {
   });
 
   it.each([
-    ['Transaction Form', quickAddScss],
+    ['Transaction Form', transactionFormScss],
     ['Transfer Form', transferFormScss],
   ])('the %s extends the shared blocks instead of owning copies', (_name, scss) => {
     expect(scss).toMatch(/\.form-grid\s*\{[^}]*@extend %capture-form-grid/);
@@ -52,7 +52,7 @@ describe('shared capture-form style placeholders (#107)', () => {
   });
 
   it('deletes the per-component copies', () => {
-    for (const scss of [quickAddScss, transferFormScss]) {
+    for (const scss of [transactionFormScss, transferFormScss]) {
       // Grid geometry now comes from the library — the unguarded 1fr 1fr
       // tracks are gone, and the pinned-actions declarations with them.
       expect(scss).not.toMatch(/grid-template-columns:\s*1fr\s+1fr/);

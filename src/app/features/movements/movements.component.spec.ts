@@ -634,9 +634,9 @@ describe('MovementsComponent - period year', () => {
 
   it('should save the period year from the transaction form', async () => {
     await component.ngOnInit();
-    component.toggleQuickAdd();
+    component.toggleTransactionForm();
     fixture.detectChanges();
-    const card = component.quickAddCard()!;
+    const card = component.transactionFormCard()!;
     card.form.update((f) => ({
       ...f,
       accountId,
@@ -759,7 +759,7 @@ describe('MovementsComponent - page header and scope control', () => {
   it('leads the content with the Net Flow card', async () => {
     await transactionService.create(accountId, categoryId, 500, new Date(), getCurrentPeriod());
     await component.ngOnInit();
-    component.toggleQuickAdd();
+    component.toggleTransactionForm();
     fixture.detectChanges();
 
     const card = fixture.nativeElement.querySelector('app-net-flow-card .net-flow-card');
@@ -770,7 +770,7 @@ describe('MovementsComponent - page header and scope control', () => {
       (el as Element).tagName.toLowerCase(),
     );
     expect(units.indexOf('app-net-flow-card')).toBeGreaterThanOrEqual(0);
-    expect(units.indexOf('app-net-flow-card')).toBeLessThan(units.indexOf('app-quick-add-card'));
+    expect(units.indexOf('app-net-flow-card')).toBeLessThan(units.indexOf('app-transaction-form'));
   });
 });
 
@@ -808,9 +808,9 @@ describe('MovementsComponent - transaction note', () => {
 
   it('should save transaction with note from the card', async () => {
     await component.ngOnInit();
-    component.toggleQuickAdd();
+    component.toggleTransactionForm();
     fixture.detectChanges();
-    const card = component.quickAddCard()!;
+    const card = component.transactionFormCard()!;
     card.form.update((f) => ({
       ...f,
       accountId,
@@ -838,9 +838,9 @@ describe('MovementsComponent - transaction note', () => {
       1,
     );
     await component.ngOnInit();
-    component.openQuickAddForEdit(t);
+    component.openTransactionFormForEdit(t);
     fixture.detectChanges();
-    const card = component.quickAddCard()!;
+    const card = component.transactionFormCard()!;
     card.form.update((f) => ({ ...f, note: 'Updated note' }));
 
     await card.onSubmit();
@@ -1605,12 +1605,12 @@ describe('MovementsComponent - assistive tech', () => {
     }
   });
 
-  it('gives every quick-add select an accessible name', async () => {
+  it('gives every transaction-form select an accessible name', async () => {
     await component.ngOnInit();
-    component.toggleQuickAdd();
+    component.toggleTransactionForm();
     fixture.detectChanges();
 
-    const selects = fixture.nativeElement.querySelectorAll('.quick-add select');
+    const selects = fixture.nativeElement.querySelectorAll('.transaction-form select');
     expect(selects.length).toBeGreaterThan(0);
     for (const select of selects) {
       expect(accessibleName(select)).toBeTruthy();
@@ -1656,7 +1656,7 @@ describe('MovementsComponent - assistive tech', () => {
   });
 });
 
-describe('MovementsComponent - quick-add integration', () => {
+describe('MovementsComponent - transaction-form integration', () => {
   let fixture: ComponentFixture<MovementsComponent>;
   let component: MovementsComponent;
   let transactionService: TransactionService;
@@ -1690,9 +1690,9 @@ describe('MovementsComponent - quick-add integration', () => {
 
   it('saves a new transaction from the card and refreshes the list', async () => {
     await component.ngOnInit();
-    component.toggleQuickAdd();
+    component.toggleTransactionForm();
     fixture.detectChanges();
-    const card = component.quickAddCard()!;
+    const card = component.transactionFormCard()!;
     card.form.update((f) => ({
       ...f,
       accountId,
@@ -1722,9 +1722,9 @@ describe('MovementsComponent - quick-add integration', () => {
       getCurrentPeriod(),
     );
     await component.ngOnInit();
-    component.openQuickAddForEdit(t);
+    component.openTransactionFormForEdit(t);
     fixture.detectChanges();
-    const card = component.quickAddCard()!;
+    const card = component.transactionFormCard()!;
     card.form.update((f) => ({ ...f, amount: 99 }));
 
     await card.onSubmit();
@@ -1746,7 +1746,7 @@ describe('MovementsComponent - quick-add integration', () => {
     );
     component.editTransaction.set(t);
 
-    component.closeQuickAdd();
+    component.closeTransactionForm();
 
     expect(component.editTransaction()).toBeNull();
   });
@@ -2034,7 +2034,7 @@ describe('MovementsComponent - date header sorting', () => {
   });
 });
 
-describe('MovementsComponent - Quick Add capture form', () => {
+describe('MovementsComponent - Transaction Form capture form', () => {
   let fixture: ComponentFixture<MovementsComponent>;
   let component: MovementsComponent;
   let transactionService: TransactionService;
@@ -2068,15 +2068,15 @@ describe('MovementsComponent - Quick Add capture form', () => {
     await db.delete();
   });
 
-  it('hides Quick Add on page load', async () => {
+  it('hides the Transaction Form on page load', async () => {
     await component.ngOnInit();
     fixture.detectChanges();
 
     expect(component.showForm()).toBe('none');
-    expect(fixture.nativeElement.querySelector('app-quick-add-card')).toBeNull();
+    expect(fixture.nativeElement.querySelector('app-transaction-form')).toBeNull();
   });
 
-  it('reveals Quick Add via the New Transaction button and toggles it closed', async () => {
+  it('reveals the Transaction Form via the New Transaction button and toggles it closed', async () => {
     await component.ngOnInit();
     fixture.detectChanges();
 
@@ -2087,44 +2087,44 @@ describe('MovementsComponent - Quick Add capture form', () => {
     fixture.detectChanges();
 
     expect(component.showForm()).toBe('transaction');
-    expect(fixture.nativeElement.querySelector('app-quick-add-card')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('app-transaction-form')).toBeTruthy();
 
     button.click();
 
     expect(component.showForm()).toBe('none');
   });
 
-  it('keeps Quick Add inline on the desktop layout (no bottom sheet)', async () => {
+  it('keeps the Transaction Form inline on the desktop layout (no bottom sheet)', async () => {
     await component.ngOnInit();
     fixture.detectChanges();
 
-    component.toggleQuickAdd();
+    component.toggleTransactionForm();
     fixture.detectChanges();
 
     expect(component.showForm()).toBe('transaction');
     expect(component.isMobileLayout()).toBe(false);
     expect(fixture.nativeElement.querySelector('app-bottom-sheet')).toBeNull();
-    expect(fixture.nativeElement.querySelector('app-quick-add-card')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('app-transaction-form')).toBeTruthy();
   });
 
   it('opens only one capture form at a time', async () => {
     await component.ngOnInit();
 
-    component.toggleQuickAdd();
+    component.toggleTransactionForm();
     expect(component.showForm()).toBe('transaction');
 
     component.openTransferForm();
     expect(component.showForm()).toBe('transfer');
 
-    component.openQuickAdd();
+    component.openTransactionForm();
     expect(component.showForm()).toBe('transaction');
   });
 
   it('closes after a successful create', async () => {
     await component.ngOnInit();
-    component.toggleQuickAdd();
+    component.toggleTransactionForm();
     fixture.detectChanges();
-    const card = component.quickAddCard()!;
+    const card = component.transactionFormCard()!;
     card.form.update((f) => ({
       ...f,
       accountId,
@@ -2151,11 +2151,11 @@ describe('MovementsComponent - Quick Add capture form', () => {
       getCurrentPeriod(),
     );
     await component.ngOnInit();
-    component.openQuickAddForEdit(t);
+    component.openTransactionFormForEdit(t);
     fixture.detectChanges();
     expect(component.showForm()).toBe('transaction');
 
-    const card = component.quickAddCard()!;
+    const card = component.transactionFormCard()!;
     await card.onSubmit();
     await flush();
 
@@ -2177,13 +2177,13 @@ describe('MovementsComponent - Quick Add capture form', () => {
     );
     await component.ngOnInit();
 
-    component.openQuickAddForEdit(t);
+    component.openTransactionFormForEdit(t);
     fixture.detectChanges();
 
     expect(component.showForm()).toBe('transaction');
-    expect(component.quickAddCard()!.editingId()).toBe(t.id);
-    expect(component.quickAddCard()!.form().amount).toBe(1200);
-    expect(component.quickAddCard()!.form().note).toBe('coffee');
+    expect(component.transactionFormCard()!.editingId()).toBe(t.id);
+    expect(component.transactionFormCard()!.form().amount).toBe(1200);
+    expect(component.transactionFormCard()!.form().note).toBe('coffee');
   });
 
   it("focuses the amount field when the 'n' shortcut opens the form", async () => {
@@ -2195,21 +2195,21 @@ describe('MovementsComponent - Quick Add capture form', () => {
 
     expect(component.showForm()).toBe('transaction');
     const amountInput = fixture.nativeElement.querySelector(
-      'app-quick-add-card input[aria-label="Amount"]',
+      'app-transaction-form input[aria-label="Amount"]',
     );
     expect(amountInput).toBeTruthy();
     expect(document.activeElement).toBe(amountInput);
   });
 
-  it('opens the form when the sidebar Quick Add action requests it', async () => {
+  it('opens the form when the sidebar New Transaction action requests it', async () => {
     await component.ngOnInit();
     fixture.detectChanges();
 
-    captureFormService.requestQuickAdd();
+    captureFormService.requestTransactionForm();
     fixture.detectChanges();
 
     expect(component.showForm()).toBe('transaction');
-    expect(captureFormService.pendingQuickAddRequests()).toBe(0);
+    expect(captureFormService.pendingTransactionFormRequests()).toBe(0);
   });
 
   it('opens the transfer form when the sidebar transfer action requests it', async () => {
@@ -2445,7 +2445,7 @@ describe('MovementsComponent - capture form draft protection', () => {
     ).find((b) => b.textContent!.trim() === '+ Transfer')!;
   }
 
-  function quickAddButton(): HTMLButtonElement {
+  function transactionButton(): HTMLButtonElement {
     return (
       Array.from(fixture.nativeElement.querySelectorAll('.controls button')) as HTMLButtonElement[]
     ).find((b) => b.textContent!.trim() === '+ Transaction')!;
@@ -2489,7 +2489,7 @@ describe('MovementsComponent - capture form draft protection', () => {
     expect(component.transferFormCard()!.form().note).toBe('rent split');
   });
 
-  it('keeps the transfer draft when switching to Quick Add and back', async () => {
+  it('keeps the transfer draft when switching to the Transaction Form and back', async () => {
     await component.ngOnInit();
     fixture.detectChanges();
 
@@ -2497,7 +2497,7 @@ describe('MovementsComponent - capture form draft protection', () => {
     fixture.detectChanges();
     component.transferFormCard()!.form.update((f) => ({ ...f, sourceAmount: 90, note: 'bus pass' }));
 
-    component.openQuickAdd();
+    component.openTransactionForm();
     expect(component.showForm()).toBe('transaction');
 
     component.openTransferForm();
@@ -2508,23 +2508,23 @@ describe('MovementsComponent - capture form draft protection', () => {
     expect(component.transferFormCard()!.form().note).toBe('bus pass');
   });
 
-  it('preserves typed Quick Add input when switching to the transfer form and back', async () => {
+  it('preserves typed Transaction Form input when switching to the transfer form and back', async () => {
     await component.ngOnInit();
     fixture.detectChanges();
 
-    component.toggleQuickAdd();
+    component.toggleTransactionForm();
     fixture.detectChanges();
-    const card = component.quickAddCard()!;
+    const card = component.transactionFormCard()!;
     card.form.update((f) => ({ ...f, amount: 42, note: 'cinema tickets' }));
 
     component.openTransferForm();
     fixture.detectChanges();
     expect(component.showForm()).toBe('transfer');
-    expect(fixture.nativeElement.querySelector('app-quick-add-card')).toBeNull();
+    expect(fixture.nativeElement.querySelector('app-transaction-form')).toBeNull();
 
-    component.toggleQuickAdd();
+    component.toggleTransactionForm();
     fixture.detectChanges();
-    const restored = component.quickAddCard()!;
+    const restored = component.transactionFormCard()!;
 
     expect(restored.form().amount).toBe(42);
     expect(restored.form().note).toBe('cinema tickets');
@@ -2548,51 +2548,51 @@ describe('MovementsComponent - capture form draft protection', () => {
     expect(component.transferFormCard()!.form().sourceAmount).toBe(0);
   });
 
-  it('never restores a Quick Add draft stuck in a loading rate fetch', async () => {
+  it('never restores a Transaction Form draft stuck in a loading rate fetch', async () => {
     await component.ngOnInit();
     fixture.detectChanges();
 
-    component.toggleQuickAdd();
+    component.toggleTransactionForm();
     fixture.detectChanges();
-    const card = component.quickAddCard()!;
+    const card = component.transactionFormCard()!;
     card.form.update((f) => ({ ...f, amount: 42 }));
     card.rateState.set({ loading: true, error: '', rate: null, date: '' });
 
     component.openTransferForm();
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('app-quick-add-card')).toBeNull();
+    expect(fixture.nativeElement.querySelector('app-transaction-form')).toBeNull();
 
-    component.toggleQuickAdd();
+    component.toggleTransactionForm();
     fixture.detectChanges();
 
-    expect(component.quickAddCard()!.form().amount).toBe(42);
-    expect(component.quickAddCard()!.rateState().loading).toBe(false);
+    expect(component.transactionFormCard()!.form().amount).toBe(42);
+    expect(component.transactionFormCard()!.rateState().loading).toBe(false);
   });
 
-  it('clears the Quick Add draft once the card is cancelled', async () => {
+  it('clears the Transaction Form draft once the card is cancelled', async () => {
     await component.ngOnInit();
     fixture.detectChanges();
 
-    component.toggleQuickAdd();
+    component.toggleTransactionForm();
     fixture.detectChanges();
-    component.quickAddCard()!.form.update((f) => ({ ...f, amount: 42, note: 'cinema tickets' }));
+    component.transactionFormCard()!.form.update((f) => ({ ...f, amount: 42, note: 'cinema tickets' }));
 
     component.openTransferForm();
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('app-quick-add-card')).toBeNull();
+    expect(fixture.nativeElement.querySelector('app-transaction-form')).toBeNull();
 
-    component.toggleQuickAdd();
+    component.toggleTransactionForm();
     fixture.detectChanges();
-    expect(component.quickAddCard()!.form().amount).toBe(42);
+    expect(component.transactionFormCard()!.form().amount).toBe(42);
 
-    component.quickAddCard()!.cancel();
-    fixture.detectChanges();
-
-    component.toggleQuickAdd();
+    component.transactionFormCard()!.cancel();
     fixture.detectChanges();
 
-    expect(component.quickAddCard()!.form().amount).toBe(0);
-    expect(component.quickAddCard()!.form().note).toBe('');
+    component.toggleTransactionForm();
+    fixture.detectChanges();
+
+    expect(component.transactionFormCard()!.form().amount).toBe(0);
+    expect(component.transactionFormCard()!.form().note).toBe('');
   });
 
   it('starts a fresh transfer form after a saved transfer', async () => {
@@ -2674,19 +2674,19 @@ describe('MovementsComponent - capture form draft protection', () => {
     await component.ngOnInit();
     fixture.detectChanges();
 
-    quickAddButton().click();
+    transactionButton().click();
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('app-quick-add-card')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('app-transaction-form')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('.form-card')).toBeNull();
 
     transferButton().click();
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('app-quick-add-card')).toBeNull();
+    expect(fixture.nativeElement.querySelector('app-transaction-form')).toBeNull();
     expect(fixture.nativeElement.querySelector('.form-card')).toBeTruthy();
 
-    quickAddButton().click();
+    transactionButton().click();
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('app-quick-add-card')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('app-transaction-form')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('.form-card')).toBeNull();
   });
 });
@@ -3023,7 +3023,7 @@ describe('MovementsComponent - capture-form consistency', () => {
     ).find((b) => b.textContent!.trim() === label)!;
   }
 
-  function quickAddButton(): HTMLButtonElement {
+  function transactionButton(): HTMLButtonElement {
     return controlsButton('+ Transaction');
   }
 
@@ -3095,7 +3095,7 @@ describe('MovementsComponent - capture-form consistency', () => {
     expect(transferCells[1].getAttribute('data-label')).toBe('Category / Accounts');
   });
 
-  it('renders the transfer destination amount readonly like the Quick Add equivalent', async () => {
+  it('renders the transfer destination amount readonly like the Transaction Form equivalent', async () => {
     await component.ngOnInit();
     fixture.detectChanges();
 
@@ -3144,14 +3144,14 @@ describe('MovementsComponent - capture-form consistency', () => {
     expect(form.canSubmit()).toBe(true);
   });
 
-  it('states why the quick add save button is disabled next to the button', async () => {
+  it('states why the transaction form save button is disabled next to the button', async () => {
     await component.ngOnInit();
     fixture.detectChanges();
 
-    component.toggleQuickAdd();
+    component.toggleTransactionForm();
     fixture.detectChanges();
 
-    const card = component.quickAddCard()!;
+    const card = component.transactionFormCard()!;
     expect(card.canSubmit()).toBe(false);
     expect(saveHint()?.textContent).toContain('Enter an amount greater than zero.');
 
@@ -3175,7 +3175,7 @@ describe('MovementsComponent - capture-form consistency', () => {
     expect(saveHint()?.textContent).toContain('Choose two accounts.');
   });
 
-  it('toggles the quick add form with the n key', async () => {
+  it('toggles the transaction form with the n key', async () => {
     await component.ngOnInit();
     fixture.detectChanges();
 
@@ -3201,7 +3201,7 @@ describe('MovementsComponent - capture-form consistency', () => {
     await component.ngOnInit();
     fixture.detectChanges();
 
-    component.openQuickAdd();
+    component.openTransactionForm();
     component.onDocKeydown(new KeyboardEvent('keydown', { key: 'Escape' }));
     expect(component.showForm()).toBe('none');
 
@@ -3213,22 +3213,22 @@ describe('MovementsComponent - capture-form consistency', () => {
     expect(component.showForm()).toBe('none');
   });
 
-  it('keeps typed input when Escape closes the quick add form', async () => {
+  it('keeps typed input when Escape closes the transaction form', async () => {
     await component.ngOnInit();
     fixture.detectChanges();
 
-    component.toggleQuickAdd();
+    component.toggleTransactionForm();
     fixture.detectChanges();
-    component.quickAddCard()!.form.update((f) => ({ ...f, amount: 42, note: 'cinema tickets' }));
+    component.transactionFormCard()!.form.update((f) => ({ ...f, amount: 42, note: 'cinema tickets' }));
 
     component.onDocKeydown(new KeyboardEvent('keydown', { key: 'Escape' }));
     expect(component.showForm()).toBe('none');
 
-    component.toggleQuickAdd();
+    component.toggleTransactionForm();
     fixture.detectChanges();
 
-    expect(component.quickAddCard()!.form().amount).toBe(42);
-    expect(component.quickAddCard()!.form().note).toBe('cinema tickets');
+    expect(component.transactionFormCard()!.form().amount).toBe(42);
+    expect(component.transactionFormCard()!.form().note).toBe('cinema tickets');
   });
 
   it('keeps typed transfer input when Escape closes the transfer form', async () => {
@@ -3249,16 +3249,16 @@ describe('MovementsComponent - capture-form consistency', () => {
     expect(component.transferFormCard()!.form().note).toBe('rent split');
   });
 
-  it('toggles the capture form when the sidebar Quick Add action requests it', async () => {
+  it('toggles the capture form when the sidebar New Transaction action requests it', async () => {
     await component.ngOnInit();
     fixture.detectChanges();
     const captureFormService = TestBed.inject(CaptureFormService);
 
-    captureFormService.requestQuickAdd();
+    captureFormService.requestTransactionForm();
     fixture.detectChanges();
     expect(component.showForm()).toBe('transaction');
 
-    captureFormService.requestQuickAdd();
+    captureFormService.requestTransactionForm();
     fixture.detectChanges();
     expect(component.showForm()).toBe('none');
   });
@@ -3267,8 +3267,8 @@ describe('MovementsComponent - capture-form consistency', () => {
     await component.ngOnInit();
     fixture.detectChanges();
 
-    expect(quickAddButton().getAttribute('title')).toBe('Shortcut: N');
-    expect(quickAddButton().getAttribute('aria-keyshortcuts')).toBe('n');
+    expect(transactionButton().getAttribute('title')).toBe('Shortcut: N');
+    expect(transactionButton().getAttribute('aria-keyshortcuts')).toBe('n');
     expect(transferButton().getAttribute('title')).toBe('Shortcut: T');
     expect(transferButton().getAttribute('aria-keyshortcuts')).toBe('t');
   });
@@ -3516,11 +3516,11 @@ describe('MovementsComponent - mobile capture sheet (#103)', () => {
     return fixture.nativeElement.querySelector('app-bottom-sheet .sheet') as HTMLElement;
   }
 
-  it('opens Quick Add inside the bottom sheet on mobile', async () => {
+  it('opens the Transaction Form inside the bottom sheet on mobile', async () => {
     await component.ngOnInit();
     fixture.detectChanges();
 
-    component.toggleQuickAdd();
+    component.toggleTransactionForm();
     fixture.detectChanges();
 
     expect(component.showForm()).toBe('transaction');
@@ -3531,7 +3531,7 @@ describe('MovementsComponent - mobile capture sheet (#103)', () => {
     expect(sheet.getAttribute('role')).toBe('dialog');
     expect(sheet.getAttribute('aria-modal')).toBe('true');
     expect(sheet.getAttribute('aria-label')).toBeTruthy();
-    expect(sheet.querySelector('app-quick-add-card')).toBeTruthy();
+    expect(sheet.querySelector('app-transaction-form')).toBeTruthy();
   });
 
   it('opens the sheet prefilled when editing a transaction on mobile', async () => {
@@ -3548,22 +3548,22 @@ describe('MovementsComponent - mobile capture sheet (#103)', () => {
     );
     await component.ngOnInit();
 
-    component.openQuickAddForEdit(t);
+    component.openTransactionFormForEdit(t);
     fixture.detectChanges();
 
     expect(component.showForm()).toBe('transaction');
     const sheet = sheetEl();
     expect(sheet).toBeTruthy();
-    expect(component.quickAddCard()!.editingId()).toBe(t.id);
-    expect(component.quickAddCard()!.form().amount).toBe(1200);
-    expect(component.quickAddCard()!.form().note).toBe('coffee');
+    expect(component.transactionFormCard()!.editingId()).toBe(t.id);
+    expect(component.transactionFormCard()!.form().amount).toBe(1200);
+    expect(component.transactionFormCard()!.form().note).toBe('coffee');
   });
 
   it('dismisses the sheet on drag-down without saving', async () => {
     await component.ngOnInit();
     fixture.detectChanges();
 
-    component.toggleQuickAdd();
+    component.toggleTransactionForm();
     fixture.detectChanges();
 
     const handle = sheetEl().querySelector('.sheet-handle') as HTMLElement;
@@ -3581,17 +3581,17 @@ describe('MovementsComponent - mobile capture sheet (#103)', () => {
     await component.ngOnInit();
     fixture.detectChanges();
 
-    component.toggleQuickAdd();
+    component.toggleTransactionForm();
     expect(component.showForm()).toBe('transaction');
 
     component.openTransferForm();
     fixture.detectChanges();
 
     expect(component.showForm()).toBe('transfer');
-    // The transfer presents in its own sheet on mobile (#104); Quick Add is gone.
+    // The transfer presents in its own sheet on mobile (#104); the Transaction Form is gone.
     expect(sheetEl()).toBeTruthy();
     expect(sheetEl().querySelector('.form-card')).toBeTruthy();
-    expect(fixture.nativeElement.querySelector('app-quick-add-card')).toBeNull();
+    expect(fixture.nativeElement.querySelector('app-transaction-form')).toBeNull();
   });
 });
 

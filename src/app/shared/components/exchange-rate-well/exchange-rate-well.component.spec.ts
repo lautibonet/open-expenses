@@ -8,15 +8,15 @@ import { ExchangeRateService } from '../../../core/services/exchange-rate.servic
 import { OfflineError } from '../../../core/models/offline-error';
 
 const LABELS: ExchangeRateWellLabels = {
-  heading: 'quickAdd.exchangeRate',
-  fetching: 'quickAdd.fetchingRate',
-  pair: 'quickAdd.exchangeRatePair',
-  equivalent: 'quickAdd.equivalent',
-  suggested: 'quickAdd.suggestedRate',
-  rateAria: 'quickAdd.exchangeRateAria',
-  equivalentAria: 'quickAdd.equivalentAria',
-  errorOffline: 'quickAdd.error.offlineRate',
-  errorFetch: 'quickAdd.error.rateFetch',
+  heading: 'transactionForm.exchangeRate',
+  fetching: 'transactionForm.fetchingRate',
+  pair: 'transactionForm.exchangeRatePair',
+  equivalent: 'transactionForm.equivalent',
+  suggested: 'transactionForm.suggestedRate',
+  rateAria: 'transactionForm.exchangeRateAria',
+  equivalentAria: 'transactionForm.equivalentAria',
+  errorOffline: 'transactionForm.error.offlineRate',
+  errorFetch: 'transactionForm.error.rateFetch',
 };
 
 function makeRate(rate: number, date = '2026-08-26') {

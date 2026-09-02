@@ -83,7 +83,7 @@
 }
 
 /* The capture forms render from their own components: the Transaction Form
-   (quick-add-card) and the Transfer Form (transfer-form) own their card,
+   (transaction-form) and the Transfer Form (transfer-form) own their card,
    grid, and actions styles — both extending the shared capture-form blocks
    (#107, ADR 0014). */
 

@@ -108,7 +108,7 @@ $sidebar-width: 256px;
   border-top: 1px solid var(--on-surface);
 }
 
-.quick-add {
+.new-transaction {
   @extend %btn-base;
   @extend %btn-primary;
   /* One blue for the sidebar's interactive accents: the CTA uses the same
@@ -140,8 +140,8 @@ $sidebar-width: 256px;
 }
 
 /* Capture slot (#103): exists only in the mobile bottom nav, where it is
-   the single blue action; the desktop sidebar keeps its Quick Add CTA and
-   three-link nav, so the slot never renders there. */
+   the single blue action; the desktop sidebar keeps its New Transaction CTA
+   and three-link nav, so the slot never renders there. */
 .capture-slot {
   display: none;
 }

@@ -27,9 +27,9 @@ import {
 import { LanguageService } from '../../core/services/language.service';
 import { BottomSheetComponent } from '../../shared/components/bottom-sheet/bottom-sheet.component';
 import {
-  QuickAddCardComponent,
-  QuickAddDraft,
-} from './quick-add-card/quick-add-card.component';
+  TransactionFormComponent,
+  TransactionFormDraft,
+} from './transaction-form/transaction-form.component';
 import {
   TransferFormComponent,
   TransferDraft,
@@ -64,7 +64,7 @@ function localDayKey(date: Date): string {
 
 @Component({
   selector: 'app-movements',
-  imports: [FormsModule, DatePipe, NgTemplateOutlet, QuickAddCardComponent, TransferFormComponent, NetFlowCardComponent, BottomSheetComponent],
+  imports: [FormsModule, DatePipe, NgTemplateOutlet, TransactionFormComponent, TransferFormComponent, NetFlowCardComponent, BottomSheetComponent],
   templateUrl: './movements.component.html',
   styleUrl: './movements.component.scss',
   host: { '(document:keydown)': 'onDocKeydown($event)' },
@@ -97,7 +97,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
   showForm = signal<'none' | 'transfer' | 'transaction'>('none');
   editTransaction = signal<Transaction | null>(null);
   editTransfer = signal<Transfer | null>(null);
-  quickAddRestore = signal<QuickAddDraft | null>(null);
+  transactionRestore = signal<TransactionFormDraft | null>(null);
   transferRestore = signal<TransferDraft | null>(null);
 
   /* Mobile regime (#103, #104): below the 768px breakpoint both capture forms
@@ -136,7 +136,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
      the category/account selects reveal only on demand. */
   filtersExpanded = signal(false);
 
-  quickAddCard = viewChild(QuickAddCardComponent);
+  transactionFormCard = viewChild(TransactionFormComponent);
   transferFormCard = viewChild(TransferFormComponent);
 
   onDocKeydown(e: KeyboardEvent): void {
@@ -160,13 +160,13 @@ export class MovementsComponent implements OnInit, OnDestroy {
     if (e.key === 't' || e.key === 'T') {
       this.toggleTransferForm();
     } else if (e.key === 'n' || e.key === 'N') {
-      this.toggleQuickAdd();
+      this.toggleTransactionForm();
     }
   }
 
   private closeOpenCaptureForm(): void {
     if (this.showForm() === 'transaction') {
-      this.toggleQuickAdd();
+      this.toggleTransactionForm();
     } else if (this.showForm() === 'transfer') {
       this.toggleTransferForm();
     }
@@ -181,9 +181,9 @@ export class MovementsComponent implements OnInit, OnDestroy {
   });
 
   private openOnCaptureRequest = effect(() => {
-    if (this.captureFormService.pendingQuickAddRequests() > 0) {
-      this.captureFormService.consumeQuickAddRequests();
-      this.toggleQuickAdd();
+    if (this.captureFormService.pendingTransactionFormRequests() > 0) {
+      this.captureFormService.consumeTransactionFormRequests();
+      this.toggleTransactionForm();
     }
     if (this.captureFormService.pendingTransferRequests() > 0) {
       this.captureFormService.consumeTransferRequests();
@@ -470,11 +470,11 @@ export class MovementsComponent implements OnInit, OnDestroy {
     this.editTransfer.set(null);
   }
 
-  private captureQuickAddDraft(): void {
-    const card = this.quickAddCard();
+  private captureTransactionFormDraft(): void {
+    const card = this.transactionFormCard();
     if (!card) return;
     const draft = card.draft();
-    this.quickAddRestore.set({
+    this.transactionRestore.set({
       ...draft,
       rateState: { ...draft.rateState, loading: false },
     });
@@ -482,7 +482,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
 
   openTransferForm(transfer?: Transfer): void {
     if (this.showForm() === 'transaction') {
-      this.captureQuickAddDraft();
+      this.captureTransactionFormDraft();
     }
     if (transfer) {
       this.transferRestore.set(null);
@@ -491,35 +491,35 @@ export class MovementsComponent implements OnInit, OnDestroy {
     this.showForm.set('transfer');
   }
 
-  toggleQuickAdd(): void {
+  toggleTransactionForm(): void {
     if (this.showForm() === 'transaction') {
-      this.captureQuickAddDraft();
+      this.captureTransactionFormDraft();
       this.showForm.set('none');
       this.editTransaction.set(null);
     } else {
-      this.openQuickAdd();
+      this.openTransactionForm();
     }
   }
 
-  openQuickAdd(): void {
+  openTransactionForm(): void {
     if (this.showForm() === 'transaction') {
-      this.quickAddCard()?.focusAmount();
+      this.transactionFormCard()?.focusAmount();
       return;
     }
     this.showForm.set('transaction');
     this.editTransaction.set(null);
   }
 
-  openQuickAddForEdit(txn: Transaction): void {
+  openTransactionFormForEdit(txn: Transaction): void {
     this.showForm.set('transaction');
     this.editTransaction.set(txn);
-    this.quickAddRestore.set(null);
+    this.transactionRestore.set(null);
   }
 
-  closeQuickAdd(): void {
+  closeTransactionForm(): void {
     this.showForm.set('none');
     this.editTransaction.set(null);
-    this.quickAddRestore.set(null);
+    this.transactionRestore.set(null);
   }
 
   clearFilters(): void {
@@ -547,7 +547,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
   }
 
   async onTransactionSaved(wasEdit: boolean): Promise<void> {
-    this.closeQuickAdd();
+    this.closeTransactionForm();
     await this.refresh();
     await this.applyScopeOptions();
     this.movementAnnouncement.set(
