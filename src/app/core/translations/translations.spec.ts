@@ -153,6 +153,7 @@ describe('translations', () => {
       'movements.sortByDateAria',
       'movements.editTransferTitle',
       'movements.newTransferTitle',
+      'movements.transferSheetAria',
       'movements.transferNeedsTwoAccounts',
       'movements.from',
       'movements.to',

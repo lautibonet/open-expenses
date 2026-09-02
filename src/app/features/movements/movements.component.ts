@@ -132,9 +132,9 @@ export class MovementsComponent implements OnInit, OnDestroy {
   editingId = signal<number | null>(null);
   quickAddRestore = signal<QuickAddDraft | null>(null);
 
-  /* Mobile regime (#103): below the 768px breakpoint the transaction capture
-     renders inside a bottom sheet instead of the inline form card; the
-     transfer editor stays inline. Desktop keeps the inline reveal. */
+  /* Mobile regime (#103, #104): below the 768px breakpoint both capture forms
+     render inside a bottom sheet instead of the inline form card. Desktop
+     keeps the inline reveal. */
   private mobileMediaQuery: MediaQueryList | null =
     typeof window !== 'undefined' && typeof window.matchMedia === 'function'
       ? window.matchMedia('(max-width: 768px)')
@@ -265,7 +265,10 @@ export class MovementsComponent implements OnInit, OnDestroy {
     const heading = this.transferHeading();
     if (heading) {
       const el = heading.nativeElement;
-      if (typeof el.scrollIntoView === 'function') {
+      /* Hosted in the mobile capture sheet (#104): the sheet already covers
+         the screen, so the heading's scroll-into-view must not scroll the
+         page behind it. */
+      if (!this.isMobileLayout() && typeof el.scrollIntoView === 'function') {
         el.scrollIntoView({ behavior: this.prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
       }
       el.focus();

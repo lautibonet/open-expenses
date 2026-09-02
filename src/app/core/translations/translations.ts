@@ -212,6 +212,7 @@ const en: Record<string, string> = {
   'movements.error.saveFailed':
     'The transfer could not be saved. Check the form and try again.',
   'quickAdd.sheetAria': 'Quick Add form',
+  'movements.transferSheetAria': 'Transfer form',
   'quickAdd.noAccounts': 'No accounts yet. Add one in Settings to start recording.',
   'quickAdd.noCategories': 'No categories yet. Add one in Settings to start recording.',
   'quickAdd.amount': 'Amount',
@@ -542,6 +543,7 @@ const es: Record<string, string> = {
   'movements.error.saveFailed':
     'No se pudo guardar la transferencia. Revisa el formulario e inténtalo de nuevo.',
   'quickAdd.sheetAria': 'Formulario de alta rápida',
+  'movements.transferSheetAria': 'Formulario de transferencia',
   'quickAdd.noAccounts': 'Aún no hay cuentas. Añade una en Ajustes para empezar a registrar.',
   'quickAdd.noCategories': 'Aún no hay categorías. Añade una en Ajustes para empezar a registrar.',
   'quickAdd.amount': 'Importe',
