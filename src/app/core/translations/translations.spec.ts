@@ -120,7 +120,7 @@ describe('translations', () => {
   });
 
   it('covers the scope keys', () => {
-    for (const key of ['scope.yearAria', 'scope.monthAria', 'scope.groupAria']) {
+    for (const key of ['scope.yearAria', 'scope.monthAria', 'scope.groupAria', 'scope.label']) {
       expect(TRANSLATIONS.en[key]).toBeTruthy();
       expect(TRANSLATIONS.es[key]).toBeTruthy();
     }
@@ -175,6 +175,9 @@ describe('translations', () => {
       'movements.account',
       'movements.allAccounts',
       'movements.filtersActive',
+      'movements.showFilters',
+      'movements.hideFilters',
+      'movements.removeFilterAria',
       'movements.clearFilters',
       'movements.tableCaption',
       'movements.colDate',

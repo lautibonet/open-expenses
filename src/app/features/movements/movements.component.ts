@@ -65,6 +65,11 @@ interface MovementDaySection {
   items: MovementItem[];
 }
 
+interface FilterChip {
+  kind: 'category' | 'account' | 'search';
+  label: string;
+}
+
 function localDayKey(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -184,6 +189,10 @@ export class MovementsComponent implements OnInit, OnDestroy {
   filterAccount = signal<number | null>(null);
   searchQuery = signal('');
   sortDir = signal<'desc' | 'asc'>('desc');
+
+  /* Filter-card disclosure (#102): the card collapses to a single search row;
+     the category/account selects reveal only on demand. */
+  filtersExpanded = signal(false);
 
   quickAddCard = viewChild(QuickAddCardComponent);
 
@@ -334,6 +343,47 @@ export class MovementsComponent implements OnInit, OnDestroy {
     if (this.searchQuery().trim()) count++;
     return count;
   });
+
+  /* Collapsed-state chips (#102): one removable chip per active filter, so
+     the collapsed card still shows what is being applied. */
+  activeFilters = computed<FilterChip[]>(() => {
+    const chips: FilterChip[] = [];
+    const cat = this.filterCategory();
+    if (cat !== null) {
+      chips.push({ kind: 'category', label: this.chipLabel('movements.category', cat, this.categories()) });
+    }
+    const acc = this.filterAccount();
+    if (acc !== null) {
+      chips.push({ kind: 'account', label: this.chipLabel('movements.account', acc, this.accounts()) });
+    }
+    const query = this.searchQuery().trim();
+    if (query) {
+      chips.push({
+        kind: 'search',
+        label: `${this.language.t('movements.search')}: ${query}`,
+      });
+    }
+    return chips;
+  });
+
+  private chipLabel(
+    prefixKey: string,
+    id: number,
+    items: { id?: number; name: string }[],
+  ): string {
+    const name = items.find((item) => item.id === id)?.name ?? this.language.t('movements.unknown');
+    return `${this.language.t(prefixKey)}: ${name}`;
+  }
+
+  toggleFilters(): void {
+    this.filtersExpanded.update((expanded) => !expanded);
+  }
+
+  removeFilter(kind: FilterChip['kind']): void {
+    if (kind === 'category') this.filterCategory.set(null);
+    if (kind === 'account') this.filterAccount.set(null);
+    if (kind === 'search') this.searchQuery.set('');
+  }
 
   toggleSort(): void {
     this.sortDir.update((d) => (d === 'desc' ? 'asc' : 'desc'));
