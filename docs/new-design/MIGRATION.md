@@ -32,7 +32,6 @@ models, or user flows**.
 Derived implications:
 - Warnings (conversion failure, backup errors) adopt the **error ramp** — the design palette has no amber.
 - `theme-color` meta and manifest `theme_color` → `#003ec7`.
-- Sidebar status label ("LOCAL STORAGE ACTIVE" in the design) becomes a localized status chip ("Local storage" / ES "Almacenamiento local") — descriptive only, no glossary conflict.
 
 ---
 
@@ -121,7 +120,6 @@ the mobile regime (`headline-lg` 32→24, `display` 48→24).
 
 - **Desktop sidebar** (new markup in shell):
   - Brand block: black square monogram "O" + "Open Expenses" (D3 — no "LedgerFlow").
-  - Status chip: localized "Local storage" caps label (new translation keys).
   - Vertical nav, 3 items (D4): Movements, Stats, Settings. Active state = solid `--primary`
     block with white text (replaces blue-underline tabs).
   - Bottom: **"+ Quick Add"** button (solid `--primary`, `--shadow-press`, D6 — focuses the
@@ -342,6 +340,5 @@ agent-verifiable.
 
 ---
 
-*Canonical references: screenshots in `docs/new-design/*_ledgerflow/screen.png`, token spec in
-`docs/new-design/monolith_ledger/DESIGN.md`, current system in root `DESIGN.md`, vocabulary in
+*Canonical references: Current system in root `DESIGN.md`, vocabulary in
 `CONTEXT.md`, token-placement rule in `docs/adr/0008-design-tokens-in-styles-scss.md`.*
