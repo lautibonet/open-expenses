@@ -2,9 +2,13 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { QuickAddCardComponent } from './quick-add-card.component';
 import { ExchangeRateService } from '../../../core/services/exchange-rate.service';
 import { LanguageService } from '../../../core/services/language.service';
+import { TransactionService } from '../../../core/services/transaction.service';
+import { AccountService } from '../../../core/services/account.service';
+import { CategoryService } from '../../../core/services/category.service';
 import { Account } from '../../../core/models/account.model';
 import { Category } from '../../../core/models/category.model';
 import { Transaction } from '../../../core/models/transaction.model';
+import { db } from '../../../core/db/database';
 import { getCurrentPeriod, getCurrentYear } from '../../../core/types/period.type';
 
 const STORAGE_KEY = 'open-expenses.quick-add.last-selection';
@@ -25,14 +29,17 @@ describe('QuickAddCardComponent', () => {
   let fixture: ComponentFixture<QuickAddCardComponent>;
   let component: QuickAddCardComponent;
   let exchangeRateService: { getRate: ReturnType<typeof vi.fn> };
-
-  const eurAccount = makeAccount(1, 'Cash', 'EUR');
-  const usdAccount = makeAccount(2, 'Dollars', 'USD');
-  const food = makeCategory(10, 'Food', 'expense');
-  const payroll = makeCategory(11, 'Payroll', 'income');
+  let transactionService: TransactionService;
+  let eurAccount: Account;
+  let usdAccount: Account;
+  let food: Category;
+  let payroll: Category;
 
   beforeEach(async () => {
     localStorage.clear();
+    await db.delete();
+    await db.open();
+
     exchangeRateService = {
       getRate: vi
         .fn()
@@ -44,6 +51,19 @@ describe('QuickAddCardComponent', () => {
       providers: [{ provide: ExchangeRateService, useValue: exchangeRateService }],
     }).compileComponents();
 
+    transactionService = TestBed.inject(TransactionService);
+
+    const accountService = TestBed.inject(AccountService);
+    const categoryService = TestBed.inject(CategoryService);
+    const cash = await accountService.create('Cash', 'EUR', 0);
+    const dollars = await accountService.create('Dollars', 'USD', 0);
+    const foodCat = await categoryService.create('Food', 'expense');
+    const payrollCat = await categoryService.create('Payroll', 'income');
+    eurAccount = { ...makeAccount(cash.id!, 'Cash', 'EUR') };
+    usdAccount = { ...makeAccount(dollars.id!, 'Dollars', 'USD') };
+    food = { ...makeCategory(foodCat.id!, 'Food', 'expense') };
+    payroll = { ...makeCategory(payrollCat.id!, 'Payroll', 'income') };
+
     fixture = TestBed.createComponent(QuickAddCardComponent);
     component = fixture.componentInstance;
     fixture.componentRef.setInput('accounts', [eurAccount, usdAccount]);
@@ -51,8 +71,9 @@ describe('QuickAddCardComponent', () => {
     fixture.componentRef.setInput('baseCurrency', 'EUR');
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     localStorage.clear();
+    await db.delete();
   });
 
   it('renders the full form with every field and no compact mode', async () => {
@@ -95,8 +116,8 @@ describe('QuickAddCardComponent', () => {
 
   it('starts with the first account and category when nothing was stored', async () => {
     await component.ngOnInit();
-    expect(component.form().accountId).toBe(1);
-    expect(component.form().categoryId).toBe(10);
+    expect(component.form().accountId).toBe(eurAccount.id);
+    expect(component.form().categoryId).toBe(food.id);
   });
 
   it('focuses the amount input on arrival', async () => {
@@ -107,72 +128,79 @@ describe('QuickAddCardComponent', () => {
     expect(document.activeElement).toBe(input);
   });
 
-  it('emits a save payload for a base-currency transaction', async () => {
-    await component.ngOnInit();
-    component.form.update((f) => ({ ...f, amount: 50 }));
-    let saved: any;
-    component.save.subscribe((data) => (saved = data));
-
-    component.onSubmit();
-
-    expect(saved).toMatchObject({
-      id: null,
-      accountId: 1,
-      categoryId: 10,
-      amount: 50,
-      period: component.form().period,
-      year: component.form().year,
-      exchangeRate: null,
-      baseCurrencyAmount: null,
-    });
-  });
-
-  it('emits a save payload with the fetched rate for a foreign-currency transaction', async () => {
+  it('saves a base-currency transaction through the transaction store and emits saved', async () => {
     await component.ngOnInit();
     fixture.detectChanges();
-    component.onAccountChange(2);
+    component.form.update((f) => ({ ...f, amount: 50 }));
+
+    let savedWasEdit: boolean | undefined;
+    component.saved.subscribe((wasEdit) => (savedWasEdit = wasEdit));
+    await component.onSubmit();
+
+    const txns = await transactionService.getAll();
+    expect(txns).toHaveLength(1);
+    expect(txns[0].accountId).toBe(eurAccount.id);
+    expect(txns[0].categoryId).toBe(food.id);
+    expect(txns[0].amount).toBe(50);
+    expect(txns[0].exchangeRate).toBeNull();
+    expect(txns[0].baseCurrencyAmount).toBeNull();
+    expect(txns[0].year).toBe(component.form().year);
+    expect(savedWasEdit).toBe(false);
+    expect(component.saving()).toBe(false);
+  });
+
+  it('saves the fetched rate and converted amount for a foreign-currency transaction', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+    component.onAccountChange(usdAccount.id!);
     fixture.detectChanges();
     await flush();
 
     component.form.update((f) => ({ ...f, amount: 100 }));
-    let saved: any;
-    component.save.subscribe((data) => (saved = data));
-
-    component.onSubmit();
+    let saved = 0;
+    component.saved.subscribe(() => saved++);
+    await component.onSubmit();
 
     expect(exchangeRateService.getRate).toHaveBeenCalledWith('USD', 'EUR', component.form().date);
-    expect(saved.exchangeRate).toBe(1.08);
-    expect(saved.baseCurrencyAmount).toBe(108);
+    const txns = await transactionService.getAll();
+    expect(txns).toHaveLength(1);
+    expect(txns[0].exchangeRate).toBe(1.08);
+    expect(txns[0].baseCurrencyAmount).toBe(108);
+    expect(saved).toBe(1);
   });
 
   it('blocks submit until a foreign-currency rate is available and accepts a manual entry', async () => {
     exchangeRateService.getRate.mockRejectedValue(new Error('offline'));
     await component.ngOnInit();
     fixture.detectChanges();
-    component.onAccountChange(2);
+    component.onAccountChange(usdAccount.id!);
     fixture.detectChanges();
     await flush();
 
     component.form.update((f) => ({ ...f, amount: 100 }));
-    let saved: any;
-    component.save.subscribe((data) => (saved = data));
+    let saved = 0;
+    component.saved.subscribe(() => saved++);
 
-    component.onSubmit();
+    await component.onSubmit();
 
-    expect(saved).toBeUndefined();
+    expect(saved).toBe(0);
+    expect(await transactionService.getAll()).toHaveLength(0);
     expect(component.errorMessage()).toBeTruthy();
 
     component.form.update((f) => ({ ...f, exchangeRate: 1.2 }));
     component.onAmountOrRateChange();
-    component.onSubmit();
+    await component.onSubmit();
 
-    expect(saved).toMatchObject({ exchangeRate: 1.2, baseCurrencyAmount: 120 });
+    expect(saved).toBe(1);
+    const txns = await transactionService.getAll();
+    expect(txns[0].exchangeRate).toBe(1.2);
+    expect(txns[0].baseCurrencyAmount).toBe(120);
   });
 
   it('re-fetches the rate when the date changes on a foreign-currency account', async () => {
     await component.ngOnInit();
     fixture.detectChanges();
-    component.onAccountChange(2);
+    component.onAccountChange(usdAccount.id!);
     fixture.detectChanges();
     await flush();
     expect(exchangeRateService.getRate).toHaveBeenCalledWith('USD', 'EUR', component.form().date);
@@ -224,40 +252,43 @@ describe('QuickAddCardComponent', () => {
 
   it('persists the last-used account and category to localStorage on save', async () => {
     await component.ngOnInit();
-    component.onAccountChange(2);
-    component.onCategoryChange(11);
+    component.onAccountChange(usdAccount.id!);
+    component.onCategoryChange(payroll.id!);
     await new Promise((resolve) => setTimeout(resolve, 10));
     component.form.update((f) => ({ ...f, amount: 50 }));
-    component.onSubmit();
+    await component.onSubmit();
 
     expect(localStorage.getItem(STORAGE_KEY)).toBe(
-      JSON.stringify({ accountId: 2, categoryId: 11 }),
+      JSON.stringify({ accountId: usdAccount.id, categoryId: payroll.id }),
     );
   });
 
   it('restores the stored selection as defaults on a later init', async () => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ accountId: 2, categoryId: 11 }));
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ accountId: usdAccount.id, categoryId: payroll.id }),
+    );
 
     await component.ngOnInit();
 
-    expect(component.form().accountId).toBe(2);
-    expect(component.form().categoryId).toBe(11);
+    expect(component.form().accountId).toBe(usdAccount.id);
+    expect(component.form().categoryId).toBe(payroll.id);
   });
 
   it('falls back to the first selection when the stored account is gone', async () => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ accountId: 999, categoryId: 11 }));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ accountId: 999, categoryId: payroll.id }));
 
     await component.ngOnInit();
 
-    expect(component.form().accountId).toBe(1);
-    expect(component.form().categoryId).toBe(11);
+    expect(component.form().accountId).toBe(eurAccount.id);
+    expect(component.form().categoryId).toBe(payroll.id);
   });
 
   it('opens prefilled when an existing transaction is set for edit', async () => {
     const txn: Transaction = {
       id: 7,
-      accountId: 2,
-      categoryId: 11,
+      accountId: usdAccount.id!,
+      categoryId: payroll.id!,
       amount: 120,
       date: new Date('2026-03-10'),
       period: 3,
@@ -271,45 +302,44 @@ describe('QuickAddCardComponent', () => {
     fixture.detectChanges();
 
     expect(component.editingId()).toBe(7);
-    expect(component.form().accountId).toBe(2);
+    expect(component.form().accountId).toBe(usdAccount.id);
     expect(component.form().amount).toBe(120);
     expect(component.form().note).toBe('flight');
     expect(fixture.nativeElement.querySelector('h3').textContent).toContain('Edit Transaction');
   });
 
-  it('emits a save payload carrying the id when saving an edit', async () => {
-    const txn: Transaction = {
-      id: 7,
-      accountId: 1,
-      categoryId: 10,
-      amount: 120,
-      date: new Date('2026-03-10'),
-      period: 3,
-      year: 2026,
-      note: '',
-      exchangeRate: null,
-      baseCurrencyAmount: null,
-      createdAt: new Date(),
-    };
-    fixture.componentRef.setInput('editTransaction', txn);
+  it('saves the edit against the carried id', async () => {
+    const t = await transactionService.create(
+      eurAccount.id!,
+      food.id!,
+      120,
+      new Date('2026-03-10'),
+      3,
+    );
+    fixture.componentRef.setInput('editTransaction', t);
     fixture.detectChanges();
     component.form.update((f) => ({ ...f, amount: 130 }));
 
-    let saved: any;
-    component.save.subscribe((data) => (saved = data));
-    component.onSubmit();
+    let savedWasEdit: boolean | undefined;
+    component.saved.subscribe((wasEdit) => (savedWasEdit = wasEdit));
+    await component.onSubmit();
 
-    expect(saved.id).toBe(7);
-    expect(saved.amount).toBe(130);
+    expect(await transactionService.getAll()).toHaveLength(1);
+    const updated = await transactionService.getById(t.id!);
+    expect(updated!.amount).toBe(130);
+    expect(savedWasEdit).toBe(true);
   });
 
   it('restores a saved draft instead of the stored selection when initialDraft is provided', async () => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ accountId: 2, categoryId: 11 }));
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ accountId: usdAccount.id, categoryId: payroll.id }),
+    );
     fixture.componentRef.setInput('initialDraft', {
       form: {
         ...component.form(),
-        accountId: 1,
-        categoryId: 10,
+        accountId: eurAccount.id,
+        categoryId: food.id,
         amount: 42,
         note: 'cinema tickets',
       },
@@ -320,39 +350,46 @@ describe('QuickAddCardComponent', () => {
     await component.ngOnInit();
 
     expect(component.editingId()).toBeNull();
-    expect(component.form().accountId).toBe(1);
-    expect(component.form().categoryId).toBe(10);
+    expect(component.form().accountId).toBe(eurAccount.id);
+    expect(component.form().categoryId).toBe(food.id);
     expect(component.form().amount).toBe(42);
     expect(component.form().note).toBe('cinema tickets');
   });
 
-  it('restores an edit draft so the payload keeps the id', async () => {
+  it('restores an edit draft so the save keeps the id', async () => {
+    const t = await transactionService.create(
+      eurAccount.id!,
+      food.id!,
+      60,
+      new Date('2026-03-10'),
+      3,
+    );
     fixture.componentRef.setInput('initialDraft', {
       form: {
         ...component.form(),
-        accountId: 2,
-        categoryId: 11,
+        accountId: usdAccount.id,
+        categoryId: payroll.id,
         amount: 60,
         note: 'drafted edit',
         exchangeRate: 1.1,
         baseCurrencyAmount: 66,
       },
-      editingId: 7,
+      editingId: t.id!,
       rateState: { loading: false, error: '', rate: 1.1, date: 'stored' },
     });
 
     await component.ngOnInit();
     fixture.detectChanges();
 
-    expect(component.editingId()).toBe(7);
+    expect(component.editingId()).toBe(t.id);
     expect(component.form().amount).toBe(60);
     expect(component.rateState().rate).toBe(1.1);
 
-    let saved: any;
-    component.save.subscribe((data) => (saved = data));
-    component.onSubmit();
+    await component.onSubmit();
 
-    expect(saved.id).toBe(7);
+    const updated = await transactionService.getById(t.id!);
+    expect(updated!.accountId).toBe(usdAccount.id);
+    expect(updated!.categoryId).toBe(payroll.id);
   });
 
   it('emits close when the user cancels', async () => {
@@ -365,17 +402,20 @@ describe('QuickAddCardComponent', () => {
     expect(closed).toBe(true);
   });
 
-  it('blocks submit while a save is in flight and unblocks after failure', async () => {
+  it('keeps the form values and reports the failure when the save fails', async () => {
     await component.ngOnInit();
-    component.form.update((f) => ({ ...f, amount: 25 }));
+    fixture.detectChanges();
+    component.form.update((f) => ({ ...f, accountId: 999, amount: 25 }));
 
-    component.saving.set(true);
-    expect(component.canSubmit()).toBe(false);
+    let saved = 0;
+    component.saved.subscribe(() => saved++);
+    await component.onSubmit();
 
-    component.markFailed('Boom');
+    expect(saved).toBe(0);
     expect(component.saving()).toBe(false);
     expect(component.canSubmit()).toBe(true);
-    expect(component.errorMessage()).toBe('Boom');
+    expect(component.errorMessage()).toBeTruthy();
+    expect(component.form().amount).toBe(25);
   });
 
   it('explains why the save button is disabled while the form is incomplete', async () => {
@@ -384,10 +424,10 @@ describe('QuickAddCardComponent', () => {
     component.form.update((f) => ({ ...f, accountId: 0 }));
     expect(component.disabledReason()).toBe('Choose an account first.');
 
-    component.form.update((f) => ({ ...f, accountId: 1, categoryId: 0 }));
+    component.form.update((f) => ({ ...f, accountId: eurAccount.id!, categoryId: 0 }));
     expect(component.disabledReason()).toBe('Choose a category first.');
 
-    component.form.update((f) => ({ ...f, categoryId: 10, amount: 0 }));
+    component.form.update((f) => ({ ...f, categoryId: food.id!, amount: 0 }));
     expect(component.disabledReason()).toBe('Enter an amount greater than zero.');
 
     component.form.update((f) => ({ ...f, amount: 25 }));
@@ -396,7 +436,7 @@ describe('QuickAddCardComponent', () => {
 
   it('explains why the save button is disabled while the rate is missing', async () => {
     await component.ngOnInit();
-    component.onAccountChange(2);
+    component.onAccountChange(usdAccount.id!);
     await new Promise((resolve) => setTimeout(resolve, 10));
     component.form.update((f) => ({ ...f, amount: 25 }));
 
@@ -425,44 +465,37 @@ describe('QuickAddCardComponent', () => {
     });
   }
 
-  it('collects no tags in the form or its payload', async () => {
+  it('collects no tags in the form or the saved transaction', async () => {
     await component.ngOnInit();
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelectorAll('.tag')).toHaveLength(0);
     expect(tagControls(fixture.nativeElement)).toHaveLength(0);
     component.form.update((f) => ({ ...f, amount: 25 }));
-    let saved: any;
-    component.save.subscribe((data) => (saved = data));
-    component.onSubmit();
+    await component.onSubmit();
 
-    expect(saved).not.toHaveProperty('tags');
+    const txns = await transactionService.getAll();
+    expect(txns).toHaveLength(1);
+    expect(txns[0]).not.toHaveProperty('tags');
   });
 
-  it('pre-fills an edit without tags and emits a payload without them', async () => {
-    const txn: Transaction = {
-      id: 7,
-      accountId: 2,
-      categoryId: 11,
-      amount: 120,
-      date: new Date('2026-03-10'),
-      period: 3,
-      year: 2026,
-      note: 'flight',
-      exchangeRate: 1.1,
-      baseCurrencyAmount: 132,
-      createdAt: new Date(),
-    };
-    fixture.componentRef.setInput('editTransaction', txn);
+  it('pre-fills an edit without tags and saves none', async () => {
+    const t = await transactionService.create(
+      eurAccount.id!,
+      food.id!,
+      120,
+      new Date('2026-03-10'),
+      3,
+    );
+    fixture.componentRef.setInput('editTransaction', t);
     fixture.detectChanges();
 
     expect(tagControls(fixture.nativeElement)).toHaveLength(0);
-    let saved: any;
-    component.save.subscribe((data) => (saved = data));
-    component.onSubmit();
+    await component.onSubmit();
 
-    expect(saved.id).toBe(7);
-    expect(saved).not.toHaveProperty('tags');
+    const updated = await transactionService.getById(t.id!);
+    expect(updated).toBeTruthy();
+    expect(updated!).not.toHaveProperty('tags');
   });
 });
 
@@ -472,6 +505,9 @@ describe('QuickAddCardComponent - translations', () => {
 
   beforeEach(async () => {
     localStorage.clear();
+    // The previous describe's teardown deleted (and closed) the database;
+    // setLanguage writes the profile, so open a fresh one.
+    await db.open();
     const exchangeRateService = {
       getRate: vi.fn().mockResolvedValue({ rate: 1.08, from: 'USD', to: 'EUR', date: '2026-08-26' }),
     };

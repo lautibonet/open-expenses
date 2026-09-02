@@ -9,7 +9,6 @@ import { CategoryService } from '../../core/services/category.service';
 import { ProfileService } from '../../core/services/profile.service';
 import { CaptureFormService } from '../../core/services/capture-form.service';
 import { DataVersionService } from '../../core/services/data-version.service';
-import { TranslationError, errorCopy } from '../../core/models/translation-error';
 import { Transaction } from '../../core/models/transaction.model';
 import { Transfer } from '../../core/models/transfer.model';
 import { Account } from '../../core/models/account.model';
@@ -21,61 +20,28 @@ import {
   defaultScope,
   getCurrentPeriod,
   getCurrentYear,
-  getPeriodYear,
   isMonthNumber,
   isValidYear,
-  periodYearFromDate,
   scopeOptionsFromMovements,
 } from '../../core/types/period.type';
 import { LanguageService } from '../../core/services/language.service';
 import { BottomSheetComponent } from '../../shared/components/bottom-sheet/bottom-sheet.component';
 import {
-  ExchangeRateWellComponent,
-  ExchangeRateWellLabels,
-  RateSeed,
-  RateState,
-} from '../../shared/components/exchange-rate-well/exchange-rate-well.component';
-import {
   QuickAddCardComponent,
   QuickAddDraft,
-  TransactionFormPayload,
 } from './quick-add-card/quick-add-card.component';
+import {
+  TransferFormComponent,
+  TransferDraft,
+} from './transfer-form/transfer-form.component';
 import {
   NetFlowCardComponent,
   MovementItem,
 } from './net-flow-card/net-flow-card.component';
 
-const EMPTY_RATE_STATE: RateState = { loading: false, error: '', rate: null, date: '' };
-
-/* The well renders the Transfer Form's own copy; the aria labels are shared
-   with the Transaction Form's generic rate-field labels. */
-const TRANSFER_RATE_LABELS: ExchangeRateWellLabels = {
-  heading: 'movements.exchangeRate',
-  fetching: 'movements.fetchingRate',
-  pair: 'movements.exchangeRatePair',
-  equivalent: 'movements.destAmount',
-  suggested: 'movements.suggestedRate',
-  rateAria: 'quickAdd.exchangeRateAria',
-  equivalentAria: 'quickAdd.equivalentAria',
-  errorOffline: 'movements.error.offlineRate',
-  errorFetch: 'movements.error.rateFetch',
-};
-
 interface PendingDelete {
   item: MovementItem;
   snapshot: Transaction | Transfer;
-}
-
-interface TransferForm {
-  sourceAccountId: number;
-  destAccountId: number;
-  sourceAmount: number;
-  destinationAmount: number;
-  exchangeRate: number;
-  date: string;
-  period: MonthNumber;
-  year: number;
-  note: string;
 }
 
 interface MovementDaySection {
@@ -96,25 +62,9 @@ function localDayKey(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-function defaultTransferForm(accounts: Account[]): TransferForm {
-  const sourceAccountId = accounts[0]?.id ?? 0;
-  const destAccountId = accounts[1]?.id ?? accounts[0]?.id ?? 0;
-  const date = new Date().toISOString().split('T')[0];
-  return {
-    sourceAccountId,
-    destAccountId,
-    sourceAmount: 0,
-    destinationAmount: 0,
-    exchangeRate: 1,
-    date,
-    ...periodYearFromDate(date),
-    note: '',
-  };
-}
-
 @Component({
   selector: 'app-movements',
-  imports: [FormsModule, DatePipe, NgTemplateOutlet, QuickAddCardComponent, NetFlowCardComponent, BottomSheetComponent, ExchangeRateWellComponent],
+  imports: [FormsModule, DatePipe, NgTemplateOutlet, QuickAddCardComponent, TransferFormComponent, NetFlowCardComponent, BottomSheetComponent],
   templateUrl: './movements.component.html',
   styleUrl: './movements.component.scss',
   host: { '(document:keydown)': 'onDocKeydown($event)' },
@@ -145,8 +95,10 @@ export class MovementsComponent implements OnInit, OnDestroy {
   baseCurrency = signal('EUR');
 
   showForm = signal<'none' | 'transfer' | 'transaction'>('none');
-  editingId = signal<number | null>(null);
+  editTransaction = signal<Transaction | null>(null);
+  editTransfer = signal<Transfer | null>(null);
   quickAddRestore = signal<QuickAddDraft | null>(null);
+  transferRestore = signal<TransferDraft | null>(null);
 
   /* Mobile regime (#103, #104): below the 768px breakpoint both capture forms
      render inside a bottom sheet instead of the inline form card. Desktop
@@ -175,57 +127,6 @@ export class MovementsComponent implements OnInit, OnDestroy {
   undoWindowMs = 10000;
   private undoHandle: ReturnType<typeof setTimeout> | null = null;
 
-  transferExchangeRateState = signal<RateState>({ ...EMPTY_RATE_STATE });
-  transferRateSeed = signal<RateSeed | null>(null);
-  transferRateLabels = TRANSFER_RATE_LABELS;
-
-  trForm = signal<TransferForm>({
-    sourceAccountId: 0,
-    destAccountId: 0,
-    sourceAmount: 0,
-    destinationAmount: 0,
-    exchangeRate: 1,
-    date: new Date().toISOString().split('T')[0],
-    ...periodYearFromDate(new Date()),
-    note: '',
-  });
-  errorMessage = signal('');
-  errorDetail = signal('');
-  transferSaving = signal(false);
-
-  editTransaction = signal<Transaction | null>(null);
-
-  canSubmitTransfer = computed(() => {
-    const f = this.trForm();
-    if (!f.sourceAccountId || !f.destAccountId) return false;
-    if (f.sourceAccountId === f.destAccountId) return false;
-    if (!(f.sourceAmount > 0)) return false;
-    if (this.isTransferForeignCurrency() && this.transferExchangeRateState().loading) return false;
-    return !this.transferSaving();
-  });
-
-  transferDisabledReason = computed(() => {
-    if (this.transferSaving()) return '';
-    const f = this.trForm();
-    if (!f.sourceAccountId || !f.destAccountId) {
-      return this.language.t('movements.saveDisabled.accounts');
-    }
-    if (f.sourceAccountId === f.destAccountId) {
-      return this.language.t('movements.saveDisabled.distinct');
-    }
-    if (!(f.sourceAmount > 0)) return this.language.t('movements.saveDisabled.amount');
-    if (this.isTransferForeignCurrency() && this.transferExchangeRateState().loading) {
-      return this.language.t('movements.saveDisabled.rate');
-    }
-    return '';
-  });
-
-  filteredDestinationAccounts = computed(() => {
-    const sourceId = this.trForm().sourceAccountId;
-    if (!sourceId) return this.accounts();
-    return this.accounts().filter((a) => a.id !== sourceId);
-  });
-
   filterCategory = signal<number | null>(null);
   filterAccount = signal<number | null>(null);
   searchQuery = signal('');
@@ -236,6 +137,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
   filtersExpanded = signal(false);
 
   quickAddCard = viewChild(QuickAddCardComponent);
+  transferFormCard = viewChild(TransferFormComponent);
 
   onDocKeydown(e: KeyboardEvent): void {
     if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return;
@@ -269,27 +171,12 @@ export class MovementsComponent implements OnInit, OnDestroy {
       this.toggleTransferForm();
     }
   }
-  transferHeading = viewChild<ElementRef<HTMLHeadingElement>>('transferHeading');
 
   deleteConfirmButton = viewChild<ElementRef<HTMLButtonElement>>('deleteConfirmBtn');
 
   private focusDeleteConfirm = effect(() => {
     if (this.confirmingDelete()) {
       this.deleteConfirmButton()?.nativeElement.focus();
-    }
-  });
-
-  private focusTransferForm = effect(() => {
-    const heading = this.transferHeading();
-    if (heading) {
-      const el = heading.nativeElement;
-      /* Hosted in the mobile capture sheet (#104): the sheet already covers
-         the screen, so the heading's scroll-into-view must not scroll the
-         page behind it. */
-      if (!this.isMobileLayout() && typeof el.scrollIntoView === 'function') {
-        el.scrollIntoView({ behavior: this.prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
-      }
-      el.focus();
     }
   });
 
@@ -470,11 +357,6 @@ export class MovementsComponent implements OnInit, OnDestroy {
       this.accounts.set(await this.accountService.getActive());
       this.categories.set(await this.categoryService.getActive());
       this.allCategoriesForNameResolution.set(await this.categoryService.getAll());
-      if (this.accounts().length > 0) {
-        const first = this.accounts()[0].id!;
-        const second = this.accounts()[1]?.id;
-        this.trForm.update((f) => ({ ...f, sourceAccountId: first, destAccountId: second ?? first }));
-      }
       await this.refresh();
       await this.applyScopeOptions();
     } finally {
@@ -562,16 +444,30 @@ export class MovementsComponent implements OnInit, OnDestroy {
     }
   }
 
+  /* The form (and its well) is destroyed on close; if the draft continues,
+     the captured draft seeds the reopened form — including its edit context
+     and the captured rate state. */
   closeTransferForm(): void {
-    /* The form (and its well) is destroyed on close; if the draft continues,
-       seed the reopened well with the captured rate state. */
-    const s = this.transferExchangeRateState();
-    this.transferRateSeed.set({
-      rate: s.rate,
-      date: s.date,
-      error: s.error || undefined,
-    });
+    this.captureTransferDraft();
     this.showForm.set('none');
+  }
+
+  /* Full reset: a cancelled or saved transfer never resumes as a draft. */
+  cancelTransferForm(): void {
+    this.transferRestore.set(null);
+    this.editTransfer.set(null);
+    this.showForm.set('none');
+  }
+
+  private captureTransferDraft(): void {
+    const form = this.transferFormCard();
+    if (!form) return;
+    const draft = form.draft();
+    this.transferRestore.set({
+      ...draft,
+      rateState: { ...draft.rateState, loading: false },
+    });
+    this.editTransfer.set(null);
   }
 
   private captureQuickAddDraft(): void {
@@ -584,62 +480,15 @@ export class MovementsComponent implements OnInit, OnDestroy {
     });
   }
 
-  private transferDraftInProgress(): boolean {
-    if (this.editingId() !== null) return true;
-    const f = this.trForm();
-    const d = defaultTransferForm(this.accounts());
-    return (
-      f.sourceAccountId !== d.sourceAccountId ||
-      f.destAccountId !== d.destAccountId ||
-      f.sourceAmount !== d.sourceAmount ||
-      f.destinationAmount !== d.destinationAmount ||
-      f.exchangeRate !== d.exchangeRate ||
-      f.date !== d.date ||
-      f.period !== d.period ||
-      f.year !== d.year ||
-      f.note !== d.note
-    );
-  }
-
-  openTransferForm(id?: number): void {
+  openTransferForm(transfer?: Transfer): void {
     if (this.showForm() === 'transaction') {
       this.captureQuickAddDraft();
     }
-    this.showForm.set('transfer');
-    this.editTransaction.set(null);
-    this.errorMessage.set('');
-    this.errorDetail.set('');
-    if (id) {
-      this.editingId.set(id);
-      this.transferRateSeed.set(null);
-      this.transferService.getById(id).then((t) => {
-        if (t) {
-          this.trForm.set({
-            sourceAccountId: t.sourceAccountId,
-            destAccountId: t.destinationAccountId,
-            sourceAmount: t.sourceAmount,
-            destinationAmount: t.destinationAmount,
-            exchangeRate: t.exchangeRate,
-            date: new Date(t.date).toISOString().split('T')[0],
-            period: t.period,
-            year: getPeriodYear(t),
-            note: t.note,
-          });
-          const src = this.accounts().find((a) => a.id === t.sourceAccountId);
-          const dst = this.accounts().find((a) => a.id === t.destinationAccountId);
-          if (src && dst && src.currency !== dst.currency) {
-            this.transferRateSeed.set({ rate: t.exchangeRate, date: 'stored' });
-          }
-        }
-      });
-    } else if (!this.transferDraftInProgress()) {
-      this.transferRateSeed.set(null);
-      this.resetTransferForm();
+    if (transfer) {
+      this.transferRestore.set(null);
     }
-  }
-
-  private resetTransferForm(): void {
-    this.trForm.set(defaultTransferForm(this.accounts()));
+    this.editTransfer.set(transfer ?? null);
+    this.showForm.set('transfer');
   }
 
   toggleQuickAdd(): void {
@@ -673,182 +522,38 @@ export class MovementsComponent implements OnInit, OnDestroy {
     this.quickAddRestore.set(null);
   }
 
-  cancelForm(): void {
-    this.showForm.set('none');
-    this.editingId.set(null);
-    this.editTransaction.set(null);
-    this.errorMessage.set('');
-    this.errorDetail.set('');
-    this.transferExchangeRateState.set({ ...EMPTY_RATE_STATE });
-    this.transferRateSeed.set(null);
-    this.resetTransferForm();
-  }
-
   clearFilters(): void {
     this.filterCategory.set(null);
     this.filterAccount.set(null);
     this.searchQuery.set('');
   }
 
-  onTransferSourceChange(sourceId: number): void {
-    this.trForm.update((f) => {
-      const destAccountId = f.destAccountId === sourceId ? 0 : f.destAccountId;
-      return { ...f, sourceAccountId: sourceId, destAccountId };
-    });
-  }
-
-  onTransferDateChange(date: string): void {
-    this.trForm.update((f) => ({ ...f, date, ...periodYearFromDate(date) }));
-  }
-
-  isTransferForeignCurrency(): boolean {
-    const { src, dst } = this.getTransferAccounts();
-    return !!src && !!dst && src.currency !== dst.currency;
-  }
-
-  getTransferSourceCurrency(): string {
-    return this.getTransferAccounts().src?.currency ?? '';
-  }
-
-  getTransferDestCurrency(): string {
-    return this.getTransferAccounts().dst?.currency ?? '';
-  }
-
-  private getTransferAccounts(): { src: Account | undefined; dst: Account | undefined } {
-    const f = this.trForm();
-    return {
-      src: this.accounts().find((a) => a.id === f.sourceAccountId),
-      dst: this.accounts().find((a) => a.id === f.destAccountId),
-    };
-  }
-
-  onTransferAmountOrRateChange(): void {
-    this.computeTransferDestinationAmount();
-  }
-
-  onTransferRateStateChange(state: RateState): void {
-    this.transferExchangeRateState.set(state);
-    if (state.rate !== null) {
-      this.trForm.update((f) => ({ ...f, exchangeRate: state.rate! }));
-    }
-    this.computeTransferDestinationAmount();
-  }
-
-  private computeTransferDestinationAmount(): void {
-    const f = this.trForm();
-    const destAmount = Math.round(f.sourceAmount * f.exchangeRate * 100) / 100;
-    this.trForm.update((form) => ({ ...form, destinationAmount: destAmount }));
-  }
-
   getAccountCurrency(accountId: number): string {
     return this.accounts().find((a) => a.id === accountId)?.currency ?? '';
   }
 
-  async saveTransfer(): Promise<void> {
-    if (!this.canSubmitTransfer()) return;
-    this.transferSaving.set(true);
-    try {
-      const f = this.trForm();
-      const wasEdit = this.editingId() !== null;
-      if (this.editingId()) {
-        await this.transferService.update(this.editingId()!, {
-          sourceAccountId: f.sourceAccountId,
-          destinationAccountId: f.destAccountId,
-          sourceAmount: f.sourceAmount,
-          destinationAmount: f.destinationAmount,
-          exchangeRate: f.exchangeRate,
-          date: new Date(f.date),
-          period: f.period,
-          year: f.year,
-          note: f.note,
-        });
-      } else {
-        await this.transferService.create(
-          f.sourceAccountId,
-          f.destAccountId,
-          f.sourceAmount,
-          new Date(f.date),
-          f.period,
-          f.note,
-          f.exchangeRate,
-          f.year,
-        );
-      }
-      this.cancelForm();
-      await this.refresh();
-      await this.applyScopeOptions();
-      this.movementAnnouncement.set(
-        wasEdit
-          ? this.language.t('movements.announcement.transferUpdated')
-          : this.language.t('movements.announcement.transferSaved'),
-      );
-    } catch (e: unknown) {
-      this.setTransferError(e);
-    } finally {
-      this.transferSaving.set(false);
-    }
-  }
-
-  private setTransferError(e: unknown): void {
-    this.errorMessage.set(
-      errorCopy(e, this.language.translateFn, 'movements.error.saveFailed'),
-    );
-    this.errorDetail.set(
-      e instanceof TranslationError ? '' : e instanceof Error ? e.message : String(e),
+  /* Each capture form persists through its own store and reports whether the
+     save was an edit; the page only closes the form, refreshes the list, and
+     announces the result. */
+  async onTransferSaved(wasEdit: boolean): Promise<void> {
+    this.cancelTransferForm();
+    await this.refresh();
+    await this.applyScopeOptions();
+    this.movementAnnouncement.set(
+      wasEdit
+        ? this.language.t('movements.announcement.transferUpdated')
+        : this.language.t('movements.announcement.transferSaved'),
     );
   }
 
-  async onSaveTransaction(payload: TransactionFormPayload): Promise<void> {
-    try {      if (payload.id != null) {
-        await this.transactionService.update(payload.id, {
-          accountId: payload.accountId,
-          categoryId: payload.categoryId,
-          amount: payload.amount,
-          date: new Date(payload.date),
-          period: payload.period,
-          year: payload.year,
-          exchangeRate: payload.exchangeRate,
-          baseCurrencyAmount: payload.baseCurrencyAmount,
-          note: payload.note,
-        });
-      } else {
-        await this.transactionService.create(
-          payload.accountId,
-          payload.categoryId,
-          payload.amount,
-          new Date(payload.date),
-          payload.period,
-          payload.exchangeRate,
-          payload.baseCurrencyAmount,
-          payload.year,
-          payload.note,
-        );
-      }
-      const wasEdit = payload.id != null;
-      this.closeQuickAdd();
-      await this.refresh();
-      await this.applyScopeOptions();
-      this.movementAnnouncement.set(
-        wasEdit
-          ? this.language.t('movements.announcement.transactionUpdated')
-          : this.language.t('movements.announcement.transactionSaved'),
-      );
-    } catch (e: unknown) {
-      const message = this.setTransactionError(e);
-      const card = this.quickAddCard();
-      if (card) {
-        card.markFailed(message);
-      } else {
-        this.movementAnnouncement.set(message);
-      }
-    }
-  }
-
-  private setTransactionError(e: unknown): string {
-    return errorCopy(
-      e,
-      this.language.translateFn,
-      'quickAdd.error.failedToSave',
+  async onTransactionSaved(wasEdit: boolean): Promise<void> {
+    this.closeQuickAdd();
+    await this.refresh();
+    await this.applyScopeOptions();
+    this.movementAnnouncement.set(
+      wasEdit
+        ? this.language.t('movements.announcement.transactionUpdated')
+        : this.language.t('movements.announcement.transactionSaved'),
     );
   }
 

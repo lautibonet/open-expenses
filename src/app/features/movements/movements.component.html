@@ -71,7 +71,7 @@
     @if (isMobileLayout()) {
       <app-bottom-sheet
         [label]="language.t('movements.transferSheetAria')"
-        (dismissed)="cancelForm()"
+        (dismissed)="cancelTransferForm()"
       >
         <ng-container [ngTemplateOutlet]="transferForm" />
       </app-bottom-sheet>
@@ -81,113 +81,14 @@
   }
 
   <ng-template #transferForm>
-    <div class="form-card">
-      <h3 #transferHeading tabindex="-1">
-        {{ editingId() ? language.t('movements.editTransferTitle') : language.t('movements.newTransferTitle') }}
-      </h3>
-      @if (accounts().length < 2) {
-        <p class="form-hint">
-          {{ language.t('movements.transferNeedsTwoAccounts') }}
-        </p>
-      }
-      <div class="form-grid">
-        <label>
-          {{ language.t('movements.from') }}
-          <select
-            [ngModel]="trForm().sourceAccountId"
-            (ngModelChange)="onTransferSourceChange(+$event)"
-          >
-            @for (acc of accounts(); track acc.id) {
-              <option [value]="acc.id">{{ acc.name }}</option>
-            }
-          </select>
-        </label>
-        <label>
-          {{ language.t('movements.to') }}
-          <select
-            [ngModel]="trForm().destAccountId"
-            (ngModelChange)="trForm.update((f) => ({ ...f, destAccountId: +$event }))"
-          >
-            @for (acc of filteredDestinationAccounts(); track acc.id) {
-              <option [value]="acc.id">{{ acc.name }}</option>
-            }
-          </select>
-        </label>
-        <label>
-          {{ language.t('movements.amountWithCurrency', { currency: getTransferSourceCurrency() }) }}
-          <input
-            type="number"
-            min="0.01"
-            [ngModel]="trForm().sourceAmount"
-            (ngModelChange)="
-              trForm.update((f) => ({ ...f, sourceAmount: +$event }));
-              onTransferAmountOrRateChange()
-            "
-          />
-        </label>
-        <label>
-          {{ language.t('movements.date') }}
-          <input
-            type="date"
-            [ngModel]="trForm().date"
-            (ngModelChange)="onTransferDateChange($event)"
-          />
-        </label>
-        <label>
-          {{ language.t('movements.period') }}
-          <select
-            [ngModel]="trForm().period"
-            (ngModelChange)="trForm.update((f) => ({ ...f, period: $event }))"
-          >
-            @for (month of months; track month) {
-              <option [ngValue]="month">{{ language.monthName(month) }}</option>
-            }
-          </select>
-        </label>
-        <label>
-          {{ language.t('movements.year') }}
-          <select
-            [ngModel]="trForm().year"
-            (ngModelChange)="trForm.update((f) => ({ ...f, year: +$event }))"
-          >
-            @for (yr of years; track yr) {
-              <option [value]="yr">{{ yr }}</option>
-            }
-          </select>
-        </label>
-        <label>
-          {{ language.t('movements.note') }}
-          <input
-            type="text"
-            [ngModel]="trForm().note"
-            (ngModelChange)="trForm.update((f) => ({ ...f, note: $event }))"
-          />
-        </label>
-      </div>
-
-      <app-exchange-rate-well
-        [from]="getTransferSourceCurrency()"
-        [to]="getTransferDestCurrency()"
-        [date]="trForm().date"
-        [seed]="transferRateSeed()"
-        [equivalent]="trForm().destinationAmount"
-        [labels]="transferRateLabels"
-        (stateChange)="onTransferRateStateChange($event)"
-      />
-
-      @if (errorMessage()) {
-        <p class="error" [title]="errorDetail()">{{ errorMessage() }}</p>
-      }
-      <div class="form-actions">
-        @if (transferDisabledReason(); as reason) {
-          <p class="save-hint" role="status">{{ reason }}</p>
-        }
-        <button class="btn" (click)="cancelForm()">{{ language.t('movements.cancel') }}</button>
-        <button class="btn primary" (click)="saveTransfer()" [disabled]="!canSubmitTransfer()">
-          {{ language.t('movements.save') }}
-        </button>
-      </div>
-    </div>
+    <app-transfer-form
+      [accounts]="accounts()"
+      [editTransfer]="editTransfer()"
+      [initialDraft]="transferRestore()"
+      [inSheet]="isMobileLayout()"
+      (saved)="onTransferSaved($event)"
+      (close)="cancelTransferForm()"
+    />
   </ng-template>
 
   @if (showForm() === 'transaction') {
@@ -211,7 +112,7 @@
       [editTransaction]="editTransaction()"
       [initialDraft]="quickAddRestore()"
       [inSheet]="isMobileLayout()"
-      (save)="onSaveTransaction($event)"
+      (saved)="onTransactionSaved($event)"
       (close)="closeQuickAdd()"
     />
   </ng-template>
@@ -479,7 +380,7 @@
                   } @else {
                     <button
                       class="btn small icon-btn"
-                      (click)="openTransferForm(tr.id!)"
+                      (click)="openTransferForm(tr)"
                       [attr.aria-label]="language.t('movements.editMovementAria')"
                       [title]="language.t('movements.editMovementAria')"
                     >
