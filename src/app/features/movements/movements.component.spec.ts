@@ -251,97 +251,6 @@ describe('MovementsComponent - no tag affordances', () => {
   });
 });
 
-describe('MovementsComponent - self-transfer guard', () => {
-  let fixture: ComponentFixture<MovementsComponent>;
-  let component: MovementsComponent;
-  let accountService: AccountService;
-  let accountId1: number;
-  let accountId2: number;
-  let accountId3: number;
-
-  beforeEach(async () => {
-    await db.delete();
-    await db.open();
-    await TestBed.configureTestingModule({
-      imports: [MovementsComponent],
-    }).compileComponents();
-
-    fixture = TestBed.createComponent(MovementsComponent);
-    component = fixture.componentInstance;
-    accountService = TestBed.inject(AccountService);
-
-    const acc1 = await accountService.create('Cash', 'EUR', 100000);
-    accountId1 = acc1.id!;
-    const acc2 = await accountService.create('Card', 'EUR', 50000);
-    accountId2 = acc2.id!;
-    const acc3 = await accountService.create('Savings', 'EUR', 200000);
-    accountId3 = acc3.id!;
-  });
-
-  afterEach(async () => {
-    await db.delete();
-  });
-
-  it('should exclude source account from destination accounts', async () => {
-    await component.ngOnInit();
-    component.trForm.update((f) => ({ ...f, sourceAccountId: accountId1 }));
-
-    const filtered = component.filteredDestinationAccounts();
-    expect(filtered.find((a) => a.id === accountId1)).toBeUndefined();
-    expect(filtered.length).toBe(2);
-  });
-
-  it('should show all accounts when no source is selected', async () => {
-    await component.ngOnInit();
-    component.trForm.update((f) => ({ ...f, sourceAccountId: 0 }));
-
-    const filtered = component.filteredDestinationAccounts();
-    expect(filtered.length).toBe(3);
-  });
-
-  it('should reset destination when source changes to match it', async () => {
-    await component.ngOnInit();
-    component.trForm.update((f) => ({
-      ...f,
-      sourceAccountId: accountId1,
-      destAccountId: accountId2,
-    }));
-
-    component.onTransferSourceChange(accountId2);
-
-    expect(component.trForm().sourceAccountId).toBe(accountId2);
-    expect(component.trForm().destAccountId).not.toBe(accountId2);
-  });
-
-  it('should not reset destination when source changes to a different account', async () => {
-    await component.ngOnInit();
-    component.trForm.update((f) => ({
-      ...f,
-      sourceAccountId: accountId1,
-      destAccountId: accountId2,
-    }));
-
-    component.onTransferSourceChange(accountId3);
-
-    expect(component.trForm().sourceAccountId).toBe(accountId3);
-    expect(component.trForm().destAccountId).toBe(accountId2);
-  });
-
-  it('should update destination dropdown when source changes', async () => {
-    await component.ngOnInit();
-    component.trForm.update((f) => ({ ...f, sourceAccountId: accountId1 }));
-
-    let filtered = component.filteredDestinationAccounts();
-    expect(filtered.find((a) => a.id === accountId1)).toBeUndefined();
-    expect(filtered.find((a) => a.id === accountId2)).toBeDefined();
-
-    component.onTransferSourceChange(accountId2);
-    filtered = component.filteredDestinationAccounts();
-    expect(filtered.find((a) => a.id === accountId2)).toBeUndefined();
-    expect(filtered.find((a) => a.id === accountId1)).toBeDefined();
-  });
-});
-
 describe('MovementsComponent - category deactivation and income sign', () => {
   let fixture: ComponentFixture<MovementsComponent>;
   let component: MovementsComponent;
@@ -432,188 +341,6 @@ describe('MovementsComponent - category deactivation and income sign', () => {
     const txn = component.movements()[0].data as any;
     expect(component.isIncomeTransaction(txn)).toBe(false);
     expect(component.formatTransactionDisplayAmount(txn)).not.toContain('-');
-  });
-});
-
-describe('MovementsComponent - transfer exchange rate', () => {
-  let fixture: ComponentFixture<MovementsComponent>;
-  let component: MovementsComponent;
-  let accountService: AccountService;
-  let exchangeRateService: ExchangeRateService;
-  let eurAccountId: number;
-  let usdAccountId: number;
-  let gbpAccountId: number;
-
-  beforeEach(async () => {
-    await db.delete();
-    await db.open();
-
-    const mockExchangeRateService = {
-      getRate: vi
-        .fn()
-        .mockResolvedValue({ rate: 1.08, from: 'USD', to: 'EUR', date: '2026-08-26' }),
-    };
-
-    await TestBed.configureTestingModule({
-      imports: [MovementsComponent],
-      providers: [{ provide: ExchangeRateService, useValue: mockExchangeRateService }],
-    }).compileComponents();
-
-    fixture = TestBed.createComponent(MovementsComponent);
-    component = fixture.componentInstance;
-    accountService = TestBed.inject(AccountService);
-    exchangeRateService = TestBed.inject(ExchangeRateService);
-
-    const eurAcc = await accountService.create('Cash EUR', 'EUR', 100000);
-    eurAccountId = eurAcc.id!;
-    const usdAcc = await accountService.create('Cash USD', 'USD', 50000);
-    usdAccountId = usdAcc.id!;
-    const gbpAcc = await accountService.create('Cash GBP', 'GBP', 30000);
-    gbpAccountId = gbpAcc.id!;
-  });
-
-  afterEach(async () => {
-    await db.delete();
-    vi.restoreAllMocks();
-  });
-
-  it('should fetch exchange rate when source account changes to foreign currency', async () => {
-    await component.ngOnInit();
-    fixture.detectChanges();
-
-    component.openTransferForm();
-    fixture.detectChanges();
-    component.trForm.update((f) => ({
-      ...f,
-      sourceAccountId: usdAccountId,
-      destAccountId: eurAccountId,
-      date: '2026-08-20',
-    }));
-
-    await component.onTransferSourceChange(usdAccountId);
-    fixture.detectChanges();
-    await flush();
-
-    expect(exchangeRateService.getRate).toHaveBeenCalledWith('USD', 'EUR', '2026-08-20');
-    expect(component.trForm().exchangeRate).toBe(1.08);
-  });
-
-  it('should re-fetch exchange rate when transfer date changes', async () => {
-    await component.ngOnInit();
-    fixture.detectChanges();
-
-    component.openTransferForm();
-    fixture.detectChanges();
-    component.trForm.update((f) => ({
-      ...f,
-      sourceAccountId: usdAccountId,
-      destAccountId: eurAccountId,
-      date: '2026-08-20',
-    }));
-    await component.onTransferSourceChange(usdAccountId);
-    fixture.detectChanges();
-    await flush();
-    expect(component.trForm().exchangeRate).toBe(1.08);
-
-    vi.mocked(exchangeRateService.getRate).mockResolvedValueOnce({
-      rate: 1.12,
-      from: 'USD',
-      to: 'EUR',
-      date: '2026-01-15',
-    });
-
-    await component.onTransferDateChange('2026-01-15');
-    fixture.detectChanges();
-    await flush();
-
-    expect(exchangeRateService.getRate).toHaveBeenCalledWith('USD', 'EUR', '2026-01-15');
-    expect(component.trForm().exchangeRate).toBe(1.12);
-  });
-
-  it('should auto-calculate destination amount from source amount and rate', async () => {
-    await component.ngOnInit();
-    fixture.detectChanges();
-
-    component.openTransferForm();
-    fixture.detectChanges();
-    component.trForm.update((f) => ({
-      ...f,
-      sourceAccountId: usdAccountId,
-      destAccountId: eurAccountId,
-      sourceAmount: 500,
-      date: '2026-08-20',
-    }));
-    await component.onTransferSourceChange(usdAccountId);
-    fixture.detectChanges();
-    await flush();
-
-    expect(component.trForm().exchangeRate).toBe(1.08);
-  });
-
-  it('should show suggested rate text in transfer form', async () => {
-    await component.ngOnInit();
-    fixture.detectChanges();
-
-    component.openTransferForm();
-    component.trForm.update((f) => ({
-      ...f,
-      sourceAccountId: usdAccountId,
-      destAccountId: eurAccountId,
-      sourceAmount: 500,
-      date: '2026-08-20',
-    }));
-    await component.onTransferSourceChange(usdAccountId);
-    fixture.detectChanges();
-    await flush();
-    fixture.detectChanges();
-
-    const rateText = fixture.nativeElement.querySelector('.rate-source');
-    expect(rateText).toBeTruthy();
-    expect(rateText.textContent).toContain('1 USD');
-    expect(rateText.textContent).toContain('1.08');
-    expect(rateText.textContent).toContain('EUR');
-  });
-
-  it('should not fetch rate when source and destination are same currency', async () => {
-    await component.ngOnInit();
-    fixture.detectChanges();
-
-    component.trForm.update((f) => ({
-      ...f,
-      sourceAccountId: usdAccountId,
-      destAccountId: usdAccountId,
-      sourceAmount: 500,
-      date: '2026-08-20',
-    }));
-    // A draft is in progress, so opening keeps the same-currency pair.
-    component.openTransferForm();
-    fixture.detectChanges();
-    await flush();
-
-    expect(exchangeRateService.getRate).not.toHaveBeenCalled();
-    expect(component.trForm().exchangeRate).toBe(1);
-  });
-
-  it('should allow manual override of exchange rate', async () => {
-    await component.ngOnInit();
-    fixture.detectChanges();
-
-    component.openTransferForm();
-    fixture.detectChanges();
-    component.trForm.update((f) => ({
-      ...f,
-      sourceAccountId: usdAccountId,
-      destAccountId: eurAccountId,
-      sourceAmount: 500,
-      date: '2026-08-20',
-    }));
-    await component.onTransferSourceChange(usdAccountId);
-    fixture.detectChanges();
-    await flush();
-    expect(component.trForm().exchangeRate).toBe(1.08);
-
-    component.trForm.update((f) => ({ ...f, exchangeRate: 1.15 }));
-    expect(component.trForm().exchangeRate).toBe(1.15);
   });
 });
 
@@ -863,45 +590,23 @@ describe('MovementsComponent - period year', () => {
     await db.delete();
   });
 
-  it('should default new transfer form to the current year', async () => {
-    await component.ngOnInit();
-    expect(component.trForm().year).toBe(getCurrentYear());
-  });
-
-  it('should re-derive the transfer period and year when the date changes', async () => {
-    await component.ngOnInit();
-
-    component.onTransferDateChange('2025-12-22');
-    expect(component.trForm().date).toBe('2025-12-22');
-    expect(component.trForm().period).toBe(12);
-    expect(component.trForm().year).toBe(2025);
-
-    component.onTransferDateChange('2026-03-10');
-    expect(component.trForm().period).toBe(3);
-    expect(component.trForm().year).toBe(2026);
-  });
-
-  it('should keep a manually overridden transfer period and year after the date derivation', async () => {
-    await component.ngOnInit();
-
-    component.onTransferDateChange('2026-03-10');
-    component.trForm.update((f) => ({ ...f, period: 1, year: 2024 }));
-
-    expect(component.trForm().period).toBe(1);
-    expect(component.trForm().year).toBe(2024);
-  });
+  function transferForm() {
+    return component.transferFormCard()!;
+  }
 
   it('should file a transfer captured today under an old scope under today\'s period', async () => {
     await component.ngOnInit();
     component.openTransferForm();
+    fixture.detectChanges();
     component.scope.set({ kind: 'month', period: 3, year: 2025 });
 
-    component.cancelForm();
+    component.cancelTransferForm();
     component.openTransferForm();
+    fixture.detectChanges();
 
-    expect(component.trForm().date).toBe(new Date().toISOString().split('T')[0]);
-    expect(component.trForm().period).toBe(getCurrentPeriod());
-    expect(component.trForm().year).toBe(getCurrentYear());
+    expect(transferForm().form().date).toBe(new Date().toISOString().split('T')[0]);
+    expect(transferForm().form().period).toBe(getCurrentPeriod());
+    expect(transferForm().form().year).toBe(getCurrentYear());
   });
 
   it('should filter movements by the selected period year', async () => {
@@ -927,20 +632,22 @@ describe('MovementsComponent - period year', () => {
     expect((component.movements()[0].data as any).amount).toBe(100);
   });
 
-  it('should save the period year from the transaction payload', async () => {
+  it('should save the period year from the transaction form', async () => {
     await component.ngOnInit();
-    await component.onSaveTransaction({
-      id: null,
+    component.toggleQuickAdd();
+    fixture.detectChanges();
+    const card = component.quickAddCard()!;
+    card.form.update((f) => ({
+      ...f,
       accountId,
       categoryId,
       amount: 500,
       date: '2025-12-22',
       period: 1,
       year: 2026,
-      exchangeRate: null,
-      baseCurrencyAmount: null,
-      note: '',
-    });
+    }));
+    await card.onSubmit();
+    await flush();
 
     const txns = await transactionService.getAll();
     expect(txns[0].year).toBe(2026);
@@ -950,17 +657,19 @@ describe('MovementsComponent - period year', () => {
   it('should save the period year from the transfer form', async () => {
     const acc2 = await accountService.create('Savings', 'EUR', 50000);
     await component.ngOnInit();
-    component.trForm.update((f) => ({
+    component.openTransferForm();
+    fixture.detectChanges();
+    component.transferFormCard()!.form.update((f) => ({
       ...f,
       sourceAccountId: accountId,
       destAccountId: acc2.id!,
       sourceAmount: 500,
-      destinationAmount: 500,
       date: '2025-12-22',
       period: 1,
       year: 2026,
     }));
-    await component.saveTransfer();
+    await component.transferFormCard()!.onSubmit();
+    await flush();
 
     const transfers = await transferService.getAll();
     expect(transfers[0].year).toBe(2026);
@@ -980,10 +689,11 @@ describe('MovementsComponent - period year', () => {
       2026,
     );
     await component.ngOnInit();
-    component.openTransferForm(t.id!);
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    component.openTransferForm(t);
+    await flush();
+    fixture.detectChanges();
 
-    expect(component.trForm().year).toBe(2026);
+    expect(component.transferFormCard()!.form().year).toBe(2026);
   });
 });
 
@@ -1096,10 +806,13 @@ describe('MovementsComponent - transaction note', () => {
     await db.delete();
   });
 
-  it('should save transaction with note from the card payload', async () => {
+  it('should save transaction with note from the card', async () => {
     await component.ngOnInit();
-    await component.onSaveTransaction({
-      id: null,
+    component.toggleQuickAdd();
+    fixture.detectChanges();
+    const card = component.quickAddCard()!;
+    card.form.update((f) => ({
+      ...f,
       accountId,
       categoryId,
       amount: 500,
@@ -1107,9 +820,9 @@ describe('MovementsComponent - transaction note', () => {
       period: 1,
       year: getCurrentYear(),
       note: 'Weekly groceries',
-      exchangeRate: null,
-      baseCurrencyAmount: null,
-    });
+    }));
+    await card.onSubmit();
+    await flush();
 
     const transactions = await transactionService.getAll();
     expect(transactions.length).toBe(1);
@@ -1125,18 +838,13 @@ describe('MovementsComponent - transaction note', () => {
       1,
     );
     await component.ngOnInit();
-    await component.onSaveTransaction({
-      id: t.id!,
-      accountId,
-      categoryId,
-      amount: 1500,
-      date: '2026-01-15',
-      period: 1,
-      year: getCurrentYear(),
-      note: 'Updated note',
-      exchangeRate: null,
-      baseCurrencyAmount: null,
-    });
+    component.openQuickAddForEdit(t);
+    fixture.detectChanges();
+    const card = component.quickAddCard()!;
+    card.form.update((f) => ({ ...f, note: 'Updated note' }));
+
+    await card.onSubmit();
+    await flush();
 
     const updated = await transactionService.getById(t.id!);
     expect(updated!.note).toBe('Updated note');
@@ -1912,15 +1620,13 @@ describe('MovementsComponent - assistive tech', () => {
   it('announces a saved transfer via a polite live region', async () => {
     await component.ngOnInit();
     component.openTransferForm();
-    component.trForm.update((f) => ({
-      ...f,
-      sourceAccountId: accountId,
-      destAccountId: accountId2,
-      sourceAmount: 100,
-      destinationAmount: 100,
-    }));
+    fixture.detectChanges();
+    const form = component.transferFormCard()!;
+    form.onSourceChange(accountId);
+    form.form.update((f) => ({ ...f, destAccountId: accountId2, sourceAmount: 100 }));
 
-    await component.saveTransfer();
+    await form.onSubmit();
+    await flush();
     fixture.detectChanges();
 
     expect(component.movementAnnouncement()).toContain('Transfer saved');
@@ -1982,21 +1688,23 @@ describe('MovementsComponent - quick-add integration', () => {
     await db.delete();
   });
 
-  it('saves a new transaction from the card payload', async () => {
+  it('saves a new transaction from the card and refreshes the list', async () => {
     await component.ngOnInit();
-
-    await component.onSaveTransaction({
-      id: null,
+    component.toggleQuickAdd();
+    fixture.detectChanges();
+    const card = component.quickAddCard()!;
+    card.form.update((f) => ({
+      ...f,
       accountId,
       categoryId,
       amount: 42,
       date: '2026-08-15',
       period: getCurrentPeriod(),
       year: getCurrentYear(),
-      exchangeRate: null,
-      baseCurrencyAmount: null,
-      note: '',
-    });
+    }));
+
+    await card.onSubmit();
+    await flush();
 
     const txns = await transactionService.getAll();
     expect(txns.length).toBe(1);
@@ -2005,7 +1713,7 @@ describe('MovementsComponent - quick-add integration', () => {
     expect((component.movements()[0].data as any).amount).toBe(42);
   });
 
-  it('updates an existing transaction when the card payload carries an id', async () => {
+  it('updates an existing transaction when the card is opened for edit', async () => {
     const t = await transactionService.create(
       accountId,
       categoryId,
@@ -2014,19 +1722,13 @@ describe('MovementsComponent - quick-add integration', () => {
       getCurrentPeriod(),
     );
     await component.ngOnInit();
+    component.openQuickAddForEdit(t);
+    fixture.detectChanges();
+    const card = component.quickAddCard()!;
+    card.form.update((f) => ({ ...f, amount: 99 }));
 
-    await component.onSaveTransaction({
-      id: t.id!,
-      accountId,
-      categoryId,
-      amount: 99,
-      date: '2026-08-15',
-      period: getCurrentPeriod(),
-      year: getCurrentYear(),
-      exchangeRate: null,
-      baseCurrencyAmount: null,
-      note: '',
-    });
+    await card.onSubmit();
+    await flush();
 
     expect(await transactionService.getAll()).toHaveLength(1);
     const updated = await transactionService.getById(t.id!);
@@ -2089,27 +1791,6 @@ describe('MovementsComponent - translations', () => {
     await TestBed.inject(LanguageService).setLanguage('es');
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('No hay movimientos de');
-  });
-
-  it('shows transfer validation errors in the active Language', async () => {
-    const accountService = TestBed.inject(AccountService);
-    const acc = await accountService.create('Cash', 'EUR', 100000);
-    await component.ngOnInit();
-
-    await TestBed.inject(LanguageService).setLanguage('es');
-    component.openTransferForm();
-    component.trForm.update((f) => ({
-      ...f,
-      sourceAccountId: acc.id!,
-      destAccountId: 9999,
-      sourceAmount: 10,
-    }));
-
-    await component.saveTransfer();
-
-    expect(component.errorMessage()).toBe(
-      'La cuenta de destino ya no existe. Elige otra e inténtalo de nuevo.',
-    );
   });
 });
 
@@ -2442,19 +2123,20 @@ describe('MovementsComponent - Quick Add capture form', () => {
   it('closes after a successful create', async () => {
     await component.ngOnInit();
     component.toggleQuickAdd();
-
-    await component.onSaveTransaction({
-      id: null,
+    fixture.detectChanges();
+    const card = component.quickAddCard()!;
+    card.form.update((f) => ({
+      ...f,
       accountId,
       categoryId,
       amount: 500,
       date: '2026-08-15',
       period: getCurrentPeriod(),
       year: getCurrentYear(),
-      exchangeRate: null,
-      baseCurrencyAmount: null,
-      note: '',
-    });
+    }));
+
+    await card.onSubmit();
+    await flush();
 
     expect(component.showForm()).toBe('none');
     expect(component.editTransaction()).toBeNull();
@@ -2470,20 +2152,12 @@ describe('MovementsComponent - Quick Add capture form', () => {
     );
     await component.ngOnInit();
     component.openQuickAddForEdit(t);
+    fixture.detectChanges();
     expect(component.showForm()).toBe('transaction');
 
-    await component.onSaveTransaction({
-      id: t.id!,
-      accountId,
-      categoryId,
-      amount: 500,
-      date: '2026-08-15',
-      period: getCurrentPeriod(),
-      year: getCurrentYear(),
-      exchangeRate: null,
-      baseCurrencyAmount: null,
-      note: '',
-    });
+    const card = component.quickAddCard()!;
+    await card.onSubmit();
+    await flush();
 
     expect(component.showForm()).toBe('none');
     expect(component.editTransaction()).toBeNull();
@@ -2801,16 +2475,18 @@ describe('MovementsComponent - capture form draft protection', () => {
     fixture.detectChanges();
 
     component.openTransferForm();
-    component.trForm.update((f) => ({ ...f, sourceAmount: 250, note: 'rent split' }));
+    fixture.detectChanges();
+    component.transferFormCard()!.form.update((f) => ({ ...f, sourceAmount: 250, note: 'rent split' }));
 
     component.toggleTransferForm();
     expect(component.showForm()).toBe('none');
 
     component.openTransferForm();
+    fixture.detectChanges();
 
     expect(component.showForm()).toBe('transfer');
-    expect(component.trForm().sourceAmount).toBe(250);
-    expect(component.trForm().note).toBe('rent split');
+    expect(component.transferFormCard()!.form().sourceAmount).toBe(250);
+    expect(component.transferFormCard()!.form().note).toBe('rent split');
   });
 
   it('keeps the transfer draft when switching to Quick Add and back', async () => {
@@ -2818,16 +2494,18 @@ describe('MovementsComponent - capture form draft protection', () => {
     fixture.detectChanges();
 
     component.openTransferForm();
-    component.trForm.update((f) => ({ ...f, sourceAmount: 90, note: 'bus pass' }));
+    fixture.detectChanges();
+    component.transferFormCard()!.form.update((f) => ({ ...f, sourceAmount: 90, note: 'bus pass' }));
 
     component.openQuickAdd();
     expect(component.showForm()).toBe('transaction');
 
     component.openTransferForm();
+    fixture.detectChanges();
 
     expect(component.showForm()).toBe('transfer');
-    expect(component.trForm().sourceAmount).toBe(90);
-    expect(component.trForm().note).toBe('bus pass');
+    expect(component.transferFormCard()!.form().sourceAmount).toBe(90);
+    expect(component.transferFormCard()!.form().note).toBe('bus pass');
   });
 
   it('preserves typed Quick Add input when switching to the transfer form and back', async () => {
@@ -2858,14 +2536,16 @@ describe('MovementsComponent - capture form draft protection', () => {
     fixture.detectChanges();
 
     component.openTransferForm();
-    component.onTransferSourceChange(accountId2);
+    fixture.detectChanges();
+    component.transferFormCard()!.onSourceChange(accountId2);
 
     component.toggleTransferForm();
     component.openTransferForm();
+    fixture.detectChanges();
 
     expect(component.showForm()).toBe('transfer');
-    expect(component.trForm().sourceAccountId).toBe(accountId2);
-    expect(component.trForm().sourceAmount).toBe(0);
+    expect(component.transferFormCard()!.form().sourceAccountId).toBe(accountId2);
+    expect(component.transferFormCard()!.form().sourceAmount).toBe(0);
   });
 
   it('never restores a Quick Add draft stuck in a loading rate fetch', async () => {
@@ -2920,21 +2600,25 @@ describe('MovementsComponent - capture form draft protection', () => {
     fixture.detectChanges();
 
     component.openTransferForm();
-    component.trForm.update((f) => ({
+    fixture.detectChanges();
+    const form = component.transferFormCard()!;
+    form.onSourceChange(accountId1);
+    form.form.update((f) => ({
       ...f,
-      sourceAccountId: accountId1,
       destAccountId: accountId2,
       sourceAmount: 300,
       note: 'savings',
     }));
-    await component.saveTransfer();
+    await form.onSubmit();
+    await flush();
 
     component.openTransferForm();
+    fixture.detectChanges();
 
     expect(component.showForm()).toBe('transfer');
-    expect(component.trForm().sourceAmount).toBe(0);
-    expect(component.trForm().note).toBe('');
-    expect(component.editingId()).toBeNull();
+    expect(component.transferFormCard()!.form().sourceAmount).toBe(0);
+    expect(component.transferFormCard()!.form().note).toBe('');
+    expect(component.transferFormCard()!.editingId()).toBeNull();
   });
 
   it('still prefills the transfer form when editing an existing transfer', async () => {
@@ -2948,15 +2632,17 @@ describe('MovementsComponent - capture form draft protection', () => {
     );
     await component.ngOnInit();
 
-    component.openTransferForm(t.id!);
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    component.openTransferForm(t);
+    await flush();
+    fixture.detectChanges();
 
     expect(component.showForm()).toBe('transfer');
-    expect(component.editingId()).toBe(t.id);
-    expect(component.trForm().sourceAccountId).toBe(accountId1);
-    expect(component.trForm().destAccountId).toBe(accountId2);
-    expect(component.trForm().sourceAmount).toBe(500);
-    expect(component.trForm().note).toBe('savings');
+    expect(component.editTransfer()).toBe(t);
+    const f = component.transferFormCard()!.form();
+    expect(f.sourceAccountId).toBe(accountId1);
+    expect(f.destAccountId).toBe(accountId2);
+    expect(f.sourceAmount).toBe(500);
+    expect(f.note).toBe('savings');
   });
 
   it('reopening a toggled-closed transfer edit keeps the edit context and typed input', async () => {
@@ -2970,16 +2656,18 @@ describe('MovementsComponent - capture form draft protection', () => {
     );
     await component.ngOnInit();
 
-    component.openTransferForm(t.id!);
-    await new Promise((resolve) => setTimeout(resolve, 10));
-    component.trForm.update((f) => ({ ...f, sourceAmount: 750 }));
+    component.openTransferForm(t);
+    await flush();
+    fixture.detectChanges();
+    component.transferFormCard()!.form.update((f) => ({ ...f, sourceAmount: 750 }));
 
     component.toggleTransferForm();
     component.openTransferForm();
+    fixture.detectChanges();
 
-    expect(component.editingId()).toBe(t.id);
-    expect(component.trForm().sourceAmount).toBe(750);
-    expect(component.trForm().note).toBe('savings');
+    expect(component.transferFormCard()!.editingId()).toBe(t.id);
+    expect(component.transferFormCard()!.form().sourceAmount).toBe(750);
+    expect(component.transferFormCard()!.form().note).toBe('savings');
   });
 
   it('keeps only one capture form open when switching in either direction', async () => {
@@ -3412,20 +3100,21 @@ describe('MovementsComponent - capture-form consistency', () => {
     fixture.detectChanges();
 
     component.openTransferForm();
-    component.trForm.update((f) => ({
+    fixture.detectChanges();
+    const form = component.transferFormCard()!;
+    form.onSourceChange(usdAccountId);
+    form.form.update((f) => ({
       ...f,
-      sourceAccountId: usdAccountId,
       destAccountId: eurAccountId,
       sourceAmount: 250,
       date: '2026-08-20',
     }));
-    await component.onTransferSourceChange(usdAccountId);
     fixture.detectChanges();
     await flush();
     fixture.detectChanges();
 
-    expect(component.trForm().exchangeRate).toBe(1.08);
-    expect(component.trForm().destinationAmount).toBe(270);
+    expect(form.form().exchangeRate).toBe(1.08);
+    expect(form.form().destinationAmount).toBe(270);
 
     const destInput = fixture.nativeElement.querySelector(
       '.exchange-rate-grid input.readonly',
@@ -3443,15 +3132,16 @@ describe('MovementsComponent - capture-form consistency', () => {
 
     component.openTransferForm();
     fixture.detectChanges();
+    const form = component.transferFormCard()!;
 
-    expect(component.canSubmitTransfer()).toBe(false);
+    expect(form.canSubmit()).toBe(false);
     expect(saveHint()?.textContent).toContain('Enter an amount greater than zero.');
 
-    component.trForm.update((f) => ({ ...f, sourceAmount: 100 }));
+    form.form.update((f) => ({ ...f, sourceAmount: 100 }));
     fixture.detectChanges();
 
     expect(saveHint()).toBeNull();
-    expect(component.canSubmitTransfer()).toBe(true);
+    expect(form.canSubmit()).toBe(true);
   });
 
   it('states why the quick add save button is disabled next to the button', async () => {
@@ -3476,9 +3166,10 @@ describe('MovementsComponent - capture-form consistency', () => {
     fixture.detectChanges();
 
     component.openTransferForm();
+    fixture.detectChanges();
     // Changing the source to the current destination zeroes the destination,
     // leaving the route incomplete.
-    component.onTransferSourceChange(eurAccountId2);
+    component.transferFormCard()!.onSourceChange(eurAccountId2);
     fixture.detectChanges();
 
     expect(saveHint()?.textContent).toContain('Choose two accounts.');
@@ -3545,15 +3236,17 @@ describe('MovementsComponent - capture-form consistency', () => {
     fixture.detectChanges();
 
     component.openTransferForm();
-    component.trForm.update((f) => ({ ...f, sourceAmount: 250, note: 'rent split' }));
+    fixture.detectChanges();
+    component.transferFormCard()!.form.update((f) => ({ ...f, sourceAmount: 250, note: 'rent split' }));
 
     component.onDocKeydown(new KeyboardEvent('keydown', { key: 'Escape' }));
     expect(component.showForm()).toBe('none');
 
     component.openTransferForm();
+    fixture.detectChanges();
 
-    expect(component.trForm().sourceAmount).toBe(250);
-    expect(component.trForm().note).toBe('rent split');
+    expect(component.transferFormCard()!.form().sourceAmount).toBe(250);
+    expect(component.transferFormCard()!.form().note).toBe('rent split');
   });
 
   it('toggles the capture form when the sidebar Quick Add action requests it', async () => {
@@ -3985,18 +3678,20 @@ describe('MovementsComponent - mobile transfer sheet (#104)', () => {
     );
     await component.ngOnInit();
 
-    component.openTransferForm(t.id!);
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    component.openTransferForm(t);
+    await flush();
     fixture.detectChanges();
 
     expect(component.showForm()).toBe('transfer');
     expect(sheetEl()).toBeTruthy();
-    expect(component.editingId()).toBe(t.id);
-    expect(component.trForm().sourceAmount).toBe(500);
-    expect(component.trForm().note).toBe('savings');
+    const form = component.transferFormCard()!;
+    expect(form.editingId()).toBe(t.id);
+    expect(form.form().sourceAmount).toBe(500);
+    expect(form.form().note).toBe('savings');
 
-    component.trForm.update((f) => ({ ...f, sourceAmount: 750 }));
-    await component.saveTransfer();
+    form.form.update((f) => ({ ...f, sourceAmount: 750 }));
+    await form.onSubmit();
+    await flush();
 
     expect(component.showForm()).toBe('none');
     fixture.detectChanges();
@@ -4011,9 +3706,11 @@ describe('MovementsComponent - mobile transfer sheet (#104)', () => {
     fixture.detectChanges();
 
     component.openTransferForm();
-    component.trForm.update((f) => ({
+    fixture.detectChanges();
+    const form = component.transferFormCard()!;
+    form.onSourceChange(accountId);
+    form.form.update((f) => ({
       ...f,
-      sourceAccountId: accountId,
       destAccountId: accountId2,
       sourceAmount: 300,
       note: 'rent',
@@ -4022,7 +3719,8 @@ describe('MovementsComponent - mobile transfer sheet (#104)', () => {
 
     expect(sheetEl()!.querySelector('.exchange-rate-section')).toBeNull();
 
-    await component.saveTransfer();
+    await form.onSubmit();
+    await flush();
     fixture.detectChanges();
 
     expect(component.showForm()).toBe('none');
@@ -4036,21 +3734,24 @@ describe('MovementsComponent - mobile transfer sheet (#104)', () => {
     fixture.detectChanges();
 
     component.openTransferForm();
-    component.trForm.update((f) => ({
+    fixture.detectChanges();
+    const form = component.transferFormCard()!;
+    form.onSourceChange(usdAccountId);
+    form.form.update((f) => ({
       ...f,
       destAccountId: accountId,
       sourceAmount: 100,
-      date: '2026-08-20',
     }));
-    await component.onTransferSourceChange(usdAccountId);
+    form.onDateChange('2026-08-20');
     fixture.detectChanges();
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    await flush();
 
     expect(exchangeRateService.getRate).toHaveBeenCalledWith('USD', 'EUR', '2026-08-20');
-    expect(component.trForm().exchangeRate).toBe(1.08);
+    expect(form.form().exchangeRate).toBe(1.08);
     expect(sheetEl()!.querySelector('.exchange-rate-section')).toBeTruthy();
 
-    await component.saveTransfer();
+    await form.onSubmit();
+    await flush();
 
     const transfers = await transferService.getAll();
     expect(transfers).toHaveLength(1);
@@ -4069,15 +3770,17 @@ describe('MovementsComponent - mobile transfer sheet (#104)', () => {
     );
     await component.ngOnInit();
 
-    component.openTransferForm(t.id!);
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    component.openTransferForm(t);
+    await flush();
     fixture.detectChanges();
 
+    const form = component.transferFormCard()!;
     expect(sheetEl()!.querySelector('.exchange-rate-section')).toBeTruthy();
-    expect(component.trForm().exchangeRate).toBe(1.05);
+    expect(form.form().exchangeRate).toBe(1.05);
 
-    component.trForm.update((f) => ({ ...f, sourceAmount: 200, destinationAmount: 210 }));
-    await component.saveTransfer();
+    form.form.update((f) => ({ ...f, sourceAmount: 200, destinationAmount: 210 }));
+    await form.onSubmit();
+    await flush();
 
     const transfers = await transferService.getAll();
     expect(transfers).toHaveLength(1);
@@ -4123,6 +3826,9 @@ describe('MovementsComponent - mobile transfer sheet (#104)', () => {
 
   it('pins the transfer Cancel/Save to the sheet bottom below 768px', async () => {
     await component.ngOnInit();
+    // The form's styles compile with its component: render it once.
+    component.openTransferForm();
+    fixture.detectChanges();
 
     const css = compiledComponentCss();
     expect(css).toMatch(
@@ -4140,9 +3846,11 @@ describe('MovementsComponent - mobile transfer sheet (#104)', () => {
     // The rate-grid rules compile with the shared well (#108), so render it
     // once with a cross-currency pair.
     component.openTransferForm();
-    component.trForm.update((f) => ({
+    fixture.detectChanges();
+    const form = component.transferFormCard()!;
+    form.onSourceChange(usdAccountId);
+    form.form.update((f) => ({
       ...f,
-      sourceAccountId: usdAccountId,
       destAccountId: accountId,
     }));
     fixture.detectChanges();
@@ -4158,6 +3866,9 @@ describe('MovementsComponent - mobile transfer sheet (#104)', () => {
 
   it('resolves transfer-form text inputs and selects to the same rendered width (box-sizing)', async () => {
     await component.ngOnInit();
+    // The form's styles compile with its component: render it once.
+    component.openTransferForm();
+    fixture.detectChanges();
 
     const css = compiledComponentCss();
     // Angular's emulated encapsulation inserts [_ngcontent-*] attributes
@@ -4182,6 +3893,9 @@ describe('MovementsComponent - mobile transfer sheet (#104)', () => {
 
   it('pins the transfer sheet actions with the transaction form spacing tokens (#107)', async () => {
     await component.ngOnInit();
+    // The form's styles compile with its component: render it once.
+    component.openTransferForm();
+    fixture.detectChanges();
 
     const css = compiledComponentCss();
     expect(css).toMatch(

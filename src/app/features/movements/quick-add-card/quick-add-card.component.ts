@@ -22,6 +22,8 @@ import {
   RateState,
 } from '../../../shared/components/exchange-rate-well/exchange-rate-well.component';
 import { LanguageService } from '../../../core/services/language.service';
+import { TransactionService } from '../../../core/services/transaction.service';
+import { errorCopy } from '../../../core/models/translation-error';
 import {
   getCurrentYear,
   isMonthNumber,
@@ -29,19 +31,6 @@ import {
   MonthNumber,
   periodYearFromDate,
 } from '../../../core/types/period.type';
-
-export interface TransactionFormPayload {
-  id: number | null;
-  accountId: number;
-  categoryId: number;
-  amount: number;
-  date: string;
-  period: MonthNumber;
-  year: number;
-  exchangeRate: number | null;
-  baseCurrencyAmount: number | null;
-  note: string;
-}
 
 export interface QuickAddDraft {
   form: TransactionFormState;
@@ -108,6 +97,7 @@ function defaultFormState(accountId = 0, categoryId = 0): TransactionFormState {
 })
 export class QuickAddCardComponent implements OnInit, AfterViewInit {
   language = inject(LanguageService);
+  private transactionService = inject(TransactionService);
 
   private selectionInitialized = false;
   private editApplyEffect = effect(() => this.handleEditInput(this.editTransaction()));
@@ -122,7 +112,7 @@ export class QuickAddCardComponent implements OnInit, AfterViewInit {
      the page behind it. */
   inSheet = input(false);
 
-  save = output<TransactionFormPayload>();
+  saved = output<boolean>();
   close = output<void>();
 
   amountInput = viewChild<ElementRef<HTMLInputElement>>('amountInput');
@@ -239,7 +229,7 @@ export class QuickAddCardComponent implements OnInit, AfterViewInit {
     this.close.emit();
   }
 
-  onSubmit(): void {
+  async onSubmit(): Promise<void> {
     if (!this.canSubmit()) {
       if (this.isForeignCurrency() && !this.rateState().loading && this.form().exchangeRate === null) {
         this.errorMessage.set(this.language.t('quickAdd.error.rateFetch'));
@@ -254,17 +244,40 @@ export class QuickAddCardComponent implements OnInit, AfterViewInit {
 
     this.persistSelection(f.accountId, f.categoryId);
     this.saving.set(true);
-    this.save.emit({
-      id: this.editingId(),
-      ...this.form(),
-      exchangeRate,
-      baseCurrencyAmount,
-    });
-  }
-
-  markFailed(message: string): void {
-    this.saving.set(false);
-    this.errorMessage.set(message);
+    try {
+      if (this.editingId() != null) {
+        await this.transactionService.update(this.editingId()!, {
+          accountId: f.accountId,
+          categoryId: f.categoryId,
+          amount: f.amount,
+          date: new Date(f.date),
+          period: f.period,
+          year: f.year,
+          exchangeRate,
+          baseCurrencyAmount,
+          note: f.note,
+        });
+      } else {
+        await this.transactionService.create(
+          f.accountId,
+          f.categoryId,
+          f.amount,
+          new Date(f.date),
+          f.period,
+          exchangeRate,
+          baseCurrencyAmount,
+          f.year,
+          f.note,
+        );
+      }
+      this.saving.set(false);
+      this.saved.emit(this.editingId() != null);
+    } catch (e: unknown) {
+      this.saving.set(false);
+      this.errorMessage.set(
+        errorCopy(e, this.language.translateFn, 'quickAdd.error.failedToSave'),
+      );
+    }
   }
 
   private handleEditInput(t: Transaction | null): void {

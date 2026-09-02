@@ -6,8 +6,8 @@ const quickAddScss = readFileSync(
   resolve('src/app/features/movements/quick-add-card/quick-add-card.component.scss'),
   'utf-8',
 );
-const movementsScss = readFileSync(
-  resolve('src/app/features/movements/movements.component.scss'),
+const transferFormScss = readFileSync(
+  resolve('src/app/features/movements/transfer-form/transfer-form.component.scss'),
   'utf-8',
 );
 const rateWellScss = readFileSync(
@@ -34,7 +34,7 @@ describe('shared capture-form style placeholders (#107)', () => {
 
   it.each([
     ['Transaction Form', quickAddScss],
-    ['Transfer Form', movementsScss],
+    ['Transfer Form', transferFormScss],
   ])('the %s extends the shared blocks instead of owning copies', (_name, scss) => {
     expect(scss).toMatch(/\.form-grid\s*\{[^}]*@extend %capture-form-grid/);
     expect(scss).toMatch(/\.form-actions\s*\{[^}]*@extend %capture-form-actions/);
@@ -52,7 +52,7 @@ describe('shared capture-form style placeholders (#107)', () => {
   });
 
   it('deletes the per-component copies', () => {
-    for (const scss of [quickAddScss, movementsScss]) {
+    for (const scss of [quickAddScss, transferFormScss]) {
       // Grid geometry now comes from the library — the unguarded 1fr 1fr
       // tracks are gone, and the pinned-actions declarations with them.
       expect(scss).not.toMatch(/grid-template-columns:\s*1fr\s+1fr/);
@@ -73,7 +73,7 @@ describe('shared capture-form style placeholders (#107)', () => {
     expect(patternsScss).toMatch(
       /@mixin capture-sheet-actions[\s\S]*?calc\(-1 \* var\(--space-md\)\)/,
     );
-    expect(movementsScss).not.toMatch(
+    expect(transferFormScss).not.toMatch(
       /calc\(-1 \* var\(--space-lg\)\) calc\(-1 \* var\(--space-lg\)\)/,
     );
   });
