@@ -1,0 +1,124 @@
+<div class="form-card">
+  <h3 #formHeading tabindex="-1">
+    {{
+      editingId()
+        ? language.t('movements.editTransferTitle')
+        : language.t('movements.newTransferTitle')
+    }}
+  </h3>
+  @if (accounts().length < 2) {
+    <p class="form-hint">
+      {{ language.t('movements.transferNeedsTwoAccounts') }}
+    </p>
+  }
+  <div class="form-grid">
+    <label>
+      {{ language.t('movements.from') }}
+      <select
+        [ngModel]="form().sourceAccountId"
+        (ngModelChange)="onSourceChange(+$event)"
+        name="sourceAccount"
+        [attr.aria-label]="language.t('movements.from')"
+      >
+        @for (acc of accounts(); track acc.id) {
+          <option [value]="acc.id">{{ acc.name }}</option>
+        }
+      </select>
+    </label>
+    <label>
+      {{ language.t('movements.to') }}
+      <select
+        [ngModel]="form().destAccountId"
+        (ngModelChange)="onDestChange(+$event)"
+        name="destAccount"
+        [attr.aria-label]="language.t('movements.to')"
+      >
+        @for (acc of filteredDestinationAccounts(); track acc.id) {
+          <option [value]="acc.id">{{ acc.name }}</option>
+        }
+      </select>
+    </label>
+    <label>
+      {{ language.t('movements.amountWithCurrency', { currency: sourceCurrency() }) }}
+      <input
+        type="number"
+        min="0.01"
+        [ngModel]="form().sourceAmount"
+        (ngModelChange)="onSourceAmountChange(+$event)"
+        name="sourceAmount"
+        [attr.aria-label]="language.t('movements.amount')"
+      />
+    </label>
+    <label>
+      {{ language.t('movements.date') }}
+      <input
+        type="date"
+        [ngModel]="form().date"
+        (ngModelChange)="onDateChange($event)"
+        name="date"
+        [attr.aria-label]="language.t('movements.date')"
+      />
+    </label>
+    <label>
+      {{ language.t('movements.period') }}
+      <select
+        [ngModel]="form().period"
+        (ngModelChange)="form.update((f) => ({ ...f, period: $event }))"
+        name="period"
+        [attr.aria-label]="language.t('movements.period')"
+      >
+        @for (month of months; track month) {
+          <option [ngValue]="month">{{ language.monthName(month) }}</option>
+        }
+      </select>
+    </label>
+    <label>
+      {{ language.t('movements.year') }}
+      <select
+        [ngModel]="form().year"
+        (ngModelChange)="form.update((f) => ({ ...f, year: +$event }))"
+        name="year"
+        [attr.aria-label]="language.t('movements.year')"
+      >
+        @for (yr of years; track yr) {
+          <option [value]="yr">{{ yr }}</option>
+        }
+      </select>
+    </label>
+    <label>
+      {{ language.t('movements.note') }}
+      <input
+        type="text"
+        [ngModel]="form().note"
+        (ngModelChange)="form.update((f) => ({ ...f, note: $event }))"
+        name="note"
+        [attr.aria-label]="language.t('movements.note')"
+      />
+    </label>
+  </div>
+
+  <app-exchange-rate-well
+    [from]="sourceCurrency()"
+    [to]="destCurrency()"
+    [date]="form().date"
+    [seed]="rateSeed()"
+    [equivalent]="form().destinationAmount"
+    [labels]="rateLabels"
+    (stateChange)="onWellStateChange($event)"
+  />
+
+  @if (errorMessage()) {
+    <p class="error" [title]="errorDetail()" role="alert">{{ errorMessage() }}</p>
+  }
+  <div class="form-actions">
+    @if (disabledReason(); as reason) {
+      <p class="save-hint" role="status">{{ reason }}</p>
+    }
+    <button type="button" class="btn" (click)="cancel()">
+      {{ language.t('movements.cancel') }}
+    </button>
+    <button type="button" class="btn primary" (click)="onSubmit()" [disabled]="!canSubmit()">
+      {{ language.t('movements.save') }}
+    </button>
+  </div>
+</div>

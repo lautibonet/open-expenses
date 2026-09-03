@@ -2,43 +2,62 @@
 
 .settings {
   padding-bottom: 1rem;
+}
 
-  h1 {
-    font-size: var(--type-title);
-    font-weight: 500;
-    line-height: var(--leading-headline);
-    margin-bottom: 1rem;
-  }
+.page-header {
+  @extend %page-header;
+}
+
+/* Single top-to-bottom flow: Base Currency + Language share the top row,
+   then Accounts, Categories and Backup follow one per row. */
+.settings-top-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-lg);
+  align-items: stretch;
+  margin-top: var(--space-lg);
+}
+
+.settings .card + .card,
+.settings-top-row + .card,
+app-backup-card {
+  display: block;
+  margin-top: var(--space-lg);
 }
 
 .card {
-  background: var(--paper-white);
-  border: 1px solid var(--hairline-graphite);
-  border-radius: var(--radius-lg);
-  padding: 1rem;
-  margin-bottom: 1rem;
+  background: var(--surface-lowest);
+  border: var(--border-hard);
+  padding: var(--space-lg);
+  margin: 0;
 
   h2 {
-    font-size: var(--type-headline);
-    font-weight: 600;
-    line-height: var(--leading-headline);
-    margin-bottom: 0.75rem;
+    @extend %card-header-icon;
   }
 }
 
+/* Add forms: name input, currency/type select and Add button share the
+   same width and height — uniform fields, uniformly aligned. */
 .inline-form {
   display: flex;
-  gap: 0.5rem;
-  align-items: flex-end;
-  margin-bottom: 0.75rem;
+  gap: var(--space-sm);
+  align-items: stretch;
+  margin-bottom: var(--space-md);
   flex-wrap: wrap;
+
+  .input {
+    @extend %field;
+
+    width: 10rem;
+  }
+
+  .btn.dashed {
+    width: 10rem;
+  }
 }
 
 .input {
-  padding: 0.5rem;
-  border: 1px solid var(--edge-graphite);
-  border-radius: var(--radius-sm);
-  font-size: var(--type-body);
+  @extend %field;
 
   &.small {
     width: 100px;
@@ -59,53 +78,154 @@
   &.small {
     @extend %btn-small;
   }
+
+  /* Dashed affordance for add-actions (accounts, categories). */
+  &.dashed {
+    border-style: dashed;
+    box-shadow: none;
+
+    &:active:not(:disabled) {
+      transform: none;
+    }
+  }
 }
 
-table {
-  width: 100%;
-  border-collapse: collapse;
+/* Icon-only confirm/cancel affordances (same as movement deletion). */
+.icon-btn {
+  @extend %icon-btn;
+}
 
-  th,
-  td {
-    padding: 0.5rem;
-    text-align: left;
-    border-bottom: 1px solid var(--silvered-paper);
-  }
+/* Accounts: bordered tile rows; name, currency and opening balance are
+   display-by-default, edits open from the pencil into an expanded edit
+   state; deactivation is the icon confirm flow. */
+.account-list,
+.category-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
 
-  th {
-    font-size: var(--type-label);
-    color: var(--muted-slate);
-    font-weight: 500;
-    letter-spacing: var(--tracking-micro);
-    line-height: var(--leading-label);
-  }
+.account-row,
+.category-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+  border: var(--border-hard);
+  padding: var(--space-sm) var(--space-md);
 
-  tr.inactive {
+  &.inactive {
     opacity: 0.6;
+    background: var(--surface-container-low);
   }
 }
 
-.empty {
-  color: var(--muted-slate);
-  font-style: italic;
+.category-row {
+  &.stripe-income {
+    @extend %stripe-income;
+  }
+
+  &.stripe-expense {
+    @extend %stripe-expense;
+  }
 }
 
-.error {
-  color: var(--officers-red);
-  margin-bottom: 0.75rem;
+.account-main,
+.category-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
 
-.success {
-  color: var(--ledger-green);
-  margin-bottom: 0.75rem;
+.account-name,
+.category-name {
+  align-self: flex-start;
+  font-weight: 600;
+  color: var(--on-surface);
 }
 
-.editable {
-  cursor: pointer;
-  border-bottom: 1px dashed var(--edge-graphite);
-  padding: 0.25rem;
+.account-meta {
+  @extend %mono-data;
+
+  display: flex;
+  gap: var(--space-sm);
+  color: var(--on-surface-variant);
 }
 
-.editable:hover {
-  border-bottom-color: var(--ledger-ink);
+/* Expanded edit state: fields plus tick/X confirm grammar, with the
+   validation error rendered inline. */
+.edit-state {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
+.edit-line {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  flex-wrap: wrap;
+}
+
+.edit-static {
+  @extend %mono-data;
+
+  color: var(--on-surface-variant);
+}
+
+.edit-error {
+  margin: var(--space-xs) 0 0;
+  font-size: var(--type-caption);
+  color: var(--error);
+}
+
+.card-value {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+
+  .value {
+    @extend %mono-data;
+
+    font-size: var(--type-body-lg);
+    color: var(--on-surface);
+  }
+}
+
+.account-side,
+.category-side {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.account-status,
+.category-status {
+  @extend %caps-label-muted;
+}
+
+/* Side cards: stacked field + inline-save button. */
+.field-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-sm);
+
+  select {
+    @extend %field;
+
+    width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .settings-top-row {
+    grid-template-columns: 1fr;
+  }
 }

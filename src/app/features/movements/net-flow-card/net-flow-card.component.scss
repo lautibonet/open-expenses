@@ -1,0 +1,67 @@
+@use '../../../shared/styles/patterns' as *;
+
+.net-flow-card {
+  background: var(--surface-lowest);
+  border: var(--border-hard);
+  border-left: var(--stripe-transfer);
+  padding: var(--space-md) var(--space-lg);
+  margin-bottom: var(--space-lg);
+}
+
+.net-flow-warning {
+  display: block;
+  margin-top: var(--space-md);
+}
+
+.net-flow-warning:empty {
+  margin: 0;
+}
+
+.net-flow-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
+
+.net-flow-label {
+  @extend %caps-label-muted;
+  color: var(--on-surface);
+  margin: 0 0 var(--space-sm);
+}
+
+.net-amount {
+  @extend %mono-data;
+
+  font-size: var(--type-headline);
+  font-weight: 500;
+  color: var(--on-surface);
+  margin: 0 0 var(--space-sm);
+}
+
+.flow-lines {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+
+  span {
+    @extend %mono-data;
+
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-xs);
+  }
+
+  svg {
+    width: 0.75rem;
+    height: 0.75rem;
+  }
+
+  .flow-in {
+    color: var(--income);
+  }
+
+  .flow-out {
+    color: var(--error);
+  }
+}

@@ -13,8 +13,6 @@ export function isMonthNumber(value: unknown): value is MonthNumber {
 
 export const isValidPeriod = isMonthNumber;
 
-export const PERIOD_ERROR = 'Period must be a month between 1 and 12';
-
 export function monthNumberFromName(name: string): MonthNumber | null {
   const index = MONTH_NAMES.findIndex(
     (m) => m.toLowerCase() === name.trim().toLowerCase(),
@@ -41,17 +39,28 @@ export function getPeriodYear(movement: { year?: number; date: Date | string }):
   return new Date(movement.date).getFullYear();
 }
 
+export function periodYearFromDate(date: Date | string): {
+  period: MonthNumber;
+  year: number;
+} {
+  if (typeof date === 'string') {
+    const [yearText, monthText] = date.split('-');
+    const month = Number(monthText);
+    if (yearText && month >= 1 && month <= 12) {
+      return { period: month as MonthNumber, year: Number(yearText) };
+    }
+  }
+  const parsed = new Date(date);
+  return { period: (parsed.getMonth() + 1) as MonthNumber, year: parsed.getFullYear() };
+}
+
 export interface MonthScope {
   kind: 'month';
   period: MonthNumber;
   year: number;
 }
 
-export interface AllTimeScope {
-  kind: 'all-time';
-}
-
-export type PeriodScope = MonthScope | AllTimeScope;
+export type PeriodScope = MonthScope;
 
 export type ScopeAwareMovement = {
   period: number | string;
@@ -61,10 +70,6 @@ export type ScopeAwareMovement = {
 
 export function defaultScope(): PeriodScope {
   return { kind: 'month', period: getCurrentPeriod(), year: getCurrentYear() };
-}
-
-export function isAllTime(scope: PeriodScope): scope is AllTimeScope {
-  return scope.kind === 'all-time';
 }
 
 export function yearsFromData(
@@ -102,4 +107,15 @@ export function scopeOptionsFromMovements(movements: ScopeAwareMovement[]): Scop
     years: yearsFromData(movements),
     months: monthsFromData(movements),
   };
+}
+
+export function movementIsAtOrBeforePeriod(
+  movement: ScopeAwareMovement,
+  scope: PeriodScope,
+): boolean {
+  if (!isMonthNumber(movement.period)) {
+    return false;
+  }
+  const year = getPeriodYear(movement);
+  return year < scope.year || (year === scope.year && movement.period <= scope.period);
 }

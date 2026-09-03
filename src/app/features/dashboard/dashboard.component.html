@@ -1,126 +1,159 @@
 <div class="dashboard">
-  <h1>{{ language.t('stats.title') }}</h1>
-  <div class="controls">
-    <select
-      [ngModel]="scopeYearValue()"
-      (ngModelChange)="onScopeYearChange($event)"
-      [attr.aria-label]="language.t('scope.yearAria')"
-    >
-      @for (yr of scopeYears(); track yr) {
-        <option [ngValue]="yr">{{ yr }}</option>
-      }
-      <option [ngValue]="'all-time'">{{ language.t('scope.allTime') }}</option>
-    </select>
-    @if (scope().kind !== 'all-time') {
-      <select
-        [ngModel]="scopePeriod()"
-        (ngModelChange)="onScopeMonthChange($event)"
-        [attr.aria-label]="language.t('scope.monthAria')"
-      >
-        @for (month of scopeMonths(); track month) {
-          <option [ngValue]="month">{{ language.monthName(month) }}</option>
-        }
-      </select>
-    }
-    <span class="visually-hidden" aria-live="polite">{{ scopeAnnouncement() }}</span>
-  </div>
+  <header class="page-header">
+    <div class="headline">
+      <h1>{{ language.t('stats.title') }}</h1>
+      <p class="subtitle">{{ language.t('stats.subtitle') }}</p>
+    </div>
 
-  <section class="card">
-    <h2>{{ language.t('stats.totals', { scope: scopeLabelText() }) }}</h2>
-    <div class="totals">
-      <div class="stat">
-        <span class="label">{{ language.t('stats.income') }}</span>
-        <span class="value income">{{ formatMoney(totalIncome()) }}</span>
-      </div>
-      <div class="stat">
-        <span class="label">{{ language.t('stats.expenses') }}</span>
-        <span class="value expense">{{ formatMoney(totalExpenses()) }}</span>
-      </div>
-      <div class="stat">
-        <span class="label">{{ language.t('stats.net') }}</span>
-        <span class="value information">
-          {{ formatMoney(netIncome()) }}
-        </span>
+    <div class="scope-control" role="group" [attr.aria-label]="language.t('scope.groupAria')">
+      <div class="scope-selects">
+        <select
+          [ngModel]="scopePeriod()"
+          (ngModelChange)="onScopeMonthChange($event)"
+          [attr.aria-label]="language.t('scope.monthAria')"
+        >
+          @for (month of scopeMonths(); track month) {
+            <option [ngValue]="month">{{ language.monthName(month) }}</option>
+          }
+        </select>
+        <select
+          [ngModel]="scopeYearValue()"
+          (ngModelChange)="onScopeYearChange($event)"
+          [attr.aria-label]="language.t('scope.yearAria')"
+        >
+          @for (yr of scopeYears(); track yr) {
+            <option [ngValue]="yr">{{ yr }}</option>
+          }
+        </select>
       </div>
     </div>
+
+    <span class="visually-hidden" aria-live="polite">{{ scopeAnnouncement() }}</span>
+  </header>
+
+  <app-dismissible-alert
+    class="conversion-warning"
+    role="alert"
+    variant="error"
+    [message]="conversionWarningMessage()"
+  />
+
+  <section class="kpi-row" [attr.aria-label]="language.t('stats.title')">
+    @if (yearHasData()) {
+      <dl class="kpi-card kpi-income">
+        <dt class="label">
+          <span class="metric">{{ language.t('stats.income') }}</span>
+          <span class="scope">{{ kpiScopeLabel() }}</span>
+        </dt>
+        <dd class="value">{{ formatMoney(yearTotalIncome()) }}</dd>
+        <dd class="secondary">{{ avgCaption(avgMonthlyIncome()) }}</dd>
+      </dl>
+      <dl class="kpi-card kpi-expense">
+        <dt class="label">
+          <span class="metric">{{ language.t('stats.expenses') }}</span>
+          <span class="scope">{{ kpiScopeLabel() }}</span>
+        </dt>
+        <dd class="value">{{ formatMoney(yearTotalExpenses()) }}</dd>
+        <dd class="secondary">{{ avgCaption(avgMonthlyExpenses()) }}</dd>
+      </dl>
+      <dl class="kpi-card kpi-net">
+        <dt class="label">
+          <span class="metric">{{ language.t('stats.net') }}</span>
+          <span class="scope">{{ kpiScopeLabel() }}</span>
+        </dt>
+        <dd class="value">{{ formatMoney(yearTotalNet()) }}</dd>
+        <dd class="secondary">{{ avgCaption(avgMonthlyNet()) }}</dd>
+        @if (savingsRate(); as rate) {
+          <dd class="savings-rate">{{ language.t('stats.savingsRate', { rate }) }}</dd>
+        }
+      </dl>
+    } @else {
+      <p class="empty-state">{{ language.t('stats.kpiZero', { scope: scopeLabelText() }) }}</p>
+    }
   </section>
 
-  @if (categoryBreakdown().length > 0) {
-    <section class="card">
-      <h2>{{ language.t('stats.expensesByCategory', { scope: scopeLabelText() }) }}</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>{{ language.t('stats.colCategory') }}</th>
-            <th>{{ language.t('stats.colAmount') }}</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (item of categoryBreakdown(); track item.name) {
-            <tr>
-              <td>{{ item.name }}</td>
-              <td>{{ formatMoney(item.total) }}</td>
-            </tr>
-          }
-        </tbody>
-      </table>
-    </section>
-  }
+  <section class="card net-strip-card">
+    <h2>{{ language.t('stats.netByPeriod', { scope: scope().year }) }}</h2>
+    @if (yearHasMovements()) {
+      <div class="net-strip" aria-hidden="true">
+        @for (item of yearNets(); track item.period) {
+          <div class="net-strip-month" [class.current]="item.period === scope().period">
+            <div class="net-track">
+              @if (item.net > 0) {
+                <div class="net-fill up" [style.height.%]="periodFillHeight(item.net)"></div>
+              } @else if (item.net < 0) {
+                <div class="net-fill down" [style.height.%]="periodFillHeight(item.net)"></div>
+              }
+            </div>
+            <span class="net-initial">{{ language.monthInitial(item.period) }}</span>
+          </div>
+        }
+      </div>
+      <dl class="net-strip-caption">
+        <dt class="label">
+          {{ language.t('stats.netStripCaption', { month: language.monthName(scope().period) }) }}
+        </dt>
+        <dd class="value">{{ formatMoney(selectedPeriodNet()) }}</dd>
+      </dl>
+      <p class="net-strip-legend">{{ language.t('stats.netStripLegend') }}</p>
+      <ul class="net-strip-figures visually-hidden">
+        @for (item of yearNets(); track item.period) {
+          <li>
+            {{ language.monthName(item.period) }} {{ scope().year }}:
+            {{ formatMoney(item.net) }}
+          </li>
+        }
+      </ul>
+    } @else {
+      <p class="net-strip-zero">{{ language.t('stats.netStripZero', { year: scope().year }) }}</p>
+    }
+  </section>
+
+  <section class="card">
+    <h2>{{ language.t('stats.expensesByCategory', { scope: scopeLabelText() }) }}</h2>
+    @if (categoryBreakdown().length > 0) {
+      <ul class="category-bars">
+        @for (item of categoryBreakdown(); track item.name) {
+          <li class="category-bar-row">
+            <div class="bar-head">
+              <span class="cat-name">{{ item.name }}</span>
+              <span class="cat-amount">{{ formatMoney(item.total) }}</span>
+            </div>
+            <div class="bar-track" aria-hidden="true">
+              <div class="bar-fill" [style.width.%]="categoryBarWidth(item.total)"></div>
+            </div>
+          </li>
+        }
+      </ul>
+    } @else {
+      <p class="empty-state">{{ language.t('stats.categoryZero', { scope: scopeLabelText() }) }}</p>
+    }
+  </section>
 
   <section class="card">
     <h2>{{ language.t('stats.totalBalance', { scope: scopeLabelText() }) }}</h2>
-    <div class="totals">
-      <div class="stat">
-        <span class="label">{{ language.t('stats.allAccounts', { currency: baseCurrency() }) }}</span>
-        <span class="value">{{ formatMoney(totalBalanceBaseCurrency()) }}</span>
-      </div>
+    <div class="stat">
+      <span class="label">{{ language.t('stats.allAccounts', { currency: baseCurrency() }) }}</span>
+      <span class="value">{{ formatMoney(totalBalanceBaseCurrency()) }}</span>
     </div>
-    @if (conversionFailed()) {
-      <div class="conversion-warning">
-        {{ language.t('stats.conversionWarning', { currency: baseCurrency() }) }}
-      </div>
-    }
   </section>
 
   <section class="card">
     <h2>{{ language.t('stats.accountBalances', { scope: scopeLabelText() }) }}</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>{{ language.t('stats.colAccount') }}</th>
-          <th>{{ language.t('stats.colCurrency') }}</th>
-          <th>{{ language.t('stats.colBalance') }}</th>
-        </tr>
-      </thead>
-      <tbody>
+    @if (accountBalances().length > 0) {
+      <ul class="balance-list">
         @for (item of accountBalances(); track item.account.id) {
-          <tr>
-            <td>{{ item.account.name }}</td>
-            <td>{{ item.account.currency }}</td>
-            <td>{{ formatAccountBalance(item.balance, item.account.currency) }}</td>
-          </tr>
+          <li class="balance-row" [class.negative]="item.balance < 0">
+            <span class="balance-tile" aria-hidden="true">{{ item.account.currency }}</span>
+            <div class="balance-meta">
+              <span class="account-name">{{ item.account.name }}</span>
+            </div>
+            <span class="balance-amount">{{ formatAccountBalance(item.balance, item.account.currency) }}</span>
+          </li>
         }
-      </tbody>
-    </table>
-  </section>
-
-  <section class="card">
-    <h2>{{ language.t('stats.monthlyAverages', { scope: scopeLabelText() }) }}</h2>
-    <div class="totals">
-      <div class="stat">
-        <span class="label">{{ language.t('stats.avgIncome') }}</span>
-        <span class="value income">{{ formatMoney(avgMonthlyIncome()) }}</span>
-      </div>
-      <div class="stat">
-        <span class="label">{{ language.t('stats.avgExpenses') }}</span>
-        <span class="value expense">{{ formatMoney(avgMonthlyExpenses()) }}</span>
-      </div>
-      <div class="stat">
-        <span class="label">{{ language.t('stats.avgSavings') }}</span>
-        <span class="value information">
-          {{ formatMoney(avgMonthlySavings()) }}
-        </span>
-      </div>
-    </div>
+      </ul>
+    } @else {
+      <p class="empty-state">{{ language.t('stats.noAccounts') }}</p>
+    }
   </section>
 </div>

@@ -1,38 +1,180 @@
-.tab-bar {
+@use '../../styles/patterns' as *;
+
+$sidebar-width: 256px;
+
+/* ===== Brand block (sidebar header / mobile top bar) ===== */
+
+.brand {
   display: flex;
-  border-bottom: 1px solid var(--hairline-graphite);
-  background: var(--paper-white);
-  position: sticky;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.monogram {
+  width: 2rem;
+  height: 2rem;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--on-surface);
+  color: var(--surface-lowest);
+  font-size: var(--type-title);
+  font-weight: 800;
+  line-height: 1;
+}
+
+.wordmark {
+  font-size: var(--type-title);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: var(--on-surface);
+  white-space: nowrap;
+}
+
+.status-chip {
+  @extend %caps-label-muted;
+  margin: var(--space-sm) 0 0;
+}
+
+/* ===== Desktop sidebar (>= 769px) ===== */
+
+.sidebar {
+  position: fixed;
   top: 0;
-  z-index: 10;
-  padding-inline: var(--chrome-gutter);
+  bottom: 0;
+  left: 0;
+  width: $sidebar-width;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-lowest);
+  border-right: 1px solid var(--on-surface);
+  z-index: 30;
+}
+
+.brand-block {
+  padding: var(--space-lg);
+  border-bottom: 1px solid var(--on-surface);
+}
+
+.tab-bar {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: var(--space-md) var(--space-sm);
 }
 
 .tab {
-  flex: 1;
-  padding: 0.75rem 1rem;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
   text-decoration: none;
-  color: var(--muted-slate);
-  font-weight: 500;
-  border-bottom: 2px solid transparent;
-  transition:
-    color 0.15s,
-    border-color 0.15s;
+  color: var(--on-surface-variant);
+  border: 1px solid transparent;
+  /* The stripe edge is reserved on every tab so activation doesn't reflow. */
+  border-left-width: 4px;
+
+  .tab-icon {
+    width: 1rem;
+    height: 1rem;
+    flex-shrink: 0;
+  }
+
+  .tab-label {
+    @extend %caps-label;
+  }
 
   &:hover {
-    color: var(--body-ink);
+    background: var(--surface-container);
+    color: var(--on-surface);
   }
 
   &.active {
-    color: var(--ledger-ink);
-    border-bottom-color: var(--ledger-ink);
+    /* Subtle active state: a light Primary tint with a short Primary left
+       edge and ink text — no solid blue block, no white-on-blue. */
+    background: var(--primary-fixed);
+    border-left-color: var(--primary);
+    color: var(--on-surface);
   }
 }
 
-@media (pointer: coarse) {
-  .tab {
-    min-height: 44px;
+.sidebar-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  border-top: 1px solid var(--on-surface);
+}
+
+.new-transaction {
+  @extend %btn-base;
+  @extend %btn-primary;
+  /* One blue for the sidebar's interactive accents: the CTA uses the same
+     Primary ink as the nav's active edge, not the lighter container blue. */
+  background: var(--primary);
+  width: 100%;
+  padding-block: var(--space-md);
+}
+
+.backup-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  min-width: 0;
+}
+
+.backup-button {
+  @extend %btn-base;
+  width: 100%;
+  padding-block: var(--space-sm);
+}
+
+.backup-caption {
+  @extend %caps-label-muted;
+  margin-top: var(--space-sm);
+  margin-bottom: 0;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+/* Capture slot (#103): exists only in the mobile bottom nav, where it is
+   the single blue action; the desktop sidebar keeps its New Transaction CTA
+   and three-link nav, so the slot never renders there. */
+.capture-slot {
+  display: none;
+}
+
+/* ===== Mobile top bar (<= 768px) — hidden on desktop ===== */
+
+.top-bar {
+  display: none;
+}
+
+/* ===== Main area ===== */
+
+.main-area {
+  margin-left: $sidebar-width;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+.content {
+  flex: 1;
+  padding: var(--space-lg) var(--space-md);
+  max-width: 800px;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0 auto;
+
+  /* Skip-link target: focused programmatically, so the outline is suppressed
+     on the whole content column; the skip link itself carries the visible
+     focus treatment. */
+  &:focus {
+    outline: none;
   }
 }
 
@@ -40,11 +182,11 @@
   position: absolute;
   top: -100px;
   left: var(--chrome-gutter);
-  z-index: 20;
+  z-index: 50;
   padding: 0.5rem 1rem;
-  background: var(--paper-white);
-  color: var(--ledger-ink);
-  border: 1px solid var(--hairline-graphite);
+  background: var(--surface-lowest);
+  color: var(--primary);
+  border: 1px solid var(--outline-variant);
   border-top: none;
   text-decoration: none;
   font-weight: 500;
@@ -54,12 +196,117 @@
   }
 }
 
-.content {
-  padding: 1rem;
-  max-width: 800px;
-  margin: 0 auto;
+/* ===== Mobile regime: bottom nav bar (D9) + top bar ===== */
 
-  &:focus {
-    outline: none;
+@media (max-width: 768px) {
+  .sidebar {
+    top: auto;
+    left: 0;
+    right: 0;
+    width: auto;
+    flex-direction: row;
+    border-right: none;
+    border-top: 1px solid var(--on-surface);
+    padding-bottom: env(safe-area-inset-bottom);
+    /* The bar is sized from the token itself (#112): border-box so the 1px
+       top border counts inside --nav-bar-size, and the tabs stretch to fill
+       it instead of stacking their own padding on top of a min-height. */
+    box-sizing: border-box;
+    min-height: calc(var(--nav-bar-size) + env(safe-area-inset-bottom));
+  }
+
+  .brand-block,
+  .sidebar-actions {
+    display: none;
+  }
+
+  .tab-bar {
+    flex-direction: row;
+    gap: 0;
+    padding: 0;
+  }
+
+  .tab {
+    flex: 1;
+    justify-content: center;
+    /* No min-height here (#112): the bar's own border-box height sizes the
+       tabs by stretch, so their padding can't re-stack onto the token. */
+
+    .tab-icon {
+      width: 1.25rem;
+      height: 1.25rem;
+    }
+
+    /* Icons-only bottom nav (D9): the accessible name lives on the
+       anchor's aria-label, so the visible label can drop. */
+    .tab-label {
+      display: none;
+    }
+  }
+
+  /* The nav's center capture slot (#103): the one blue element on mobile —
+     square, zero radius, Primary Container fill with the hard border and
+      press interaction every button carries (%btn-base's properties are
+      repeated by hand: @extend cannot cross a media-query boundary). Same
+      nav height as the tabs — sized by the bar's stretch (#112). */
+  .capture-slot {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    padding: 0;
+    background: var(--primary-container);
+    color: var(--surface-lowest);
+    border: var(--border-hard);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    box-shadow: var(--shadow-press);
+
+    svg {
+      width: 1.5rem;
+      height: 1.5rem;
+    }
+
+    &:hover {
+      background: var(--primary-deep);
+      color: var(--surface-lowest);
+    }
+
+    &:active {
+      box-shadow: none;
+      transform: translate(2px, 2px);
+    }
+  }
+
+  .top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-md);
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    /* Border-box so padding and the 1px bottom border count inside the
+       token height instead of stacking onto it (#112). */
+    box-sizing: border-box;
+    min-height: var(--nav-bar-size);
+    padding: var(--space-sm) var(--space-md);
+    background: var(--surface-lowest);
+    border-bottom: 1px solid var(--on-surface);
+
+    .status-chip {
+      margin: 0;
+      text-align: right;
+    }
+  }
+
+  .main-area {
+    margin-left: 0;
+    /* Keep content clear of the fixed bottom nav + safe area (D9). */
+    padding-bottom: calc(var(--nav-bar-size) + env(safe-area-inset-bottom));
+  }
+
+  .content {
+    padding: var(--space-md);
   }
 }

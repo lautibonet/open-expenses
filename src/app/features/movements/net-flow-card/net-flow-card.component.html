@@ -1,0 +1,29 @@
+<div class="net-flow-card">
+  <h2 class="net-flow-label">
+    {{ language.t('movements.netFlow', { scope: language.scopeLabel(scope()) }) }}
+  </h2>
+  <p class="net-amount">{{ netDisplay() }}</p>
+  <div class="flow-lines">
+    <span class="flow-in">
+      <svg aria-hidden="true" viewBox="0 0 12 12" focusable="false">
+        <path d="M6 11V1M2 5l4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.5" />
+      </svg>
+      {{ language.formatMoney(incomeTotal(), baseCurrency()) }}
+      {{ language.t('movements.flowIn') }}
+    </span>
+    <span class="flow-out">
+      <svg aria-hidden="true" viewBox="0 0 12 12" focusable="false">
+        <path d="M6 1v10M2 7l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" />
+      </svg>
+      {{ language.formatMoney(expenseTotal(), baseCurrency()) }}
+      {{ language.t('movements.flowOut') }}
+    </span>
+  </div>
+  <app-dismissible-alert
+    class="net-flow-warning"
+    role="alert"
+    variant="error"
+    [message]="conversionWarningMessage()"
+    [resetKey]="scope()"
+  />
+</div>

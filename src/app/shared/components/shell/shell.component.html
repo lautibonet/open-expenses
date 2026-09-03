@@ -1,34 +1,142 @@
 <a class="skip-link" href="#main-content" (click)="skipToContent($event)">{{
   language.t('shell.skipToContent')
 }}</a>
-<app-install-prompt />
-<app-backup-banner />
-<nav class="tab-bar" [attr.aria-label]="language.t('shell.primaryNavAria')">
-  <a
-    routerLink="/movements"
-    routerLinkActive="active"
-    #movementsTab="routerLinkActive"
-    class="tab"
-    [attr.aria-current]="movementsTab.isActive ? 'page' : null"
-    >{{ language.t('shell.movements') }}</a
-  >
-  <a
-    routerLink="/dashboard"
-    routerLinkActive="active"
-    #statsTab="routerLinkActive"
-    class="tab"
-    [attr.aria-current]="statsTab.isActive ? 'page' : null"
-    >{{ language.t('shell.stats') }}</a
-  >
-  <a
-    routerLink="/settings"
-    routerLinkActive="active"
-    #settingsTab="routerLinkActive"
-    class="tab"
-    [attr.aria-current]="settingsTab.isActive ? 'page' : null"
-    >{{ language.t('shell.settings') }}</a
-  >
-</nav>
-<main class="content" id="main-content" tabindex="-1">
-  <router-outlet />
-</main>
+
+<aside class="sidebar">
+  <div class="brand-block">
+    <div class="brand">
+      <span class="monogram" aria-hidden="true">O</span>
+      <span class="wordmark">Open Expenses</span>
+    </div>
+  </div>
+
+  <nav class="tab-bar" [attr.aria-label]="language.t('shell.primaryNavAria')">
+    <a
+      routerLink="/movements"
+      routerLinkActive="active"
+      #movementsTab="routerLinkActive"
+      class="tab"
+      [attr.aria-label]="language.t('shell.movements')"
+      [attr.aria-current]="movementsTab.isActive ? 'page' : null"
+      ><svg
+        class="tab-icon"
+        aria-hidden="true"
+        viewBox="0 0 24 24"
+        focusable="false"
+      >
+        <path
+          d="M8 3 4 7l4 4M4 7h16M16 21l4-4-4-4M20 17H4"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        /></svg
+      ><span class="tab-label">{{ language.t('shell.movements') }}</span></a
+    >
+    <a
+      routerLink="/stats"
+      routerLinkActive="active"
+      #statsTab="routerLinkActive"
+      class="tab"
+      [attr.aria-label]="language.t('shell.stats')"
+      [attr.aria-current]="statsTab.isActive ? 'page' : null"
+      ><svg
+        class="tab-icon"
+        aria-hidden="true"
+        viewBox="0 0 24 24"
+        focusable="false"
+      >
+        <path
+          d="M6 20v-6M12 20V4M18 20v-10"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        /></svg
+      ><span class="tab-label">{{ language.t('shell.stats') }}</span></a
+    >
+    <button
+      type="button"
+      class="capture-slot"
+      (click)="goToTransactionForm()"
+      [attr.aria-label]="language.t('shell.newTransaction')"
+      [title]="language.t('shell.newTransaction')"
+    >
+      <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+        <path
+          d="M12 5v14M5 12h14"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </svg>
+    </button>
+    <a
+      routerLink="/settings"
+      routerLinkActive="active"
+      #settingsTab="routerLinkActive"
+      class="tab"
+      [attr.aria-label]="language.t('shell.settings')"
+      [attr.aria-current]="settingsTab.isActive ? 'page' : null"
+      ><svg
+        class="tab-icon"
+        aria-hidden="true"
+        viewBox="0 0 24 24"
+        focusable="false"
+      >
+        <path
+          d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        /></svg
+      ><span class="tab-label">{{ language.t('shell.settings') }}</span></a
+    >
+  </nav>
+
+  <div class="sidebar-actions">
+    <button
+      type="button"
+      class="new-transaction"
+      (click)="goToTransactionForm()"
+      [title]="language.t('shell.newTransactionShortcut')"
+    >
+      {{ language.t('shell.newTransaction') }}
+    </button>
+    <div class="backup-block" role="group" [attr.aria-label]="language.t('backup.sidebar.ariaLabel')">
+      <button
+        type="button"
+        class="backup-button"
+        (click)="backUp()"
+        [disabled]="isBackingUp()"
+      >
+        {{
+          isBackingUp()
+            ? language.t('backup.action.backingUp')
+            : language.t('backup.action.backUp')
+        }}
+      </button>
+      <p class="backup-caption">{{ backupCaption() }}</p>
+    </div>
+  </div>
+</aside>
+
+<header class="top-bar">
+  <div class="brand">
+    <span class="monogram" aria-hidden="true">O</span>
+    <span class="wordmark">Open Expenses</span>
+  </div>
+</header>
+
+<div class="main-area">
+  <app-install-prompt />
+  <main class="content" id="main-content" tabindex="-1">
+    <router-outlet />
+  </main>
+</div>

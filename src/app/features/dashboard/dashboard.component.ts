@@ -8,6 +8,7 @@ import { ProfileService } from '../../core/services/profile.service';
 import { ExchangeRateService } from '../../core/services/exchange-rate.service';
 import { NetworkService } from '../../core/services/network.service';
 import { LanguageService } from '../../core/services/language.service';
+import { DataVersionService } from '../../core/services/data-version.service';
 import {
   MONTH_NUMBERS,
   MonthNumber,
@@ -15,7 +16,6 @@ import {
   defaultScope,
   getCurrentPeriod,
   getPeriodYear,
-  isAllTime,
   isMonthNumber,
   scopeOptionsFromMovements,
 } from '../../core/types/period.type';
@@ -23,10 +23,22 @@ import { Transaction } from '../../core/models/transaction.model';
 import { Transfer } from '../../core/models/transfer.model';
 import { Account } from '../../core/models/account.model';
 import { Category, isIncomeCategory } from '../../core/models/category.model';
+import { DismissibleAlertComponent } from '../../shared/components/dismissible-alert/dismissible-alert.component';
+import {
+  ConversionDegradation,
+  noDegradation,
+  unconvertedTransactionsAffecting,
+} from '../../core/balances/conversion-degradation';
+import {
+  periodEndBalance,
+  periodEndBaseAmount,
+  storedBaseAmount,
+} from '../../core/balances/period-end-balances';
+import { PeriodNet, netByPeriod } from '../../core/stats/year-nets';
 
 @Component({
   selector: 'app-dashboard',
-  imports: [FormsModule],
+  imports: [FormsModule, DismissibleAlertComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss',
 })
@@ -38,6 +50,7 @@ export class DashboardComponent implements OnInit {
   private profileService = inject(ProfileService);
   private exchangeRateService = inject(ExchangeRateService);
   private networkService = inject(NetworkService);
+  private dataVersion = inject(DataVersionService);
   language = inject(LanguageService);
 
   scope = signal<PeriodScope>(defaultScope());
@@ -51,27 +64,36 @@ export class DashboardComponent implements OnInit {
   categories = signal<Category[]>([]);
   baseCurrency = signal('EUR');
 
-  totalIncome = signal(0);
-  totalExpenses = signal(0);
-  netIncome = signal(0);
+  yearTotalIncome = signal(0);
+  yearTotalExpenses = signal(0);
+  yearTotalNet = signal(0);
+  yearHasData = signal(false);
+  yearHasMovements = signal(false);
   categoryBreakdown = signal<{ name: string; total: number }[]>([]);
   accountBalances = signal<{ account: Account; balance: number }[]>([]);
   totalBalanceBaseCurrency = signal(0);
-  conversionFailed = signal(false);
+  conversionDegraded = signal<ConversionDegradation>({ ...noDegradation });
 
   avgMonthlyIncome = signal(0);
   avgMonthlyExpenses = signal(0);
-  avgMonthlySavings = signal(0);
+  avgMonthlyNet = signal(0);
+  yearNets = signal<PeriodNet[]>([]);
 
   async ngOnInit(): Promise<void> {
+    await this.loadAll();
+  }
+
+  private async loadAll(): Promise<void> {
     this.baseCurrency.set(await this.profileService.getBaseCurrency());
     await this.refresh();
     await this.refreshAverages();
     await this.applyScopeOptions();
   }
 
+  private reloadDataOnVersionChange = this.dataVersion.reloadOnChange(() => this.loadAll());
+
   async refresh(): Promise<void> {
-    this.conversionFailed.set(false);
+    this.conversionDegraded.set({ ...noDegradation });
     const txns = await this.transactionService.getByScope(this.scope());
     const transfers = await this.transferService.getByScope(this.scope());
 
@@ -82,13 +104,14 @@ export class DashboardComponent implements OnInit {
     const allCategories = await this.categoryService.getAll();
     this.categories.set(allCategories);
     const catMap = new Map(allCategories.map(c => [c.id!, c]));
+    const base = this.baseCurrency();
 
     let income = 0;
     let expenses = 0;
     const catTotals = new Map<number, number>();
 
     for (const t of txns) {
-      const amount = t.baseCurrencyAmount ?? t.amount;
+      const amount = storedBaseAmount(t);
       const cat = catMap.get(t.categoryId);
       if (isIncomeCategory(cat?.type)) {
         income += amount;
@@ -97,10 +120,6 @@ export class DashboardComponent implements OnInit {
         catTotals.set(t.categoryId, (catTotals.get(t.categoryId) ?? 0) + amount);
       }
     }
-
-    this.totalIncome.set(income);
-    this.totalExpenses.set(expenses);
-    this.netIncome.set(income - expenses);
 
     const breakdown: { name: string; total: number }[] = [];
     for (const [catId, total] of catTotals) {
@@ -111,24 +130,33 @@ export class DashboardComponent implements OnInit {
     }
     this.categoryBreakdown.set(breakdown.sort((a, b) => b.total - a.total));
 
+    const isIncome = this.incomeClassifier(catMap);
+    const [allTxns, allTransfers] = await Promise.all([
+      this.transactionService.getAll(),
+      this.transferService.getAll(),
+    ]);
+
+    const scope = this.scope();
     const balances: { account: Account; balance: number }[] = [];
     for (const acc of this.accounts()) {
-      const txnsAll = await this.transactionService.getByAccount(acc.id!);
-      const transfersAll = await this.transferService.getAll();
-      let balance = acc.initialBalance;
-      for (const t of txnsAll) {
-        const cat = catMap.get(t.categoryId);
-        balance += isIncomeCategory(cat?.type) ? t.amount : -t.amount;
-      }
-      for (const tr of transfersAll) {
-        if (tr.sourceAccountId === acc.id) balance -= tr.sourceAmount;
-        if (tr.destinationAccountId === acc.id) balance += tr.destinationAmount;
-      }
+      const balance = periodEndBalance(
+        { account: acc, transactions: allTxns, transfers: allTransfers, isIncome },
+        scope,
+      );
       balances.push({ account: acc, balance });
     }
     this.accountBalances.set(balances);
 
-    const base = this.baseCurrency();
+    const unconverted = unconvertedTransactionsAffecting(
+      allTxns,
+      new Map(this.accounts().map(a => [a.id!, a])),
+      base,
+      scope,
+    );
+    if (unconverted.length > 0) {
+      this.conversionDegraded.update(d => ({ ...d, unconvertedTransactions: true }));
+    }
+
     const nonBaseCurrencies = [...new Set(
       balances
         .map(b => b.account.currency)
@@ -141,41 +169,57 @@ export class DashboardComponent implements OnInit {
     }
 
     if (!this.networkService.isOnline()) {
-      this.conversionFailed.set(true);
-      this.totalBalanceBaseCurrency.set(this.sumBalances(balances, base));
+      this.excludeForeignAccounts(balances, base);
       return;
     }
 
     try {
       const rates = await this.exchangeRateService.getRates(base, nonBaseCurrencies);
-      const baseAmounts = await this.computeBaseAmounts(balances, catMap, rates, base);
-      this.totalBalanceBaseCurrency.set(baseAmounts.reduce((sum, b) => sum + b.amount, 0));
+      const missingRate = balances.some(
+        b => b.account.currency !== base && !rates.rates.has(b.account.currency),
+      );
+      if (missingRate) {
+        this.excludeForeignAccounts(balances, base);
+        return;
+      }
+
+      let total = 0;
+      for (const b of balances) {
+        const acc = b.account;
+        const initialInBase = acc.currency === base
+          ? acc.initialBalance
+          : Math.round(acc.initialBalance / rates.rates.get(acc.currency)! * 100) / 100;
+        total += periodEndBaseAmount(
+          { account: acc, transactions: allTxns, transfers: allTransfers, isIncome },
+          scope,
+          initialInBase,
+        );
+      }
+      this.totalBalanceBaseCurrency.set(Math.round(total * 100) / 100);
     } catch {
-      this.conversionFailed.set(true);
-      this.totalBalanceBaseCurrency.set(this.sumBalances(balances, base));
+      this.excludeForeignAccounts(balances, base);
     }
   }
 
-  async onScopeYearChange(value: number | 'all-time'): Promise<void> {
-    if (typeof value === 'string' && value !== 'all-time') {
-      value = Number(value);
-    }
-    if (value === 'all-time') {
-      await this.setScope({ kind: 'all-time' });
-      return;
-    }
+  /* Foreign accounts whose Exchange Rate cannot be resolved are left out of
+     the total balance and surface the conversion warning. */
+  private excludeForeignAccounts(
+    balances: { account: Account; balance: number }[],
+    base: string,
+  ): void {
+    this.conversionDegraded.update(d => ({ ...d, accountsExcluded: true }));
+    this.totalBalanceBaseCurrency.set(this.sumBalances(balances, base));
+  }
+
+  async onScopeYearChange(value: number): Promise<void> {
     const current = this.scope();
-    const period = current.kind === 'month' && current.year === value && current.period
-      ? current.period
-      : getCurrentPeriod();
+    const period = current.year === value ? current.period : getCurrentPeriod();
     await this.setScope({ kind: 'month', period, year: value });
   }
 
   async onScopeMonthChange(period: number): Promise<void> {
     const current = this.scope();
-    if (!isAllTime(current)) {
-      await this.setScope({ ...current, period: period as MonthNumber });
-    }
+    await this.setScope({ ...current, period: period as MonthNumber });
   }
 
   private async setScope(scope: PeriodScope): Promise<void> {
@@ -201,52 +245,53 @@ export class DashboardComponent implements OnInit {
     return this.language.scopeLabel(this.scope());
   }
 
-  scopePeriod(): number | null {
-    const s = this.scope();
-    return !isAllTime(s) ? s.period : null;
+  kpiScopeLabel(): string {
+    const scope = this.scope();
+    return this.language.t('stats.kpiScope', {
+      year: scope.year,
+      range: this.language.monthRangeLabel(1, scope.period),
+    });
   }
 
-  scopeYearValue(): number | 'all-time' {
-    const s = this.scope();
-    return !isAllTime(s) ? s.year : 'all-time';
+  savingsRate(): number | null {
+    const income = this.avgMonthlyIncome();
+    if (income <= 0) return null;
+    return Math.round((this.avgMonthlyNet() / income) * 100);
   }
 
-  private async computeBaseAmounts(
-    balances: { account: Account; balance: number }[],
-    catMap: Map<number, Category>,
-    rates: { rates: Map<string, number> },
-    base: string,
-  ): Promise<{ account: Account; amount: number }[]> {
-    const results: { account: Account; amount: number }[] = [];
+  categoryBarWidth(total: number): number {
+    const breakdown = this.categoryBreakdown();
+    const max = breakdown.length > 0 ? Math.max(...breakdown.map(b => b.total)) : 0;
+    if (max <= 0) return 0;
+    return Math.round((total / max) * 10000) / 100;
+  }
 
-    for (const b of balances) {
-      if (b.account.currency === base) {
-        results.push({ account: b.account, amount: b.balance });
-        continue;
-      }
-
-      const rate = rates.rates.get(b.account.currency);
-      if (!rate) continue;
-
-      const txnsAll = await this.transactionService.getByAccount(b.account.id!);
-      const transfersAll = await this.transferService.getAll();
-
-      let baseAmount = Math.round(b.account.initialBalance / rate * 100) / 100;
-
-      for (const t of txnsAll) {
-        const cat = catMap.get(t.categoryId);
-        const sign = isIncomeCategory(cat?.type) ? 1 : -1;
-        baseAmount += sign * (t.baseCurrencyAmount ?? Math.round(t.amount / rate * 100) / 100);
-      }
-      for (const tr of transfersAll) {
-        if (tr.sourceAccountId === b.account.id) baseAmount -= tr.baseCurrencyAmount;
-        if (tr.destinationAccountId === b.account.id) baseAmount += tr.baseCurrencyAmount;
-      }
-
-      results.push({ account: b.account, amount: Math.round(baseAmount * 100) / 100 });
+  conversionWarningMessage(): string {
+    const degraded = this.conversionDegraded();
+    const parts: string[] = [];
+    if (degraded.accountsExcluded) {
+      parts.push(this.language.t('stats.conversionWarning', { currency: this.baseCurrency() }));
     }
+    if (degraded.unconvertedTransactions) {
+      parts.push(
+        this.language.t('stats.conversionWarningUnconverted', { currency: this.baseCurrency() }),
+      );
+    }
+    return parts.join(' ');
+  }
 
-    return results;
+  scopePeriod(): MonthNumber {
+    return this.scope().period;
+  }
+
+  scopeYearValue(): number {
+    return this.scope().year;
+  }
+
+  private incomeClassifier(
+    catMap: Map<number, Category>,
+  ): (transaction: Transaction) => boolean {
+    return (t: Transaction) => isIncomeCategory(catMap.get(t.categoryId)?.type);
   }
 
   private sumBalances(
@@ -264,25 +309,24 @@ export class DashboardComponent implements OnInit {
     const catMap = new Map(allCategories.map(c => [c.id!, c]));
 
     const scope = this.scope();
-    const selectedYear = scope.kind === 'all-time' ? 'All time' : String(scope.year);
+    const selectedYear = String(scope.year);
 
-    const filteredTxns = selectedYear === 'All time'
-      ? allTxns
-      : allTxns.filter(t => String(getPeriodYear(t)) === selectedYear);
+    const yearTxns = allTxns.filter(t => String(getPeriodYear(t)) === selectedYear);
+    const filteredTxns = yearTxns.filter(t => t.period <= scope.period);
 
-    const averagesAllTime = selectedYear === 'All time';
+    this.yearNets.set(netByPeriod(allTxns, this.incomeClassifier(catMap), scope.year));
+    this.yearHasMovements.set(yearTxns.length > 0);
 
-    const monthsWithData = new Set(
-      filteredTxns.map(t => averagesAllTime
-        ? `${getPeriodYear(t)}-${t.period}`
-        : t.period
-      )
-    );
+    const monthsWithData = new Set(filteredTxns.map(t => t.period));
 
     if (monthsWithData.size === 0) {
+      this.yearTotalIncome.set(0);
+      this.yearTotalExpenses.set(0);
+      this.yearTotalNet.set(0);
+      this.yearHasData.set(false);
       this.avgMonthlyIncome.set(0);
       this.avgMonthlyExpenses.set(0);
-      this.avgMonthlySavings.set(0);
+      this.avgMonthlyNet.set(0);
       return;
     }
 
@@ -290,7 +334,7 @@ export class DashboardComponent implements OnInit {
     let totalExpenses = 0;
 
     for (const t of filteredTxns) {
-      const amount = t.baseCurrencyAmount ?? t.amount;
+      const amount = storedBaseAmount(t);
       const cat = catMap.get(t.categoryId);
       if (isIncomeCategory(cat?.type)) {
         totalIncome += amount;
@@ -300,13 +344,36 @@ export class DashboardComponent implements OnInit {
     }
 
     const months = monthsWithData.size;
+    this.yearTotalIncome.set(totalIncome);
+    this.yearTotalExpenses.set(totalExpenses);
+    this.yearTotalNet.set(totalIncome - totalExpenses);
+    this.yearHasData.set(true);
     this.avgMonthlyIncome.set(Math.round(totalIncome / months * 100) / 100);
     this.avgMonthlyExpenses.set(Math.round(totalExpenses / months * 100) / 100);
-    this.avgMonthlySavings.set(Math.round((totalIncome - totalExpenses) / months * 100) / 100);
+    this.avgMonthlyNet.set(Math.round((totalIncome - totalExpenses) / months * 100) / 100);
+  }
+
+  /* Bars scale against the year's max Net magnitude; the fill reaches at most
+     half the track so positive Net can grow up and negative Net down from the
+     same baseline. */
+  periodFillHeight(net: number): number {
+    const max = Math.max(...this.yearNets().map(n => Math.abs(n.net)), 0);
+    if (max <= 0) return 0;
+    return Math.round((Math.abs(net) / max) * 50 * 100) / 100;
+  }
+
+  /* Net of the scope's Period: the one figure the strip hides behind its
+     relative bars, promoted to a visible caption on the card. */
+  selectedPeriodNet(): number {
+    return this.yearNets().find(n => n.period === this.scope().period)?.net ?? 0;
   }
 
   formatMoney(amount: number): string {
     return this.language.formatMoney(amount, this.baseCurrency());
+  }
+
+  avgCaption(amount: number): string {
+    return this.language.t('stats.avgCaption', { amount: this.formatMoney(amount) });
   }
 
   formatAccountBalance(amount: number, currency: string): string {

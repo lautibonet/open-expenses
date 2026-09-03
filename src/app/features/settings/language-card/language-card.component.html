@@ -1,24 +1,89 @@
 <section class="card">
-  <h2>{{ language.t('settings.language') }}</h2>
-  <div class="inline-form">
-    <select
-      [ngModel]="selected()"
-      (ngModelChange)="selected.set($event)"
-      class="input small"
-      [attr.aria-label]="language.t('settings.languageAria')"
-    >
-      @for (option of languages; track option.code) {
-        <option [value]="option.code">{{ option.label }}</option>
-      }
-    </select>
-    <button class="btn primary" (click)="applyLanguage()">
-      {{ language.t('settings.update') }}
-    </button>
-  </div>
-  @if (errorMessage()) {
-    <p class="error">{{ errorMessage() }}</p>
-  }
-  @if (successMessage()) {
-    <p class="success">{{ successMessage() }}</p>
+  <h2>
+    <svg aria-hidden="true" viewBox="0 0 16 16" focusable="false">
+      <circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1.5" />
+      <path
+        d="M2 8h12M8 2c-2.5 3.5-2.5 8.5 0 12M8 2c2.5 3.5 2.5 8.5 0 12"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.5"
+      />
+    </svg>
+    {{ language.t('settings.language') }}
+  </h2>
+  @if (editing()) {
+    <div class="edit-line">
+      <select
+        #languageSelect
+        [ngModel]="selected()"
+        (ngModelChange)="selected.set($event)"
+        (keydown.enter)="applyLanguage()"
+        (keydown.escape)="cancelEdit()"
+        class="input"
+        [attr.aria-label]="language.t('settings.languageAria')"
+      >
+        @for (option of languages; track option.code) {
+          <option [value]="option.code">{{ option.label }}</option>
+        }
+      </select>
+      <button
+        type="button"
+        class="btn small primary icon-btn"
+        (click)="applyLanguage()"
+        [attr.aria-label]="language.t('settings.confirmEditAria')"
+        [title]="language.t('settings.confirmEditAria')"
+      >
+        <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+          <path
+            d="M20 6 9 17l-5-5"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
+      </button>
+      <button
+        type="button"
+        class="btn small icon-btn"
+        (click)="cancelEdit()"
+        [attr.aria-label]="language.t('settings.cancelEditAria')"
+        [title]="language.t('settings.cancelEditAria')"
+      >
+        <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+          <path
+            d="M18 6 6 18M6 6l12 12"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
+      </button>
+    </div>
+    @if (editError()) {
+      <p class="edit-error" role="alert">{{ editError() }}</p>
+    }
+  } @else {
+    <div class="card-value">
+      <span class="value">{{ activeLabel() }}</span>
+      <button
+        type="button"
+        class="btn small icon-btn"
+        data-edit-pencil="language"
+        (click)="startEdit()"
+        [attr.aria-label]="language.t('settings.editLanguageAria')"
+        [title]="language.t('settings.editLanguageAria')"
+      >
+        <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+          <path
+            d="M3 17.25V21h3.75L17.8 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"
+            fill="currentColor"
+          />
+        </svg>
+      </button>
+    </div>
   }
 </section>

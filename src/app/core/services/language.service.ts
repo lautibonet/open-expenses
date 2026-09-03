@@ -7,9 +7,10 @@ import {
   isLanguage,
 } from '../types/language.type';
 import { isCategoryType } from '../models/category.model';
-import { isAllTime, isMonthNumber, PeriodScope } from '../types/period.type';
+import { isMonthNumber, PeriodScope } from '../types/period.type';
 import { translate } from '../translations/translations';
 import { formatDateIn, formatMoneyIn, formatNumberIn } from '../format/format';
+import { TranslateFn } from '../models/translation-error';
 
 @Injectable({ providedIn: 'root' })
 export class LanguageService {
@@ -44,8 +45,26 @@ export class LanguageService {
     return translate(this.activeLanguage(), key, params);
   }
 
+  get translateFn(): TranslateFn {
+    return (key, params) => this.t(key, params);
+  }
+
   monthName(period: number): string {
     return this.t(`month.${period}`);
+  }
+
+  monthInitial(period: number): string {
+    return this.monthName(period).charAt(0).toLocaleUpperCase(this.activeLanguage());
+  }
+
+  monthAbbrev(period: number): string {
+    return this.monthName(period)
+      .slice(0, 3)
+      .toLocaleUpperCase(this.activeLanguage());
+  }
+
+  monthRangeLabel(from: number, to: number): string {
+    return `${this.monthAbbrev(from)}–${this.monthAbbrev(to)}`;
   }
 
   periodLabel(period: number | string): string {
@@ -53,9 +72,6 @@ export class LanguageService {
   }
 
   scopeLabel(scope: PeriodScope): string {
-    if (isAllTime(scope)) {
-      return this.t('scope.allTime');
-    }
     return `${this.monthName(scope.period)} ${scope.year}`;
   }
 

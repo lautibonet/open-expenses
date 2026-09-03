@@ -1,110 +1,387 @@
+@use '../../shared/styles/patterns' as *;
+
 .dashboard {
   padding-bottom: 1rem;
-
-  h1 {
-    font-size: var(--type-title);
-    font-weight: 500;
-    line-height: var(--leading-headline);
-    margin-bottom: 1rem;
-  }
 }
 
-.controls {
-  display: flex;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
+.page-header {
+  @extend %page-header;
+}
 
-  select {
-    padding: 0.5rem;
-    border: 1px solid var(--edge-graphite);
-    border-radius: var(--radius-sm);
-    font-size: 0.9rem;
+.scope-control {
+  @extend %scope-control;
+}
+
+.scope-selects {
+  @extend %scope-selects;
+}
+
+/* KPI row: the design's three summary cards. The year total is the headline
+   figure with the monthly average demoted to a secondary line beneath it.
+   Income keeps a green stripe, expense an error-red stripe, and net is the
+   inverted solid-ink card.
+   Tracks are minmax(0, 1fr), not bare 1fr: a 1fr track's minimum is
+   min-content, so an unbreakable mono figure ("29.087,62 EUR") can blow the
+   row out past the page column. Clamping the minimum to 0 keeps the row
+   edges aligned with the cards above and below at any figure size. */
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+}
+
+.kpi-card {
+  /* The cards are dl elements: without this reset the UA's 1em block margin
+     stacks on top of the grid gap, doubling the mobile KPI-to-KPI gap to 48px
+     while the page's section cards sit 24px apart (#111). */
+  margin: 0;
+  background: var(--surface-lowest);
+  border: var(--border-hard);
+  padding: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+
+  dt,
+  dd {
+    margin: 0;
+  }
+
+  .label {
+    @extend %caps-label-muted;
+
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+  }
+
+  .value {
+    @extend %mono-data;
+
+    font-size: var(--type-headline);
+    /* JetBrains Mono ships only weight 500: requesting more synthesizes
+       faux bold with wider glyphs, worsening the grid blowout. */
+    font-weight: 500;
+    color: var(--on-surface);
+  }
+
+  .secondary {
+    @extend %mono-data;
+
+    font-size: var(--type-caption);
+    font-weight: 500;
+    color: var(--on-surface-variant);
+  }
+
+  &.kpi-income {
+    border-left: var(--stripe-income);
+  }
+
+  &.kpi-expense {
+    border-left: var(--stripe-expense);
+  }
+
+  &.kpi-net {
+    background: var(--on-surface);
+    border-color: var(--on-surface);
+
+    .label {
+      color: var(--surface-dim);
+    }
+
+    .value {
+      color: var(--surface-lowest);
+    }
+
+    .secondary {
+      color: var(--surface-container-highest);
+    }
+
+    .savings-rate {
+      @extend %mono-data;
+
+      font-weight: 500;
+      color: var(--surface-container-highest);
+    }
   }
 }
 
 .card {
-  background: var(--paper-white);
-  border: 1px solid var(--hairline-graphite);
-  border-radius: var(--radius-lg);
-  padding: 1rem;
-  margin-bottom: 1rem;
+  background: var(--surface-lowest);
+  border: var(--border-hard);
+  padding: var(--space-md);
+  margin-bottom: var(--space-lg);
 
   h2 {
-    font-size: var(--type-headline);
-    font-weight: 600;
-    line-height: var(--leading-headline);
-    margin-bottom: 0.75rem;
+    @extend %card-header;
   }
-}
-
-.totals {
-  display: flex;
-  gap: 2rem;
 }
 
 .stat {
   display: flex;
   flex-direction: column;
+  gap: var(--space-xs);
 
   .label {
-    font-size: var(--type-label);
-    letter-spacing: var(--tracking-micro);
-    line-height: var(--leading-label);
-    color: var(--muted-slate);
+    @extend %caps-label-muted;
   }
 
   .value {
-    font-size: 1.25rem;
-    font-weight: 600;
-    line-height: var(--leading-tight);
+    @extend %mono-data;
 
-    &.income {
-      color: var(--ledger-green);
-    }
-
-    &.expense {
-      color: var(--officers-red);
-    }
-
-    &.information {
-      color: var(--ledger-ink);
-    }
-  }
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-
-  th,
-  td {
-    padding: 0.5rem;
-    text-align: left;
-    border-bottom: 1px solid var(--silvered-paper);
-  }
-
-  th {
-    font-size: var(--type-label);
-    color: var(--muted-slate);
+    font-size: var(--type-title);
     font-weight: 500;
-    letter-spacing: var(--tracking-micro);
-    line-height: var(--leading-label);
+    color: var(--on-surface);
   }
 }
 
-.conversion-warning {
-  margin-top: 0.75rem;
-  padding: 0.5rem 0.75rem;
-  background: var(--amber-surface);
-  border: 1px solid var(--amber-border);
-  border-radius: var(--radius-md);
-  font-size: 0.8rem;
-  color: var(--amber-ink);
+/* Year spine: the 12-month Net strip. Pure CSS — ink fills on gray tracks,
+   one column per Period of the scope's year. Positive Net grows up from the
+   baseline, negative Net grows down; negative months stay ink (red marks
+   movement direction and warnings only). Zero-Net months show the bare track.
+   Month initials are the Language service's, set in mono. */
+.net-strip {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: var(--space-xs);
+  margin-bottom: var(--space-md);
 }
 
-@media (max-width: 560px) {
-  .totals {
-    flex-wrap: wrap;
-    gap: var(--space-lg);
+.net-strip-month {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-xs);
+
+  .net-track {
+    position: relative;
+    width: 100%;
+    height: 4.5rem;
+    background: var(--surface-container-high);
+    border: 1px solid var(--outline-variant);
+    overflow: hidden;
+  }
+
+  .net-fill {
+    position: absolute;
+    left: 0;
+    right: 0;
+    background: var(--on-surface);
+
+    &.up {
+      bottom: 50%;
+    }
+
+    &.down {
+      top: 50%;
+    }
+  }
+
+  .net-initial {
+    @extend %mono-data;
+
+    font-weight: 500;
+    color: var(--on-surface-variant);
+  }
+
+  &.current {
+    .net-track {
+      border: var(--border-hard-thick);
+    }
+
+    .net-initial {
+      color: var(--on-surface);
+    }
+  }
+}
+
+.net-strip-zero {
+  @extend %empty-state;
+
+  margin: 0;
+}
+
+/* Caption and legend: the scope Period's Net figure — previously visible only
+   to screen readers — promoted to the visible card footer, and the strip's
+   above/below-midline convention stated once in the caps-label voice. Both sit
+   under the strip on their own lines, so no bar track gives up width. */
+.net-strip-caption {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-md);
+  margin: 0 0 var(--space-xs);
+
+  dt,
+  dd {
+    margin: 0;
+  }
+
+  .label {
+    @extend %caps-label-muted;
+  }
+
+  .value {
+    @extend %mono-data;
+
+    font-weight: 500;
+    color: var(--on-surface);
+    white-space: nowrap;
+  }
+}
+
+.net-strip-legend {
+  @extend %caps-label-muted;
+
+  margin: 0;
+}
+
+/* The shared empty-state pattern (same as Movements): dashed border on a flat
+   surface, centered muted ink. In the KPI row's grid the empty state spans
+   all three tracks so it keeps the full column width. */
+.empty-state {
+  @extend %empty-state;
+}
+
+.kpi-row .empty-state {
+  grid-column: 1 / -1;
+}
+
+/* Accessible equivalent: announces month + Net per Period. */
+.net-strip-figures {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Category bars: pure CSS horizontal fills on a gray track — no chart lib. */
+.category-bars {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.category-bar-row {
+  .bar-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-md);
+    margin-bottom: var(--space-xs);
+  }
+
+  .cat-name {
+    font-size: var(--type-body);
+    color: var(--on-surface);
+  }
+
+  .cat-amount {
+    @extend %mono-data;
+
+    font-weight: 500;
+  }
+
+  .bar-track {
+    height: 0.75rem;
+    background: var(--surface-container-high);
+    border: 1px solid var(--outline-variant);
+  }
+
+  .bar-fill {
+    height: 100%;
+    background: var(--on-surface);
+  }
+}
+
+/* The conversion-warning strip is the shared dismissible alert, positioned
+   at page level so it vouches for every Base Currency figure on Stats.
+   An empty host (no warning) must leave no gap behind. */
+.conversion-warning {
+  display: block;
+  margin-bottom: var(--space-lg);
+}
+
+.conversion-warning:empty {
+  margin: 0;
+}
+
+/* Account balances: bordered list; the tile is the row's single currency
+   display — the amount never repeats it. Negative balances sit on the
+   error-container tile with error ink on the amount. */
+.balance-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.balance-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-sm) 0;
+
+  & + .balance-row {
+    border-top: 1px solid var(--surface-container-low);
+  }
+}
+
+.balance-tile {
+  @extend %mono-data;
+
+  font-weight: 500;
+  display: grid;
+  place-items: center;
+  min-width: 2.5rem;
+  height: 2.5rem;
+  padding: 0 var(--space-xs);
+  background: var(--surface-container-high);
+  border: var(--border-hard);
+  color: var(--on-surface);
+}
+
+.balance-meta {
+  display: flex;
+  flex-direction: column;
+
+  .account-name {
+    font-size: var(--type-body);
+    font-weight: 600;
+    color: var(--on-surface);
+  }
+}
+
+.balance-amount {
+  @extend %mono-data;
+
+  margin-left: auto;
+  font-weight: 500;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.balance-row.negative {
+  .balance-tile {
+    background: var(--error-container);
+    border-color: var(--on-error-container);
+    color: var(--on-error-container);
+  }
+
+  .balance-amount {
+    color: var(--error);
+  }
+}
+
+@media (max-width: 768px) {
+
+  .kpi-row {
+    grid-template-columns: minmax(0, 1fr);
+    /* Stacked KPI cards follow the page's 1.5rem section rhythm (--space-lg),
+       matching the .card margin-bottom (#111). Only the row gap changes: the
+       desktop column gap stays --space-md. */
+    row-gap: var(--space-lg);
   }
 }

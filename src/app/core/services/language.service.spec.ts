@@ -184,6 +184,19 @@ describe('LanguageService', () => {
       expect(service.monthName(12)).toBe('Diciembre');
     });
 
+    it('renders month initials in the active language', async () => {
+      await seedProfile('en');
+      await service.init();
+      expect(service.monthInitial(1)).toBe('J');
+      expect(service.monthInitial(9)).toBe('S');
+      expect(service.monthInitial(12)).toBe('D');
+
+      await service.setLanguage('es');
+      expect(service.monthInitial(1)).toBe('E');
+      expect(service.monthInitial(9)).toBe('S');
+      expect(service.monthInitial(12)).toBe('D');
+    });
+
     it('renders stored locale-neutral periods in the active language', async () => {
       await seedProfile('es');
       await service.init();

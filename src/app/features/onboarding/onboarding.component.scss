@@ -1,48 +1,135 @@
 @use '../../shared/styles/patterns' as *;
 
-.onboarding {
-  max-width: 600px;
-  margin: 2rem auto;
-  padding: 1.5rem;
+/* Graph-paper screen: full-bleed grid behind the wizard panel. */
+.screen {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--background);
+  background-image:
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: var(--grid-size) var(--grid-size);
 }
 
-h1 {
+/* ===== Top bar — brand caps left, SETUP caps right ===== */
+
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-sm) var(--space-lg);
+  background: var(--surface-lowest);
+  border-bottom: 1px solid var(--on-surface);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.monogram {
+  width: 2rem;
+  height: 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--on-surface);
+  color: var(--surface-lowest);
   font-size: var(--type-title);
-  font-weight: 500;
-  line-height: var(--leading-headline);
-  margin-bottom: 0.25rem;
+  font-weight: 800;
+  line-height: 1;
 }
 
-.subtitle {
-  color: var(--muted-slate);
-  font-size: var(--type-body);
-  line-height: var(--leading-body);
+.wordmark {
+  font-size: var(--type-title);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.setup-label {
+  @extend %caps-label-muted;
+}
+
+/* ===== Wizard panel — bordered card holding tab bar + step content ===== */
+
+.wizard {
+  width: min(100% - 2rem, 880px);
+  margin: var(--space-xl) auto;
+  background: var(--surface-lowest);
+  border: var(--border-hard);
+}
+
+/* Step tab bar: completed = ink block, current = primary block, upcoming = muted. */
+.step-bar {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--on-surface);
+}
+
+.step-tab {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: 0.75rem var(--space-md);
+  border: 1px solid var(--on-surface);
+  margin: 0 0 -1px -1px;
+  background: var(--surface-container-low);
+  color: var(--on-surface-variant);
+  white-space: nowrap;
+}
+
+.step-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.step-label {
+  @extend %caps-label;
+}
+
+.step-tab.completed {
+  background: var(--on-surface);
+  color: var(--surface-lowest);
+}
+
+.step-tab.current {
+  background: var(--primary-container);
+  color: var(--surface-lowest);
+}
+
+/* ===== Step content ===== */
+
+.step-panel {
+  padding: var(--space-xl);
+}
+
+.step-title {
+  font-size: var(--type-display);
+  font-weight: 800;
+  line-height: var(--leading-display);
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  margin: 0 0 var(--space-sm);
+}
+
+.step-description {
+  color: var(--on-surface-variant);
   max-width: var(--prose-measure);
-  margin-bottom: 2rem;
-}
-
-.step {
-  h2 {
-    font-size: var(--type-headline);
-    font-weight: 600;
-    line-height: var(--leading-headline);
-    margin-bottom: 0.5rem;
-  }
-
-  > p {
-    max-width: var(--prose-measure);
-    line-height: var(--leading-body);
-  }
+  margin: 0 0 var(--space-lg);
 }
 
 .input {
+  @extend %field;
   display: block;
   width: 100%;
-  padding: 0.5rem;
   margin-bottom: 0.5rem;
-  border: 1px solid var(--edge-graphite);
-  border-radius: var(--radius-sm);
-  font-size: 1rem;
   box-sizing: border-box;
 
   &.small {
@@ -53,6 +140,9 @@ h1 {
 
 .btn {
   @extend %btn-base;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
 
   &.primary {
     @extend %btn-primary;
@@ -61,6 +151,131 @@ h1 {
   &.small {
     @extend %btn-small;
   }
+
+  /* Outline danger: inline row actions (X remove). */
+  &.danger {
+    @extend %btn-danger;
+  }
+
+  /* Dashed affordance for add-actions (accounts, categories). */
+  &.dashed {
+    border-style: dashed;
+    box-shadow: none;
+
+    &:active:not(:disabled) {
+      transform: none;
+    }
+  }
+}
+
+/* ===== Language tiles ===== */
+
+.language-tiles {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  max-width: 24rem;
+  margin-bottom: var(--space-lg);
+}
+
+/* ===== Currency tiles ===== */
+
+.currency-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  margin-bottom: var(--space-lg);
+}
+
+.select-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  margin: 0 0 -1px -1px;
+  border: var(--border-hard);
+  background: var(--surface-lowest);
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  color: var(--on-surface);
+
+  &:active:not(:disabled) {
+    transform: none;
+  }
+
+  &.selected {
+    border: 2px solid var(--primary);
+  }
+}
+
+.tile-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+.tile-code {
+  font-size: var(--type-title);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.tile-symbol {
+  font-size: var(--type-body);
+  color: var(--on-surface-variant);
+}
+
+.tile-name {
+  font-size: var(--type-body);
+  padding-bottom: var(--space-sm);
+  border-bottom: 1px solid var(--outline-variant);
+}
+
+/* Search sits directly under the step title, above the grid, so it stays
+   visible no matter how many results render below. */
+.currency-search {
+  margin-bottom: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.search-label {
+  @extend %caps-label;
+}
+
+.search-field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  border: var(--border-hard);
+  padding: 0 var(--space-sm);
+  color: var(--on-surface-variant);
+
+  input {
+    flex: 1;
+    border: none;
+    padding: 0.5rem 0;
+    background: transparent;
+    color: var(--on-surface);
+    font-size: var(--type-body);
+  }
+}
+
+/* ===== Restore, accounts, categories ===== */
+
+.restore-options {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.75rem;
+  max-width: 28rem;
+  margin-top: var(--space-md);
+
+  .btn {
+    justify-content: center;
+  }
 }
 
 .account-form {
@@ -68,39 +283,59 @@ h1 {
   gap: 0.5rem;
   flex-wrap: wrap;
   align-items: flex-end;
-  margin-bottom: 1rem;
+  margin-bottom: var(--space-md);
+
+  /* Fields sit flush in the row — the field pattern's bottom margin would
+     otherwise lift them above the Add button. */
+  .input {
+    margin-bottom: 0;
+  }
 }
 
 .account-list {
   list-style: none;
   padding: 0;
+  margin: 0 0 var(--space-md);
 
   li {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: var(--space-sm);
     padding: 0.5rem 0;
-    border-bottom: 1px solid var(--silvered-paper);
+    border-bottom: 1px solid var(--outline-variant);
   }
+
+  .data-figure {
+    @extend %mono-data;
+    margin-right: auto;
+  }
+}
+
+.icon-btn {
+  @extend %icon-btn;
 }
 
 .category-table {
   width: 100%;
   border-collapse: collapse;
-  margin-bottom: 1rem;
+  margin-bottom: var(--space-md);
 
   th,
   td {
     padding: 0.5rem;
     text-align: left;
-    border-bottom: 1px solid var(--silvered-paper);
+    border-bottom: 1px solid var(--outline-variant);
+  }
+
+  /* Action cells keep their content on the right edge of the table. */
+  th:last-child,
+  td:last-child {
+    text-align: right;
   }
 
   th {
-    font-weight: 500;
-    font-size: var(--type-label);
-    letter-spacing: var(--tracking-micro);
-    color: var(--muted-slate);
+    @extend %caps-label-muted;
   }
 
   .input {
@@ -109,30 +344,62 @@ h1 {
   }
 }
 
+/* ===== Footer — hairline divider, Back left / Continue right ===== */
+
 .nav-buttons {
   display: flex;
+  justify-content: space-between;
+  align-items: center;
   gap: 0.5rem;
-  margin-top: 1rem;
-}
+  margin-top: var(--space-xl);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--on-surface);
 
-.restore-options {
-  display: flex;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  margin-top: 1rem;
+  .btn:first-child:not(.primary) {
+    order: -1;
+  }
 }
 
 .file-input {
   display: none;
 }
 
+/* Inline status notes on the wizard: primary tint ink for info, error ink
+   for failures — sized to the caption ramp used by status strips elsewhere. */
 .info {
-  color: var(--ledger-ink);
+  color: var(--primary);
+  margin: 0.5rem 0;
+  font-size: var(--type-caption);
+}
+
+/* Dismissible error notes use the shared alert in its note appearance. */
+app-dismissible-alert {
   margin: 0.5rem 0;
 }
 
-.error {
-  color: var(--officers-red);
-  margin: 0.5rem 0;
+@media (max-width: 768px) {
+  .wizard {
+    width: calc(100% - 1rem);
+    margin: var(--space-md) auto;
+  }
+
+  .step-panel {
+    padding: var(--space-md);
+  }
+
+  .step-tab {
+    flex: 1 1 40%;
+
+    .step-icon {
+      display: none;
+    }
+  }
+
+  .currency-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .step-title {
+    font-size: var(--type-headline);
+  }
 }

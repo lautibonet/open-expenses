@@ -1,4 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { Location } from '@angular/common';
+import { provideRouter } from '@angular/router';
 import { MovementsComponent } from './movements.component';
 import { TransactionService } from '../../core/services/transaction.service';
 import { TransferService } from '../../core/services/transfer.service';
@@ -10,7 +12,13 @@ import { LanguageService } from '../../core/services/language.service';
 import { db } from '../../core/db/database';
 import { Transaction } from '../../core/models/transaction.model';
 import { Transfer } from '../../core/models/transfer.model';
-import { MONTH_NAMES, defaultScope, getCurrentPeriod, getCurrentYear } from '../../core/types/period.type';
+import { CaptureFormService } from '../../core/services/capture-form.service';
+import { DataVersionService } from '../../core/services/data-version.service';
+import { MONTH_NAMES, MonthNumber, defaultScope, getCurrentPeriod, getCurrentYear } from '../../core/types/period.type';
+
+function flush(ms = 10): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 describe('MovementsComponent - filtering', () => {
   let fixture: ComponentFixture<MovementsComponent>;
@@ -130,6 +138,25 @@ describe('MovementsComponent - filtering', () => {
     component.filterAccount.set(accountId2);
     expect(component.activeFilterCount()).toBe(2);
   });
+
+  it('states that Transfers are excluded while a category filter is active', async () => {
+    await seedMovements();
+    component.toggleFilters(); // the hint lives inside the revealed filter panel (#102)
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).not.toContain('Transfers are not shown');
+
+    component.filterCategory.set(categoryId1);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain(
+      'Transfers are not shown while a category filter is active',
+    );
+
+    component.clearFilters();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).not.toContain('Transfers are not shown');
+  });
 });
 
 describe('MovementsComponent - no tag affordances', () => {
@@ -221,97 +248,6 @@ describe('MovementsComponent - no tag affordances', () => {
 
     component.searchQuery.set('nothing-matches-this');
     expect(component.filteredMovements().length).toBe(0);
-  });
-});
-
-describe('MovementsComponent - self-transfer guard', () => {
-  let fixture: ComponentFixture<MovementsComponent>;
-  let component: MovementsComponent;
-  let accountService: AccountService;
-  let accountId1: number;
-  let accountId2: number;
-  let accountId3: number;
-
-  beforeEach(async () => {
-    await db.delete();
-    await db.open();
-    await TestBed.configureTestingModule({
-      imports: [MovementsComponent],
-    }).compileComponents();
-
-    fixture = TestBed.createComponent(MovementsComponent);
-    component = fixture.componentInstance;
-    accountService = TestBed.inject(AccountService);
-
-    const acc1 = await accountService.create('Cash', 'EUR', 100000);
-    accountId1 = acc1.id!;
-    const acc2 = await accountService.create('Card', 'EUR', 50000);
-    accountId2 = acc2.id!;
-    const acc3 = await accountService.create('Savings', 'EUR', 200000);
-    accountId3 = acc3.id!;
-  });
-
-  afterEach(async () => {
-    await db.delete();
-  });
-
-  it('should exclude source account from destination accounts', async () => {
-    await component.ngOnInit();
-    component.trForm.update((f) => ({ ...f, sourceAccountId: accountId1 }));
-
-    const filtered = component.filteredDestinationAccounts();
-    expect(filtered.find((a) => a.id === accountId1)).toBeUndefined();
-    expect(filtered.length).toBe(2);
-  });
-
-  it('should show all accounts when no source is selected', async () => {
-    await component.ngOnInit();
-    component.trForm.update((f) => ({ ...f, sourceAccountId: 0 }));
-
-    const filtered = component.filteredDestinationAccounts();
-    expect(filtered.length).toBe(3);
-  });
-
-  it('should reset destination when source changes to match it', async () => {
-    await component.ngOnInit();
-    component.trForm.update((f) => ({
-      ...f,
-      sourceAccountId: accountId1,
-      destAccountId: accountId2,
-    }));
-
-    component.onTransferSourceChange(accountId2);
-
-    expect(component.trForm().sourceAccountId).toBe(accountId2);
-    expect(component.trForm().destAccountId).not.toBe(accountId2);
-  });
-
-  it('should not reset destination when source changes to a different account', async () => {
-    await component.ngOnInit();
-    component.trForm.update((f) => ({
-      ...f,
-      sourceAccountId: accountId1,
-      destAccountId: accountId2,
-    }));
-
-    component.onTransferSourceChange(accountId3);
-
-    expect(component.trForm().sourceAccountId).toBe(accountId3);
-    expect(component.trForm().destAccountId).toBe(accountId2);
-  });
-
-  it('should update destination dropdown when source changes', async () => {
-    await component.ngOnInit();
-    component.trForm.update((f) => ({ ...f, sourceAccountId: accountId1 }));
-
-    let filtered = component.filteredDestinationAccounts();
-    expect(filtered.find((a) => a.id === accountId1)).toBeUndefined();
-    expect(filtered.find((a) => a.id === accountId2)).toBeDefined();
-
-    component.onTransferSourceChange(accountId2);
-    filtered = component.filteredDestinationAccounts();
-    expect(filtered.find((a) => a.id === accountId2)).toBeUndefined();
-    expect(filtered.find((a) => a.id === accountId1)).toBeDefined();
   });
 });
 
@@ -408,152 +344,6 @@ describe('MovementsComponent - category deactivation and income sign', () => {
   });
 });
 
-describe('MovementsComponent - transfer exchange rate', () => {
-  let fixture: ComponentFixture<MovementsComponent>;
-  let component: MovementsComponent;
-  let accountService: AccountService;
-  let exchangeRateService: ExchangeRateService;
-  let eurAccountId: number;
-  let usdAccountId: number;
-  let gbpAccountId: number;
-
-  beforeEach(async () => {
-    await db.delete();
-    await db.open();
-
-    const mockExchangeRateService = {
-      getRate: vi
-        .fn()
-        .mockResolvedValue({ rate: 1.08, from: 'USD', to: 'EUR', date: '2026-08-26' }),
-    };
-
-    await TestBed.configureTestingModule({
-      imports: [MovementsComponent],
-      providers: [{ provide: ExchangeRateService, useValue: mockExchangeRateService }],
-    }).compileComponents();
-
-    fixture = TestBed.createComponent(MovementsComponent);
-    component = fixture.componentInstance;
-    accountService = TestBed.inject(AccountService);
-    exchangeRateService = TestBed.inject(ExchangeRateService);
-
-    const eurAcc = await accountService.create('Cash EUR', 'EUR', 100000);
-    eurAccountId = eurAcc.id!;
-    const usdAcc = await accountService.create('Cash USD', 'USD', 50000);
-    usdAccountId = usdAcc.id!;
-    const gbpAcc = await accountService.create('Cash GBP', 'GBP', 30000);
-    gbpAccountId = gbpAcc.id!;
-  });
-
-  afterEach(async () => {
-    await db.delete();
-    vi.restoreAllMocks();
-  });
-
-  it('should fetch exchange rate when source account changes to foreign currency', async () => {
-    await component.ngOnInit();
-    component.trForm.update((f) => ({
-      ...f,
-      sourceAccountId: usdAccountId,
-      destAccountId: eurAccountId,
-      date: '2026-08-20',
-    }));
-
-    await component.onTransferSourceChange(usdAccountId);
-
-    expect(exchangeRateService.getRate).toHaveBeenCalledWith('USD', 'EUR', '2026-08-20');
-    expect(component.trForm().exchangeRate).toBe(1.08);
-  });
-
-  it('should re-fetch exchange rate when transfer date changes', async () => {
-    await component.ngOnInit();
-    component.trForm.update((f) => ({
-      ...f,
-      sourceAccountId: usdAccountId,
-      destAccountId: eurAccountId,
-      date: '2026-08-20',
-    }));
-    await component.onTransferSourceChange(usdAccountId);
-
-    vi.mocked(exchangeRateService.getRate).mockResolvedValueOnce({
-      rate: 1.12,
-      from: 'USD',
-      to: 'EUR',
-      date: '2026-01-15',
-    });
-
-    await component.onTransferDateChange('2026-01-15');
-
-    expect(exchangeRateService.getRate).toHaveBeenCalledWith('USD', 'EUR', '2026-01-15');
-    expect(component.trForm().exchangeRate).toBe(1.12);
-  });
-
-  it('should auto-calculate destination amount from source amount and rate', async () => {
-    await component.ngOnInit();
-    component.trForm.update((f) => ({
-      ...f,
-      sourceAccountId: usdAccountId,
-      destAccountId: eurAccountId,
-      sourceAmount: 500,
-      date: '2026-08-20',
-    }));
-    await component.onTransferSourceChange(usdAccountId);
-
-    expect(component.trForm().exchangeRate).toBe(1.08);
-  });
-
-  it('should show suggested rate text in transfer form', async () => {
-    await component.ngOnInit();
-    component.openTransferForm();
-    component.trForm.update((f) => ({
-      ...f,
-      sourceAccountId: usdAccountId,
-      destAccountId: eurAccountId,
-      sourceAmount: 500,
-      date: '2026-08-20',
-    }));
-    await component.onTransferSourceChange(usdAccountId);
-    fixture.detectChanges();
-
-    const rateText = fixture.nativeElement.querySelector('.rate-source');
-    expect(rateText).toBeTruthy();
-    expect(rateText.textContent).toContain('1 USD');
-    expect(rateText.textContent).toContain('1.08');
-    expect(rateText.textContent).toContain('EUR');
-  });
-
-  it('should not fetch rate when source and destination are same currency', async () => {
-    await component.ngOnInit();
-    component.trForm.update((f) => ({
-      ...f,
-      sourceAccountId: eurAccountId,
-      destAccountId: eurAccountId,
-      sourceAmount: 500,
-      date: '2026-08-20',
-    }));
-
-    await component.onTransferSourceChange(eurAccountId);
-
-    expect(component.trForm().exchangeRate).toBe(1);
-  });
-
-  it('should allow manual override of exchange rate', async () => {
-    await component.ngOnInit();
-    component.trForm.update((f) => ({
-      ...f,
-      sourceAccountId: usdAccountId,
-      destAccountId: eurAccountId,
-      sourceAmount: 500,
-      date: '2026-08-20',
-    }));
-    await component.onTransferSourceChange(usdAccountId);
-    expect(component.trForm().exchangeRate).toBe(1.08);
-
-    component.trForm.update((f) => ({ ...f, exchangeRate: 1.15 }));
-    expect(component.trForm().exchangeRate).toBe(1.15);
-  });
-});
-
 describe('MovementsComponent - direction arrows and display amounts', () => {
   let fixture: ComponentFixture<MovementsComponent>;
   let component: MovementsComponent;
@@ -603,23 +393,6 @@ describe('MovementsComponent - direction arrows and display amounts', () => {
   afterEach(async () => {
     await db.delete();
     vi.restoreAllMocks();
-  });
-
-  it('should return → arrow for income transactions', async () => {
-    await component.ngOnInit();
-    const txn = { categoryId: incomeCategoryId } as any;
-    expect(component.getDirectionArrow(txn, 'transaction')).toBe('→');
-  });
-
-  it('should return ← arrow for expense transactions', async () => {
-    await component.ngOnInit();
-    const txn = { categoryId: expenseCategoryId } as any;
-    expect(component.getDirectionArrow(txn, 'transaction')).toBe('←');
-  });
-
-  it('should return = arrow for transfers', async () => {
-    const tr = {} as any;
-    expect(component.getDirectionArrow(tr, 'transfer')).toBe('=');
   });
 
   it('should show positive amount for expenses (no minus prefix)', async () => {
@@ -743,18 +516,20 @@ describe('MovementsComponent - direction arrows and display amounts', () => {
     expect(display).toContain('500');
   });
 
-  it('should render direction arrow column in table header', async () => {
+  it('renders Date as the first column and drops the Type column', async () => {
     const period = getCurrentPeriod();
     await transactionService.create(eurAccountId, expenseCategoryId, 100, new Date(), period);
     await component.ngOnInit();
     fixture.detectChanges();
 
-    const headers = fixture.nativeElement.querySelectorAll('th');
-    expect(headers[0].textContent).toContain('Type');
-    expect(headers[1].textContent).toContain('Date');
+    const headers = Array.from(fixture.nativeElement.querySelectorAll('th')).map((el: any) =>
+      el.textContent.trim(),
+    );
+    expect(headers[0]).toContain('Date');
+    expect(headers.some((h: string) => h.includes('Type'))).toBe(false);
   });
 
-  it('should render direction arrow cell for each row', async () => {
+  it('renders no direction arrow cells and starts each data row with its date', async () => {
     const period = getCurrentPeriod();
     const acc2 = await accountService.create('Cash EUR 2', 'EUR', 50000);
     await transactionService.create(eurAccountId, expenseCategoryId, 100, new Date(), period);
@@ -762,13 +537,22 @@ describe('MovementsComponent - direction arrows and display amounts', () => {
     await component.ngOnInit();
     fixture.detectChanges();
 
-    const rows = fixture.nativeElement.querySelectorAll('tbody tr');
+    // One caps day divider announces the shared day; the two data rows follow.
+    const dividers = fixture.nativeElement.querySelectorAll('tbody tr.day-divider');
+    expect(dividers.length).toBe(1);
+
+    const rows = Array.from(
+      fixture.nativeElement.querySelectorAll('tbody tr'),
+    ).filter((row: any) => !row.classList.contains('day-divider'));
     expect(rows.length).toBe(2);
 
-    const arrowCells = fixture.nativeElement.querySelectorAll('tbody tr td:first-child');
-    const arrows = Array.from(arrowCells).map((el: any) => el.textContent.trim());
-    expect(arrows).toContain('←');
-    expect(arrows).toContain('=');
+    expect(fixture.nativeElement.querySelectorAll('td.arrow').length).toBe(0);
+
+    const firstCells = Array.from(rows).map((row: any) => row.querySelector('td').textContent.trim());
+    for (const cell of firstCells) {
+      expect(cell).not.toBe('←');
+      expect(cell).not.toBe('=');
+    }
   });
 });
 
@@ -806,9 +590,23 @@ describe('MovementsComponent - period year', () => {
     await db.delete();
   });
 
-  it('should default new transfer form to the current year', async () => {
+  function transferForm() {
+    return component.transferFormCard()!;
+  }
+
+  it('should file a transfer captured today under an old scope under today\'s period', async () => {
     await component.ngOnInit();
-    expect(component.trForm().year).toBe(getCurrentYear());
+    component.openTransferForm();
+    fixture.detectChanges();
+    component.scope.set({ kind: 'month', period: 3, year: 2025 });
+
+    component.cancelTransferForm();
+    component.openTransferForm();
+    fixture.detectChanges();
+
+    expect(transferForm().form().date).toBe(new Date().toISOString().split('T')[0]);
+    expect(transferForm().form().period).toBe(getCurrentPeriod());
+    expect(transferForm().form().year).toBe(getCurrentYear());
   });
 
   it('should filter movements by the selected period year', async () => {
@@ -834,20 +632,22 @@ describe('MovementsComponent - period year', () => {
     expect((component.movements()[0].data as any).amount).toBe(100);
   });
 
-  it('should save the period year from the transaction payload', async () => {
+  it('should save the period year from the transaction form', async () => {
     await component.ngOnInit();
-    await component.onSaveTransaction({
-      id: null,
+    component.toggleTransactionForm();
+    fixture.detectChanges();
+    const card = component.transactionFormCard()!;
+    card.form.update((f) => ({
+      ...f,
       accountId,
       categoryId,
       amount: 500,
       date: '2025-12-22',
       period: 1,
       year: 2026,
-      exchangeRate: null,
-      baseCurrencyAmount: null,
-      note: '',
-    });
+    }));
+    await card.onSubmit();
+    await flush();
 
     const txns = await transactionService.getAll();
     expect(txns[0].year).toBe(2026);
@@ -857,17 +657,19 @@ describe('MovementsComponent - period year', () => {
   it('should save the period year from the transfer form', async () => {
     const acc2 = await accountService.create('Savings', 'EUR', 50000);
     await component.ngOnInit();
-    component.trForm.update((f) => ({
+    component.openTransferForm();
+    fixture.detectChanges();
+    component.transferFormCard()!.form.update((f) => ({
       ...f,
       sourceAccountId: accountId,
       destAccountId: acc2.id!,
       sourceAmount: 500,
-      destinationAmount: 500,
       date: '2025-12-22',
       period: 1,
       year: 2026,
     }));
-    await component.saveTransfer();
+    await component.transferFormCard()!.onSubmit();
+    await flush();
 
     const transfers = await transferService.getAll();
     expect(transfers[0].year).toBe(2026);
@@ -887,10 +689,88 @@ describe('MovementsComponent - period year', () => {
       2026,
     );
     await component.ngOnInit();
-    component.openTransferForm(t.id!);
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    component.openTransferForm(t);
+    await flush();
+    fixture.detectChanges();
 
-    expect(component.trForm().year).toBe(2026);
+    expect(component.transferFormCard()!.form().year).toBe(2026);
+  });
+});
+
+describe('MovementsComponent - page header and scope control', () => {
+  let fixture: ComponentFixture<MovementsComponent>;
+  let component: MovementsComponent;
+  let transactionService: TransactionService;
+  let accountId: number;
+  let categoryId: number;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    await TestBed.configureTestingModule({
+      imports: [MovementsComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(MovementsComponent);
+    component = fixture.componentInstance;
+    transactionService = TestBed.inject(TransactionService);
+    const acc = await TestBed.inject(AccountService).create('Cash', 'EUR', 100000);
+    accountId = acc.id!;
+    const cat = await TestBed.inject(CategoryService).create('Food', 'expense');
+    categoryId = cat.id!;
+  });
+
+  afterEach(async () => {
+    await db.delete();
+  });
+
+  it('renders the display headline with its subtitle', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const h1 = fixture.nativeElement.querySelector('.page-header h1');
+    expect(h1).toBeTruthy();
+    expect(h1.textContent.trim()).toBe('Movements');
+
+    const subtitle = fixture.nativeElement.querySelector('.page-header .subtitle');
+    expect(subtitle.textContent.trim()).toBe('Track and categorize your financial flow.');
+  });
+
+  it('keeps accessible names on the year and month scope selects', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('select[aria-label="Scope year"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('select[aria-label="Scope month"]')).toBeTruthy();
+  });
+
+  it('renders plain month and year selects with no chevron stepper', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelectorAll('.step-btn').length).toBe(0);
+    expect(
+      fixture.nativeElement.querySelector('button[aria-label="Previous month"]'),
+    ).toBeNull();
+    expect(fixture.nativeElement.querySelector('button[aria-label="Next month"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.scope-selects select')).toBeTruthy();
+  });
+
+  it('leads the content with the Net Flow card', async () => {
+    await transactionService.create(accountId, categoryId, 500, new Date(), getCurrentPeriod());
+    await component.ngOnInit();
+    component.toggleTransactionForm();
+    fixture.detectChanges();
+
+    const card = fixture.nativeElement.querySelector('app-net-flow-card .net-flow-card');
+    expect(card).toBeTruthy();
+
+    const movements = fixture.nativeElement.querySelector('.movements');
+    const units = Array.from(movements.children).map((el) =>
+      (el as Element).tagName.toLowerCase(),
+    );
+    expect(units.indexOf('app-net-flow-card')).toBeGreaterThanOrEqual(0);
+    expect(units.indexOf('app-net-flow-card')).toBeLessThan(units.indexOf('app-transaction-form'));
   });
 });
 
@@ -926,10 +806,13 @@ describe('MovementsComponent - transaction note', () => {
     await db.delete();
   });
 
-  it('should save transaction with note from the card payload', async () => {
+  it('should save transaction with note from the card', async () => {
     await component.ngOnInit();
-    await component.onSaveTransaction({
-      id: null,
+    component.toggleTransactionForm();
+    fixture.detectChanges();
+    const card = component.transactionFormCard()!;
+    card.form.update((f) => ({
+      ...f,
       accountId,
       categoryId,
       amount: 500,
@@ -937,9 +820,9 @@ describe('MovementsComponent - transaction note', () => {
       period: 1,
       year: getCurrentYear(),
       note: 'Weekly groceries',
-      exchangeRate: null,
-      baseCurrencyAmount: null,
-    });
+    }));
+    await card.onSubmit();
+    await flush();
 
     const transactions = await transactionService.getAll();
     expect(transactions.length).toBe(1);
@@ -955,18 +838,13 @@ describe('MovementsComponent - transaction note', () => {
       1,
     );
     await component.ngOnInit();
-    await component.onSaveTransaction({
-      id: t.id!,
-      accountId,
-      categoryId,
-      amount: 1500,
-      date: '2026-01-15',
-      period: 1,
-      year: getCurrentYear(),
-      note: 'Updated note',
-      exchangeRate: null,
-      baseCurrencyAmount: null,
-    });
+    component.openTransactionFormForEdit(t);
+    fixture.detectChanges();
+    const card = component.transactionFormCard()!;
+    card.form.update((f) => ({ ...f, note: 'Updated note' }));
+
+    await card.onSubmit();
+    await flush();
 
     const updated = await transactionService.getById(t.id!);
     expect(updated!.note).toBe('Updated note');
@@ -1089,7 +967,7 @@ describe('MovementsComponent - shared scope', () => {
     expect(component.scopeMonths()).toContain(7);
   });
 
-  it('should show movements from every period when All time is chosen', async () => {
+  it('should show movements from a chosen past period', async () => {
     await transactionService.create(
       accountId,
       categoryId,
@@ -1113,12 +991,13 @@ describe('MovementsComponent - shared scope', () => {
     await component.ngOnInit();
     expect(component.movements().length).toBe(0);
 
-    await component.onScopeYearChange('all-time');
-    expect(component.scope().kind).toBe('all-time');
-    expect(component.movements().length).toBe(2);
+    await component.onScopeYearChange(2012);
+    await component.onScopeMonthChange(1);
+    expect(component.scope()).toEqual({ kind: 'month', period: 1, year: 2012 });
+    expect(component.movements().length).toBe(1);
   });
 
-  it('should include movements older than ten years in All time', async () => {
+  it('should include movements older than ten years when their year is selected', async () => {
     const oldYear = getCurrentYear() - 20;
     await transactionService.create(
       accountId,
@@ -1132,7 +1011,8 @@ describe('MovementsComponent - shared scope', () => {
     );
     await component.ngOnInit();
 
-    await component.onScopeYearChange('all-time');
+    await component.onScopeYearChange(oldYear);
+    await component.onScopeMonthChange(1);
     expect(component.movements().length).toBe(1);
     expect((component.movements()[0].data as any).year).toBe(oldYear);
   });
@@ -1190,21 +1070,21 @@ describe('MovementsComponent - shared scope', () => {
     await component.ngOnInit();
     expect(component.scopeAnnouncement()).toBe('');
 
-    await component.onScopeYearChange('all-time');
-    expect(component.scopeAnnouncement()).toBe('All time');
-
     const period = getCurrentPeriod();
+    await component.onScopeYearChange(getCurrentYear() - 1);
+    expect(component.scopeAnnouncement()).toBe(
+      `${MONTH_NAMES[period - 1]} ${getCurrentYear() - 1}`,
+    );
+
     await component.onScopeYearChange(getCurrentYear());
     expect(component.scopeAnnouncement()).toBe(`${MONTH_NAMES[period - 1]} ${getCurrentYear()}`);
   });
 
-  it('should title a heading with the All time label', async () => {
+  it('should title a heading with the current period label', async () => {
     await component.ngOnInit();
     expect(component.scopeLabelText()).toBe(
       `${MONTH_NAMES[getCurrentPeriod() - 1]} ${getCurrentYear()}`,
     );
-    await component.onScopeYearChange('all-time');
-    expect(component.scopeLabelText()).toBe('All time');
   });
 });
 
@@ -1387,6 +1267,279 @@ describe('MovementsComponent - contextual delete confirmation and undo', () => {
 
     expect(component.undo()).toBeNull();
   });
+
+  it('announces the undo window when a deletion is confirmed', async () => {
+    const txn = await transactionService.create(
+      accountId,
+      categoryId,
+      500,
+      new Date(),
+      getCurrentPeriod(),
+    );
+    await component.ngOnInit();
+    const item = component.movements().find((m) => (m.data as Transaction).id === txn.id)!;
+
+    component.requestDelete(item);
+    await component.confirmDelete();
+    fixture.detectChanges();
+
+    expect(component.undoAnnouncement()).toContain('10 seconds');
+    const live = fixture.nativeElement.querySelector('.undo-announcement');
+    expect(live).toBeTruthy();
+  });
+
+  it('announces when the undo window expires', async () => {
+    component.undoWindowMs = 20;
+    component.undo.set({
+      item: { type: 'transaction', data: { id: 1 } as Transaction },
+      snapshot: {} as Transaction,
+    });
+    component.scheduleUndoAutoDismiss();
+
+    await new Promise((resolve) => setTimeout(resolve, 60));
+
+    expect(component.undoAnnouncement()).toContain('Undo window closed');
+  });
+
+  it('does not announce an expiry when the toast is dismissed manually', async () => {
+    const txn = await transactionService.create(
+      accountId,
+      categoryId,
+      500,
+      new Date(),
+      getCurrentPeriod(),
+    );
+    await component.ngOnInit();
+    const item = component.movements().find((m) => (m.data as Transaction).id === txn.id)!;
+
+    component.requestDelete(item);
+    await component.confirmDelete();
+    component.dismissUndo();
+
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    expect(component.undoAnnouncement()).not.toContain('Undo window closed');
+  });
+
+  it('should dismiss the undo toast via its close affordance without undoing', async () => {
+    const txn = await transactionService.create(
+      accountId,
+      categoryId,
+      500,
+      new Date(),
+      getCurrentPeriod(),
+    );
+    await component.ngOnInit();
+    const item = component.movements().find((m) => (m.data as Transaction).id === txn.id)!;
+
+    component.requestDelete(item);
+    await component.confirmDelete();
+    fixture.detectChanges();
+    expect(component.undo()).not.toBeNull();
+
+    const toast = fixture.nativeElement.querySelector('.undo-toast') as HTMLElement;
+    const dismiss = toast.querySelector('.toast-dismiss') as HTMLButtonElement;
+    expect(dismiss).toBeTruthy();
+    expect(dismiss.querySelector('svg')).toBeTruthy();
+    expect(dismiss.textContent!.trim()).toBe('');
+    expect(dismiss.getAttribute('aria-label')).toBeTruthy();
+
+    dismiss.click();
+    fixture.detectChanges();
+
+    expect(component.undo()).toBeNull();
+    expect(await transactionService.getAll()).toHaveLength(0);
+
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(component.undo()).toBeNull();
+  });
+});
+
+describe('MovementsComponent - icon row actions', () => {
+  let fixture: ComponentFixture<MovementsComponent>;
+  let component: MovementsComponent;
+  let transactionService: TransactionService;
+  let transferService: TransferService;
+  let accountService: AccountService;
+  let categoryService: CategoryService;
+  let accountId: number;
+  let categoryId: number;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    await TestBed.configureTestingModule({
+      imports: [MovementsComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(MovementsComponent);
+    component = fixture.componentInstance;
+    transactionService = TestBed.inject(TransactionService);
+    transferService = TestBed.inject(TransferService);
+    accountService = TestBed.inject(AccountService);
+    categoryService = TestBed.inject(CategoryService);
+
+    const account = await accountService.create('Cash', 'EUR', 100000);
+    accountId = account.id!;
+    const category = await categoryService.create('Food', 'expense');
+    categoryId = category.id!;
+  });
+
+  afterEach(async () => {
+    fixture.destroy();
+    await db.delete();
+  });
+
+  async function seedTransaction(): Promise<Transaction> {
+    return transactionService.create(
+      accountId,
+      categoryId,
+      500,
+      new Date(),
+      getCurrentPeriod(),
+    );
+  }
+
+  async function settle(): Promise<void> {
+    await fixture.whenStable();
+    for (let i = 0; i < 10; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+    fixture.detectChanges();
+  }
+
+  function actionButtons(): HTMLButtonElement[] {
+    return Array.from(
+      fixture.nativeElement.querySelectorAll('tbody td:last-child button'),
+    ) as HTMLButtonElement[];
+  }
+
+  it('renders pencil and trash icon buttons with accessible names', async () => {
+    await seedTransaction();
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const buttons = actionButtons();
+    expect(buttons).toHaveLength(2);
+    expect(buttons[0].getAttribute('aria-label')).toBe('Edit movement');
+    expect(buttons[0].querySelector('svg')).toBeTruthy();
+    expect(buttons[1].getAttribute('aria-label')).toBe('Delete movement');
+    expect(buttons[1].querySelector('svg')).toBeTruthy();
+    expect(buttons[1].classList.contains('danger')).toBe(true);
+    expect(buttons.every((b) => (b.textContent ?? '').trim() === '')).toBe(true);
+  });
+
+  it('swaps the row actions to tick and X icon buttons when trash is clicked', async () => {
+    const txn = await seedTransaction();
+    await component.ngOnInit();
+    fixture.detectChanges();
+    const item = component.movements().find((m) => (m.data as Transaction).id === txn.id)!;
+
+    component.requestDelete(item);
+    fixture.detectChanges();
+
+    const buttons = actionButtons();
+    expect(buttons).toHaveLength(2);
+    expect(buttons[0].getAttribute('aria-label')).toBe('Confirm transaction deletion');
+    expect(buttons[0].querySelector('svg')).toBeTruthy();
+    expect(buttons[1].getAttribute('aria-label')).toBe('Cancel deletion');
+    expect(buttons[1].querySelector('svg')).toBeTruthy();
+    expect(buttons.every((b) => (b.textContent ?? '').trim() === '')).toBe(true);
+  });
+
+  it('keeps the delete prompt off-screen and announces it politely, with no visible message text', async () => {
+    const txn = await seedTransaction();
+    await component.ngOnInit();
+    fixture.detectChanges();
+    const item = component.movements().find((m) => (m.data as Transaction).id === txn.id)!;
+
+    component.requestDelete(item);
+    fixture.detectChanges();
+
+    const actionsCell = fixture.nativeElement.querySelector(
+      'tbody tr:not(.day-divider) td:last-child',
+    );
+    const live = actionsCell.querySelector('span[aria-live="polite"]');
+    expect(live).toBeTruthy();
+    expect(live.classList.contains('visually-hidden')).toBe(true);
+    expect(live.textContent).toContain('€500.00');
+    expect(live.textContent).toContain('Cash');
+  });
+
+  it('moves focus to the tick button when the inline confirmation opens', async () => {
+    const txn = await seedTransaction();
+    await component.ngOnInit();
+    fixture.detectChanges();
+    const item = component.movements().find((m) => (m.data as Transaction).id === txn.id)!;
+
+    component.requestDelete(item);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const tick = actionButtons()[0];
+    expect(document.activeElement).toBe(tick);
+  });
+
+  it('deletes from the tick button and exposes the undo', async () => {
+    const txn = await seedTransaction();
+    await component.ngOnInit();
+    fixture.detectChanges();
+    const item = component.movements().find((m) => (m.data as Transaction).id === txn.id)!;
+
+    component.requestDelete(item);
+    fixture.detectChanges();
+    await actionButtons()[0].click();
+    await settle();
+
+    expect(await transactionService.getAll()).toHaveLength(0);
+    expect(component.undo()?.item.data.id).toBe(txn.id);
+  });
+
+  it('cancels from the X button and restores the pencil and trash icons', async () => {
+    const txn = await seedTransaction();
+    await component.ngOnInit();
+    fixture.detectChanges();
+    const item = component.movements().find((m) => (m.data as Transaction).id === txn.id)!;
+
+    component.requestDelete(item);
+    fixture.detectChanges();
+    await actionButtons()[1].click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(component.confirmingDelete()).toBeNull();
+    expect(await transactionService.getAll()).toHaveLength(1);
+    const buttons = actionButtons();
+    expect(buttons[0].getAttribute('aria-label')).toBe('Edit movement');
+    expect(buttons[1].getAttribute('aria-label')).toBe('Delete movement');
+  });
+
+  it('confirms a transfer deletion via tick and X icons', async () => {
+    const acc2 = await accountService.create('Savings', 'EUR', 50000);
+    const tr = await transferService.create(
+      accountId,
+      acc2.id!,
+      1000,
+      new Date(),
+      getCurrentPeriod(),
+    );
+    await component.ngOnInit();
+    fixture.detectChanges();
+    const item = component.movements()[0];
+
+    component.requestDelete(item);
+    fixture.detectChanges();
+
+    const buttons = actionButtons();
+    expect(buttons[0].getAttribute('aria-label')).toBe('Confirm transfer deletion');
+    expect(buttons[1].getAttribute('aria-label')).toBe('Cancel deletion');
+
+    await buttons[0].click();
+    await settle();
+
+    expect(await transferService.getAll()).toHaveLength(0);
+    expect(component.undo()?.item.data.id).toBe(tr.id);
+  });
 });
 
 describe('MovementsComponent - assistive tech', () => {
@@ -1452,11 +1605,12 @@ describe('MovementsComponent - assistive tech', () => {
     }
   });
 
-  it('gives every quick-add select an accessible name', async () => {
+  it('gives every transaction-form select an accessible name', async () => {
     await component.ngOnInit();
+    component.toggleTransactionForm();
     fixture.detectChanges();
 
-    const selects = fixture.nativeElement.querySelectorAll('.quick-add select');
+    const selects = fixture.nativeElement.querySelectorAll('.transaction-form select');
     expect(selects.length).toBeGreaterThan(0);
     for (const select of selects) {
       expect(accessibleName(select)).toBeTruthy();
@@ -1466,15 +1620,13 @@ describe('MovementsComponent - assistive tech', () => {
   it('announces a saved transfer via a polite live region', async () => {
     await component.ngOnInit();
     component.openTransferForm();
-    component.trForm.update((f) => ({
-      ...f,
-      sourceAccountId: accountId,
-      destAccountId: accountId2,
-      sourceAmount: 100,
-      destinationAmount: 100,
-    }));
+    fixture.detectChanges();
+    const form = component.transferFormCard()!;
+    form.onSourceChange(accountId);
+    form.form.update((f) => ({ ...f, destAccountId: accountId2, sourceAmount: 100 }));
 
-    await component.saveTransfer();
+    await form.onSubmit();
+    await flush();
     fixture.detectChanges();
 
     expect(component.movementAnnouncement()).toContain('Transfer saved');
@@ -1504,7 +1656,7 @@ describe('MovementsComponent - assistive tech', () => {
   });
 });
 
-describe('MovementsComponent - quick-add integration', () => {
+describe('MovementsComponent - transaction-form integration', () => {
   let fixture: ComponentFixture<MovementsComponent>;
   let component: MovementsComponent;
   let transactionService: TransactionService;
@@ -1536,21 +1688,23 @@ describe('MovementsComponent - quick-add integration', () => {
     await db.delete();
   });
 
-  it('saves a new transaction from the card payload', async () => {
+  it('saves a new transaction from the card and refreshes the list', async () => {
     await component.ngOnInit();
-
-    await component.onSaveTransaction({
-      id: null,
+    component.toggleTransactionForm();
+    fixture.detectChanges();
+    const card = component.transactionFormCard()!;
+    card.form.update((f) => ({
+      ...f,
       accountId,
       categoryId,
       amount: 42,
       date: '2026-08-15',
       period: getCurrentPeriod(),
       year: getCurrentYear(),
-      exchangeRate: null,
-      baseCurrencyAmount: null,
-      note: '',
-    });
+    }));
+
+    await card.onSubmit();
+    await flush();
 
     const txns = await transactionService.getAll();
     expect(txns.length).toBe(1);
@@ -1559,7 +1713,7 @@ describe('MovementsComponent - quick-add integration', () => {
     expect((component.movements()[0].data as any).amount).toBe(42);
   });
 
-  it('updates an existing transaction when the card payload carries an id', async () => {
+  it('updates an existing transaction when the card is opened for edit', async () => {
     const t = await transactionService.create(
       accountId,
       categoryId,
@@ -1568,19 +1722,13 @@ describe('MovementsComponent - quick-add integration', () => {
       getCurrentPeriod(),
     );
     await component.ngOnInit();
+    component.openTransactionFormForEdit(t);
+    fixture.detectChanges();
+    const card = component.transactionFormCard()!;
+    card.form.update((f) => ({ ...f, amount: 99 }));
 
-    await component.onSaveTransaction({
-      id: t.id!,
-      accountId,
-      categoryId,
-      amount: 99,
-      date: '2026-08-15',
-      period: getCurrentPeriod(),
-      year: getCurrentYear(),
-      exchangeRate: null,
-      baseCurrencyAmount: null,
-      note: '',
-    });
+    await card.onSubmit();
+    await flush();
 
     expect(await transactionService.getAll()).toHaveLength(1);
     const updated = await transactionService.getById(t.id!);
@@ -1598,7 +1746,7 @@ describe('MovementsComponent - quick-add integration', () => {
     );
     component.editTransaction.set(t);
 
-    component.onCancelEdit();
+    component.closeTransactionForm();
 
     expect(component.editTransaction()).toBeNull();
   });
@@ -1644,25 +1792,162 @@ describe('MovementsComponent - translations', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('No hay movimientos de');
   });
+});
 
-  it('shows transfer validation errors in the active Language', async () => {
-    const accountService = TestBed.inject(AccountService);
+describe('MovementsComponent - ledger table styling', () => {
+  let fixture: ComponentFixture<MovementsComponent>;
+  let component: MovementsComponent;
+  let transactionService: TransactionService;
+  let transferService: TransferService;
+  let accountService: AccountService;
+  let categoryService: CategoryService;
+  let accountId: number;
+  let incomeCategoryId: number;
+  let expenseCategoryId: number;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    await TestBed.configureTestingModule({
+      imports: [MovementsComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(MovementsComponent);
+    component = fixture.componentInstance;
+    transactionService = TestBed.inject(TransactionService);
+    transferService = TestBed.inject(TransferService);
+    accountService = TestBed.inject(AccountService);
+    categoryService = TestBed.inject(CategoryService);
+
     const acc = await accountService.create('Cash', 'EUR', 100000);
+    accountId = acc.id!;
+    const incomeCat = await categoryService.create('Payroll', 'income');
+    incomeCategoryId = incomeCat.id!;
+    const expenseCat = await categoryService.create('Food', 'expense');
+    expenseCategoryId = expenseCat.id!;
+  });
+
+  afterEach(async () => {
+    await db.delete();
+  });
+
+  it('stripes transaction rows by direction with income and expense row classes', async () => {
+    const period = getCurrentPeriod();
+    await transactionService.create(accountId, incomeCategoryId, 3000, new Date(), period);
+    await transactionService.create(accountId, expenseCategoryId, 500, new Date(), period);
     await component.ngOnInit();
+    fixture.detectChanges();
 
+    const incomeRow = fixture.nativeElement.querySelector('tr.row-income');
+    expect(incomeRow).toBeTruthy();
+    expect(incomeRow.querySelector('.income')).toBeTruthy();
+
+    const expenseRow = fixture.nativeElement.querySelector('tr.row-expense');
+    expect(expenseRow).toBeTruthy();
+    expect(expenseRow.querySelector('.expense')).toBeTruthy();
+
+    expect(incomeRow.classList.contains('row-expense')).toBe(false);
+    expect(expenseRow.classList.contains('row-income')).toBe(false);
+  });
+
+  it('marks transfer rows with their own grey stripe treatment', async () => {
+    const acc2 = await accountService.create('Savings', 'EUR', 50000);
+    const period = getCurrentPeriod();
+    await transferService.create(accountId, acc2.id!, 100, new Date(), period);
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const transferRow = fixture.nativeElement.querySelector('tr.transfer-row');
+    expect(transferRow).toBeTruthy();
+    expect(transferRow.classList.contains('row-income')).toBe(false);
+    expect(transferRow.classList.contains('row-expense')).toBe(false);
+    expect(transferRow.querySelector('.amount-cell')).toBeTruthy();
+  });
+
+  it('renders the category as a square chip inside the transaction row', async () => {
+    const period = getCurrentPeriod();
+    await transactionService.create(accountId, expenseCategoryId, 500, new Date(), period);
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const chip = fixture.nativeElement.querySelector('tbody .cat-chip');
+    expect(chip).toBeTruthy();
+    expect(chip.textContent.trim()).toBe('Food');
+  });
+});
+
+describe('MovementsComponent - row kind announcements', () => {
+  let fixture: ComponentFixture<MovementsComponent>;
+  let component: MovementsComponent;
+  let transactionService: TransactionService;
+  let transferService: TransferService;
+  let accountService: AccountService;
+  let categoryService: CategoryService;
+  let accountId: number;
+  let incomeCategoryId: number;
+  let expenseCategoryId: number;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    await TestBed.configureTestingModule({
+      imports: [MovementsComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(MovementsComponent);
+    component = fixture.componentInstance;
+    transactionService = TestBed.inject(TransactionService);
+    transferService = TestBed.inject(TransferService);
+    accountService = TestBed.inject(AccountService);
+    categoryService = TestBed.inject(CategoryService);
+
+    const acc = await accountService.create('Cash', 'EUR', 100000);
+    accountId = acc.id!;
+    const incomeCat = await categoryService.create('Payroll', 'income');
+    incomeCategoryId = incomeCat.id!;
+    const expenseCat = await categoryService.create('Food', 'expense');
+    expenseCategoryId = expenseCat.id!;
+  });
+
+  afterEach(async () => {
+    await db.delete();
+  });
+
+  async function seedOneOfEachKind(): Promise<void> {
+    const period = getCurrentPeriod();
+    await transactionService.create(accountId, incomeCategoryId, 3000, new Date(), period);
+    await transactionService.create(accountId, expenseCategoryId, 500, new Date(), period);
+    const savings = await accountService.create('Savings', 'EUR', 50000);
+    await transferService.create(accountId, savings.id!, 100, new Date(), period);
+    await component.ngOnInit();
+    fixture.detectChanges();
+  }
+
+  function kindAnnouncement(row: Element | null): string {
+    expect(row).toBeTruthy();
+    const badge = row!.querySelector('.visually-hidden');
+    expect(badge).toBeTruthy();
+    return (badge!.textContent ?? '').trim();
+  }
+
+  it('announces each row kind to assistive technology', async () => {
+    await seedOneOfEachKind();
+
+    expect(kindAnnouncement(fixture.nativeElement.querySelector('tr.row-income'))).toBe('Income');
+    expect(kindAnnouncement(fixture.nativeElement.querySelector('tr.row-expense'))).toBe('Expense');
+    expect(kindAnnouncement(fixture.nativeElement.querySelector('tr.transfer-row'))).toBe(
+      'Transfer',
+    );
+  });
+
+  it('announces row kinds localized in Spanish', async () => {
     await TestBed.inject(LanguageService).setLanguage('es');
-    component.openTransferForm();
-    component.trForm.update((f) => ({
-      ...f,
-      sourceAccountId: acc.id!,
-      destAccountId: 9999,
-      sourceAmount: 10,
-    }));
+    await seedOneOfEachKind();
 
-    await component.saveTransfer();
-
-    expect(component.errorMessage()).toBe(
-      'Esa cuenta ya no existe. Elige otra e inténtalo de nuevo.',
+    expect(kindAnnouncement(fixture.nativeElement.querySelector('tr.row-income'))).toBe('Ingreso');
+    expect(kindAnnouncement(fixture.nativeElement.querySelector('tr.row-expense'))).toBe('Gasto');
+    expect(kindAnnouncement(fixture.nativeElement.querySelector('tr.transfer-row'))).toBe(
+      'Transferencia',
     );
   });
 });
@@ -1697,42 +1982,37 @@ describe('MovementsComponent - date header sorting', () => {
 
   async function seedDatedTransactions(): Promise<void> {
     const year = getCurrentYear();
-    await transactionService.create(accountId, categoryId, 100, new Date(`${year}-01-05`), 1, null, null, year);
-    await transactionService.create(accountId, categoryId, 200, new Date(`${year}-03-10`), 3, null, null, year);
-    await transactionService.create(accountId, categoryId, 300, new Date(`${year}-02-20`), 2, null, null, year);
+    const period = getCurrentPeriod();
+    await transactionService.create(accountId, categoryId, 100, new Date(`${year}-01-05`), period, null, null, year);
+    await transactionService.create(accountId, categoryId, 200, new Date(`${year}-03-10`), period, null, null, year);
+    await transactionService.create(accountId, categoryId, 300, new Date(`${year}-02-20`), period, null, null, year);
     await component.ngOnInit();
-    await component.onScopeYearChange('all-time');
   }
 
   function movementAmounts(): number[] {
     return component
       .movementView()
-      .filter((r) => r.kind === 'movement')
-      .map((r) => (r.item.data as Transaction).amount);
+      .map((r) => (r.data as Transaction).amount);
   }
 
-  it('groups movements by month in All time while newest first (default)', async () => {
+  it('orders movements newest first by date (default)', async () => {
     await seedDatedTransactions();
     const rows = component.movementView();
-    expect(rows[0].kind).toBe('group');
-    expect(rows.some((r) => r.kind === 'group')).toBe(true);
     expect(movementAmounts()).toEqual([200, 300, 100]);
   });
 
-  it('orders oldest first and drops month groups after clicking the date header', async () => {
+  it('orders oldest first after clicking the date header', async () => {
     await seedDatedTransactions();
     component.toggleSort();
     expect(component.sortDir()).toBe('asc');
-    expect(component.movementView().some((r) => r.kind === 'group')).toBe(false);
     expect(movementAmounts()).toEqual([100, 300, 200]);
   });
 
-  it('returns to newest first with month groups after a second click', async () => {
+  it('returns to newest first after a second click', async () => {
     await seedDatedTransactions();
     component.toggleSort();
     component.toggleSort();
     expect(component.sortDir()).toBe('desc');
-    expect(component.movementView()[0].kind).toBe('group');
     expect(movementAmounts()).toEqual([200, 300, 100]);
   });
 
@@ -1751,5 +2031,1875 @@ describe('MovementsComponent - date header sorting', () => {
     button.click();
     fixture.detectChanges();
     expect(th.getAttribute('aria-sort')).toBe('descending');
+  });
+});
+
+describe('MovementsComponent - Transaction Form capture form', () => {
+  let fixture: ComponentFixture<MovementsComponent>;
+  let component: MovementsComponent;
+  let transactionService: TransactionService;
+  let accountService: AccountService;
+  let categoryService: CategoryService;
+  let captureFormService: CaptureFormService;
+  let accountId: number;
+  let categoryId: number;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    await TestBed.configureTestingModule({
+      imports: [MovementsComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(MovementsComponent);
+    component = fixture.componentInstance;
+    transactionService = TestBed.inject(TransactionService);
+    accountService = TestBed.inject(AccountService);
+    categoryService = TestBed.inject(CategoryService);
+    captureFormService = TestBed.inject(CaptureFormService);
+
+    const account = await accountService.create('Cash', 'EUR', 100000);
+    accountId = account.id!;
+    const category = await categoryService.create('Food', 'expense');
+    categoryId = category.id!;
+  });
+
+  afterEach(async () => {
+    await db.delete();
+  });
+
+  it('hides the Transaction Form on page load', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    expect(component.showForm()).toBe('none');
+    expect(fixture.nativeElement.querySelector('app-transaction-form')).toBeNull();
+  });
+
+  it('reveals the Transaction Form via the New Transaction button and toggles it closed', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const button = (
+      Array.from(fixture.nativeElement.querySelectorAll('.controls button')) as HTMLButtonElement[]
+    ).find((b) => b.textContent!.trim() === '+ Transaction')!;
+    button.click();
+    fixture.detectChanges();
+
+    expect(component.showForm()).toBe('transaction');
+    expect(fixture.nativeElement.querySelector('app-transaction-form')).toBeTruthy();
+
+    button.click();
+
+    expect(component.showForm()).toBe('none');
+  });
+
+  it('keeps the Transaction Form inline on the desktop layout (no bottom sheet)', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    component.toggleTransactionForm();
+    fixture.detectChanges();
+
+    expect(component.showForm()).toBe('transaction');
+    expect(component.isMobileLayout()).toBe(false);
+    expect(fixture.nativeElement.querySelector('app-bottom-sheet')).toBeNull();
+    expect(fixture.nativeElement.querySelector('app-transaction-form')).toBeTruthy();
+  });
+
+  it('opens only one capture form at a time', async () => {
+    await component.ngOnInit();
+
+    component.toggleTransactionForm();
+    expect(component.showForm()).toBe('transaction');
+
+    component.openTransferForm();
+    expect(component.showForm()).toBe('transfer');
+
+    component.openTransactionForm();
+    expect(component.showForm()).toBe('transaction');
+  });
+
+  it('closes after a successful create', async () => {
+    await component.ngOnInit();
+    component.toggleTransactionForm();
+    fixture.detectChanges();
+    const card = component.transactionFormCard()!;
+    card.form.update((f) => ({
+      ...f,
+      accountId,
+      categoryId,
+      amount: 500,
+      date: '2026-08-15',
+      period: getCurrentPeriod(),
+      year: getCurrentYear(),
+    }));
+
+    await card.onSubmit();
+    await flush();
+
+    expect(component.showForm()).toBe('none');
+    expect(component.editTransaction()).toBeNull();
+  });
+
+  it('closes after a successful edit', async () => {
+    const t = await transactionService.create(
+      accountId,
+      categoryId,
+      500,
+      new Date(),
+      getCurrentPeriod(),
+    );
+    await component.ngOnInit();
+    component.openTransactionFormForEdit(t);
+    fixture.detectChanges();
+    expect(component.showForm()).toBe('transaction');
+
+    const card = component.transactionFormCard()!;
+    await card.onSubmit();
+    await flush();
+
+    expect(component.showForm()).toBe('none');
+    expect(component.editTransaction()).toBeNull();
+  });
+
+  it('opens the form prefilled when editing a transaction', async () => {
+    const t = await transactionService.create(
+      accountId,
+      categoryId,
+      1200,
+      new Date(),
+      getCurrentPeriod(),
+      null,
+      null,
+      getCurrentYear(),
+      'coffee',
+    );
+    await component.ngOnInit();
+
+    component.openTransactionFormForEdit(t);
+    fixture.detectChanges();
+
+    expect(component.showForm()).toBe('transaction');
+    expect(component.transactionFormCard()!.editingId()).toBe(t.id);
+    expect(component.transactionFormCard()!.form().amount).toBe(1200);
+    expect(component.transactionFormCard()!.form().note).toBe('coffee');
+  });
+
+  it("focuses the amount field when the 'n' shortcut opens the form", async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'n' }));
+    fixture.detectChanges();
+
+    expect(component.showForm()).toBe('transaction');
+    const amountInput = fixture.nativeElement.querySelector(
+      'app-transaction-form input[aria-label="Amount"]',
+    );
+    expect(amountInput).toBeTruthy();
+    expect(document.activeElement).toBe(amountInput);
+  });
+
+  it('opens the form when the sidebar New Transaction action requests it', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    captureFormService.requestTransactionForm();
+    fixture.detectChanges();
+
+    expect(component.showForm()).toBe('transaction');
+    expect(captureFormService.pendingTransactionFormRequests()).toBe(0);
+  });
+
+  it('opens the transfer form when the sidebar transfer action requests it', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    captureFormService.requestTransfer();
+    fixture.detectChanges();
+
+    expect(component.showForm()).toBe('transfer');
+    expect(captureFormService.pendingTransferRequests()).toBe(0);
+  });
+
+  it('keeps the t shortcut opening the transfer form', async () => {
+    await component.ngOnInit();
+
+    component.onDocKeydown(new KeyboardEvent('keydown', { key: 't' }));
+
+    expect(component.showForm()).toBe('transfer');
+  });
+});
+
+describe('MovementsComponent - data version refresh', () => {
+  let fixture: ComponentFixture<MovementsComponent>;
+  let component: MovementsComponent;
+  let accountService: AccountService;
+  let categoryService: CategoryService;
+  let dataVersion: DataVersionService;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    await TestBed.configureTestingModule({
+      imports: [MovementsComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(MovementsComponent);
+    component = fixture.componentInstance;
+    accountService = TestBed.inject(AccountService);
+    categoryService = TestBed.inject(CategoryService);
+    dataVersion = TestBed.inject(DataVersionService);
+
+    await accountService.create('Cash', 'EUR', 100000);
+    await categoryService.create('Food', 'expense');
+    await component.ngOnInit();
+    fixture.detectChanges();
+  });
+
+  afterEach(async () => {
+    await db.delete();
+  });
+
+  it('reloads accounts and categories when the data version changes while mounted', async () => {
+    expect(component.accounts().some((a) => a.name === 'Bank')).toBe(false);
+    expect(component.categories().some((c) => c.name === 'Transport')).toBe(false);
+
+    await accountService.create('Bank', 'EUR', 0);
+    await categoryService.create('Transport', 'expense');
+
+    dataVersion.bump();
+    fixture.detectChanges();
+    await new Promise<void>((resolve) => setTimeout(resolve, 10));
+    fixture.detectChanges();
+
+    expect(component.accounts().some((a) => a.name === 'Bank')).toBe(true);
+    expect(component.categories().some((c) => c.name === 'Transport')).toBe(true);
+  });
+
+  it('does not reload while the data version stays unchanged', async () => {
+    await accountService.create('Bank', 'EUR', 0);
+    fixture.detectChanges();
+    await new Promise<void>((resolve) => setTimeout(resolve, 10));
+    fixture.detectChanges();
+
+    expect(component.accounts().some((a) => a.name === 'Bank')).toBe(false);
+  });
+});
+
+describe('MovementsComponent - async load gate', () => {
+  let fixture: ComponentFixture<MovementsComponent>;
+  let component: MovementsComponent;
+  let accountService: AccountService;
+  let categoryService: CategoryService;
+  let accountId: number;
+  let categoryId: number;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    await TestBed.configureTestingModule({
+      imports: [MovementsComponent],
+    }).compileComponents();
+
+    accountService = TestBed.inject(AccountService);
+    categoryService = TestBed.inject(CategoryService);
+
+    const account = await accountService.create('Cash', 'EUR', 100000);
+    accountId = account.id!;
+    const category = await categoryService.create('Food', 'expense');
+    categoryId = category.id!;
+
+    // Create the fixture only after seeding: in zoneless tests the initial
+    // change detection is scheduled and flushes on any await, so a fixture
+    // created before seeding would silently finish loading mid-test.
+    fixture = TestBed.createComponent(MovementsComponent);
+    component = fixture.componentInstance;
+  });
+
+  afterEach(async () => {
+    await db.delete();
+  });
+
+  it('first paint shows a busy loading region, never the empty state or net flow card', async () => {
+    fixture.detectChanges();
+    const el: HTMLElement = fixture.nativeElement;
+
+    const loadingRegion = el.querySelector('[aria-busy="true"]');
+    expect(loadingRegion).toBeTruthy();
+    expect(el.textContent).not.toContain('No movements for');
+    expect(el.querySelector('app-net-flow-card')).toBeNull();
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    expect(el.querySelector('[aria-busy="true"]')).toBeNull();
+  });
+
+  it('shows the empty state only once an empty scope has genuinely loaded', async () => {
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).not.toContain('No movements for');
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('No movements for');
+  });
+
+  it('offers an actionable button as the empty state next step', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const cta = fixture.nativeElement.querySelector('.empty button') as HTMLButtonElement;
+    expect(cta).toBeTruthy();
+
+    cta.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    expect(component.showForm()).toBe('transaction');
+  });
+
+  it('renders the net flow card and rows once a populated scope has loaded', async () => {
+    await transactionServiceStub();
+
+    fixture = TestBed.createComponent(MovementsComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-net-flow-card .net-flow-card')).toBeNull();
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('app-net-flow-card .net-flow-card')).toBeTruthy();
+    expect(fixture.nativeElement.querySelectorAll('tbody tr').length).toBeGreaterThan(0);
+  });
+
+  it('re-enters the busy gate on scope change so the empty state never borrows the old scope', async () => {
+    fixture.detectChanges();
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const otherMonth = ((getCurrentPeriod() % 12) + 1) as MonthNumber;
+    const change = component.onScopeMonthChange(otherMonth);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[aria-busy="true"]')).toBeTruthy();
+    expect(fixture.nativeElement.textContent).not.toContain('No movements for');
+
+    await change;
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[aria-busy="true"]')).toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('No movements for');
+  });
+
+  async function transactionServiceStub(): Promise<void> {
+    const second = await accountService.create('Card', 'EUR', 50000);
+    const transactions = TestBed.inject(TransactionService);
+    const transfers = TestBed.inject(TransferService);
+    await transactions.create(accountId, categoryId, 500, new Date(), getCurrentPeriod());
+    await transfers.create(accountId, second.id!, 1000, new Date(), getCurrentPeriod());
+  }
+});
+
+describe('MovementsComponent - capture form draft protection', () => {
+  let fixture: ComponentFixture<MovementsComponent>;
+  let component: MovementsComponent;
+  let transferService: TransferService;
+  let accountService: AccountService;
+  let categoryService: CategoryService;
+  let accountId1: number;
+  let accountId2: number;
+  let categoryId: number;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    await TestBed.configureTestingModule({
+      imports: [MovementsComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(MovementsComponent);
+    component = fixture.componentInstance;
+    transferService = TestBed.inject(TransferService);
+    accountService = TestBed.inject(AccountService);
+    categoryService = TestBed.inject(CategoryService);
+
+    const acc1 = await accountService.create('Cash', 'EUR', 100000);
+    accountId1 = acc1.id!;
+    const acc2 = await accountService.create('Card', 'EUR', 50000);
+    accountId2 = acc2.id!;
+    const cat = await categoryService.create('Food', 'expense');
+    categoryId = cat.id!;
+  });
+
+  afterEach(async () => {
+    await db.delete();
+  });
+
+  function transferButton(): HTMLButtonElement {
+    return (
+      Array.from(fixture.nativeElement.querySelectorAll('.controls button')) as HTMLButtonElement[]
+    ).find((b) => b.textContent!.trim() === '+ Transfer')!;
+  }
+
+  function transactionButton(): HTMLButtonElement {
+    return (
+      Array.from(fixture.nativeElement.querySelectorAll('.controls button')) as HTMLButtonElement[]
+    ).find((b) => b.textContent!.trim() === '+ Transaction')!;
+  }
+
+  it('toggles the transfer form closed and back open via the + Transfer button', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    transferButton().click();
+    fixture.detectChanges();
+    expect(component.showForm()).toBe('transfer');
+    expect(transferButton().getAttribute('aria-expanded')).toBe('true');
+
+    transferButton().click();
+    fixture.detectChanges();
+    expect(component.showForm()).toBe('none');
+    expect(transferButton().getAttribute('aria-expanded')).toBe('false');
+
+    transferButton().click();
+    fixture.detectChanges();
+    expect(component.showForm()).toBe('transfer');
+  });
+
+  it('preserves typed transfer input across a toggle close and reopen', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    component.openTransferForm();
+    fixture.detectChanges();
+    component.transferFormCard()!.form.update((f) => ({ ...f, sourceAmount: 250, note: 'rent split' }));
+
+    component.toggleTransferForm();
+    expect(component.showForm()).toBe('none');
+
+    component.openTransferForm();
+    fixture.detectChanges();
+
+    expect(component.showForm()).toBe('transfer');
+    expect(component.transferFormCard()!.form().sourceAmount).toBe(250);
+    expect(component.transferFormCard()!.form().note).toBe('rent split');
+  });
+
+  it('keeps the transfer draft when switching to the Transaction Form and back', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    component.openTransferForm();
+    fixture.detectChanges();
+    component.transferFormCard()!.form.update((f) => ({ ...f, sourceAmount: 90, note: 'bus pass' }));
+
+    component.openTransactionForm();
+    expect(component.showForm()).toBe('transaction');
+
+    component.openTransferForm();
+    fixture.detectChanges();
+
+    expect(component.showForm()).toBe('transfer');
+    expect(component.transferFormCard()!.form().sourceAmount).toBe(90);
+    expect(component.transferFormCard()!.form().note).toBe('bus pass');
+  });
+
+  it('preserves typed Transaction Form input when switching to the transfer form and back', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    component.toggleTransactionForm();
+    fixture.detectChanges();
+    const card = component.transactionFormCard()!;
+    card.form.update((f) => ({ ...f, amount: 42, note: 'cinema tickets' }));
+
+    component.openTransferForm();
+    fixture.detectChanges();
+    expect(component.showForm()).toBe('transfer');
+    expect(fixture.nativeElement.querySelector('app-transaction-form')).toBeNull();
+
+    component.toggleTransactionForm();
+    fixture.detectChanges();
+    const restored = component.transactionFormCard()!;
+
+    expect(restored.form().amount).toBe(42);
+    expect(restored.form().note).toBe('cinema tickets');
+    expect(restored.editingId()).toBeNull();
+  });
+
+  it('preserves transfer input even when only the accounts were changed', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    component.openTransferForm();
+    fixture.detectChanges();
+    component.transferFormCard()!.onSourceChange(accountId2);
+
+    component.toggleTransferForm();
+    component.openTransferForm();
+    fixture.detectChanges();
+
+    expect(component.showForm()).toBe('transfer');
+    expect(component.transferFormCard()!.form().sourceAccountId).toBe(accountId2);
+    expect(component.transferFormCard()!.form().sourceAmount).toBe(0);
+  });
+
+  it('never restores a Transaction Form draft stuck in a loading rate fetch', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    component.toggleTransactionForm();
+    fixture.detectChanges();
+    const card = component.transactionFormCard()!;
+    card.form.update((f) => ({ ...f, amount: 42 }));
+    card.rateState.set({ loading: true, error: '', rate: null, date: '' });
+
+    component.openTransferForm();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-transaction-form')).toBeNull();
+
+    component.toggleTransactionForm();
+    fixture.detectChanges();
+
+    expect(component.transactionFormCard()!.form().amount).toBe(42);
+    expect(component.transactionFormCard()!.rateState().loading).toBe(false);
+  });
+
+  it('clears the Transaction Form draft once the card is cancelled', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    component.toggleTransactionForm();
+    fixture.detectChanges();
+    component.transactionFormCard()!.form.update((f) => ({ ...f, amount: 42, note: 'cinema tickets' }));
+
+    component.openTransferForm();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-transaction-form')).toBeNull();
+
+    component.toggleTransactionForm();
+    fixture.detectChanges();
+    expect(component.transactionFormCard()!.form().amount).toBe(42);
+
+    component.transactionFormCard()!.cancel();
+    fixture.detectChanges();
+
+    component.toggleTransactionForm();
+    fixture.detectChanges();
+
+    expect(component.transactionFormCard()!.form().amount).toBe(0);
+    expect(component.transactionFormCard()!.form().note).toBe('');
+  });
+
+  it('starts a fresh transfer form after a saved transfer', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    component.openTransferForm();
+    fixture.detectChanges();
+    const form = component.transferFormCard()!;
+    form.onSourceChange(accountId1);
+    form.form.update((f) => ({
+      ...f,
+      destAccountId: accountId2,
+      sourceAmount: 300,
+      note: 'savings',
+    }));
+    await form.onSubmit();
+    await flush();
+
+    component.openTransferForm();
+    fixture.detectChanges();
+
+    expect(component.showForm()).toBe('transfer');
+    expect(component.transferFormCard()!.form().sourceAmount).toBe(0);
+    expect(component.transferFormCard()!.form().note).toBe('');
+    expect(component.transferFormCard()!.editingId()).toBeNull();
+  });
+
+  it('still prefills the transfer form when editing an existing transfer', async () => {
+    const t = await transferService.create(
+      accountId1,
+      accountId2,
+      500,
+      new Date('2025-12-22'),
+      1,
+      'savings',
+    );
+    await component.ngOnInit();
+
+    component.openTransferForm(t);
+    await flush();
+    fixture.detectChanges();
+
+    expect(component.showForm()).toBe('transfer');
+    expect(component.editTransfer()).toBe(t);
+    const f = component.transferFormCard()!.form();
+    expect(f.sourceAccountId).toBe(accountId1);
+    expect(f.destAccountId).toBe(accountId2);
+    expect(f.sourceAmount).toBe(500);
+    expect(f.note).toBe('savings');
+  });
+
+  it('reopening a toggled-closed transfer edit keeps the edit context and typed input', async () => {
+    const t = await transferService.create(
+      accountId1,
+      accountId2,
+      500,
+      new Date('2025-12-22'),
+      1,
+      'savings',
+    );
+    await component.ngOnInit();
+
+    component.openTransferForm(t);
+    await flush();
+    fixture.detectChanges();
+    component.transferFormCard()!.form.update((f) => ({ ...f, sourceAmount: 750 }));
+
+    component.toggleTransferForm();
+    component.openTransferForm();
+    fixture.detectChanges();
+
+    expect(component.transferFormCard()!.editingId()).toBe(t.id);
+    expect(component.transferFormCard()!.form().sourceAmount).toBe(750);
+    expect(component.transferFormCard()!.form().note).toBe('savings');
+  });
+
+  it('keeps only one capture form open when switching in either direction', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    transactionButton().click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-transaction-form')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.form-card')).toBeNull();
+
+    transferButton().click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-transaction-form')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.form-card')).toBeTruthy();
+
+    transactionButton().click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-transaction-form')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.form-card')).toBeNull();
+  });
+});
+
+describe('MovementsComponent - mobile ledger layout', () => {
+  let fixture: ComponentFixture<MovementsComponent>;
+  let component: MovementsComponent;
+  let transactionService: TransactionService;
+  let transferService: TransferService;
+  let accountService: AccountService;
+  let categoryService: CategoryService;
+  let accountId: number;
+  let incomeCategoryId: number;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    await TestBed.configureTestingModule({
+      imports: [MovementsComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(MovementsComponent);
+    component = fixture.componentInstance;
+    transactionService = TestBed.inject(TransactionService);
+    transferService = TestBed.inject(TransferService);
+    accountService = TestBed.inject(AccountService);
+    categoryService = TestBed.inject(CategoryService);
+
+    const acc = await accountService.create('Cash', 'EUR', 100000);
+    accountId = acc.id!;
+    const incomeCat = await categoryService.create('Payroll', 'income');
+    incomeCategoryId = incomeCat.id!;
+  });
+
+  afterEach(async () => {
+    await db.delete();
+  });
+
+  function compiledComponentCss(): string {
+    return Array.from(document.querySelectorAll('style'))
+      .map(s => s.textContent ?? '')
+      .join('\n');
+  }
+
+  async function seedOneTransactionAndOneTransfer(): Promise<void> {
+    const period = getCurrentPeriod();
+    await transactionService.create(accountId, incomeCategoryId, 3000, new Date(), period);
+    const savings = await accountService.create('Savings', 'EUR', 50000);
+    await transferService.create(accountId, savings.id!, 100, new Date(), period, 'savings');
+    await component.ngOnInit();
+    fixture.detectChanges();
+  }
+
+  // jsdom does no layout, so "Edit/Delete are reachable at 375px" can't be
+  // asserted geometrically; the stacked-layout declarations in the compiled
+  // stylesheet are the seam (same approach as the dashboard KPI row spec).
+  it('stacks every row into a one-thumb card below 480px and hides the header row', async () => {
+    await seedOneTransactionAndOneTransfer();
+
+    const css = compiledComponentCss();
+    expect(css).toMatch(
+      /@media \(max-width: 480px\)\s*\{[\s\S]*?thead[^{]*\{[^}]*display:\s*none/,
+    );
+    expect(css).toMatch(
+      /@media \(max-width: 480px\)[\s\S]*?grid-template-areas:\s*['"]amount\s+amount[^'"]*['"]/,
+    );
+  });
+
+  it('groups the ledger under day dividers that only render on mobile', async () => {
+    await seedOneTransactionAndOneTransfer();
+
+    const css = compiledComponentCss();
+    // Desktop: the divider row is hidden, the table stays untouched.
+    expect(css).toMatch(/day-divider[^{]*\{[^}]*display:\s*none/);
+    // Mobile: the divider announces the day as a caps label.
+    expect(css).toMatch(
+      /@media \(max-width: 480px\)[\s\S]*?tr\.day-divider[^{]*\{[^}]*display:\s*block/,
+    );
+    expect(css).toMatch(
+      /@media \(max-width: 480px\)[\s\S]*?tr\.day-divider[^{]*\{[^}]*text-transform:\s*uppercase/,
+    );
+  });
+
+  it('hides the per-row caps labels and date cell below 480px while keeping them for screen readers', async () => {
+    await seedOneTransactionAndOneTransfer();
+
+    const css = compiledComponentCss();
+    // The data-label mechanism stays (announced), only clipped from view.
+    expect(css).toMatch(
+      /@media \(max-width: 480px\)[\s\S]*?td\[data-label\][^{]*::before\s*\{[^}]*content:\s*attr\(data-label\)[^}]*clip:\s*rect\(0/,
+    );
+    // The row's own date cell drops out visually; the day divider carries it.
+    expect(css).toMatch(
+      /@media \(max-width: 480px\)[\s\S]*?td[^{]*:nth-child\(1\)[^{]*\{[^}]*clip:\s*rect\(0/,
+    );
+  });
+
+  it('renders mobile amounts at 1rem mono with category and account on one muted line', async () => {
+    await seedOneTransactionAndOneTransfer();
+
+    const css = compiledComponentCss();
+    expect(css).toMatch(
+      /@media \(max-width: 480px\)[\s\S]*?font-size:\s*var\(--type-body\)/,
+    );
+    // Category and account share one grid line.
+    expect(css).toMatch(
+      /@media \(max-width: 480px\)[\s\S]*?grid-template-areas:[^;]*category\s+account/,
+    );
+    // The shared line reads as muted metadata.
+    expect(css).toMatch(
+      /@media \(max-width: 480px\)[\s\S]*?td[^{]*:nth-child\(4\)[^{]*\{[^}]*color:\s*var\(--on-surface-variant\)/,
+    );
+  });
+
+  it('moves the directional stripe to the row edge and keeps the transfer tint below 480px', async () => {
+    await seedOneTransactionAndOneTransfer();
+
+    // Compiled component CSS carries [_ngcontent-*] scoping attributes
+    // between compound selectors, hence the [^{]* gaps.
+    const css = compiledComponentCss();
+    expect(css).toMatch(
+      /@media \(max-width: 480px\)[\s\S]*?tbody[^{]*tr\.row-income[^{]*\{[^}]*border-left:\s*var\(--stripe-income\)/,
+    );
+    expect(css).toMatch(
+      /@media \(max-width: 480px\)[\s\S]*?tbody[^{]*tr\.row-expense[^{]*\{[^}]*border-left:\s*var\(--stripe-expense\)/,
+    );
+    expect(css).toMatch(
+      /@media \(max-width: 480px\)[\s\S]*?tbody[^{]*tr\.transfer-row[^{]*\{[^}]*border-left:\s*var\(--stripe-transfer\)/,
+    );
+    expect(css).toMatch(
+      /@media \(max-width: 480px\)[\s\S]*?tbody[^{]*tr\.transfer-row[^{]*\{[^}]*background:\s*var\(--background\)/,
+    );
+  });
+
+  it('gives the icon row actions a 44px touch target on coarse pointers', async () => {
+    await seedOneTransactionAndOneTransfer();
+
+    const css = compiledComponentCss();
+    expect(css).toMatch(
+      /@media[^{]*pointer:\s*coarse[^{]*\{[\s\S]*?width:\s*2\.75rem/,
+    );
+  });
+
+  it('labels the ambiguous stacked cells so the headerless rows stay self-describing', async () => {
+    await seedOneTransactionAndOneTransfer();
+
+    const transactionCells = fixture.nativeElement.querySelector('tr.row-income')
+      .querySelectorAll('td');
+    expect(transactionCells[1].getAttribute('data-label')).toBe('Category / Accounts');
+    expect(transactionCells[3].getAttribute('data-label')).toBe('Account');
+
+    // Transfer rows merge the note into the same slot as transactions (#98),
+    // and carry the same five-cell grammar so the action buttons sit in the
+    // Actions column instead of straddling Account and Actions.
+    const transferCells = fixture.nativeElement.querySelector('tr.transfer-row')
+      .querySelectorAll('td');
+    expect(transferCells.length).toBe(5);
+    expect(transferCells[1].getAttribute('data-label')).toBe('Category / Accounts');
+    expect(transferCells[1].textContent).toContain('savings');
+  });
+});
+
+describe('MovementsComponent - day sections', () => {
+  let fixture: ComponentFixture<MovementsComponent>;
+  let component: MovementsComponent;
+  let transactionService: TransactionService;
+  let transferService: TransferService;
+  let accountService: AccountService;
+  let categoryService: CategoryService;
+  let accountId: number;
+  let categoryId: number;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    await TestBed.configureTestingModule({
+      imports: [MovementsComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(MovementsComponent);
+    component = fixture.componentInstance;
+    transactionService = TestBed.inject(TransactionService);
+    transferService = TestBed.inject(TransferService);
+    accountService = TestBed.inject(AccountService);
+    categoryService = TestBed.inject(CategoryService);
+
+    const acc = await accountService.create('Cash', 'EUR', 100000);
+    accountId = acc.id!;
+    const cat = await categoryService.create('Food', 'expense');
+    categoryId = cat.id!;
+  });
+
+  afterEach(async () => {
+    await db.delete();
+  });
+
+  function localDayKey(date: Date): string {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  async function seedAcrossTwoDays(): Promise<void> {
+    const period = getCurrentPeriod();
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    await transactionService.create(accountId, categoryId, 500, new Date(), period);
+    await transactionService.create(accountId, categoryId, 300, new Date(), period);
+    await transactionService.create(accountId, categoryId, 200, yesterday, period);
+    await component.ngOnInit();
+  }
+
+  it('groups movements into day sections in view order, newest day first', async () => {
+    await seedAcrossTwoDays();
+
+    const sections = component.movementDaySections();
+    expect(sections.length).toBe(2);
+
+    const today = new Date();
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    expect(sections[0].key).toBe(localDayKey(today));
+    expect(sections[0].items.length).toBe(2);
+    expect(sections[1].key).toBe(localDayKey(yesterday));
+    expect(sections[1].items.length).toBe(1);
+  });
+
+  it('preserves the movement order within each day section', async () => {
+    await seedAcrossTwoDays();
+
+    const today = new Date();
+    const todayItems = component.movementDaySections()[0].items;
+    expect(todayItems.map((i) => (i.data as Transaction).amount)).toEqual(
+      component
+        .movementView()
+        .filter((i) => localDayKey(i.data.date) === localDayKey(today))
+        .map((i) => (i.data as Transaction).amount),
+    );
+  });
+
+  it('flips section order with the date sort direction', async () => {
+    await seedAcrossTwoDays();
+    component.toggleSort();
+
+    const sections = component.movementDaySections();
+    const today = new Date();
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    expect(sections[0].key).toBe(localDayKey(yesterday));
+    expect(sections[1].key).toBe(localDayKey(today));
+  });
+
+  it('labels each section with its localized day', async () => {
+    await seedAcrossTwoDays();
+
+    const today = new Date();
+    const label = component.movementDaySections()[0].label;
+    expect(label).toBe(
+      component.language.formatDate(today, {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      }),
+    );
+  });
+
+  it('renders one caps day divider row per distinct day in the tbody', async () => {
+    await seedAcrossTwoDays();
+    fixture.detectChanges();
+
+    const dividers = fixture.nativeElement.querySelectorAll('tbody tr.day-divider');
+    expect(dividers.length).toBe(2);
+    expect(dividers[0].textContent.trim()).toBe(component.movementDaySections()[0].label);
+  });
+
+  it('renders no divider rows when the ledger is empty', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelectorAll('tbody tr.day-divider').length).toBe(0);
+  });
+});
+
+describe('MovementsComponent - capture-form consistency', () => {
+  let fixture: ComponentFixture<MovementsComponent>;
+  let component: MovementsComponent;
+  let transactionService: TransactionService;
+  let transferService: TransferService;
+  let accountService: AccountService;
+  let categoryService: CategoryService;
+  let eurAccountId: number;
+  let eurAccountId2: number;
+  let usdAccountId: number;
+  let categoryId: number;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+
+    const mockExchangeRateService = {
+      getRate: vi
+        .fn()
+        .mockResolvedValue({ rate: 1.08, from: 'USD', to: 'EUR', date: '2026-08-26' }),
+    };
+
+    await TestBed.configureTestingModule({
+      imports: [MovementsComponent],
+      providers: [{ provide: ExchangeRateService, useValue: mockExchangeRateService }],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(MovementsComponent);
+    component = fixture.componentInstance;
+    transactionService = TestBed.inject(TransactionService);
+    transferService = TestBed.inject(TransferService);
+    accountService = TestBed.inject(AccountService);
+    categoryService = TestBed.inject(CategoryService);
+
+    const acc1 = await accountService.create('Cash', 'EUR', 100000);
+    eurAccountId = acc1.id!;
+    const acc2 = await accountService.create('Card', 'EUR', 50000);
+    eurAccountId2 = acc2.id!;
+    const acc3 = await accountService.create('Dollars', 'USD', 1000);
+    usdAccountId = acc3.id!;
+    const cat = await categoryService.create('Payroll', 'income');
+    categoryId = cat.id!;
+  });
+
+  afterEach(async () => {
+    await db.delete();
+  });
+
+  function controlsButton(label: string): HTMLButtonElement {
+    return (
+      Array.from(fixture.nativeElement.querySelectorAll('.controls button')) as HTMLButtonElement[]
+    ).find((b) => b.textContent!.trim() === label)!;
+  }
+
+  function transactionButton(): HTMLButtonElement {
+    return controlsButton('+ Transaction');
+  }
+
+  function transferButton(): HTMLButtonElement {
+    return controlsButton('+ Transfer');
+  }
+
+  function saveHint(): HTMLElement | null {
+    return fixture.nativeElement.querySelector('.save-hint');
+  }
+
+  async function seedNotedRows(): Promise<void> {
+    const period = getCurrentPeriod();
+    await transactionService.create(
+      eurAccountId, categoryId, 3000, new Date(), period, null, null, undefined, 'groceries',
+    );
+    await transferService.create(eurAccountId, eurAccountId2, 100, new Date(), period, 'savings');
+    await component.ngOnInit();
+    fixture.detectChanges();
+  }
+
+  it('renders the transfer note in the same slot as the transaction note', async () => {
+    await seedNotedRows();
+
+    const transactionCells = fixture.nativeElement.querySelector('tr.row-income')
+      .querySelectorAll('td');
+    expect(transactionCells[1].textContent).toContain('groceries');
+    expect(transactionCells[1].querySelector('.note')).toBeTruthy();
+
+    // Same slot: the note lives under the route in the second column, not in
+    // its own cell (it used to land under the Account header on desktop).
+    const transferCells = fixture.nativeElement.querySelector('tr.transfer-row')
+      .querySelectorAll('td');
+    expect(transferCells.length).toBe(5);
+    expect(transferCells[1].querySelector('.note')!.textContent).toContain('savings');
+    // The actions cell no longer spans the account column: the transfer
+    // buttons render in the Actions column exactly where the transaction
+    // buttons render.
+    expect(transferCells[3].getAttribute('colspan')).toBeNull();
+    expect(transferCells[4].classList.contains('actions-cell')).toBe(true);
+  });
+
+  it('aligns the action buttons of both row kinds in the Actions column', async () => {
+    await seedNotedRows();
+
+    const transactionCells = fixture.nativeElement.querySelector('tr.row-income')
+      .querySelectorAll('td');
+    const transferCells = fixture.nativeElement.querySelector('tr.transfer-row')
+      .querySelectorAll('td');
+
+    expect(transactionCells.length).toBe(transferCells.length);
+    expect(transactionCells[4].classList.contains('actions-cell')).toBe(true);
+    expect(transferCells[4].classList.contains('actions-cell')).toBe(true);
+    expect(transferCells[3].getAttribute('colspan')).toBeNull();
+  });
+
+  it('labels the note column honestly for both row kinds', async () => {
+    await seedNotedRows();
+
+    const headerCells = fixture.nativeElement.querySelectorAll('thead th');
+    expect(headerCells[1].textContent.trim()).toBe('Category / Accounts');
+
+    const transactionCells = fixture.nativeElement.querySelector('tr.row-income')
+      .querySelectorAll('td');
+    expect(transactionCells[1].getAttribute('data-label')).toBe('Category / Accounts');
+
+    const transferCells = fixture.nativeElement.querySelector('tr.transfer-row')
+      .querySelectorAll('td');
+    expect(transferCells[1].getAttribute('data-label')).toBe('Category / Accounts');
+  });
+
+  it('renders the transfer destination amount readonly like the Transaction Form equivalent', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    component.openTransferForm();
+    fixture.detectChanges();
+    const form = component.transferFormCard()!;
+    form.onSourceChange(usdAccountId);
+    form.form.update((f) => ({
+      ...f,
+      destAccountId: eurAccountId,
+      sourceAmount: 250,
+      date: '2026-08-20',
+    }));
+    fixture.detectChanges();
+    await flush();
+    fixture.detectChanges();
+
+    expect(form.form().exchangeRate).toBe(1.08);
+    expect(form.form().destinationAmount).toBe(270);
+
+    const destInput = fixture.nativeElement.querySelector(
+      '.exchange-rate-grid input.readonly',
+    ) as HTMLInputElement;
+    // NgModel defers the model→view write to a microtask.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(destInput).toBeTruthy();
+    expect(destInput.readOnly).toBe(true);
+    expect(destInput.value).toBe('270');
+  });
+
+  it('states why the transfer save button is disabled next to the button', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    component.openTransferForm();
+    fixture.detectChanges();
+    const form = component.transferFormCard()!;
+
+    expect(form.canSubmit()).toBe(false);
+    expect(saveHint()?.textContent).toContain('Enter an amount greater than zero.');
+
+    form.form.update((f) => ({ ...f, sourceAmount: 100 }));
+    fixture.detectChanges();
+
+    expect(saveHint()).toBeNull();
+    expect(form.canSubmit()).toBe(true);
+  });
+
+  it('states why the transaction form save button is disabled next to the button', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    component.toggleTransactionForm();
+    fixture.detectChanges();
+
+    const card = component.transactionFormCard()!;
+    expect(card.canSubmit()).toBe(false);
+    expect(saveHint()?.textContent).toContain('Enter an amount greater than zero.');
+
+    card.form.update((f) => ({ ...f, amount: 25 }));
+    fixture.detectChanges();
+
+    expect(saveHint()).toBeNull();
+  });
+
+  it('names the two-accounts reason when the transfer route is incomplete', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    component.openTransferForm();
+    fixture.detectChanges();
+    // Changing the source to the current destination zeroes the destination,
+    // leaving the route incomplete.
+    component.transferFormCard()!.onSourceChange(eurAccountId2);
+    fixture.detectChanges();
+
+    expect(saveHint()?.textContent).toContain('Choose two accounts.');
+  });
+
+  it('toggles the transaction form with the n key', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    component.onDocKeydown(new KeyboardEvent('keydown', { key: 'n' }));
+    expect(component.showForm()).toBe('transaction');
+
+    component.onDocKeydown(new KeyboardEvent('keydown', { key: 'n' }));
+    expect(component.showForm()).toBe('none');
+  });
+
+  it('toggles the transfer form with the t key', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    component.onDocKeydown(new KeyboardEvent('keydown', { key: 't' }));
+    expect(component.showForm()).toBe('transfer');
+
+    component.onDocKeydown(new KeyboardEvent('keydown', { key: 't' }));
+    expect(component.showForm()).toBe('none');
+  });
+
+  it('closes the open capture form with Escape', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    component.openTransactionForm();
+    component.onDocKeydown(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(component.showForm()).toBe('none');
+
+    component.openTransferForm();
+    component.onDocKeydown(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(component.showForm()).toBe('none');
+
+    component.onDocKeydown(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(component.showForm()).toBe('none');
+  });
+
+  it('keeps typed input when Escape closes the transaction form', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    component.toggleTransactionForm();
+    fixture.detectChanges();
+    component.transactionFormCard()!.form.update((f) => ({ ...f, amount: 42, note: 'cinema tickets' }));
+
+    component.onDocKeydown(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(component.showForm()).toBe('none');
+
+    component.toggleTransactionForm();
+    fixture.detectChanges();
+
+    expect(component.transactionFormCard()!.form().amount).toBe(42);
+    expect(component.transactionFormCard()!.form().note).toBe('cinema tickets');
+  });
+
+  it('keeps typed transfer input when Escape closes the transfer form', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    component.openTransferForm();
+    fixture.detectChanges();
+    component.transferFormCard()!.form.update((f) => ({ ...f, sourceAmount: 250, note: 'rent split' }));
+
+    component.onDocKeydown(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(component.showForm()).toBe('none');
+
+    component.openTransferForm();
+    fixture.detectChanges();
+
+    expect(component.transferFormCard()!.form().sourceAmount).toBe(250);
+    expect(component.transferFormCard()!.form().note).toBe('rent split');
+  });
+
+  it('toggles the capture form when the sidebar New Transaction action requests it', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+    const captureFormService = TestBed.inject(CaptureFormService);
+
+    captureFormService.requestTransactionForm();
+    fixture.detectChanges();
+    expect(component.showForm()).toBe('transaction');
+
+    captureFormService.requestTransactionForm();
+    fixture.detectChanges();
+    expect(component.showForm()).toBe('none');
+  });
+
+  it('documents the capture shortcuts on the trigger buttons', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    expect(transactionButton().getAttribute('title')).toBe('Shortcut: N');
+    expect(transactionButton().getAttribute('aria-keyshortcuts')).toBe('n');
+    expect(transferButton().getAttribute('title')).toBe('Shortcut: T');
+    expect(transferButton().getAttribute('aria-keyshortcuts')).toBe('t');
+  });
+
+  it('shows the capture shortcuts visibly in the controls row', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const hint = fixture.nativeElement.querySelector('.shortcut-hint');
+    expect(hint?.textContent).toContain('N transaction');
+    expect(hint?.textContent).toContain('T transfer');
+    expect(hint?.textContent).toContain('Esc close');
+  });
+});
+
+describe('MovementsComponent - scope URL state', () => {
+  let fixture: ComponentFixture<MovementsComponent>;
+  let component: MovementsComponent;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    await TestBed.configureTestingModule({
+      imports: [MovementsComponent],
+      providers: [provideRouter([])],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(MovementsComponent);
+    component = fixture.componentInstance;
+  });
+
+  afterEach(async () => {
+    await db.delete();
+  });
+
+  it('restores the Scope from period and year query params', async () => {
+    TestBed.inject(Location).replaceState('/movements?period=3&year=2025');
+
+    await component.ngOnInit();
+
+    expect(component.scope()).toEqual({ kind: 'month', period: 3, year: 2025 });
+  });
+
+  it('ignores malformed or out-of-range scope params and falls back to the current Scope', async () => {
+    TestBed.inject(Location).replaceState('/movements?period=13&year=notayear');
+
+    await component.ngOnInit();
+
+    expect(component.scope()).toEqual(defaultScope());
+  });
+
+  it('keeps the current Scope for legacy links without params', async () => {
+    await component.ngOnInit();
+
+    expect(component.scope()).toEqual(defaultScope());
+  });
+
+  it('reflects a Scope change in the URL as period and year query params', async () => {
+    await component.ngOnInit();
+
+    const otherMonth = ((getCurrentPeriod() % 12) + 1) as MonthNumber;
+    await component.onScopeMonthChange(otherMonth);
+
+    const url = TestBed.inject(Location).path(true);
+    expect(url).toContain(`period=${otherMonth}`);
+    expect(url).toContain(`year=${getCurrentYear()}`);
+  });
+
+  it('reflects a year change in the URL too', async () => {
+    await component.ngOnInit();
+
+    const lastYear = getCurrentYear() - 1;
+    await component.onScopeYearChange(lastYear);
+
+    const url = TestBed.inject(Location).path(true);
+    expect(url).toContain(`period=${getCurrentPeriod()}`);
+    expect(url).toContain(`year=${lastYear}`);
+  });
+});
+
+describe('MovementsComponent - filter card disclosure (#102)', () => {
+  let fixture: ComponentFixture<MovementsComponent>;
+  let component: MovementsComponent;
+  let accountId: number;
+  let categoryId: number;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    await TestBed.configureTestingModule({
+      imports: [MovementsComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(MovementsComponent);
+    component = fixture.componentInstance;
+    const acc = await TestBed.inject(AccountService).create('Cash', 'EUR', 100000);
+    accountId = acc.id!;
+    const cat = await TestBed.inject(CategoryService).create('Food', 'expense');
+    categoryId = cat.id!;
+  });
+
+  afterEach(async () => {
+    await db.delete();
+  });
+
+  it('starts collapsed and reveals the selects only on demand', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    expect(component.filtersExpanded()).toBe(false);
+    expect(fixture.nativeElement.querySelector('.filter-panel')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.filter-toggle')).toBeTruthy();
+
+    component.toggleFilters();
+    fixture.detectChanges();
+
+    expect(component.filtersExpanded()).toBe(true);
+    expect(fixture.nativeElement.querySelector('.filter-panel')).toBeTruthy();
+    expect(fixture.nativeElement.querySelectorAll('.filter-panel select').length).toBe(2);
+  });
+
+  it('shows the All… option on both filter selects by default', async () => {
+    await component.ngOnInit();
+    component.toggleFilters();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const selects = fixture.nativeElement.querySelectorAll(
+      '.filter-panel select',
+    ) as NodeListOf<HTMLSelectElement>;
+    expect(selects.length).toBe(2);
+    expect(selects[0].value).toBe('0');
+    expect(selects[1].value).toBe('0');
+  });
+
+  it('lists active filters as chips while collapsed and hides them when expanded', async () => {
+    await component.ngOnInit();
+    component.filterCategory.set(categoryId);
+    component.searchQuery.set('cash');
+    fixture.detectChanges();
+
+    const chips = fixture.nativeElement.querySelectorAll('.filter-chip');
+    expect(chips.length).toBe(2);
+    expect(chips[0].textContent).toContain('Category');
+    expect(chips[1].textContent).toContain('Search');
+
+    component.toggleFilters();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelectorAll('.filter-chip').length).toBe(0);
+  });
+
+  it('carries the active filter count on the toggle as a badge', async () => {
+    await component.ngOnInit();
+    component.filterAccount.set(accountId);
+    fixture.detectChanges();
+
+    const badge = fixture.nativeElement.querySelector('.filter-toggle .filter-badge');
+    expect(badge?.textContent).toContain('1');
+    expect(badge?.textContent).toContain('filters active');
+  });
+
+  it('removes a single filter from its chip', async () => {
+    await component.ngOnInit();
+    component.filterCategory.set(categoryId);
+    component.filterAccount.set(accountId);
+    component.searchQuery.set('cash');
+
+    component.removeFilter('category');
+    expect(component.filterCategory()).toBeNull();
+    expect(component.filterAccount()).toBe(accountId);
+    expect(component.searchQuery()).toBe('cash');
+
+    component.removeFilter('search');
+    expect(component.searchQuery()).toBe('');
+
+    component.removeFilter('account');
+    expect(component.filterAccount()).toBeNull();
+  });
+
+  it('renders the scope selectors as one labeled pair', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const label = fixture.nativeElement.querySelector('.scope-control .scope-label');
+    expect(label?.textContent?.trim()).toBe('Scope');
+  });
+});
+
+function stubMatchMedia(matches: boolean): void {
+  const listeners = new Set<(event: MediaQueryListEvent) => void>();
+  (window as any).matchMedia = vi.fn().mockImplementation((query: string) => ({
+    matches,
+    media: query,
+    addEventListener: (_: string, cb: (event: MediaQueryListEvent) => void) =>
+      listeners.add(cb),
+    removeEventListener: (_: string, cb: (event: MediaQueryListEvent) => void) =>
+      listeners.delete(cb),
+  }));
+  (window as any).__matchMediaListeners = listeners;
+}
+
+function pointerEvent(type: string, clientY: number, pointerId = 1): PointerEvent {
+  const event = new Event(type, { bubbles: true }) as PointerEvent;
+  Object.defineProperty(event, 'clientY', { value: clientY });
+  Object.defineProperty(event, 'pointerId', { value: pointerId });
+  return event;
+}
+
+describe('MovementsComponent - mobile capture sheet (#103)', () => {
+  let fixture: ComponentFixture<MovementsComponent>;
+  let component: MovementsComponent;
+  let transactionService: TransactionService;
+  let accountService: AccountService;
+  let categoryService: CategoryService;
+  let accountId: number;
+  let categoryId: number;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    stubMatchMedia(true);
+
+    await TestBed.configureTestingModule({
+      imports: [MovementsComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(MovementsComponent);
+    component = fixture.componentInstance;
+    transactionService = TestBed.inject(TransactionService);
+    accountService = TestBed.inject(AccountService);
+    categoryService = TestBed.inject(CategoryService);
+
+    const account = await accountService.create('Cash', 'EUR', 100000);
+    accountId = account.id!;
+    const category = await categoryService.create('Food', 'expense');
+    categoryId = category.id!;
+  });
+
+  afterEach(async () => {
+    await db.delete();
+  });
+
+  function sheetEl(): HTMLElement {
+    return fixture.nativeElement.querySelector('app-bottom-sheet .sheet') as HTMLElement;
+  }
+
+  it('opens the Transaction Form inside the bottom sheet on mobile', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    component.toggleTransactionForm();
+    fixture.detectChanges();
+
+    expect(component.showForm()).toBe('transaction');
+    expect(component.isMobileLayout()).toBe(true);
+
+    const sheet = sheetEl();
+    expect(sheet).toBeTruthy();
+    expect(sheet.getAttribute('role')).toBe('dialog');
+    expect(sheet.getAttribute('aria-modal')).toBe('true');
+    expect(sheet.getAttribute('aria-label')).toBeTruthy();
+    expect(sheet.querySelector('app-transaction-form')).toBeTruthy();
+  });
+
+  it('opens the sheet prefilled when editing a transaction on mobile', async () => {
+    const t = await transactionService.create(
+      accountId,
+      categoryId,
+      1200,
+      new Date(),
+      getCurrentPeriod(),
+      null,
+      null,
+      getCurrentYear(),
+      'coffee',
+    );
+    await component.ngOnInit();
+
+    component.openTransactionFormForEdit(t);
+    fixture.detectChanges();
+
+    expect(component.showForm()).toBe('transaction');
+    const sheet = sheetEl();
+    expect(sheet).toBeTruthy();
+    expect(component.transactionFormCard()!.editingId()).toBe(t.id);
+    expect(component.transactionFormCard()!.form().amount).toBe(1200);
+    expect(component.transactionFormCard()!.form().note).toBe('coffee');
+  });
+
+  it('dismisses the sheet on drag-down without saving', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    component.toggleTransactionForm();
+    fixture.detectChanges();
+
+    const handle = sheetEl().querySelector('.sheet-handle') as HTMLElement;
+    handle.dispatchEvent(pointerEvent('pointerdown', 10));
+    handle.dispatchEvent(pointerEvent('pointermove', 10 + 200));
+    handle.dispatchEvent(pointerEvent('pointerup', 10 + 200));
+    fixture.detectChanges();
+
+    expect(component.showForm()).toBe('none');
+    expect(fixture.nativeElement.querySelector('app-bottom-sheet')).toBeNull();
+    expect(await transactionService.getAll()).toHaveLength(0);
+  });
+
+  it('keeps only one capture form open at a time on mobile', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    component.toggleTransactionForm();
+    expect(component.showForm()).toBe('transaction');
+
+    component.openTransferForm();
+    fixture.detectChanges();
+
+    expect(component.showForm()).toBe('transfer');
+    // The transfer presents in its own sheet on mobile (#104); the Transaction Form is gone.
+    expect(sheetEl()).toBeTruthy();
+    expect(sheetEl().querySelector('.form-card')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('app-transaction-form')).toBeNull();
+  });
+});
+
+describe('MovementsComponent - mobile transfer sheet (#104)', () => {
+  let fixture: ComponentFixture<MovementsComponent>;
+  let component: MovementsComponent;
+  let transferService: TransferService;
+  let accountService: AccountService;
+  let exchangeRateService: ExchangeRateService;
+  let accountId: number;
+  let accountId2: number;
+  let usdAccountId: number;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    stubMatchMedia(true);
+
+    const mockExchangeRateService = {
+      getRate: vi
+        .fn()
+        .mockResolvedValue({ rate: 1.08, from: 'USD', to: 'EUR', date: '2026-08-26' }),
+    };
+
+    await TestBed.configureTestingModule({
+      imports: [MovementsComponent],
+      providers: [{ provide: ExchangeRateService, useValue: mockExchangeRateService }],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(MovementsComponent);
+    component = fixture.componentInstance;
+    transferService = TestBed.inject(TransferService);
+    accountService = TestBed.inject(AccountService);
+    exchangeRateService = TestBed.inject(ExchangeRateService);
+
+    const acc1 = await accountService.create('Cash', 'EUR', 100000);
+    accountId = acc1.id!;
+    const acc2 = await accountService.create('Savings', 'EUR', 50000);
+    accountId2 = acc2.id!;
+    const usdAcc = await accountService.create('Dollars', 'USD', 1000);
+    usdAccountId = usdAcc.id!;
+  });
+
+  afterEach(async () => {
+    await db.delete();
+    vi.restoreAllMocks();
+  });
+
+  function sheetEl(): HTMLElement {
+    return fixture.nativeElement.querySelector('app-bottom-sheet .sheet') as HTMLElement;
+  }
+
+  function compiledComponentCss(): string {
+    return Array.from(document.querySelectorAll('style'))
+      .map((s) => s.textContent ?? '')
+      .join('\n');
+  }
+
+  it('opens the Transfer form inside the bottom sheet on mobile', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    component.openTransferForm();
+    fixture.detectChanges();
+
+    expect(component.showForm()).toBe('transfer');
+    const sheet = sheetEl();
+    expect(sheet).toBeTruthy();
+    expect(sheet.getAttribute('role')).toBe('dialog');
+    expect(sheet.getAttribute('aria-modal')).toBe('true');
+    expect(sheet.getAttribute('aria-label')).toBe('Transfer form');
+    expect(sheet.querySelector('.form-card')).toBeTruthy();
+    expect(sheet.querySelector('.form-grid')).toBeTruthy();
+  });
+
+  it('opens the sheet prefilled when editing a transfer on mobile and saves the edit', async () => {
+    const t = await transferService.create(
+      accountId,
+      accountId2,
+      500,
+      new Date('2025-12-22'),
+      1,
+      'savings',
+    );
+    await component.ngOnInit();
+
+    component.openTransferForm(t);
+    await flush();
+    fixture.detectChanges();
+
+    expect(component.showForm()).toBe('transfer');
+    expect(sheetEl()).toBeTruthy();
+    const form = component.transferFormCard()!;
+    expect(form.editingId()).toBe(t.id);
+    expect(form.form().sourceAmount).toBe(500);
+    expect(form.form().note).toBe('savings');
+
+    form.form.update((f) => ({ ...f, sourceAmount: 750 }));
+    await form.onSubmit();
+    await flush();
+
+    expect(component.showForm()).toBe('none');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-bottom-sheet')).toBeNull();
+    const transfers = await transferService.getAll();
+    expect(transfers).toHaveLength(1);
+    expect(transfers[0].sourceAmount).toBe(750);
+  });
+
+  it('saves a same-currency transfer from the sheet with no exchange-rate section', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    component.openTransferForm();
+    fixture.detectChanges();
+    const form = component.transferFormCard()!;
+    form.onSourceChange(accountId);
+    form.form.update((f) => ({
+      ...f,
+      destAccountId: accountId2,
+      sourceAmount: 300,
+      note: 'rent',
+    }));
+    fixture.detectChanges();
+
+    expect(sheetEl()!.querySelector('.exchange-rate-section')).toBeNull();
+
+    await form.onSubmit();
+    await flush();
+    fixture.detectChanges();
+
+    expect(component.showForm()).toBe('none');
+    const transfers = await transferService.getAll();
+    expect(transfers).toHaveLength(1);
+    expect(transfers[0].sourceAmount).toBe(300);
+  });
+
+  it('shows the exchange-rate capture only for cross-currency transfers in the sheet', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    component.openTransferForm();
+    fixture.detectChanges();
+    const form = component.transferFormCard()!;
+    form.onSourceChange(usdAccountId);
+    form.form.update((f) => ({
+      ...f,
+      destAccountId: accountId,
+      sourceAmount: 100,
+    }));
+    form.onDateChange('2026-08-20');
+    fixture.detectChanges();
+    await flush();
+
+    expect(exchangeRateService.getRate).toHaveBeenCalledWith('USD', 'EUR', '2026-08-20');
+    expect(form.form().exchangeRate).toBe(1.08);
+    expect(sheetEl()!.querySelector('.exchange-rate-section')).toBeTruthy();
+
+    await form.onSubmit();
+    await flush();
+
+    const transfers = await transferService.getAll();
+    expect(transfers).toHaveLength(1);
+    expect(transfers[0].exchangeRate).toBe(1.08);
+  });
+
+  it('saves a cross-currency transfer edit from the sheet with the stored rate prefilled', async () => {
+    const t = await transferService.create(
+      usdAccountId,
+      accountId,
+      100,
+      new Date('2025-12-22'),
+      1,
+      'abroad',
+      1.05,
+    );
+    await component.ngOnInit();
+
+    component.openTransferForm(t);
+    await flush();
+    fixture.detectChanges();
+
+    const form = component.transferFormCard()!;
+    expect(sheetEl()!.querySelector('.exchange-rate-section')).toBeTruthy();
+    expect(form.form().exchangeRate).toBe(1.05);
+
+    form.form.update((f) => ({ ...f, sourceAmount: 200, destinationAmount: 210 }));
+    await form.onSubmit();
+    await flush();
+
+    const transfers = await transferService.getAll();
+    expect(transfers).toHaveLength(1);
+    expect(transfers[0].sourceAmount).toBe(200);
+    expect(transfers[0].destinationAmount).toBe(210);
+    expect(transfers[0].exchangeRate).toBe(1.05);
+  });
+
+  it('dismisses the transfer sheet on drag-down without saving', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    component.openTransferForm();
+    fixture.detectChanges();
+
+    const handle = sheetEl().querySelector('.sheet-handle') as HTMLElement;
+    handle.dispatchEvent(pointerEvent('pointerdown', 10));
+    handle.dispatchEvent(pointerEvent('pointermove', 10 + 200));
+    handle.dispatchEvent(pointerEvent('pointerup', 10 + 200));
+    fixture.detectChanges();
+
+    expect(component.showForm()).toBe('none');
+    expect(fixture.nativeElement.querySelector('app-bottom-sheet')).toBeNull();
+    expect(await transferService.getAll()).toHaveLength(0);
+  });
+
+  it('keeps the transfer form inline on the desktop layout (no sheet)', async () => {
+    stubMatchMedia(false);
+    fixture = TestBed.createComponent(MovementsComponent);
+    component = fixture.componentInstance;
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    component.openTransferForm();
+    fixture.detectChanges();
+
+    expect(component.showForm()).toBe('transfer');
+    expect(component.isMobileLayout()).toBe(false);
+    expect(fixture.nativeElement.querySelector('app-bottom-sheet')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.form-card')).toBeTruthy();
+  });
+
+  it('pins the transfer Cancel/Save to the sheet bottom below 768px', async () => {
+    await component.ngOnInit();
+    // The form's styles compile with its component: render it once.
+    component.openTransferForm();
+    fixture.detectChanges();
+
+    const css = compiledComponentCss();
+    expect(css).toMatch(
+      /@media \(max-width: 768px\)[\s\S]*?\.form-actions[^{]*\{[^}]*position:\s*sticky[^}]*bottom:\s*0/,
+    );
+  });
+
+  // jsdom does no layout, so "inputs and selects resolve to the same
+  // rendered width" is asserted at the compiled-stylesheet seam (same
+  // approach as the stacked-ledger spec above).
+  it('gives the transfer form grids the minmax(0, 1fr) overflow guard (#107)', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    // The rate-grid rules compile with the shared well (#108), so render it
+    // once with a cross-currency pair.
+    component.openTransferForm();
+    fixture.detectChanges();
+    const form = component.transferFormCard()!;
+    form.onSourceChange(usdAccountId);
+    form.form.update((f) => ({
+      ...f,
+      destAccountId: accountId,
+    }));
+    fixture.detectChanges();
+
+    const css = compiledComponentCss();
+    expect(css).toMatch(
+      /\.form-grid[^{]*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s*minmax\(0,\s*1fr\)/,
+    );
+    expect(css).toMatch(
+      /\.exchange-rate-grid[^{]*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s*minmax\(0,\s*1fr\)/,
+    );
+  });
+
+  it('resolves transfer-form text inputs and selects to the same rendered width (box-sizing)', async () => {
+    await component.ngOnInit();
+    // The form's styles compile with its component: render it once.
+    component.openTransferForm();
+    fixture.detectChanges();
+
+    const css = compiledComponentCss();
+    // Angular's emulated encapsulation inserts [_ngcontent-*] attributes
+    // between the selector parts, so the descendant chain is matched
+    // piecewise.
+    expect(css).toMatch(
+      /\.form-grid[^{]*label[^{]*input[^{]*\{[^}]*box-sizing:\s*border-box/,
+    );
+    expect(css).toMatch(
+      /\.form-grid[^{]*label[^{]*select[^{]*\{[^}]*box-sizing:\s*border-box/,
+    );
+  });
+
+  it('stops the movements filter search input overflowing its card (same root cause)', async () => {
+    await component.ngOnInit();
+
+    const css = compiledComponentCss();
+    expect(css).toMatch(
+      /\.filter-search[^{]*input[^{]*\{[^}]*box-sizing:\s*border-box/,
+    );
+  });
+
+  it('pins the transfer sheet actions with the transaction form spacing tokens (#107)', async () => {
+    await component.ngOnInit();
+    // The form's styles compile with its component: render it once.
+    component.openTransferForm();
+    fixture.detectChanges();
+
+    const css = compiledComponentCss();
+    expect(css).toMatch(
+      /@media \(max-width: 768px\)[\s\S]*?\.form-actions[^{]*\{[^}]*calc\(-1 \* var\(--space-md\)\)/,
+    );
   });
 });

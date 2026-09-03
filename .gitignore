@@ -33,3 +33,14 @@ yarn-error.log*
 /docs/original-spec/migration/categories.txt
 /docs/original-spec/migration/movements.csv
 /docs/original-spec/migration/backup.json
+
+# Playwright
+node_modules/
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
+
+# Impeccable
+/.impeccable/live/

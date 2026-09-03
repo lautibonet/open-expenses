@@ -4,8 +4,8 @@
   "description": "A personal expense tracking app",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#2563eb",
+  "background_color": "#f9f9f9",
+  "theme_color": "#003ec7",
   "orientation": "portrait-primary",
   "icons": [
     {

@@ -1,10 +1,12 @@
-const CACHE_NAME = 'open-expenses-v1';
+const CACHE_NAME = 'open-expenses-v2';
 const PRECACHE_URLS = [
   '/',
   '/index.html',
   '/manifest.webmanifest',
   '/favicon.ico',
   '/icons/icon.svg',
+  '/fonts/inter-variable-latin.woff2',
+  '/fonts/jetbrains-mono-500-latin.woff2',
 ];
 
 self.addEventListener('install', (event) => {

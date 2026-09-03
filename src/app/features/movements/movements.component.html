@@ -1,231 +1,196 @@
 <div class="movements">
-  <app-quick-add-card
-    [accounts]="accounts()"
-    [categories]="categories()"
-    [baseCurrency]="baseCurrency()"
-    [editTransaction]="editTransaction()"
-    (save)="onSaveTransaction($event)"
-    (cancelEdit)="onCancelEdit()"
-  />
+  <header class="page-header">
+    <div class="headline">
+      <h1>{{ language.t('movements.title') }}</h1>
+      <p class="subtitle">{{ language.t('movements.subtitle') }}</p>
+    </div>
+
+    <div class="scope-control" role="group" [attr.aria-label]="language.t('scope.groupAria')">
+      <span class="scope-label" aria-hidden="true">{{ language.t('scope.label') }}</span>
+      <div class="scope-selects">
+        <select
+          [ngModel]="scopePeriod()"
+          (ngModelChange)="onScopeMonthChange($event)"
+          [attr.aria-label]="language.t('scope.monthAria')"
+        >
+          @for (month of scopeMonths(); track month) {
+            <option [ngValue]="month">{{ language.monthName(month) }}</option>
+          }
+        </select>
+        <select
+          [ngModel]="scopeYearValue()"
+          (ngModelChange)="onScopeYearChange($event)"
+          [attr.aria-label]="language.t('scope.yearAria')"
+        >
+          @for (yr of scopeYears(); track yr) {
+            <option [ngValue]="yr">{{ yr }}</option>
+          }
+        </select>
+      </div>
+    </div>
+  </header>
+
+  @if (dataLoaded()) {
+    <app-net-flow-card
+      [movements]="movements()"
+      [accounts]="accounts()"
+      [categories]="allCategoriesForNameResolution()"
+      [baseCurrency]="baseCurrency()"
+      [scope]="scope()"
+    />
+  }
 
   <div class="controls">
-    <select
-      [ngModel]="scopeYearValue()"
-      (ngModelChange)="onScopeYearChange($event)"
-      [attr.aria-label]="language.t('scope.yearAria')"
+    <button
+      class="btn"
+      (click)="toggleTransactionForm()"
+      [attr.aria-expanded]="showForm() === 'transaction'"
+      aria-keyshortcuts="n"
+      [title]="language.t('movements.newTransactionShortcut')"
     >
-      @for (yr of scopeYears(); track yr) {
-        <option [ngValue]="yr">{{ yr }}</option>
-      }
-
-      <option [ngValue]="'all-time'">{{ language.t('scope.allTime') }}</option>
-    </select>
-    @if (scope().kind !== 'all-time') {
-      <select
-        [ngModel]="scopePeriod()"
-        (ngModelChange)="onScopeMonthChange($event)"
-        [attr.aria-label]="language.t('scope.monthAria')"
-      >
-        @for (month of scopeMonths(); track month) {
-          <option [ngValue]="month">{{ language.monthName(month) }}</option>
-        }
-      </select>
-    }
-    <button class="btn" (click)="openTransferForm()" [title]="language.t('movements.transferShortcut')">
+      {{ language.t('movements.newTransaction') }}
+    </button>
+    <button
+      class="btn"
+      (click)="toggleTransferForm()"
+      [attr.aria-expanded]="showForm() === 'transfer'"
+      aria-keyshortcuts="t"
+      [title]="language.t('movements.transferShortcut')"
+    >
       {{ language.t('movements.addTransfer') }}
     </button>
+    <span class="shortcut-hint">{{ language.t('movements.shortcutsHint') }}</span>
     <span class="visually-hidden" aria-live="polite">{{ scopeAnnouncement() }}</span>
     <span class="visually-hidden" aria-live="polite">{{ movementAnnouncement() }}</span>
+    <span class="visually-hidden undo-announcement" aria-live="polite">{{
+      undoAnnouncement()
+    }}</span>
   </div>
 
   @if (showForm() === 'transfer') {
-    <div class="form-card">
-      <h3 #transferHeading tabindex="-1">
-        {{ editingId() ? language.t('movements.editTransferTitle') : language.t('movements.newTransferTitle') }}
-      </h3>
-      @if (accounts().length < 2) {
-        <p class="form-hint">
-          {{ language.t('movements.transferNeedsTwoAccounts') }}
-        </p>
-      }
-      <div class="form-grid">
-        <label>
-          {{ language.t('movements.from') }}
-          <select
-            [ngModel]="trForm().sourceAccountId"
-            (ngModelChange)="onTransferSourceChange(+$event)"
+    @if (isMobileLayout()) {
+      <app-bottom-sheet
+        [label]="language.t('movements.transferSheetAria')"
+        (dismissed)="cancelTransferForm()"
+      >
+        <ng-container [ngTemplateOutlet]="transferForm" />
+      </app-bottom-sheet>
+    } @else {
+      <ng-container [ngTemplateOutlet]="transferForm" />
+    }
+  }
+
+  <ng-template #transferForm>
+    <app-transfer-form
+      [accounts]="accounts()"
+      [editTransfer]="editTransfer()"
+      [initialDraft]="transferRestore()"
+      [inSheet]="isMobileLayout()"
+      (saved)="onTransferSaved($event)"
+      (close)="cancelTransferForm()"
+    />
+  </ng-template>
+
+  @if (showForm() === 'transaction') {
+    @if (isMobileLayout()) {
+      <app-bottom-sheet
+        [label]="language.t('transactionForm.sheetAria')"
+        (dismissed)="closeTransactionForm()"
+      >
+        <ng-container [ngTemplateOutlet]="transactionForm" />
+      </app-bottom-sheet>
+    } @else {
+      <ng-container [ngTemplateOutlet]="transactionForm" />
+    }
+  }
+
+  <ng-template #transactionForm>
+    <app-transaction-form
+      [accounts]="accounts()"
+      [categories]="categories()"
+      [baseCurrency]="baseCurrency()"
+      [editTransaction]="editTransaction()"
+      [initialDraft]="transactionRestore()"
+      [inSheet]="isMobileLayout()"
+      (saved)="onTransactionSaved($event)"
+      (close)="closeTransactionForm()"
+    />
+  </ng-template>
+
+  <div class="filter-bar">
+    <div class="filter-summary">
+      <label class="filter-search">
+        <span class="visually-hidden">{{ language.t('movements.search') }}</span>
+        <input
+          type="search"
+          [ngModel]="searchQuery()"
+          (ngModelChange)="searchQuery.set($event)"
+          [placeholder]="language.t('movements.searchPlaceholder')"
+        />
+      </label>
+      @if (!filtersExpanded()) {
+        @for (chip of activeFilters(); track chip.kind) {
+          <button
+            class="filter-chip"
+            (click)="removeFilter(chip.kind)"
+            [attr.aria-label]="language.t('movements.removeFilterAria', { filter: chip.label })"
           >
+            {{ chip.label }}
+            <svg aria-hidden="true" viewBox="0 0 10 10" focusable="false">
+              <path d="M2 2l6 6M8 2 2 8" fill="none" stroke="currentColor" stroke-width="1.5" />
+            </svg>
+          </button>
+        }
+      }
+      <button
+        class="btn small filter-toggle"
+        (click)="toggleFilters()"
+        [attr.aria-expanded]="filtersExpanded()"
+      >
+        {{ filtersExpanded() ? language.t('movements.hideFilters') : language.t('movements.showFilters') }}
+        @if (activeFilterCount() > 0) {
+          <span class="filter-badge"
+            >{{ activeFilterCount() }}<span class="visually-hidden">{{ language.t('movements.filtersActive') }}</span></span
+          >
+        }
+      </button>
+    </div>
+    @if (filtersExpanded()) {
+      <div class="filter-panel">
+        <label>
+          {{ language.t('movements.category') }}
+          <select [ngModel]="filterCategory() ?? 0" (ngModelChange)="filterCategory.set(+$event || null)">
+            <option [value]="0">{{ language.t('movements.allCategories') }}</option>
+            @for (cat of categories(); track cat.id) {
+              <option [value]="cat.id">{{ cat.name }}</option>
+            }
+          </select>
+        </label>
+        <label>
+          {{ language.t('movements.account') }}
+          <select [ngModel]="filterAccount() ?? 0" (ngModelChange)="filterAccount.set(+$event || null)">
+            <option [value]="0">{{ language.t('movements.allAccounts') }}</option>
             @for (acc of accounts(); track acc.id) {
               <option [value]="acc.id">{{ acc.name }}</option>
             }
           </select>
         </label>
-        <label>
-          {{ language.t('movements.to') }}
-          <select
-            [ngModel]="trForm().destAccountId"
-            (ngModelChange)="
-              trForm.update((f) => ({ ...f, destAccountId: +$event })); checkTransferExchangeRate()
-            "
-          >
-            @for (acc of filteredDestinationAccounts(); track acc.id) {
-              <option [value]="acc.id">{{ acc.name }}</option>
-            }
-          </select>
-        </label>
-        <label>
-          {{ language.t('movements.amountWithCurrency', { currency: getTransferSourceCurrency() }) }}
-          <input
-            type="number"
-            min="0.01"
-            [ngModel]="trForm().sourceAmount"
-            (ngModelChange)="
-              trForm.update((f) => ({ ...f, sourceAmount: +$event }));
-              onTransferAmountOrRateChange()
-            "
-          />
-        </label>
-        <label>
-          {{ language.t('movements.date') }}
-          <input
-            type="date"
-            [ngModel]="trForm().date"
-            (ngModelChange)="onTransferDateChange($event)"
-          />
-        </label>
-        <label>
-          {{ language.t('movements.period') }}
-          <select
-            [ngModel]="trForm().period"
-            (ngModelChange)="trForm.update((f) => ({ ...f, period: $event }))"
-          >
-            @for (month of months; track month) {
-              <option [ngValue]="month">{{ language.monthName(month) }}</option>
-            }
-          </select>
-        </label>
-        <label>
-          {{ language.t('movements.year') }}
-          <select
-            [ngModel]="trForm().year"
-            (ngModelChange)="trForm.update((f) => ({ ...f, year: +$event }))"
-          >
-            @for (yr of years; track yr) {
-              <option [value]="yr">{{ yr }}</option>
-            }
-          </select>
-        </label>
-        <label>
-          {{ language.t('movements.note') }}
-          <input
-            type="text"
-            [ngModel]="trForm().note"
-            (ngModelChange)="trForm.update((f) => ({ ...f, note: $event }))"
-          />
-        </label>
-      </div>
-
-      @if (isTransferForeignCurrency()) {
-        <div class="exchange-rate-section">
-          <h4>{{ language.t('movements.exchangeRate') }}</h4>
-          @if (transferExchangeRateState().loading) {
-            <p class="rate-status">{{ language.t('movements.fetchingRate') }}</p>
-          }
-          @if (transferExchangeRateState().error) {
-            <p class="rate-error">{{ transferExchangeRateState().error }}</p>
-          }
-          <div class="exchange-rate-grid">
-            <label>
-              {{
-                language.t('movements.exchangeRatePair', {
-                  from: getTransferSourceCurrency(),
-                  to: getTransferDestCurrency(),
-                })
-              }}
-              <input
-                type="number"
-                step="0.0001"
-                [ngModel]="trForm().exchangeRate"
-                (ngModelChange)="
-                  trForm.update((f) => ({ ...f, exchangeRate: +$event }));
-                  onTransferAmountOrRateChange()
-                "
-              />
-            </label>
-            <label>
-              {{ language.t('movements.destAmount', { currency: getTransferDestCurrency() }) }}
-              <input
-                type="number"
-                [ngModel]="trForm().destinationAmount"
-                (ngModelChange)="trForm.update((f) => ({ ...f, destinationAmount: +$event }))"
-              />
-            </label>
-          </div>
-          @if (transferExchangeRateState().rate !== null) {
-            <p class="rate-source">
-              {{
-                language.t('movements.suggestedRate', {
-                  from: getTransferSourceCurrency(),
-                  rate: transferExchangeRateState().rate!,
-                  to: getTransferDestCurrency(),
-                  date: transferExchangeRateState().date,
-                })
-              }}
-            </p>
-          }
-        </div>
-      }
-
-      @if (errorMessage()) {
-        <p class="error" [title]="errorDetail()">{{ errorMessage() }}</p>
-      }
-      <div class="form-actions">
-        <button class="btn" (click)="cancelForm()">{{ language.t('movements.cancel') }}</button>
-        <button class="btn primary" (click)="saveTransfer()" [disabled]="!canSubmitTransfer()">
-          {{ language.t('movements.save') }}
-        </button>
-      </div>
-    </div>
-  }
-
-  <div class="filter-bar">
-    <label>
-      {{ language.t('movements.search') }}
-      <input
-        type="search"
-        [ngModel]="searchQuery()"
-        (ngModelChange)="searchQuery.set($event)"
-        [placeholder]="language.t('movements.searchPlaceholder')"
-      />
-    </label>
-    <label>
-      {{ language.t('movements.category') }}
-      <select [ngModel]="filterCategory()" (ngModelChange)="filterCategory.set(+$event || null)">
-        <option [value]="0">{{ language.t('movements.allCategories') }}</option>
-        @for (cat of categories(); track cat.id) {
-          <option [value]="cat.id">{{ cat.name }}</option>
+        @if (filterCategory() !== null) {
+          <span class="filter-hint">{{ language.t('movements.categoryExcludesTransfers') }}</span>
         }
-      </select>
-    </label>
-    <label>
-      {{ language.t('movements.account') }}
-      <select [ngModel]="filterAccount()" (ngModelChange)="filterAccount.set(+$event || null)">
-        <option [value]="0">{{ language.t('movements.allAccounts') }}</option>
-        @for (acc of accounts(); track acc.id) {
-          <option [value]="acc.id">{{ acc.name }}</option>
+        @if (activeFilterCount() > 0) {
+          <button class="btn small" (click)="clearFilters()">{{ language.t('movements.clearFilters') }}</button>
         }
-      </select>
-    </label>
-    @if (activeFilterCount() > 0) {
-      <span class="filter-badge"
-        >{{ activeFilterCount() }}<span class="visually-hidden">{{ language.t('movements.filtersActive') }}</span></span
-      >
-      <button class="btn small" (click)="clearFilters()">{{ language.t('movements.clearFilters') }}</button>
+      </div>
     }
   </div>
 
   <div class="movement-table">
-    @if (filteredMovements().length > 0) {
+    @if (!dataLoaded()) {
+      <p class="loading-state" role="status" aria-busy="true">
+        {{ language.t('movements.loading') }}
+      </p>
+    } @else if (filteredMovements().length > 0) {
       <div class="table-scroll">
         <table>
           <caption class="visually-hidden">
@@ -233,7 +198,6 @@
           </caption>
           <thead>
             <tr>
-              <th scope="col">{{ language.t('movements.colType') }}</th>
               <th scope="col" [attr.aria-sort]="sortDir() === 'desc' ? 'descending' : 'ascending'">
                 <button type="button" class="th-sort" (click)="toggleSort()" [attr.aria-label]="language.t('movements.sortByDateAria')">
                   {{ language.t('movements.colDate') }}
@@ -241,109 +205,217 @@
                 </button>
               </th>
               <th scope="col">{{ language.t('movements.colCategoryTransfer') }}</th>
-              <th scope="col">{{ language.t('movements.colAmount') }}</th>
+              <th scope="col" class="col-amount">{{ language.t('movements.colAmount') }}</th>
               <th scope="col">{{ language.t('movements.colAccount') }}</th>
-              <th scope="col">{{ language.t('movements.colActions') }}</th>
+              <th scope="col" class="col-actions">{{ language.t('movements.colActions') }}</th>
             </tr>
           </thead>
           <tbody>
-            @for (row of movementView(); track trackKey(row)) {
-              @if (row.kind === 'group') {
-                <tr class="month-group-row">
-                  <td colspan="6">{{ row.label }}</td>
-                </tr>
-              } @else {
-                @let item = row.item;
-                @if (isTransaction(item)) {
-                  @let txn = getTransactionData(item);
-                <tr>
-                  <td [ngClass]="['arrow', getDirectionArrowClass(item)]">
-                    {{ getDirectionArrow(txn, 'transaction') }}
-                  </td>
-                  <td>{{ txn.date | date: 'mediumDate' }}</td>
-                  <td>
-                    {{ getCategoryName(txn.categoryId) }}
-                    @if (txn.note) {
-                      <div class="note">{{ txn.note }}</div>
-                    }
-                  </td>
-                  <td
-                    [class.income]="isIncomeTransaction(txn)"
-                    [class.expense]="!isIncomeTransaction(txn)"
-                  >
-                    {{ formatTransactionDisplayAmount(txn) }}
-                  </td>
-                  <td>{{ getAccountName(txn.accountId) }}</td>
-                  <td>
-                    <button class="btn small" (click)="editTransaction.set(txn)">
-                      {{ language.t('movements.edit') }}
+            @for (section of movementDaySections(); track section.key) {
+              <tr class="day-divider">
+                <td colspan="5">{{ section.label }}</td>
+              </tr>
+              @for (row of section.items; track trackKey(row)) {
+              @let item = row;
+              @if (isTransaction(item)) {
+                @let txn = getTransactionData(item);
+              @let income = isIncomeTransaction(txn);
+              <tr
+                [class.row-income]="income"
+                [class.row-expense]="!income"
+              >
+                <td>
+                  <span class="visually-hidden">{{ kindLabel(item) }}</span>
+                  {{ txn.date | date: 'mediumDate' }}
+                </td>
+                <td [attr.data-label]="language.t('movements.colCategoryTransfer')">
+                  <span class="cat-chip">{{ getCategoryName(txn.categoryId) }}</span>
+                  @if (txn.note) {
+                    <div class="note">{{ txn.note }}</div>
+                  }
+                </td>
+                <td
+                  [class.income]="isIncomeTransaction(txn)"
+                  [class.expense]="!isIncomeTransaction(txn)"
+                >
+                  {{ formatTransactionDisplayAmount(txn) }}
+                </td>
+                <td [attr.data-label]="language.t('movements.colAccount')">{{ getAccountName(txn.accountId) }}</td>
+                <td class="actions-cell">
+                  @if (confirmingDelete() === item) {
+                    <span class="visually-hidden" aria-live="polite">
+                      {{ deleteConfirmationLabel(confirmingDelete()!) }}
+                    </span>
+                    <button
+                      #deleteConfirmBtn
+                      class="btn small danger icon-btn"
+                      (click)="confirmDelete()"
+                      [attr.aria-label]="language.t('movements.confirmTransactionDeletionAria')"
+                      [title]="language.t('movements.confirmTransactionDeletionAria')"
+                    >
+                      <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                        <path
+                          d="M20 6 9 17l-5-5"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        />
+                      </svg>
                     </button>
-                    @if (confirmingDelete() === item) {
-                      <span
-                        class="delete-confirm"
-                        aria-live="polite"
-                        [attr.aria-label]="language.t('movements.confirmTransactionDeletionAria')"
-                      >
-                        {{ deleteConfirmationLabel(confirmingDelete()!) }}
-                      </span>
-                      <button class="btn small danger" (click)="confirmDelete()">
-                        {{ language.t('movements.delete') }}
-                      </button>
-                      <button class="btn small" (click)="cancelDelete()">
-                        {{ language.t('movements.cancel') }}
-                      </button>
-                    } @else {
-                      <button class="btn small danger" (click)="requestDelete(item)">
-                        {{ language.t('movements.delete') }}
-                      </button>
-                    }
-                  </td>
-                </tr>
-              } @else {
-                @let tr = getTransferData(item);
-                <tr class="transfer-row">
-                  <td [ngClass]="['arrow', getDirectionArrowClass(item)]">
-                    {{ getDirectionArrow(tr, 'transfer') }}
-                  </td>
-                  <td>{{ tr.date | date: 'mediumDate' }}</td>
-                  <td>
-                    {{ getAccountName(tr.sourceAccountId) }} →
-                    {{ getAccountName(tr.destinationAccountId) }}
-                  </td>
-                  <td class="amount-cell">
-                    {{ formatTransferDisplayAmount(tr) }}
-                  </td>
-                  <td>
-                    @if (tr.note) {
-                      <span class="note">{{ tr.note }}</span>
-                    }
-                  </td>
-                  <td>
-                    <button class="btn small" (click)="openTransferForm(tr.id!)">
-                      {{ language.t('movements.edit') }}
+                    <button
+                      class="btn small icon-btn"
+                      (click)="cancelDelete()"
+                      [attr.aria-label]="language.t('movements.cancelDeletionAria')"
+                      [title]="language.t('movements.cancelDeletionAria')"
+                    >
+                      <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                        <path
+                          d="M18 6 6 18M6 6l12 12"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        />
+                      </svg>
                     </button>
-                    @if (confirmingDelete() === item) {
-                      <span
-                        class="delete-confirm"
-                        aria-live="polite"
-                        [attr.aria-label]="language.t('movements.confirmTransferDeletionAria')"
-                      >
-                        {{ deleteConfirmationLabel(confirmingDelete()!) }}
-                      </span>
-                      <button class="btn small danger" (click)="confirmDelete()">
-                        {{ language.t('movements.delete') }}
-                      </button>
-                      <button class="btn small" (click)="cancelDelete()">
-                        {{ language.t('movements.cancel') }}
-                      </button>
-                    } @else {
-                      <button class="btn small danger" (click)="requestDelete(item)">
-                        {{ language.t('movements.delete') }}
-                      </button>
-                    }
-                  </td>
-                </tr>
-                }
+                  } @else {
+                    <button
+                      class="btn small icon-btn"
+                      (click)="openTransactionFormForEdit(txn)"
+                      [attr.aria-label]="language.t('movements.editMovementAria')"
+                      [title]="language.t('movements.editMovementAria')"
+                    >
+                      <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                        <path
+                          d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        />
+                      </svg>
+                    </button>
+                    <button
+                      class="btn small danger icon-btn"
+                      (click)="requestDelete(item)"
+                      [attr.aria-label]="language.t('movements.deleteMovementAria')"
+                      [title]="language.t('movements.deleteMovementAria')"
+                    >
+                      <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                        <path
+                          d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        />
+                      </svg>
+                    </button>
+                  }
+                </td>
+              </tr>
+            } @else {
+              @let tr = getTransferData(item);
+              <tr class="transfer-row">
+                <td>
+                  <span class="visually-hidden">{{ kindLabel(item) }}</span>
+                  {{ tr.date | date: 'mediumDate' }}
+                </td>
+                <td [attr.data-label]="language.t('movements.colCategoryTransfer')">
+                  {{ getAccountName(tr.sourceAccountId) }} →
+                  {{ getAccountName(tr.destinationAccountId) }}
+                  @if (tr.note) {
+                    <div class="note">{{ tr.note }}</div>
+                  }
+                </td>
+                <td class="amount-cell">
+                  {{ formatTransferDisplayAmount(tr) }}
+                </td>
+                <td></td>
+                <td class="actions-cell">
+                  @if (confirmingDelete() === item) {
+                    <span class="visually-hidden" aria-live="polite">
+                      {{ deleteConfirmationLabel(confirmingDelete()!) }}
+                    </span>
+                    <button
+                      #deleteConfirmBtn
+                      class="btn small danger icon-btn"
+                      (click)="confirmDelete()"
+                      [attr.aria-label]="language.t('movements.confirmTransferDeletionAria')"
+                      [title]="language.t('movements.confirmTransferDeletionAria')"
+                    >
+                      <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                        <path
+                          d="M20 6 9 17l-5-5"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        />
+                      </svg>
+                    </button>
+                    <button
+                      class="btn small icon-btn"
+                      (click)="cancelDelete()"
+                      [attr.aria-label]="language.t('movements.cancelDeletionAria')"
+                      [title]="language.t('movements.cancelDeletionAria')"
+                    >
+                      <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                        <path
+                          d="M18 6 6 18M6 6l12 12"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        />
+                      </svg>
+                    </button>
+                  } @else {
+                    <button
+                      class="btn small icon-btn"
+                      (click)="openTransferForm(tr)"
+                      [attr.aria-label]="language.t('movements.editMovementAria')"
+                      [title]="language.t('movements.editMovementAria')"
+                    >
+                      <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                        <path
+                          d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        />
+                      </svg>
+                    </button>
+                    <button
+                      class="btn small danger icon-btn"
+                      (click)="requestDelete(item)"
+                      [attr.aria-label]="language.t('movements.deleteMovementAria')"
+                      [title]="language.t('movements.deleteMovementAria')"
+                    >
+                      <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                        <path
+                          d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        />
+                      </svg>
+                    </button>
+                  }
+                </td>
+              </tr>
+              }
               }
             }
           </tbody>
@@ -359,7 +431,9 @@
         <p class="empty">
           {{ language.t('movements.noneForScope', { scope: scopeLabelText() }) }}
           @if (accounts().length > 0 && categories().length > 0) {
-            {{ language.t('movements.useQuickAdd') }}
+            <button class="btn small" (click)="openTransactionForm()">
+              {{ language.t('movements.emptyStateCta') }}
+            </button>
           }
         </p>
       }
@@ -378,6 +452,17 @@
     >
       <span class="undo-message"> {{ undoDeleteLabel(pending) }} </span>
       <button class="btn small" (click)="undoDelete()">{{ language.t('movements.undo') }}</button>
+      <button
+        type="button"
+        class="toast-dismiss"
+        (click)="dismissUndo()"
+        [attr.aria-label]="language.t('alert.dismiss')"
+        [title]="language.t('alert.dismiss')"
+      >
+        <svg aria-hidden="true" viewBox="0 0 10 10" focusable="false">
+          <path d="M2 2l6 6M8 2 2 8" fill="none" stroke="currentColor" stroke-width="1.5" />
+        </svg>
+      </button>
     </div>
   }
 </div>

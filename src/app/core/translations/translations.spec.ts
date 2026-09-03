@@ -23,11 +23,11 @@ describe('translations', () => {
   });
 
   it('interpolates parameters into the translated text', () => {
-    expect(translate('en', 'settings.deactivateAccountConfirm', { name: 'Cash' })).toBe(
-      'Deactivate Cash?',
+    expect(translate('en', 'backup.card.backUpTo', { method: 'Google Drive' })).toBe(
+      'Back up to Google Drive',
     );
-    expect(translate('es', 'settings.deactivateAccountConfirm', { name: 'Cash' })).toBe(
-      '¿Desactivar Cash?',
+    expect(translate('es', 'backup.card.backUpTo', { method: 'Google Drive' })).toBe(
+      'Hacer copia en Google Drive',
     );
   });
 
@@ -42,6 +42,28 @@ describe('translations', () => {
       'shell.movements',
       'shell.stats',
       'shell.settings',
+      'shell.newTransaction',
+      'shell.newTransactionShortcut',
+    ]) {
+      expect(TRANSLATIONS.en[key]).toBeTruthy();
+      expect(TRANSLATIONS.es[key]).toBeTruthy();
+    }
+  });
+
+  it('covers the settings restyle keys', () => {
+    for (const key of [
+      'settings.subtitle',
+      'settings.addAccount',
+      'settings.deactivateAccountAria',
+      'settings.deactivateCategoryAria',
+      'settings.confirmDeactivationAria',
+      'settings.cancelDeactivationAria',
+      'settings.editAccountAria',
+      'settings.editCategoryAria',
+      'settings.editBaseCurrencyAria',
+      'settings.editLanguageAria',
+      'settings.confirmEditAria',
+      'settings.cancelEditAria',
     ]) {
       expect(TRANSLATIONS.en[key]).toBeTruthy();
       expect(TRANSLATIONS.es[key]).toBeTruthy();
@@ -64,22 +86,20 @@ describe('translations', () => {
       'backup.card.downloadFailed',
       'backup.noCloudBackup',
       'backup.restoredOk',
+      'backup.card.backUpTo',
     ]) {
       expect(TRANSLATIONS.en[key]).toBeTruthy();
       expect(TRANSLATIONS.es[key]).toBeTruthy();
     }
   });
 
-  it('covers the backup banner keys', () => {
+  it('covers the backup status and action keys', () => {
     for (const key of [
-      'backup.banner.ariaLabel',
-      'backup.banner.methodBackup',
-      'backup.banner.lastBackup',
-      'backup.banner.backUp',
-      'backup.banner.backingUp',
-      'backup.banner.offline',
-      'backup.banner.dismiss',
-      'backup.banner.never',
+      'backup.sidebar.ariaLabel',
+      'backup.status.lastBackup',
+      'backup.status.never',
+      'backup.action.backUp',
+      'backup.action.backingUp',
       'backup.relative.justNow',
     ]) {
       expect(TRANSLATIONS.en[key]).toBeTruthy();
@@ -100,20 +120,40 @@ describe('translations', () => {
   });
 
   it('covers the scope keys', () => {
-    for (const key of ['scope.allTime', 'scope.yearAria', 'scope.monthAria']) {
+    for (const key of ['scope.yearAria', 'scope.monthAria', 'scope.groupAria', 'scope.label']) {
       expect(TRANSLATIONS.en[key]).toBeTruthy();
       expect(TRANSLATIONS.es[key]).toBeTruthy();
     }
   });
 
+  it('drops the abandoned visible-sort strings', () => {
+    expect(TRANSLATIONS.en['movements.sortNewest']).toBeUndefined();
+    expect(TRANSLATIONS.en['movements.sortOldest']).toBeUndefined();
+    expect(TRANSLATIONS.es['movements.sortNewest']).toBeUndefined();
+    expect(TRANSLATIONS.es['movements.sortOldest']).toBeUndefined();
+  });
+
   it('covers the movements keys', () => {
     for (const key of [
+      'movements.title',
+      'movements.subtitle',
+      'movements.netFlow',
+      'movements.loading',
+      'movements.flowIn',
+      'movements.flowOut',
       'movements.addTransfer',
+      'movements.newTransaction',
       'movements.transferShortcut',
-      'movements.sortNewest',
-      'movements.sortOldest',
+      'movements.newTransactionShortcut',
+      'movements.saveDisabled.accounts',
+      'movements.saveDisabled.distinct',
+      'movements.saveDisabled.amount',
+      'movements.saveDisabled.rate',
+      'movements.shortcutsHint',
+      'movements.sortByDateAria',
       'movements.editTransferTitle',
       'movements.newTransferTitle',
+      'movements.transferSheetAria',
       'movements.transferNeedsTwoAccounts',
       'movements.from',
       'movements.to',
@@ -136,16 +176,19 @@ describe('translations', () => {
       'movements.account',
       'movements.allAccounts',
       'movements.filtersActive',
+      'movements.showFilters',
+      'movements.hideFilters',
+      'movements.removeFilterAria',
       'movements.clearFilters',
       'movements.tableCaption',
-      'movements.colType',
       'movements.colDate',
       'movements.colCategoryTransfer',
       'movements.colAmount',
       'movements.colAccount',
       'movements.colActions',
-      'movements.edit',
-      'movements.delete',
+      'movements.editMovementAria',
+      'movements.deleteMovementAria',
+      'movements.cancelDeletionAria',
       'movements.confirmTransactionDeletionAria',
       'movements.confirmTransferDeletionAria',
       'movements.deleteTransactionConfirm',
@@ -155,16 +198,14 @@ describe('translations', () => {
       'movements.undo',
       'movements.noMatchFilters',
       'movements.noneForScope',
-      'movements.useQuickAdd',
+      'movements.emptyStateCta',
       'movements.unknown',
       'movements.error.offlineRate',
       'movements.error.rateFetch',
       'movements.announcement.transferUpdated',
       'movements.announcement.transferSaved',
-      'movements.error.differentAccounts',
-      'movements.error.amountPositive',
-      'movements.error.ratePositive',
-      'movements.error.accountMissing',
+      'movements.announcement.transactionUpdated',
+      'movements.announcement.transactionSaved',
       'movements.error.saveFailed',
     ]) {
       expect(TRANSLATIONS.en[key]).toBeTruthy();
@@ -172,36 +213,44 @@ describe('translations', () => {
     }
   });
 
-  it('covers the quick add keys', () => {
+  it('covers the movement row kind keys', () => {
+    for (const key of ['type.income', 'type.expense', 'type.transfer']) {
+      expect(TRANSLATIONS.en[key]).toBeTruthy();
+      expect(TRANSLATIONS.es[key]).toBeTruthy();
+    }
+  });
+
+  it('covers the transaction form keys', () => {
     for (const key of [
-      'quickAdd.noAccounts',
-      'quickAdd.noCategories',
-      'quickAdd.amount',
-      'quickAdd.account',
-      'quickAdd.category',
-      'quickAdd.record',
-      'quickAdd.moreOptions',
-      'quickAdd.fetchingRate',
-      'quickAdd.editTransactionTitle',
-      'quickAdd.newTransactionTitle',
-      'quickAdd.note',
-      'quickAdd.date',
-      'quickAdd.period',
-      'quickAdd.year',
-      'quickAdd.exchangeRate',
-      'quickAdd.exchangeRatePair',
-      'quickAdd.exchangeRateAria',
-      'quickAdd.equivalent',
-      'quickAdd.equivalentAria',
-      'quickAdd.suggestedRate',
-      'quickAdd.cancel',
-      'quickAdd.save',
-      'quickAdd.announcement.saved',
-      'quickAdd.announcement.updated',
-      'quickAdd.error.offlineRate',
-      'quickAdd.error.rateFetch',
-      'quickAdd.error.failedToSave',
-      'quickAdd.error.categoryMissing',
+      'transactionForm.noAccounts',
+      'transactionForm.noCategories',
+      'transactionForm.amount',
+      'transactionForm.account',
+      'transactionForm.category',
+      'transactionForm.fetchingRate',
+      'transactionForm.editTransactionTitle',
+      'transactionForm.newTransactionTitle',
+      'transactionForm.note',
+      'transactionForm.date',
+      'transactionForm.period',
+      'transactionForm.year',
+      'transactionForm.exchangeRate',
+      'transactionForm.exchangeRatePair',
+      'transactionForm.exchangeRateAria',
+      'transactionForm.equivalent',
+      'transactionForm.equivalentAria',
+      'transactionForm.suggestedRate',
+      'transactionForm.cancel',
+      'transactionForm.save',
+      'transactionForm.saveDisabled.account',
+      'transactionForm.saveDisabled.category',
+      'transactionForm.saveDisabled.amount',
+      'transactionForm.saveDisabled.rate',
+      'transactionForm.announcement.saved',
+      'transactionForm.announcement.updated',
+      'transactionForm.error.offlineRate',
+      'transactionForm.error.rateFetch',
+      'transactionForm.error.failedToSave',
     ]) {
       expect(TRANSLATIONS.en[key]).toBeTruthy();
       expect(TRANSLATIONS.es[key]).toBeTruthy();
@@ -211,18 +260,24 @@ describe('translations', () => {
   it('covers the stats keys', () => {
     for (const key of [
       'stats.title',
-      'stats.totals',
+      'stats.subtitle',
       'stats.expensesByCategory',
-      'stats.colCategory',
-      'stats.colAmount',
       'stats.totalBalance',
       'stats.allAccounts',
       'stats.conversionWarning',
       'stats.accountBalances',
-      'stats.colAccount',
-      'stats.colCurrency',
-      'stats.colBalance',
-      'stats.monthlyAverages',
+      'stats.income',
+      'stats.expenses',
+      'stats.net',
+      'stats.netStripZero',
+      'stats.netStripCaption',
+      'stats.netStripLegend',
+      'stats.kpiZero',
+      'stats.categoryZero',
+      'stats.noAccounts',
+      'stats.avgCaption',
+      'stats.savingsRate',
+      'stats.kpiScope',
     ]) {
       expect(TRANSLATIONS.en[key]).toBeTruthy();
       expect(TRANSLATIONS.es[key]).toBeTruthy();
@@ -231,8 +286,12 @@ describe('translations', () => {
 
   it('covers the onboarding keys', () => {
     for (const key of [
-      'onboarding.title',
-      'onboarding.subtitle',
+      'onboarding.setup',
+      'onboarding.steps.language',
+      'onboarding.steps.restore',
+      'onboarding.steps.currency',
+      'onboarding.steps.accounts',
+      'onboarding.steps.categories',
       'onboarding.language.title',
       'onboarding.language.description',
       'onboarding.language.aria',
@@ -247,6 +306,9 @@ describe('translations', () => {
       'onboarding.currency.title',
       'onboarding.currency.description',
       'onboarding.currency.aria',
+      'onboarding.currency.searchLabel',
+      'onboarding.currency.searchAria',
+      'onboarding.currency.searchPlaceholder',
       'onboarding.accounts.title',
       'onboarding.accounts.description',
       'onboarding.accounts.namePlaceholder',
@@ -254,8 +316,6 @@ describe('translations', () => {
       'onboarding.accounts.balancePlaceholder',
       'onboarding.accounts.add',
       'onboarding.accounts.remove',
-      'onboarding.accounts.nameRequired',
-      'onboarding.accounts.nameExists',
       'onboarding.categories.title',
       'onboarding.categories.description',
       'onboarding.categories.nameHeader',
@@ -264,10 +324,42 @@ describe('translations', () => {
       'onboarding.categories.namePlaceholder',
       'onboarding.categories.typeAria',
       'onboarding.categories.addCategory',
-      'onboarding.categories.delete',
       'onboarding.categories.minRequired',
-      'onboarding.categories.namesRequired',
       'onboarding.completionFailed',
+    ]) {
+      expect(TRANSLATIONS.en[key]).toBeTruthy();
+      expect(TRANSLATIONS.es[key]).toBeTruthy();
+    }
+  });
+
+  it('covers the shared validation error keys', () => {
+    for (const key of [
+      'errors.accountNameRequired',
+      'errors.accountNameTaken',
+      'errors.initialBalanceNegative',
+      'errors.accountNotFound',
+      'errors.categoryNameRequired',
+      'errors.categoryNameTaken',
+      'errors.categoryNotFound',
+      'errors.categoryTypeInvalid',
+      'errors.amountPositive',
+      'errors.sourceAmountPositive',
+      'errors.periodInvalid',
+      'errors.yearInvalid',
+      'errors.accountsMustDiffer',
+      'errors.exchangeRatePositive',
+      'errors.sourceAccountNotFound',
+      'errors.destinationAccountNotFound',
+      'errors.transactionNotFound',
+      'errors.transactionIdRequired',
+      'errors.transactionExists',
+      'errors.transferNotFound',
+      'errors.transferIdRequired',
+      'errors.transferExists',
+      'errors.rateApiFailed',
+      'errors.rateNotAvailable',
+      'errors.quoteCurrenciesRequired',
+      'errors.noRatesReturned',
     ]) {
       expect(TRANSLATIONS.en[key]).toBeTruthy();
       expect(TRANSLATIONS.es[key]).toBeTruthy();

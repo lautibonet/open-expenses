@@ -2,8 +2,10 @@ import { Injectable, inject, signal } from '@angular/core';
 import { ProfileService } from './profile.service';
 import { NetworkService } from './network.service';
 import { LanguageService } from './language.service';
+import { DataVersionService } from './data-version.service';
 import { BackupProvider } from '../../backup/backup-provider';
 import { DriveBackupProvider } from '../../backup/drive-backup-provider';
+import { TranslationError } from '../models/translation-error';
 import {
   BackupSnapshot,
   NewerBackupVersionError,
@@ -26,21 +28,19 @@ export class DriveBackupService {
   private profileService = inject(ProfileService);
   private networkService = inject(NetworkService);
   private languageService = inject(LanguageService);
+  private dataVersion = inject(DataVersionService);
 
   private provider: BackupProvider;
 
   isConnected = signal(false);
   isBackingUp = signal(false);
   lastBackupAt = signal<Date | null>(null);
-  error = signal<string | null>(null);
+  error = signal<TranslationError | Error | string | null>(null);
 
   private accessToken: string | null = null;
 
   constructor() {
-    this.provider = new DriveBackupProvider(
-      () => this.accessToken,
-      (key) => this.languageService.t(key),
-    );
+    this.provider = new DriveBackupProvider(() => this.accessToken);
     this.loadStoredState();
   }
 
@@ -53,22 +53,22 @@ export class DriveBackupService {
   }
 
   private setAndRethrow(fallbackKey: string, e: unknown): never {
-    const message = e instanceof NewerBackupVersionError
-      ? this.languageService.t('backup.error.newerVersion')
+    const err = e instanceof NewerBackupVersionError
+      ? new TranslationError('backup.error.newerVersion')
       : e instanceof Error
-        ? e.message
-        : this.languageService.t(fallbackKey);
-    this.error.set(message);
-    throw e instanceof NewerBackupVersionError ? new Error(message) : e;
+        ? e
+        : new TranslationError(fallbackKey);
+    this.error.set(err);
+    throw err;
   }
 
   async connect(): Promise<void> {
     this.error.set(null);
 
     if (!this.networkService.isOnline()) {
-      const msg = this.languageService.t('backup.error.offlineConnect');
-      this.error.set(msg);
-      throw new Error(msg);
+      const err = new TranslationError('backup.error.offlineConnect');
+      this.error.set(err);
+      throw err;
     }
 
     await this.loadGoogleIdentityServices();
@@ -113,7 +113,7 @@ export class DriveBackupService {
 
   async backupNow(): Promise<void> {
     if (!this.networkService.isOnline()) {
-      throw new Error(this.languageService.t('backup.error.offlineBackup'));
+      throw new TranslationError('backup.error.offlineBackup');
     }
 
     if (this.isBackingUp()) {
@@ -143,11 +143,11 @@ export class DriveBackupService {
 
   async restore(): Promise<void> {
     if (!this.accessToken) {
-      throw new Error(this.languageService.t('backup.error.notConnected'));
+      throw new TranslationError('backup.error.notConnected');
     }
 
     if (!this.networkService.isOnline()) {
-      throw new Error(this.languageService.t('backup.error.offlineRestore'));
+      throw new TranslationError('backup.error.offlineRestore');
     }
 
     this.isBackingUp.set(true);
@@ -157,6 +157,7 @@ export class DriveBackupService {
       const snapshot = await this.provider.downloadSnapshot();
       await overwriteLocalDb(snapshot);
       await this.languageService.applyFromProfile();
+      this.dataVersion.bump();
     } catch (e: unknown) {
       this.setAndRethrow('backup.error.restoreFailed', e);
     } finally {
@@ -166,11 +167,11 @@ export class DriveBackupService {
 
   async getCloudSnapshot(): Promise<BackupSnapshot> {
     if (!this.networkService.isOnline()) {
-      throw new Error(this.languageService.t('backup.error.offlineRestore'));
+      throw new TranslationError('backup.error.offlineRestore');
     }
 
     if (this.isBackingUp()) {
-      throw new Error(this.languageService.t('backup.error.alreadyInProgress'));
+      throw new TranslationError('backup.error.alreadyInProgress');
     }
 
     this.isBackingUp.set(true);
@@ -196,11 +197,11 @@ export class DriveBackupService {
     try {
       snapshot = parseSnapshot(json);
     } catch {
-      throw new Error(this.languageService.t('backup.error.invalidFile'));
+      throw new TranslationError('backup.error.invalidFile');
     }
 
     if (!isBackupSnapshotShape(snapshot)) {
-      throw new Error(this.languageService.t('backup.error.invalidFile'));
+      throw new TranslationError('backup.error.invalidFile');
     }
 
     return snapshot;
@@ -213,6 +214,7 @@ export class DriveBackupService {
     try {
       await overwriteLocalDb(snapshot);
       await this.languageService.applyFromProfile();
+      this.dataVersion.bump();
     } catch (e: unknown) {
       this.setAndRethrow('backup.error.restoreFailed', e);
     } finally {
@@ -277,7 +279,7 @@ export class DriveBackupService {
       const script = document.createElement('script');
       script.src = 'https://accounts.google.com/gsi/client';
       script.onload = () => resolve();
-      script.onerror = () => reject(new Error(this.languageService.t('backup.error.loadIdentity')));
+      script.onerror = () => reject(new TranslationError('backup.error.loadIdentity'));
       document.head.appendChild(script);
     });
   }
