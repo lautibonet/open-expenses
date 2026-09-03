@@ -32,6 +32,10 @@
 }
 
 .kpi-card {
+  /* The cards are dl elements: without this reset the UA's 1em block margin
+     stacks on top of the grid gap, doubling the mobile KPI-to-KPI gap to 48px
+     while the page's section cards sit 24px apart (#111). */
+  margin: 0;
   background: var(--surface-lowest);
   border: var(--border-hard);
   padding: var(--space-md);
@@ -340,5 +344,9 @@
 
   .kpi-row {
     grid-template-columns: minmax(0, 1fr);
+    /* Stacked KPI cards follow the page's 1.5rem section rhythm (--space-lg),
+       matching the .card margin-bottom (#111). Only the row gap changes: the
+       desktop column gap stays --space-md. */
+    row-gap: var(--space-lg);
   }
 }
