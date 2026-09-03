@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
+import { readFileSync } from 'node:fs';
 import { ShellComponent } from './shell.component';
 import { routes } from '../../../app.routes';
 import { LanguageService } from '../../../core/services/language.service';
@@ -9,6 +10,20 @@ import { db } from '../../../core/db/database';
 
 describe('ShellComponent', () => {
   let fixture: ComponentFixture<ShellComponent>;
+
+  function compiledComponentCss(): string {
+    return Array.from(document.querySelectorAll('style'))
+      .map((s) => s.textContent ?? '')
+      .join('\n');
+  }
+
+  // The mobile chrome rules live in the component stylesheet's last @media
+  // block; slice from its opening line so desktop rules can't satisfy the
+  // assertions.
+  function mobileBlock(css: string): string {
+    const start = css.indexOf('@media (max-width: 768px)');
+    return start === -1 ? '' : css.slice(start);
+  }
 
   beforeEach(async () => {
     await db.delete();
@@ -252,5 +267,48 @@ describe('ShellComponent', () => {
 
     expect(captureFormService.pendingTransactionFormRequests()).toBe(0);
     expect(captureFormService.pendingTransferRequests()).toBe(0);
+  });
+
+  // jsdom does no layout, so the compiled declarations are the seam (#112).
+  // The bar is sized from the token itself: the sidebar is border-box with a
+  // min-height of --nav-bar-size + safe-area, so the 1px top border counts
+  // inside the documented height and .main-area's equal offset clears it.
+  it('sizes the mobile bottom nav bar from --nav-bar-size so the content offset clears it', () => {
+    const block = mobileBlock(compiledComponentCss());
+
+    expect(block).toMatch(
+      /\.sidebar(\[[^\]]*\])?\s*\{[^}]*box-sizing:\s*border-box[^}]*min-height:\s*calc\(var\(--nav-bar-size\)\s*\+\s*env\(safe-area-inset-bottom\)\)/,
+    );
+    expect(block).toMatch(
+      /\.main-area(\[[^\]]*\])?\s*\{[^}]*padding-bottom:\s*calc\(var\(--nav-bar-size\)\s*\+\s*env\(safe-area-inset-bottom\)\)/,
+    );
+  });
+
+  // The tabs' content-box min-height stacked padding and borders on top of the
+  // token (56px meant to be 75px measured); the bar's own height must size
+  // them, so they carry no min-height of their own in the mobile regime.
+  it('keeps the tab buttons and capture slot from stacking height onto the bar', () => {
+    const block = mobileBlock(compiledComponentCss());
+
+    const tabRule = block.match(/\.tab(\[[^\]]*\])?\s*\{([^}]*)\}/)?.[2] ?? '';
+    expect(tabRule).not.toMatch(/min-height/);
+
+    const captureRule = block.match(/\.capture-slot(\[[^\]]*\])?\s*\{([^}]*)\}/)?.[2] ?? '';
+    expect(captureRule).not.toMatch(/min-height/);
+  });
+
+  it('keeps the sticky top bar at the documented token height with border-box', () => {
+    const block = mobileBlock(compiledComponentCss());
+
+    expect(block).toMatch(
+      /\.top-bar(\[[^\]]*\])?\s*\{[^}]*box-sizing:\s*border-box[^}]*min-height:\s*var\(--nav-bar-size\)/,
+    );
+  });
+
+  // The tabs now stretch to the bar instead of carrying their own min-height,
+  // so the token's own value is what keeps them at touch-target size (#112).
+  it('keeps the token tall enough that stretched tabs stay at touch-target size', () => {
+    const tokens = readFileSync('src/styles.scss', 'utf-8');
+    expect(tokens).toMatch(/--nav-bar-size:\s*3\.5rem/);
   });
 });
