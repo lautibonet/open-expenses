@@ -1,0 +1,100 @@
+@use '../../../shared/styles/patterns' as *;
+
+/* The capture card: a design card — flat surface, hard black stroke, square.
+   Same hook class the Movements page layout expects. */
+.transaction-form {
+  background: var(--background);
+  border: var(--border-hard);
+  padding: var(--space-md);
+  margin-bottom: var(--space-md);
+}
+
+.transaction-form-form {
+  /* Form title: caps label over a 1px separator. */
+  h3 {
+    @extend %card-header;
+  }
+}
+
+/* The primary capture figure: the shared mono-data pattern, semibold. */
+.amount-field input {
+  @extend %mono-data;
+
+  font-weight: 600;
+}
+
+.btn {
+  @extend %btn-base;
+
+  &.primary {
+    @extend %btn-primary;
+  }
+
+  &.small {
+    @extend %btn-small;
+  }
+}
+
+/* The field grid, actions row, and rate grid come from the shared
+   capture-form blocks (#107): the Transfer Form renders from the same
+   placeholders, so the two capture forms cannot drift (ADR 0014). */
+.form-grid {
+  @extend %capture-form-grid;
+}
+
+.form-actions {
+  @extend %capture-form-actions;
+}
+
+/* Comfortable touch targets for the capture form's Cancel/Save (#100): 44px
+   minimum height on coarse pointers and narrow widths, matching the row
+   icon buttons. The press shadow shed on :active comes from %btn-base. */
+@media (pointer: coarse), (max-width: 480px) {
+  .form-actions .btn {
+    min-height: 2.75rem;
+  }
+}
+
+/* Inline reason next to the disabled Save button (issue #98). */
+.save-hint {
+  @extend %save-hint;
+}
+
+/* Inline form errors (shared status styling); the exchange-rate well's own
+   error styling lives in the shared well component (#108). */
+.rate-error {
+  @extend %rate-error;
+}
+
+.empty-state {
+  @extend %empty-state;
+}
+
+@media (max-width: 768px) {
+  /* One-column field grids on the phone (#100): the shared treatment the
+     Transfer form's grids receive too. */
+  .form-grid {
+    @include capture-grids-single-column;
+  }
+
+  /* The card fills the bottom sheet (#103), so the page-level margin drops. */
+  .transaction-form {
+    margin-bottom: 0;
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .transaction-form-form {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+  }
+
+  /* Cancel/Save stay pinned to the sheet's bottom edge: reachable without
+     scrolling, whatever the form's height (#103) — the shared block the
+     Transfer form includes too (#107). */
+  .form-actions {
+    @include capture-sheet-actions;
+  }
+}

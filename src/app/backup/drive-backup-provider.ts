@@ -1,7 +1,6 @@
 import { BackupProvider } from './backup-provider';
 import { BackupSnapshot, stringifySnapshot } from './backup-snapshot';
-import { translate } from '../core/translations/translations';
-import { DEFAULT_LANGUAGE } from '../core/types/language.type';
+import { TranslationError } from '../core/models/translation-error';
 
 const DRIVE_API = 'https://www.googleapis.com/drive/v3';
 const UPLOAD_API = 'https://www.googleapis.com/upload/drive/v3';
@@ -24,8 +23,6 @@ export class DriveBackupProvider implements BackupProvider {
 
   constructor(
     private readonly getToken: () => string | null,
-    private readonly translateError: (key: string) => string = (key) =>
-      translate(DEFAULT_LANGUAGE, key),
   ) {}
 
   async saveSnapshot(snapshot: BackupSnapshot): Promise<void> {
@@ -43,7 +40,7 @@ export class DriveBackupProvider implements BackupProvider {
     const folderId = await this.ensureFolder();
     const fileId = await this.findBackupFileId(folderId);
     if (!fileId) {
-      throw new NoBackupFoundError(this.translateError('backup.error.noBackupFound'));
+      throw new NoBackupFoundError();
     }
     return this.downloadFile(fileId);
   }
@@ -78,7 +75,7 @@ export class DriveBackupProvider implements BackupProvider {
       },
     );
     if (!createResponse.ok) {
-      throw new Error(this.translateError('backup.error.createFolder'));
+      throw new TranslationError('backup.error.createFolder');
     }
     const created = await createResponse.json();
     this.folderId = created.id;
@@ -117,7 +114,7 @@ export class DriveBackupProvider implements BackupProvider {
       headers: { Authorization: `Bearer ${this.getToken()}` },
     });
     if (!response.ok) {
-      throw new Error(this.translateError('backup.error.download'));
+      throw new TranslationError('backup.error.download');
     }
     return response.json();
   }
@@ -139,8 +136,8 @@ export class DriveBackupProvider implements BackupProvider {
     });
 
     if (!response.ok) {
-      throw new Error(
-        this.translateError(method === 'POST' ? 'backup.error.createFile' : 'backup.error.updateFile'),
+      throw new TranslationError(
+        method === 'POST' ? 'backup.error.createFile' : 'backup.error.updateFile',
       );
     }
   }
@@ -150,7 +147,7 @@ export class DriveBackupProvider implements BackupProvider {
       headers: { Authorization: `Bearer ${this.getToken()}` },
     });
     if (!response.ok) {
-      throw new Error(this.translateError('backup.error.searchDrive'));
+      throw new TranslationError('backup.error.searchDrive');
     }
     return response;
   }

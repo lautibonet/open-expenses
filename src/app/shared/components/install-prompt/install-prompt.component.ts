@@ -6,7 +6,7 @@ import { LanguageService } from '../../../core/services/language.service';
   selector: 'app-install-prompt',
   template: `
     @if (pwaInstall.canInstall()) {
-      <div class="install-banner">
+      <div class="install-banner" role="status">
         <span>{{ language.t('install.prompt') }}</span>
         <button class="btn primary small" (click)="install()">{{ language.t('install.action') }}</button>
         <button class="btn small" (click)="dismiss()">{{ language.t('install.dismiss') }}</button>
@@ -17,20 +17,24 @@ import { LanguageService } from '../../../core/services/language.service';
     `
       @use '../../../shared/styles/patterns' as *;
 
+      /* Strip language per DESIGN.md ("Backup Banner"): Primary Fixed fill,
+         Primary bottom hairline, chrome-gutter alignment. Prose message set
+         in Body Caption, not caps-label — it is a sentence, not metadata. */
       .install-banner {
         display: flex;
         align-items: center;
         flex-wrap: wrap;
         gap: 0.5rem;
-        padding: 0.5rem var(--chrome-gutter);
-        background: var(--ink-tint);
-        border-bottom: 1px solid var(--ink-tint-edge);
-        font-size: 0.85rem;
-        color: var(--ink-well-blue);
+        padding: 0.6rem var(--chrome-gutter);
+        background: var(--primary-fixed);
+        border-bottom: 1px solid var(--primary);
 
         > span {
           flex: 1 1 auto;
           min-width: 0;
+          font-size: var(--type-caption);
+          line-height: var(--leading-caption);
+          color: var(--on-primary-fixed);
         }
       }
 
@@ -58,18 +62,18 @@ import { LanguageService } from '../../../core/services/language.service';
       .btn {
         @extend %btn-base;
         @extend %btn-small;
-        color: var(--body-ink);
+        color: var(--on-surface);
 
         &:hover:not(:disabled) {
-          background: var(--silvered-paper);
+          background: var(--surface-container-low);
         }
 
         &.primary {
           @extend %btn-primary;
 
           &:hover:not(:disabled) {
-            background: var(--ink-well-blue);
-            border-color: var(--ink-well-blue);
+            background: var(--primary-deep);
+            border-color: var(--primary-deep);
           }
         }
       }

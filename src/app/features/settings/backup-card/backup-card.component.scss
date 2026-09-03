@@ -1,31 +1,32 @@
 @use '../../../shared/styles/patterns' as *;
 
 .card {
-  background: var(--paper-white);
-  border: 1px solid var(--hairline-graphite);
-  border-radius: var(--radius-lg);
-  padding: 1rem;
-  margin-bottom: 1rem;
+  background: var(--surface-lowest);
+  border: var(--border-hard);
+  padding: var(--space-lg);
+  margin: 0;
 
   h2 {
-    font-size: var(--type-headline);
-    font-weight: 600;
-    line-height: var(--leading-headline);
-    margin-bottom: 0.5rem;
+    @extend %card-header-icon;
   }
 }
 
 .description {
-  color: var(--muted-slate);
+  color: var(--on-surface-variant);
   font-size: var(--type-body);
   line-height: var(--leading-body);
-  max-width: var(--prose-measure);
-  margin-bottom: 0.75rem;
+  margin: 0 0 var(--space-md);
+}
+
+.last-backup {
+  @extend %caps-label-muted;
+  margin-top: var(--space-md);
+  margin-bottom: 0;
 }
 
 .backup-actions {
   display: flex;
-  gap: 0.5rem;
+  gap: var(--space-sm);
   flex-wrap: wrap;
   align-items: flex-start;
 }
@@ -44,50 +45,35 @@
   &.danger.filled {
     @extend %btn-danger-filled;
   }
-
-  &:disabled {
-    cursor: default;
-    opacity: 0.6;
-  }
 }
 
 .file-input {
   display: none;
 }
 
-.info {
-  color: var(--ledger-ink);
-  margin: 0.75rem 0;
-}
-
-.success {
-  color: var(--ledger-green);
-  margin: 0.75rem 0;
-}
-
-.error {
-  color: var(--officers-red);
-  margin: 0.75rem 0;
+/* Dismissible status alerts (working…, success, failure) keep the strip
+   treatment — primary tint for info/success, error ramp for failures. */
+app-dismissible-alert {
+  margin: var(--space-md) 0 0;
 }
 
 .restore-confirm {
-  margin-top: 1rem;
-  padding: 0.75rem;
-  border: 1px solid var(--danger-border);
-  border-radius: var(--radius-md);
-  background: var(--danger-surface);
+  margin-top: var(--space-md);
+  padding: var(--space-md);
+  border: 1px solid var(--on-error-container);
+  background: var(--error-container);
 
   p {
-    margin: 0 0 0.5rem;
+    margin: 0 0 var(--space-sm);
   }
 }
 
 .warning {
-  color: var(--officers-red);
+  color: var(--on-error-container);
   font-weight: 600;
 }
 
 .restore-confirm-actions {
   display: flex;
-  gap: 0.5rem;
+  gap: var(--space-sm);
 }

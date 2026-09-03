@@ -4,6 +4,7 @@ import { OnboardingComponent } from './onboarding.component';
 import { DriveBackupService } from '../../core/services/drive-backup.service';
 import { LanguageService } from '../../core/services/language.service';
 import { NoBackupFoundError } from '../../backup/drive-backup-provider';
+import { TranslationError } from '../../core/models/translation-error';
 import { db } from '../../core/db/database';
 
 function stubNavigator(language: string): void {
@@ -76,6 +77,33 @@ describe('OnboardingComponent', () => {
     expect(text).toContain('Start fresh');
   });
 
+  it('returns to the language step from the restore step via its Back button', () => {
+    component.goTo('restore');
+    fixture.detectChanges();
+
+    const back = fixture.nativeElement.querySelector(
+      '.nav-buttons .btn:not(.primary)',
+    ) as HTMLButtonElement;
+    expect(back).toBeTruthy();
+    back.click();
+
+    expect(component.step()).toBe('language');
+  });
+
+  it('keeps restore state when going back from the restore step and returning', async () => {
+    driveBackupService.restore.mockRejectedValue(new NoBackupFoundError());
+    await component.restoreFromCloud();
+    expect(component.noBackupMessage()).toContain('No backup');
+
+    component.goTo('language');
+    expect(component.step()).toBe('language');
+
+    component.goTo('restore');
+    fixture.detectChanges();
+    expect(component.noBackupMessage()).toContain('No backup');
+    expect(component.language()).toBe('en');
+  });
+
   it('renders the following steps in the chosen language immediately', async () => {
     await component.onLanguageChange('es');
     fixture.detectChanges();
@@ -121,6 +149,141 @@ describe('OnboardingComponent', () => {
 
     component.goTo('accounts');
     expect(component.step()).toBe('accounts');
+  });
+
+  it('reflects the wizard state in the step tab bar', () => {
+    component.goTo('currency');
+    fixture.detectChanges();
+
+    const tabs = Array.from(
+      fixture.nativeElement.querySelectorAll('.step-tab'),
+    ) as HTMLElement[];
+    expect(tabs.length).toBe(5);
+    expect(tabs[0].classList).toContain('completed');
+    expect(tabs[1].classList).toContain('completed');
+    expect(tabs[2].classList).toContain('current');
+    expect(tabs[2].getAttribute('aria-current')).toBe('step');
+    expect(tabs[3].classList).not.toContain('completed');
+    expect(tabs[3].classList).not.toContain('current');
+    expect(tabs[4].classList).not.toContain('completed');
+    expect(tabs[4].classList).not.toContain('current');
+  });
+
+  it('offers the featured currency tiles and marks the selection', () => {
+    component.startFresh();
+    fixture.detectChanges();
+
+    const tiles = Array.from(
+      fixture.nativeElement.querySelectorAll('.currency-grid .select-tile'),
+    ) as HTMLElement[];
+    const codes = tiles.map(t => t.querySelector('.tile-code')!.textContent!.trim());
+    expect(codes).toEqual(['EUR', 'USD', 'GBP', 'JPY']);
+
+    const selected = tiles.find(t => t.classList.contains('selected'));
+    expect(selected!.querySelector('.tile-code')!.textContent!.trim()).toBe('EUR');
+  });
+
+  it('pins the currency search above the grid and drops the symbol caption', () => {
+    component.startFresh();
+    fixture.detectChanges();
+
+    const panel = fixture.nativeElement as HTMLElement;
+    const search = panel.querySelector('.currency-search') as HTMLElement;
+    const grid = panel.querySelector('.currency-grid') as HTMLElement;
+    expect(search).toBeTruthy();
+    expect(grid).toBeTruthy();
+    // The search block precedes the grid instead of being a grid child.
+    expect(search.compareDocumentPosition(grid) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(grid.querySelector('.currency-search')).toBeNull();
+
+    const text = panel.textContent as string;
+    expect(text).not.toContain('Symbol:');
+    expect(panel.querySelector('.tile-symbol-line')).toBeNull();
+    // Tiles keep the top-right symbol.
+    expect(grid.querySelector('.tile-symbol')).toBeTruthy();
+  });
+
+  it('selects a currency tile on click', () => {
+    component.startFresh();
+    fixture.detectChanges();
+
+    const usd = (
+      Array.from(fixture.nativeElement.querySelectorAll('.select-tile')) as HTMLElement[]
+    ).find(t => t.querySelector('.tile-code')!.textContent!.trim() === 'USD')!;
+    usd.click();
+
+    expect(component.baseCurrency()).toBe('USD');
+  });
+
+  it('filters currency tiles from the search field by code or name', () => {
+    component.startFresh();
+    fixture.detectChanges();
+
+    const input = fixture.nativeElement.querySelector('#currency-search') as HTMLInputElement;
+    const codes = (): string[] =>
+      (
+        Array.from(fixture.nativeElement.querySelectorAll('.select-tile')) as HTMLElement[]
+      ).map(t => t.querySelector('.tile-code')!.textContent!.trim());
+
+    input.value = 'swiss';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(codes()).toEqual(['CHF']);
+    expect(fixture.nativeElement.querySelector('#currency-search')).toBeTruthy();
+
+    input.value = 'japan';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(codes()).toEqual(['JPY']);
+
+    input.value = '';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(codes()).toEqual(['EUR', 'USD', 'GBP', 'JPY']);
+  });
+
+  it('renders account rows as name plus symbol amount, removed via an X icon without confirm', () => {
+    vi.stubGlobal('navigator', {
+      language: 'en-GB',
+      languages: ['en-GB'],
+      userAgent: 'vitest',
+    });
+    component.goTo('accounts');
+    fixture.detectChanges();
+
+    component.accounts.set([
+      { name: 'Checking', currency: 'EUR', balance: 1250 },
+      { name: 'Cash', currency: 'CLP', balance: 30000 },
+    ]);
+    fixture.detectChanges();
+
+    const rows = Array.from(
+      fixture.nativeElement.querySelectorAll('.account-list li'),
+    ) as HTMLElement[];
+    expect(rows.length).toBe(2);
+    // Symbol before amount, no em dash; code falls back when no symbol exists.
+    expect(rows[0].textContent).toContain('Checking');
+    expect(rows[0].textContent).toContain('€ 1250');
+    expect(rows[0].textContent).not.toContain('—');
+    expect(rows[1].textContent).toContain('Cash');
+    expect(rows[1].textContent).toContain('CLP 30000');
+
+    const remove = rows[0].querySelector('button') as HTMLButtonElement;
+    expect(remove.classList).toContain('icon-btn');
+    expect(remove.getAttribute('aria-label')).toBe('Remove');
+    expect(remove.querySelector('svg')).toBeTruthy();
+    remove.click();
+
+    expect(component.accounts().length).toBe(1);
+    expect(component.accounts()[0].name).toBe('Cash');
+  });
+
+  it('lands on Movements when the fresh wizard completes', async () => {
+    const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+
+    await component.completeOnboarding();
+
+    expect(navigate).toHaveBeenCalledWith(['/movements']);
   });
 
   it('persists the chosen language to the profile when completing onboarding', async () => {
@@ -185,14 +348,14 @@ describe('OnboardingComponent', () => {
     expect(cats.map(c => c.name)).not.toContain('Comida');
   });
 
-  it('restores from cloud: connects, restores, and goes to the dashboard', async () => {
+  it('restores from cloud: connects, restores, and lands on Movements', async () => {
     const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
 
     await component.restoreFromCloud();
 
     expect(driveBackupService.connect).toHaveBeenCalled();
     expect(driveBackupService.restore).toHaveBeenCalled();
-    expect(navigate).toHaveBeenCalledWith(['/dashboard']);
+    expect(navigate).toHaveBeenCalledWith(['/movements']);
   });
 
   it('stays on the restore step with a clear message when no cloud backup exists', async () => {
@@ -220,7 +383,9 @@ describe('OnboardingComponent', () => {
   });
 
   it('shows an error when the cloud restore fails for another reason', async () => {
-    driveBackupService.restore.mockRejectedValue(new Error('Cannot restore while offline'));
+    driveBackupService.restore.mockRejectedValue(
+      new TranslationError('backup.error.offlineRestore'),
+    );
 
     await component.restoreFromCloud();
     fixture.detectChanges();
@@ -229,18 +394,20 @@ describe('OnboardingComponent', () => {
     expect(component.errorMessage()).toBe('Cannot restore while offline');
   });
 
-  it('restores from an uploaded file and goes to the dashboard', async () => {
+  it('restores from an uploaded file and lands on Movements', async () => {
     const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
     const file = new File(['{}'], 'backup.json', { type: 'application/json' });
 
     await component.restoreFromFile(file);
 
     expect(driveBackupService.restoreFromFile).toHaveBeenCalledWith(file);
-    expect(navigate).toHaveBeenCalledWith(['/dashboard']);
+    expect(navigate).toHaveBeenCalledWith(['/movements']);
   });
 
   it('shows an error when the uploaded file is invalid', async () => {
-    driveBackupService.restoreFromFile.mockRejectedValue(new Error('Invalid backup file'));
+    driveBackupService.restoreFromFile.mockRejectedValue(
+      new TranslationError('backup.error.invalidFile'),
+    );
     const navigate = vi.spyOn(router, 'navigate');
     const file = new File(['nope'], 'backup.json', { type: 'application/json' });
 
@@ -248,6 +415,30 @@ describe('OnboardingComponent', () => {
 
     expect(component.errorMessage()).toBe('Invalid backup file');
     expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it('dismisses an error note and shows it again on the next failure', () => {
+    vi.stubGlobal('navigator', {
+      language: 'en-GB',
+      languages: ['en-GB'],
+      userAgent: 'vitest',
+    });
+    component.goTo('accounts');
+    fixture.detectChanges();
+
+    component.addAccount();
+    fixture.detectChanges();
+    const alert = fixture.nativeElement.querySelector('.alert') as HTMLElement;
+    expect(alert).toBeTruthy();
+    expect(alert.textContent).toContain('required');
+
+    (alert.querySelector('.alert-dismiss') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.alert')).toBeNull();
+
+    component.addAccount();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.alert')).toBeTruthy();
   });
 });
 

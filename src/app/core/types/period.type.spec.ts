@@ -6,12 +6,13 @@ import {
   getCurrentPeriod,
   getCurrentYear,
   getPeriodYear,
-  isAllTime,
   isMonthNumber,
   isValidPeriod,
   isValidYear,
   monthNumberFromName,
   monthsFromData,
+  movementIsAtOrBeforePeriod,
+  periodYearFromDate,
   scopeOptionsFromMovements,
   yearsFromData,
 } from './period.type';
@@ -83,16 +84,6 @@ describe('period.type - scope helpers', () => {
     });
   });
 
-  describe('isAllTime', () => {
-    it('should be true for an all-time scope', () => {
-      expect(isAllTime({ kind: 'all-time' })).toBe(true);
-    });
-
-    it('should be false for a month scope', () => {
-      expect(isAllTime({ kind: 'month', period: 1, year: 2026 })).toBe(false);
-    });
-  });
-
   describe('scopeOptionsFromMovements', () => {
     it('should derive both years and months from a single pass over the data', () => {
       const movements = [
@@ -111,6 +102,40 @@ describe('period.type - scope helpers', () => {
     });
   });
 
+  describe('periodYearFromDate', () => {
+    it('derives the period and year from a date string', () => {
+      expect(periodYearFromDate('2025-12-22')).toEqual({ period: 12, year: 2025 });
+      expect(periodYearFromDate('2026-03-10')).toEqual({ period: 3, year: 2026 });
+    });
+
+    it('derives the period from month-boundary date strings without timezone drift', () => {
+      expect(periodYearFromDate('2026-01-01')).toEqual({ period: 1, year: 2026 });
+      expect(periodYearFromDate('2025-12-31')).toEqual({ period: 12, year: 2025 });
+      expect(periodYearFromDate('2026-03-01')).toEqual({ period: 3, year: 2026 });
+    });
+
+    it('derives the period and year from a Date object', () => {
+      expect(periodYearFromDate(new Date('2024-07-05T12:00:00'))).toEqual({
+        period: 7,
+        year: 2024,
+      });
+    });
+
+    it('derives the period for every calendar month', () => {
+      for (let month = 0; month < 12; month++) {
+        const date = new Date(2026, month, 15);
+        expect(periodYearFromDate(date)).toEqual({ period: month + 1, year: 2026 });
+      }
+    });
+
+    it('defaults to the current period and year for today', () => {
+      expect(periodYearFromDate(new Date())).toEqual({
+        period: getCurrentPeriod(),
+        year: getCurrentYear(),
+      });
+    });
+  });
+
   describe('getPeriodYear', () => {
     it('should prefer the stored year over the date year', () => {
       expect(getPeriodYear({ year: 2026, date: new Date('2025-12-22') })).toBe(2026);
@@ -118,6 +143,50 @@ describe('period.type - scope helpers', () => {
 
     it('should fall back to the date year when no year is stored', () => {
       expect(getPeriodYear({ date: new Date('2025-12-22') })).toBe(2025);
+    });
+  });
+
+  describe('movementIsAtOrBeforePeriod', () => {
+    const scope = { kind: 'month', period: 9, year: 2026 } as const;
+
+    it('should include a movement in its own period', () => {
+      expect(movementIsAtOrBeforePeriod({ period: 9, year: 2026, date: '2026-09-05' }, scope)).toBe(true);
+    });
+
+    it('should include movements from earlier periods of the same year', () => {
+      expect(movementIsAtOrBeforePeriod({ period: 1, year: 2026, date: '2026-01-05' }, scope)).toBe(true);
+      expect(movementIsAtOrBeforePeriod({ period: 8, year: 2026, date: '2026-08-05' }, scope)).toBe(true);
+    });
+
+    it('should exclude movements from later periods of the same year', () => {
+      expect(movementIsAtOrBeforePeriod({ period: 10, year: 2026, date: '2026-10-05' }, scope)).toBe(false);
+      expect(movementIsAtOrBeforePeriod({ period: 12, year: 2026, date: '2026-12-05' }, scope)).toBe(false);
+    });
+
+    it('should include movements from earlier years regardless of month', () => {
+      expect(movementIsAtOrBeforePeriod({ period: 12, year: 2025, date: '2025-12-05' }, scope)).toBe(true);
+    });
+
+    it('should exclude movements from later years regardless of month', () => {
+      expect(movementIsAtOrBeforePeriod({ period: 1, year: 2027, date: '2027-01-05' }, scope)).toBe(false);
+    });
+
+    it('should compare against the stored year, not the date year', () => {
+      const decDatedJanuaryPeriod = { period: 1, year: 2026, date: '2025-12-22' };
+      expect(movementIsAtOrBeforePeriod(decDatedJanuaryPeriod, scope)).toBe(true);
+      expect(
+        movementIsAtOrBeforePeriod(decDatedJanuaryPeriod, { kind: 'month', period: 9, year: 2025 }),
+      ).toBe(false);
+    });
+
+    it('should fall back to the date year when no year is stored', () => {
+      expect(movementIsAtOrBeforePeriod({ period: 3, date: '2024-03-10' }, scope)).toBe(true);
+      expect(movementIsAtOrBeforePeriod({ period: 3, date: '2027-03-10' }, scope)).toBe(false);
+    });
+
+    it('should exclude movements with an unrecognizable period', () => {
+      expect(movementIsAtOrBeforePeriod({ period: 'Enero', year: 2026, date: '2026-01-05' }, scope)).toBe(false);
+      expect(movementIsAtOrBeforePeriod({ period: 13, year: 2026, date: '2026-01-05' }, scope)).toBe(false);
     });
   });
 

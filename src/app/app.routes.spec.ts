@@ -17,14 +17,21 @@ describe('app routes', () => {
     expect(router.url).toBe('/movements');
   });
 
-  it('still resolves the legacy dashboard route for existing deep links', async () => {
-    await router.navigateByUrl('/dashboard');
-    expect(router.url).toBe('/dashboard');
+  it('resolves the Stats route', async () => {
+    await router.navigateByUrl('/stats');
+    expect(router.url).toBe('/stats');
   });
 
-  it('keeps the legacy dashboard route registered as the future Stats surface', () => {
+  it('redirects the legacy dashboard route to Stats for existing deep links', async () => {
+    await router.navigateByUrl('/dashboard');
+    expect(router.url).toBe('/stats');
+  });
+
+  it('registers the Stats surface and the legacy dashboard redirect', () => {
     const shell = routes.find((r) => r.path === '');
-    const dashboard = shell?.children?.find((r) => r.path === 'dashboard');
-    expect(dashboard).toBeDefined();
+    const stats = shell?.children?.find((r) => r.path === 'stats');
+    expect(stats).toBeDefined();
+    const legacy = shell?.children?.find((r) => r.path === 'dashboard');
+    expect(legacy?.redirectTo).toBe('stats');
   });
 });

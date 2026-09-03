@@ -1,36 +1,43 @@
 @use '../../../shared/styles/patterns' as *;
 
 .card {
-  background: var(--paper-white);
-  border: 1px solid var(--hairline-graphite);
-  border-radius: var(--radius-lg);
-  padding: 1rem;
-  margin-bottom: 1rem;
+  background: var(--surface-lowest);
+  border: var(--border-hard);
+  padding: var(--space-lg);
+  margin: 0;
 
   h2 {
-    font-size: var(--type-headline);
-    font-weight: 600;
-    line-height: var(--leading-headline);
-    margin-bottom: 0.75rem;
+    @extend %card-header-icon;
   }
 }
 
-.inline-form {
+.edit-line {
   display: flex;
-  gap: 0.5rem;
-  align-items: flex-end;
-  margin-bottom: 0.75rem;
-  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs);
+
+  select {
+    @extend %field;
+
+    flex: 1;
+    min-width: 0;
+  }
 }
 
-.input {
-  padding: 0.5rem;
-  border: 1px solid var(--edge-graphite);
-  border-radius: var(--radius-sm);
-  font-size: var(--type-body);
+.edit-error {
+  margin: var(--space-xs) 0 0;
+  font-size: var(--type-caption);
+  color: var(--error);
+}
 
-  &.small {
-    width: 100px;
+.card-value {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+
+  .value {
+    font-size: var(--type-body-lg);
+    color: var(--on-surface);
   }
 }
 
@@ -46,12 +53,7 @@
   }
 }
 
-.success {
-  color: var(--ledger-green);
-  margin: 0.75rem 0;
-}
-
-.error {
-  color: var(--officers-red);
-  margin: 0.75rem 0;
+/* Icon-only confirm/cancel affordances (same as movement deletion). */
+.icon-btn {
+  @extend %icon-btn;
 }

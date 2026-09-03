@@ -1,36 +1,123 @@
 <div class="settings">
-  <h1>{{ language.t('settings.title') }}</h1>
-
-  @if (errorMessage()) {
-    <p class="error">{{ errorMessage() }}</p>
-  }
-  @if (successMessage()) {
-    <p class="success">{{ successMessage() }}</p>
-  }
-
-  <app-language-card />
-
-  <section class="card">
-    <h2>{{ language.t('settings.baseCurrency') }}</h2>
-    <div class="inline-form">
-      <select
-        [ngModel]="baseCurrency()"
-        (ngModelChange)="baseCurrency.set($event)"
-        class="input small"
-        [attr.aria-label]="language.t('settings.baseCurrencyAria')"
-      >
-        @for (currency of supportedCurrencies; track currency) {
-          <option [value]="currency">{{ currency }}</option>
-        }
-      </select>
-      <button class="btn primary" (click)="updateBaseCurrency()">
-        {{ language.t('settings.update') }}
-      </button>
+  <header class="page-header">
+    <div class="headline">
+      <h1>{{ language.t('settings.title') }}</h1>
+      <p class="subtitle">{{ language.t('settings.subtitle') }}</p>
     </div>
-  </section>
+  </header>
+
+  <app-dismissible-alert
+    role="alert"
+    variant="error"
+    [message]="errorMessage()"
+    [resetKey]="statusEpoch()"
+  />
+
+  <div class="settings-top-row">
+    <section class="card">
+      <h2>
+        <!-- Neutral currency sign: circle with four diagonal rays. -->
+        <svg aria-hidden="true" viewBox="0 0 16 16" focusable="false">
+          <circle cx="8" cy="8" r="4.5" fill="none" stroke="currentColor" stroke-width="1.5" />
+          <path
+            d="M12.9 3.1l-1.9 1.9M3.1 3.1l1.9 1.9M12.9 12.9l-1.9-1.9M3.1 12.9l1.9-1.9"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+          />
+        </svg>
+        {{ language.t('settings.baseCurrency') }}
+      </h2>
+      @if (editingBaseCurrency()) {
+        <div class="edit-line">
+          <select
+            #baseCurrencySelect
+            [ngModel]="baseCurrencyDraft()"
+            (ngModelChange)="editBaseCurrency($event)"
+            (keydown.enter)="saveBaseCurrency()"
+            (keydown.escape)="cancelEditBaseCurrency()"
+            class="input"
+            [attr.aria-label]="language.t('settings.baseCurrencyAria')"
+          >
+            @for (currency of supportedCurrencies; track currency) {
+              <option [value]="currency">{{ currency }}</option>
+            }
+          </select>
+          <button
+            type="button"
+            class="btn small primary icon-btn"
+            (click)="saveBaseCurrency()"
+            [attr.aria-label]="language.t('settings.confirmEditAria')"
+            [title]="language.t('settings.confirmEditAria')"
+          >
+            <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+              <path
+                d="M20 6 9 17l-5-5"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </button>
+          <button
+            type="button"
+            class="btn small icon-btn"
+            (click)="cancelEditBaseCurrency()"
+            [attr.aria-label]="language.t('settings.cancelEditAria')"
+            [title]="language.t('settings.cancelEditAria')"
+          >
+            <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+              <path
+                d="M18 6 6 18M6 6l12 12"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </button>
+        </div>
+        @if (editError()) {
+          <p class="edit-error" role="alert">{{ editError() }}</p>
+        }
+      } @else {
+        <div class="card-value">
+          <span class="value">{{ baseCurrency() }}</span>
+          <button
+            type="button"
+            class="btn small icon-btn"
+            data-edit-pencil="base-currency-0"
+            (click)="startEditBaseCurrency()"
+            [attr.aria-label]="language.t('settings.editBaseCurrencyAria')"
+            [title]="language.t('settings.editBaseCurrencyAria')"
+          >
+            <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+              <path
+                d="M3 17.25V21h3.75L17.8 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"
+                fill="currentColor"
+              />
+            </svg>
+          </button>
+        </div>
+      }
+    </section>
+
+    <app-language-card />
+  </div>
 
   <section class="card">
-    <h2>{{ language.t('settings.accounts') }}</h2>
+    <h2>
+      <svg aria-hidden="true" viewBox="0 0 16 16" focusable="false">
+        <rect x="1.5" y="3.5" width="13" height="9" fill="none" stroke="currentColor" stroke-width="1.5" />
+        <path d="M1.5 6.5h13" fill="none" stroke="currentColor" stroke-width="1.5" />
+      </svg>
+      {{ language.t('settings.accounts') }}
+    </h2>
+
     <div class="inline-form">
       <input
         type="text"
@@ -38,11 +125,12 @@
         (ngModelChange)="newAccountName.set($event)"
         [placeholder]="language.t('settings.name')"
         class="input"
+        [attr.aria-label]="language.t('settings.name')"
       />
       <select
         [ngModel]="newAccountCurrency()"
         (ngModelChange)="newAccountCurrency.set($event)"
-        class="input small"
+        class="input"
         [attr.aria-label]="language.t('settings.accountCurrencyAria')"
       >
         @for (currency of supportedCurrencies; track currency) {
@@ -54,92 +142,167 @@
         [ngModel]="newAccountBalance()"
         (ngModelChange)="newAccountBalance.set($event)"
         [placeholder]="language.t('settings.initialBalance')"
-        class="input small"
+        class="input"
+        [attr.aria-label]="language.t('settings.initialBalance')"
       />
-      <button class="btn primary" (click)="addAccount()">
-        {{ language.t('settings.add') }}
+      <button class="btn dashed" (click)="addAccount()">
+        + {{ language.t('settings.addAccount') }}
       </button>
     </div>
-    <table>
-      <thead>
-        <tr>
-          <th>{{ language.t('settings.name') }}</th>
-          <th>{{ language.t('settings.currency') }}</th>
-          <th>{{ language.t('settings.openingBalance') }}</th>
-          <th>{{ language.t('settings.status') }}</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (acc of accounts(); track acc.id) {
-          <tr [class.inactive]="!acc.active">
-            <td>
-              @if (editingAccountName()?.id === acc.id) {
+
+    <ul class="account-list">
+      @for (acc of accounts(); track acc.id) {
+        <li class="account-row" [class.inactive]="!acc.active">
+          @if (editingAccount()?.id === acc.id) {
+            <div class="edit-state">
+              <div class="edit-line">
                 <input
+                  #accountNameInput
                   type="text"
-                  [ngModel]="editingAccountName()!.value"
-                  (ngModelChange)="editingAccountName.set({ id: acc.id!, value: $event })"
+                  [ngModel]="editingAccount()!.name"
+                  (ngModelChange)="editAccountName($event)"
+                  (keydown.enter)="saveAccountEdit()"
+                  (keydown.escape)="cancelEditAccount()"
                   class="input"
+                  [attr.aria-label]="language.t('settings.name')"
                 />
-                <button class="btn small primary" (click)="saveAccountName()">
-                  {{ language.t('settings.save') }}
-                </button>
-                <button class="btn small" (click)="cancelEditAccountName()">
-                  {{ language.t('settings.cancel') }}
-                </button>
-              } @else {
-                <span (click)="startEditAccountName(acc.id!, acc.name)" class="editable">
-                  {{ acc.name }}
-                </span>
-              }
-            </td>
-            <td>{{ acc.currency }}</td>
-            <td>
-              @if (editingAccountBalance()?.id === acc.id) {
                 <input
                   type="number"
-                  [ngModel]="editingAccountBalance()!.value"
-                  (ngModelChange)="editingAccountBalance.set({ id: acc.id!, value: $event })"
+                  [ngModel]="editingAccount()!.initialBalance"
+                  (ngModelChange)="editAccountBalance($event)"
+                  (keydown.enter)="saveAccountEdit()"
+                  (keydown.escape)="cancelEditAccount()"
                   class="input small"
+                  [attr.aria-label]="language.t('settings.initialBalance')"
                 />
-                <button class="btn small primary" (click)="saveAccountBalance()">
-                  {{ language.t('settings.save') }}
-                </button>
-                <button class="btn small" (click)="cancelEditAccountBalance()">
-                  {{ language.t('settings.cancel') }}
-                </button>
-              } @else {
-                <span
-                  (click)="startEditAccountBalance(acc.id!, acc.initialBalance)"
-                  class="editable"
+                <span class="edit-static">{{ acc.currency }}</span>
+                <button
+                  type="button"
+                  class="btn small primary icon-btn"
+                  (click)="saveAccountEdit()"
+                  [attr.aria-label]="language.t('settings.confirmEditAria')"
+                  [title]="language.t('settings.confirmEditAria')"
                 >
-                  {{ acc.initialBalance }}
-                </span>
+                  <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                    <path
+                      d="M20 6 9 17l-5-5"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  class="btn small icon-btn"
+                  (click)="cancelEditAccount()"
+                  [attr.aria-label]="language.t('settings.cancelEditAria')"
+                  [title]="language.t('settings.cancelEditAria')"
+                >
+                  <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                    <path
+                      d="M18 6 6 18M6 6l12 12"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </button>
+              </div>
+              @if (editError()) {
+                <p class="edit-error" role="alert">{{ editError() }}</p>
               }
-            </td>
-            <td>
-              {{ acc.active ? language.t('settings.active') : language.t('settings.inactive') }}
-            </td>
-            <td>
+            </div>
+          } @else {
+            <div class="account-main">
+              <span class="account-name">{{ acc.name }}</span>
+              <span class="account-meta">
+                <span>{{ acc.currency }}</span>
+                <span>{{ acc.initialBalance }}</span>
+              </span>
+            </div>
+            <div class="account-side">
+              <span class="account-status">
+                {{ acc.active ? language.t('settings.active') : language.t('settings.inactive') }}
+              </span>
               @if (acc.active) {
+                <button
+                  type="button"
+                  class="btn small icon-btn"
+                  [attr.data-edit-pencil]="'account-' + acc.id"
+                  (click)="startEditAccount(acc.id!)"
+                  [attr.aria-label]="language.t('settings.editAccountAria')"
+                  [title]="language.t('settings.editAccountAria')"
+                >
+                  <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                    <path
+                      d="M3 17.25V21h3.75L17.8 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"
+                      fill="currentColor"
+                    />
+                  </svg>
+                </button>
                 @if (confirmingDeactivate() === acc.id) {
-                  <span
-                    class="delete-confirm"
-                    role="alert"
-                    aria-live="polite"
-                    [attr.aria-label]="language.t('settings.accountDeactivationAria')"
-                  >
-                    {{ deactivationConfirmationLabel(acc.id!) }}
+                  <span class="visually-hidden" aria-live="polite">
+                    {{ language.t('settings.accountDeactivationPrompt') }}
                   </span>
-                  <button class="btn small danger" (click)="confirmDeactivate()">
-                    {{ language.t('settings.confirm') }}
+                  <button
+                    type="button"
+                    class="btn small danger icon-btn"
+                    (click)="confirmDeactivate()"
+                    [attr.aria-label]="language.t('settings.confirmDeactivationAria')"
+                    [title]="language.t('settings.confirmDeactivationAria')"
+                  >
+                    <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                      <path
+                        d="M20 6 9 17l-5-5"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
                   </button>
-                  <button class="btn small" (click)="cancelDeactivate()">
-                    {{ language.t('settings.cancel') }}
+                  <button
+                    type="button"
+                    class="btn small icon-btn"
+                    (click)="cancelDeactivate()"
+                    [attr.aria-label]="language.t('settings.cancelDeactivationAria')"
+                    [title]="language.t('settings.cancelDeactivationAria')"
+                  >
+                    <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                      <path
+                        d="M18 6 6 18M6 6l12 12"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
                   </button>
                 } @else {
-                  <button class="btn small" (click)="requestDeactivate(acc.id!)">
-                    {{ language.t('settings.deactivate') }}
+                  <button
+                    type="button"
+                    class="btn small danger icon-btn"
+                    (click)="requestDeactivate(acc.id!)"
+                    [attr.aria-label]="language.t('settings.deactivateAccountAria')"
+                    [title]="language.t('settings.deactivateAccountAria')"
+                  >
+                    <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                      <path
+                        d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
                   </button>
                 }
               } @else {
@@ -147,15 +310,27 @@
                   {{ language.t('settings.reactivate') }}
                 </button>
               }
-            </td>
-          </tr>
-        }
-      </tbody>
-    </table>
+            </div>
+          }
+        </li>
+      }
+    </ul>
   </section>
 
   <section class="card">
-    <h2>{{ language.t('settings.categories') }}</h2>
+    <h2>
+      <svg aria-hidden="true" viewBox="0 0 16 16" focusable="false">
+        <path
+          d="M2 2h5.5L14 8.5 8.5 14 2 7.5z"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+        />
+        <circle cx="5.5" cy="5.5" r="1.2" fill="currentColor" />
+      </svg>
+      {{ language.t('settings.categories') }}
+    </h2>
+
     <div class="inline-form">
       <input
         type="text"
@@ -163,71 +338,174 @@
         (ngModelChange)="newCategoryName.set($event)"
         [placeholder]="language.t('settings.name')"
         class="input"
+        [attr.aria-label]="language.t('settings.name')"
       />
       <select
         [ngModel]="newCategoryType()"
         (ngModelChange)="newCategoryType.set($event)"
-        class="input small"
+        class="input"
         [attr.aria-label]="language.t('settings.categoryTypeAria')"
       >
         <option value="expense">{{ language.t('type.expense') }}</option>
         <option value="income">{{ language.t('type.income') }}</option>
       </select>
-      <button class="btn primary" (click)="addCategory()">
-        {{ language.t('settings.add') }}
-      </button>
+      <button class="btn dashed" (click)="addCategory()">+ {{ language.t('settings.add') }}</button>
     </div>
-    <table>
-      <thead>
-        <tr>
-          <th>{{ language.t('settings.name') }}</th>
-          <th>{{ language.t('settings.type') }}</th>
-          <th>{{ language.t('settings.status') }}</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (cat of categories(); track cat.id) {
-          <tr [class.inactive]="!cat.active">
-            <td>
-              @if (editingCategoryName()?.id === cat.id) {
+
+    <ul class="category-list">
+      @for (cat of categories(); track cat.id) {
+        <li
+          class="category-row"
+          [class.inactive]="!cat.active"
+          [class.stripe-income]="cat.type === 'income'"
+          [class.stripe-expense]="cat.type === 'expense'"
+        >
+          @if (editingCategory()?.id === cat.id) {
+            <div class="edit-state">
+              <div class="edit-line">
                 <input
+                  #categoryNameInput
                   type="text"
-                  [ngModel]="editingCategoryName()!.value"
-                  (ngModelChange)="editingCategoryName.set({ id: cat.id!, value: $event })"
+                  [ngModel]="editingCategory()!.name"
+                  (ngModelChange)="editCategoryName($event)"
+                  (keydown.enter)="saveCategoryEdit()"
+                  (keydown.escape)="cancelEditCategory()"
                   class="input"
+                  [attr.aria-label]="language.t('settings.name')"
                 />
-                <button class="btn small primary" (click)="saveCategoryName()">
-                  {{ language.t('settings.save') }}
+                <button
+                  type="button"
+                  class="btn small primary icon-btn"
+                  (click)="saveCategoryEdit()"
+                  [attr.aria-label]="language.t('settings.confirmEditAria')"
+                  [title]="language.t('settings.confirmEditAria')"
+                >
+                  <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                    <path
+                      d="M20 6 9 17l-5-5"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
                 </button>
-                <button class="btn small" (click)="cancelEditCategoryName()">
-                  {{ language.t('settings.cancel') }}
+                <button
+                  type="button"
+                  class="btn small icon-btn"
+                  (click)="cancelEditCategory()"
+                  [attr.aria-label]="language.t('settings.cancelEditAria')"
+                  [title]="language.t('settings.cancelEditAria')"
+                >
+                  <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                    <path
+                      d="M18 6 6 18M6 6l12 12"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
                 </button>
-              } @else {
-                <span (click)="startEditCategoryName(cat.id!, cat.name)" class="editable">
-                  {{ cat.name }}
-                </span>
+              </div>
+              @if (editError()) {
+                <p class="edit-error" role="alert">{{ editError() }}</p>
               }
-            </td>
-            <td>{{ language.categoryTypeLabel(cat.type) }}</td>
-            <td>
-              {{ cat.active ? language.t('settings.active') : language.t('settings.inactive') }}
-            </td>
-            <td>
+            </div>
+          } @else {
+            <div class="category-main">
+              <span class="category-name">{{ cat.name }}</span>
+            </div>
+            <div class="category-side">
               @if (cat.active) {
-                <button class="btn small" (click)="deactivateCategory(cat.id!)">
-                  {{ language.t('settings.deactivate') }}
+                <button
+                  type="button"
+                  class="btn small icon-btn"
+                  [attr.data-edit-pencil]="'category-' + cat.id"
+                  (click)="startEditCategory(cat.id!)"
+                  [attr.aria-label]="language.t('settings.editCategoryAria')"
+                  [title]="language.t('settings.editCategoryAria')"
+                >
+                  <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                    <path
+                      d="M3 17.25V21h3.75L17.8 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"
+                      fill="currentColor"
+                    />
+                  </svg>
                 </button>
+                @if (confirmingCategoryDeactivate() === cat.id) {
+                  <span class="visually-hidden" aria-live="polite">
+                    {{ language.t('settings.categoryDeactivationPrompt') }}
+                  </span>
+                  <button
+                    type="button"
+                    class="btn small danger icon-btn"
+                    (click)="confirmCategoryDeactivate()"
+                    [attr.aria-label]="language.t('settings.confirmDeactivationAria')"
+                    [title]="language.t('settings.confirmDeactivationAria')"
+                  >
+                    <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                      <path
+                        d="M20 6 9 17l-5-5"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    class="btn small icon-btn"
+                    (click)="cancelCategoryDeactivate()"
+                    [attr.aria-label]="language.t('settings.cancelDeactivationAria')"
+                    [title]="language.t('settings.cancelDeactivationAria')"
+                  >
+                    <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                      <path
+                        d="M18 6 6 18M6 6l12 12"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                  </button>
+                } @else {
+                  <button
+                    type="button"
+                    class="btn small danger icon-btn"
+                    (click)="requestCategoryDeactivate(cat.id!)"
+                    [attr.aria-label]="language.t('settings.deactivateCategoryAria')"
+                    [title]="language.t('settings.deactivateCategoryAria')"
+                  >
+                    <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                      <path
+                        d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                  </button>
+                }
               } @else {
+                <span class="category-status">{{ language.t('settings.inactive') }}</span>
                 <button class="btn small" (click)="reactivateCategory(cat.id!)">
                   {{ language.t('settings.reactivate') }}
                 </button>
               }
-            </td>
-          </tr>
-        }
-      </tbody>
-    </table>
+            </div>
+          }
+        </li>
+      }
+    </ul>
   </section>
 
   <app-backup-card />

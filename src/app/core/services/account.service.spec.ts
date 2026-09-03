@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { AccountService } from './account.service';
 import { db } from '../db/database';
+import { TranslationError } from '../models/translation-error';
 
 describe('AccountService', () => {
   let service: AccountService;
@@ -33,23 +34,27 @@ describe('AccountService', () => {
 
   it('should reject empty name', async () => {
     await expect(service.create('', 'EUR', 0))
-      .rejects.toThrow('Account name is required');
+      .rejects.toThrow('errors.accountNameRequired');
   });
 
   it('should reject whitespace-only name', async () => {
     await expect(service.create('   ', 'EUR', 0))
-      .rejects.toThrow('Account name is required');
+      .rejects.toThrow('errors.accountNameRequired');
   });
 
   it('should reject negative initial balance', async () => {
     await expect(service.create('Cash', 'EUR', -100))
-      .rejects.toThrow('Initial balance cannot be negative');
+      .rejects.toThrow('errors.initialBalanceNegative');
   });
 
-  it('should reject duplicate account names', async () => {
+  it('should reject duplicate account names with the offending name', async () => {
     await service.create('Cash', 'EUR', 0);
     await expect(service.create('Cash', 'USD', 0))
-      .rejects.toThrow('Account name must be unique');
+      .rejects.toMatchObject({
+        key: 'errors.accountNameTaken',
+        params: { name: 'Cash' },
+      });
+    await expect(service.create('Cash', 'USD', 0)).rejects.toBeInstanceOf(TranslationError);
   });
 
   it('should allow zero initial balance', async () => {
@@ -73,7 +78,10 @@ describe('AccountService', () => {
     await service.create('Cash', 'EUR', 0);
     const savings = await service.create('Savings', 'EUR', 0);
     await expect(service.update(savings.id!, { name: 'Cash' }))
-      .rejects.toThrow('Account name must be unique');
+      .rejects.toMatchObject({
+        key: 'errors.accountNameTaken',
+        params: { name: 'Cash' },
+      });
   });
 
   it('should allow keeping same name on update', async () => {

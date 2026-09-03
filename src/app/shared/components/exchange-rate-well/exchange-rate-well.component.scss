@@ -1,0 +1,32 @@
+@use '../../../shared/styles/patterns' as *;
+
+/* Cross-currency well: the blue fixed tint with a primary stroke — fetch,
+   confirm and override of the suggested rate all live here. One component
+   serves both capture forms (ADR 0014). */
+.exchange-rate-section {
+  @extend %exchange-well;
+}
+
+.exchange-rate-grid {
+  @extend %capture-rate-grid;
+}
+
+.rate-status {
+  @extend %rate-status;
+}
+
+.rate-error {
+  @extend %rate-error;
+}
+
+.rate-source {
+  @extend %rate-source;
+}
+
+@media (max-width: 768px) {
+  /* One-column field grids on the phone (#100): the shared treatment the
+     capture forms' grids receive too. */
+  .exchange-rate-grid {
+    @include capture-grids-single-column;
+  }
+}

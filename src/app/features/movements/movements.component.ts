@@ -1,13 +1,14 @@
-import { Component, ElementRef, computed, effect, inject, OnDestroy, OnInit, signal, viewChild } from '@angular/core';
+import { Component, DestroyRef, ElementRef, computed, effect, inject, OnDestroy, OnInit, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { DatePipe, NgClass } from '@angular/common';
+import { DatePipe, Location } from '@angular/common';
+import { NgTemplateOutlet } from '@angular/common';
 import { TransactionService } from '../../core/services/transaction.service';
 import { TransferService } from '../../core/services/transfer.service';
 import { AccountService } from '../../core/services/account.service';
 import { CategoryService } from '../../core/services/category.service';
 import { ProfileService } from '../../core/services/profile.service';
-import { ExchangeRateService } from '../../core/services/exchange-rate.service';
-import { OfflineError } from '../../core/models/offline-error';
+import { CaptureFormService } from '../../core/services/capture-form.service';
+import { DataVersionService } from '../../core/services/data-version.service';
 import { Transaction } from '../../core/models/transaction.model';
 import { Transfer } from '../../core/models/transfer.model';
 import { Account } from '../../core/models/account.model';
@@ -19,52 +20,51 @@ import {
   defaultScope,
   getCurrentPeriod,
   getCurrentYear,
-  getPeriodYear,
-  isAllTime,
+  isMonthNumber,
+  isValidYear,
   scopeOptionsFromMovements,
 } from '../../core/types/period.type';
 import { LanguageService } from '../../core/services/language.service';
+import { BottomSheetComponent } from '../../shared/components/bottom-sheet/bottom-sheet.component';
 import {
-  QuickAddCardComponent,
-  TransactionFormPayload,
-} from './quick-add-card/quick-add-card.component';
-
-interface ExchangeRateState {
-  loading: boolean;
-  error: string;
-  rate: number | null;
-  date: string;
-}
-
-interface MovementItem {
-  type: 'transaction' | 'transfer';
-  data: Transaction | Transfer;
-}
-
-type MovementViewRow =
-  | { kind: 'group'; key: string; label: string }
-  | { kind: 'movement'; item: MovementItem };
+  TransactionFormComponent,
+  TransactionFormDraft,
+} from './transaction-form/transaction-form.component';
+import {
+  TransferFormComponent,
+  TransferDraft,
+} from './transfer-form/transfer-form.component';
+import {
+  NetFlowCardComponent,
+  MovementItem,
+} from './net-flow-card/net-flow-card.component';
 
 interface PendingDelete {
   item: MovementItem;
   snapshot: Transaction | Transfer;
 }
 
-interface TransferForm {
-  sourceAccountId: number;
-  destAccountId: number;
-  sourceAmount: number;
-  destinationAmount: number;
-  exchangeRate: number;
-  date: string;
-  period: MonthNumber;
-  year: number;
-  note: string;
+interface MovementDaySection {
+  key: string;
+  label: string;
+  items: MovementItem[];
+}
+
+interface FilterChip {
+  kind: 'category' | 'account' | 'search';
+  label: string;
+}
+
+function localDayKey(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 @Component({
   selector: 'app-movements',
-  imports: [FormsModule, DatePipe, NgClass, QuickAddCardComponent],
+  imports: [FormsModule, DatePipe, NgTemplateOutlet, TransactionFormComponent, TransferFormComponent, NetFlowCardComponent, BottomSheetComponent],
   templateUrl: './movements.component.html',
   styleUrl: './movements.component.scss',
   host: { '(document:keydown)': 'onDocKeydown($event)' },
@@ -75,7 +75,9 @@ export class MovementsComponent implements OnInit, OnDestroy {
   private accountService = inject(AccountService);
   private categoryService = inject(CategoryService);
   private profileService = inject(ProfileService);
-  private exchangeRateService = inject(ExchangeRateService);
+  private captureFormService = inject(CaptureFormService);
+  private dataVersion = inject(DataVersionService);
+  private location = inject(Location);
   language = inject(LanguageService);
 
   scope = signal<PeriodScope>(defaultScope());
@@ -89,64 +91,62 @@ export class MovementsComponent implements OnInit, OnDestroy {
   categories = signal<Category[]>([]);
   allCategoriesForNameResolution = signal<Category[]>([]);
   movements = signal<MovementItem[]>([]);
+  dataLoaded = signal(false);
   baseCurrency = signal('EUR');
 
-  showForm = signal<'none' | 'transfer'>('none');
-  editingId = signal<number | null>(null);
+  showForm = signal<'none' | 'transfer' | 'transaction'>('none');
+  editTransaction = signal<Transaction | null>(null);
+  editTransfer = signal<Transfer | null>(null);
+  transactionRestore = signal<TransactionFormDraft | null>(null);
+  transferRestore = signal<TransferDraft | null>(null);
+
+  /* Mobile regime (#103, #104): below the 768px breakpoint both capture forms
+     render inside a bottom sheet instead of the inline form card. Desktop
+     keeps the inline reveal. */
+  private mobileMediaQuery: MediaQueryList | null =
+    typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+      ? window.matchMedia('(max-width: 768px)')
+      : null;
+  readonly isMobileLayout = signal<boolean>(this.mobileMediaQuery?.matches ?? false);
+
+  constructor() {
+    const mediaQuery = this.mobileMediaQuery;
+    if (mediaQuery && typeof mediaQuery.addEventListener === 'function') {
+      const listener = (event: MediaQueryListEvent): void =>
+        this.isMobileLayout.set(event.matches);
+      mediaQuery.addEventListener('change', listener);
+      inject(DestroyRef).onDestroy(() =>
+        mediaQuery.removeEventListener('change', listener),
+      );
+    }
+  }
 
   confirmingDelete = signal<MovementItem | null>(null);
   undo = signal<PendingDelete | null>(null);
+  undoAnnouncement = signal('');
   undoWindowMs = 10000;
   private undoHandle: ReturnType<typeof setTimeout> | null = null;
-
-  transferExchangeRateState = signal<ExchangeRateState>({
-    loading: false,
-    error: '',
-    rate: null,
-    date: '',
-  });
-
-  trForm = signal<TransferForm>({
-    sourceAccountId: 0,
-    destAccountId: 0,
-    sourceAmount: 0,
-    destinationAmount: 0,
-    exchangeRate: 1,
-    date: new Date().toISOString().split('T')[0],
-    period: getCurrentPeriod(),
-    year: getCurrentYear(),
-    note: '',
-  });
-  errorMessage = signal('');
-  errorDetail = signal('');
-  transferSaving = signal(false);
-
-  editTransaction = signal<Transaction | null>(null);
-
-  canSubmitTransfer = computed(() => {
-    const f = this.trForm();
-    if (!f.sourceAccountId || !f.destAccountId) return false;
-    if (f.sourceAccountId === f.destAccountId) return false;
-    if (!(f.sourceAmount > 0)) return false;
-    if (this.isTransferForeignCurrency() && this.transferExchangeRateState().loading) return false;
-    return !this.transferSaving();
-  });
-
-  filteredDestinationAccounts = computed(() => {
-    const sourceId = this.trForm().sourceAccountId;
-    if (!sourceId) return this.accounts();
-    return this.accounts().filter((a) => a.id !== sourceId);
-  });
 
   filterCategory = signal<number | null>(null);
   filterAccount = signal<number | null>(null);
   searchQuery = signal('');
   sortDir = signal<'desc' | 'asc'>('desc');
 
-  quickAddCard = viewChild(QuickAddCardComponent);
+  /* Filter-card disclosure (#102): the card collapses to a single search row;
+     the category/account selects reveal only on demand. */
+  filtersExpanded = signal(false);
+
+  transactionFormCard = viewChild(TransactionFormComponent);
+  transferFormCard = viewChild(TransferFormComponent);
 
   onDocKeydown(e: KeyboardEvent): void {
     if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return;
+    // Escape must reach the handler even from inside the capture form's
+    // inputs — closing the open form is the point of the shortcut.
+    if (e.key === 'Escape') {
+      this.closeOpenCaptureForm();
+      return;
+    }
     const target = e.target as HTMLElement | null;
     if (
       target &&
@@ -158,23 +158,40 @@ export class MovementsComponent implements OnInit, OnDestroy {
       return;
     }
     if (e.key === 't' || e.key === 'T') {
-      this.openTransferForm();
+      this.toggleTransferForm();
     } else if (e.key === 'n' || e.key === 'N') {
-      this.quickAddCard()?.focusAmount();
+      this.toggleTransactionForm();
     }
   }
-  transferHeading = viewChild<ElementRef<HTMLHeadingElement>>('transferHeading');
 
-  private focusTransferForm = effect(() => {
-    const heading = this.transferHeading();
-    if (heading) {
-      const el = heading.nativeElement;
-      if (typeof el.scrollIntoView === 'function') {
-        el.scrollIntoView({ behavior: this.prefersReducedMotion() ? 'auto' : 'smooth', block: 'start' });
-      }
-      el.focus();
+  private closeOpenCaptureForm(): void {
+    if (this.showForm() === 'transaction') {
+      this.toggleTransactionForm();
+    } else if (this.showForm() === 'transfer') {
+      this.toggleTransferForm();
+    }
+  }
+
+  deleteConfirmButton = viewChild<ElementRef<HTMLButtonElement>>('deleteConfirmBtn');
+
+  private focusDeleteConfirm = effect(() => {
+    if (this.confirmingDelete()) {
+      this.deleteConfirmButton()?.nativeElement.focus();
     }
   });
+
+  private openOnCaptureRequest = effect(() => {
+    if (this.captureFormService.pendingTransactionFormRequests() > 0) {
+      this.captureFormService.consumeTransactionFormRequests();
+      this.toggleTransactionForm();
+    }
+    if (this.captureFormService.pendingTransferRequests() > 0) {
+      this.captureFormService.consumeTransferRequests();
+      this.toggleTransferForm();
+    }
+  });
+
+  private reloadDataOnVersionChange = this.dataVersion.reloadOnChange(() => this.loadAll());
 
   private prefersReducedMotion(): boolean {
     return (
@@ -215,29 +232,39 @@ export class MovementsComponent implements OnInit, OnDestroy {
     });
   });
 
-  movementView = computed<MovementViewRow[]>(() => {
+  movementView = computed<MovementItem[]>(() => {
     const items =
       this.sortDir() === 'asc' ? [...this.filteredMovements()].reverse() : this.filteredMovements();
+    return items;
+  });
 
-    if (!isAllTime(this.scope()) || this.sortDir() === 'asc') {
-      return items.map((item) => ({ kind: 'movement' as const, item }));
-    }
-
-    const rows: MovementViewRow[] = [];
-    const seen = new Set<string>();
-    for (const item of items) {
-      const key = `${item.data.year}-${item.data.period}`;
-      if (!seen.has(key)) {
-        seen.add(key);
-        rows.push({
-          kind: 'group',
+  /* Mobile ledger sections (#101): rows grouped under one divider per day,
+     in movementView order so the date sort direction carries through. The
+     divider announces the day on mobile; the desktop table hides it. */
+  movementDaySections = computed<MovementDaySection[]>(() => {
+    const sections: MovementDaySection[] = [];
+    const byKey = new Map<string, MovementDaySection>();
+    for (const item of this.movementView()) {
+      const date = item.data.date instanceof Date ? item.data.date : new Date(item.data.date);
+      const key = localDayKey(date);
+      let section = byKey.get(key);
+      if (!section) {
+        section = {
           key,
-          label: `${this.periodLabel(item.data.period)} ${item.data.year}`,
-        });
+          label: this.language.formatDate(date, {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+          }),
+          items: [],
+        };
+        byKey.set(key, section);
+        sections.push(section);
       }
-      rows.push({ kind: 'movement', item });
+      section.items.push(item);
     }
-    return rows;
+    return sections;
   });
 
   activeFilterCount = computed(() => {
@@ -248,12 +275,53 @@ export class MovementsComponent implements OnInit, OnDestroy {
     return count;
   });
 
+  /* Collapsed-state chips (#102): one removable chip per active filter, so
+     the collapsed card still shows what is being applied. */
+  activeFilters = computed<FilterChip[]>(() => {
+    const chips: FilterChip[] = [];
+    const cat = this.filterCategory();
+    if (cat !== null) {
+      chips.push({ kind: 'category', label: this.chipLabel('movements.category', cat, this.categories()) });
+    }
+    const acc = this.filterAccount();
+    if (acc !== null) {
+      chips.push({ kind: 'account', label: this.chipLabel('movements.account', acc, this.accounts()) });
+    }
+    const query = this.searchQuery().trim();
+    if (query) {
+      chips.push({
+        kind: 'search',
+        label: `${this.language.t('movements.search')}: ${query}`,
+      });
+    }
+    return chips;
+  });
+
+  private chipLabel(
+    prefixKey: string,
+    id: number,
+    items: { id?: number; name: string }[],
+  ): string {
+    const name = items.find((item) => item.id === id)?.name ?? this.language.t('movements.unknown');
+    return `${this.language.t(prefixKey)}: ${name}`;
+  }
+
+  toggleFilters(): void {
+    this.filtersExpanded.update((expanded) => !expanded);
+  }
+
+  removeFilter(kind: FilterChip['kind']): void {
+    if (kind === 'category') this.filterCategory.set(null);
+    if (kind === 'account') this.filterAccount.set(null);
+    if (kind === 'search') this.searchQuery.set('');
+  }
+
   toggleSort(): void {
     this.sortDir.update((d) => (d === 'desc' ? 'asc' : 'desc'));
   }
 
-  trackKey(row: MovementViewRow): string {
-    return row.kind === 'group' ? `group:${row.key}` : `${row.item.type}:${row.item.data.id}`;
+  trackKey(row: MovementItem): string {
+    return `${row.type}:${row.data.id}`;
   }
 
   private matchesSearch(item: MovementItem, query: string): boolean {
@@ -276,17 +344,40 @@ export class MovementsComponent implements OnInit, OnDestroy {
   }
 
   async ngOnInit(): Promise<void> {
-    this.baseCurrency.set(await this.profileService.getBaseCurrency());
-    this.accounts.set(await this.accountService.getActive());
-    this.categories.set(await this.categoryService.getActive());
-    this.allCategoriesForNameResolution.set(await this.categoryService.getAll());
-    if (this.accounts().length > 0) {
-      const first = this.accounts()[0].id!;
-      const second = this.accounts()[1]?.id;
-      this.trForm.update((f) => ({ ...f, sourceAccountId: first, destAccountId: second ?? first }));
+    const fromUrl = this.scopeFromUrl();
+    if (fromUrl) {
+      this.scope.set(fromUrl);
     }
-    await this.refresh();
-    await this.applyScopeOptions();
+    await this.loadAll();
+  }
+
+  private async loadAll(): Promise<void> {
+    try {
+      this.baseCurrency.set(await this.profileService.getBaseCurrency());
+      this.accounts.set(await this.accountService.getActive());
+      this.categories.set(await this.categoryService.getActive());
+      this.allCategoriesForNameResolution.set(await this.categoryService.getAll());
+      await this.refresh();
+      await this.applyScopeOptions();
+    } finally {
+      this.dataLoaded.set(true);
+    }
+  }
+
+  private scopeFromUrl(): PeriodScope | null {
+    const query = this.location.path(true).split('?')[1] ?? '';
+    const params = new URLSearchParams(query);
+    const period = Number(params.get('period'));
+    const year = Number(params.get('year'));
+    if (isMonthNumber(period) && isValidYear(year)) {
+      return { kind: 'month', period, year };
+    }
+    return null;
+  }
+
+  private reflectScopeInUrl(scope: PeriodScope): void {
+    const path = this.location.path().split('?')[0] || '/';
+    this.location.replaceState(`${path}?period=${scope.period}&year=${scope.year}`);
   }
 
   async refresh(): Promise<void> {
@@ -319,103 +410,116 @@ export class MovementsComponent implements OnInit, OnDestroy {
     this.scopeMonths.set(options.months);
   }
 
-  async onScopeYearChange(value: number | 'all-time'): Promise<void> {
-    if (typeof value === 'string' && value !== 'all-time') {
-      value = Number(value);
-    }
-    if (value === 'all-time') {
-      await this.setScope({ kind: 'all-time' });
-      return;
-    }
+  async onScopeYearChange(value: number): Promise<void> {
     const current = this.scope();
-    const period =
-      current.kind === 'month' && current.year === value && current.period
-        ? current.period
-        : getCurrentPeriod();
+    const period = current.year === value ? current.period : getCurrentPeriod();
     await this.setScope({ kind: 'month', period, year: value });
   }
 
   async onScopeMonthChange(period: number): Promise<void> {
     const current = this.scope();
-    if (current.kind === 'month') {
-      await this.setScope({ ...current, period: period as MonthNumber });
-    }
+    await this.setScope({ ...current, period: period as MonthNumber });
   }
 
   private async setScope(scope: PeriodScope): Promise<void> {
     this.scope.set(scope);
+    this.reflectScopeInUrl(scope);
     this.scopeAnnouncement.set(this.language.scopeLabel(scope));
-    await this.refresh();
-    await this.applyScopeOptions();
-  }
-
-  private formPeriodYear(): { period: MonthNumber; year: number } {
-    const s = this.scope();
-    if (!isAllTime(s)) {
-      return { period: s.period, year: s.year };
+    // Re-enter the busy gate so the new scope's empty state and Net figures
+    // never render from the previous scope's data.
+    this.dataLoaded.set(false);
+    try {
+      await this.refresh();
+      await this.applyScopeOptions();
+    } finally {
+      this.dataLoaded.set(true);
     }
-    return { period: getCurrentPeriod(), year: getCurrentYear() };
   }
 
-  openTransferForm(id?: number): void {
-    this.showForm.set('transfer');
-    this.editingId.set(id ?? null);
-    this.errorMessage.set('');
-    this.errorDetail.set('');
-    this.transferExchangeRateState.set({ loading: false, error: '', rate: null, date: '' });
-    if (id) {
-      this.transferService.getById(id).then((t) => {
-        if (t) {
-          this.trForm.set({
-            sourceAccountId: t.sourceAccountId,
-            destAccountId: t.destinationAccountId,
-            sourceAmount: t.sourceAmount,
-            destinationAmount: t.destinationAmount,
-            exchangeRate: t.exchangeRate,
-            date: new Date(t.date).toISOString().split('T')[0],
-            period: t.period,
-            year: getPeriodYear(t),
-            note: t.note,
-          });
-          if (t.sourceAccountId !== t.destinationAccountId) {
-            const src = this.accounts().find((a) => a.id === t.sourceAccountId);
-            const dst = this.accounts().find((a) => a.id === t.destinationAccountId);
-            if (src && dst && src.currency !== dst.currency) {
-              this.transferExchangeRateState.update((s) => ({
-                ...s,
-                rate: t.exchangeRate,
-                date: 'stored',
-              }));
-            }
-          }
-        }
-      });
+  toggleTransferForm(): void {
+    if (this.showForm() === 'transfer') {
+      this.closeTransferForm();
     } else {
-      const srcId = this.accounts()[0]?.id ?? 0;
-      const dstId = this.accounts()[1]?.id ?? this.accounts()[0]?.id ?? 0;
-      this.trForm.set({
-        sourceAccountId: srcId,
-        destAccountId: dstId,
-        sourceAmount: 0,
-        destinationAmount: 0,
-        exchangeRate: 1,
-        date: new Date().toISOString().split('T')[0],
-        period: this.formPeriodYear().period,
-        year: this.formPeriodYear().year,
-        note: '',
-      });
-      if (srcId && dstId && srcId !== dstId) {
-        this.checkTransferExchangeRate();
-      }
+      this.openTransferForm();
     }
   }
 
-  cancelForm(): void {
+  /* The form (and its well) is destroyed on close; if the draft continues,
+     the captured draft seeds the reopened form — including its edit context
+     and the captured rate state. */
+  closeTransferForm(): void {
+    this.captureTransferDraft();
     this.showForm.set('none');
-    this.editingId.set(null);
-    this.errorMessage.set('');
-    this.errorDetail.set('');
-    this.transferExchangeRateState.set({ loading: false, error: '', rate: null, date: '' });
+  }
+
+  /* Full reset: a cancelled or saved transfer never resumes as a draft. */
+  cancelTransferForm(): void {
+    this.transferRestore.set(null);
+    this.editTransfer.set(null);
+    this.showForm.set('none');
+  }
+
+  private captureTransferDraft(): void {
+    const form = this.transferFormCard();
+    if (!form) return;
+    const draft = form.draft();
+    this.transferRestore.set({
+      ...draft,
+      rateState: { ...draft.rateState, loading: false },
+    });
+    this.editTransfer.set(null);
+  }
+
+  private captureTransactionFormDraft(): void {
+    const card = this.transactionFormCard();
+    if (!card) return;
+    const draft = card.draft();
+    this.transactionRestore.set({
+      ...draft,
+      rateState: { ...draft.rateState, loading: false },
+    });
+  }
+
+  openTransferForm(transfer?: Transfer): void {
+    if (this.showForm() === 'transaction') {
+      this.captureTransactionFormDraft();
+    }
+    if (transfer) {
+      this.transferRestore.set(null);
+    }
+    this.editTransfer.set(transfer ?? null);
+    this.showForm.set('transfer');
+  }
+
+  toggleTransactionForm(): void {
+    if (this.showForm() === 'transaction') {
+      this.captureTransactionFormDraft();
+      this.showForm.set('none');
+      this.editTransaction.set(null);
+    } else {
+      this.openTransactionForm();
+    }
+  }
+
+  openTransactionForm(): void {
+    if (this.showForm() === 'transaction') {
+      this.transactionFormCard()?.focusAmount();
+      return;
+    }
+    this.showForm.set('transaction');
+    this.editTransaction.set(null);
+  }
+
+  openTransactionFormForEdit(txn: Transaction): void {
+    this.showForm.set('transaction');
+    this.editTransaction.set(txn);
+    this.transactionRestore.set(null);
+  }
+
+  closeTransactionForm(): void {
+    this.showForm.set('none');
+    this.editTransaction.set(null);
+    this.transactionRestore.set(null);
   }
 
   clearFilters(): void {
@@ -424,195 +528,33 @@ export class MovementsComponent implements OnInit, OnDestroy {
     this.searchQuery.set('');
   }
 
-  onTransferSourceChange(sourceId: number): void {
-    this.trForm.update((f) => {
-      const destAccountId = f.destAccountId === sourceId ? 0 : f.destAccountId;
-      return { ...f, sourceAccountId: sourceId, destAccountId };
-    });
-    this.checkTransferExchangeRate();
-  }
-
-  onTransferDateChange(date: string): void {
-    this.trForm.update((f) => ({ ...f, date }));
-    this.checkTransferExchangeRate();
-  }
-
-  isTransferForeignCurrency(): boolean {
-    const { src, dst } = this.getTransferAccounts();
-    return !!src && !!dst && src.currency !== dst.currency;
-  }
-
-  getTransferSourceCurrency(): string {
-    return this.getTransferAccounts().src?.currency ?? '';
-  }
-
-  getTransferDestCurrency(): string {
-    return this.getTransferAccounts().dst?.currency ?? '';
-  }
-
-  private getTransferAccounts(): { src: Account | undefined; dst: Account | undefined } {
-    const f = this.trForm();
-    return {
-      src: this.accounts().find((a) => a.id === f.sourceAccountId),
-      dst: this.accounts().find((a) => a.id === f.destAccountId),
-    };
-  }
-
-  onTransferAmountOrRateChange(): void {
-    this.computeTransferDestinationAmount();
-  }
-
-  async checkTransferExchangeRate(): Promise<void> {
-    const { src, dst } = this.getTransferAccounts();
-    const f = this.trForm();
-
-    if (!src || !dst || src.currency === dst.currency) {
-      this.transferExchangeRateState.set({ loading: false, error: '', rate: null, date: '' });
-      this.computeTransferDestinationAmount();
-      return;
-    }
-
-    this.transferExchangeRateState.update((s) => ({ ...s, loading: true, error: '' }));
-
-    try {
-      const result = await this.exchangeRateService.getRate(src.currency, dst.currency, f.date);
-      this.transferExchangeRateState.update((s) => ({
-        ...s,
-        rate: result.rate,
-        date: result.date,
-      }));
-      this.trForm.update((form) => ({ ...f, exchangeRate: result.rate }));
-      this.computeTransferDestinationAmount();
-    } catch (e: unknown) {
-      const msg =
-        e instanceof OfflineError
-          ? this.language.t('movements.error.offlineRate')
-          : this.language.t('movements.error.rateFetch');
-      this.transferExchangeRateState.update((s) => ({ ...s, error: msg }));
-    } finally {
-      this.transferExchangeRateState.update((s) => ({ ...s, loading: false }));
-    }
-  }
-
-  private computeTransferDestinationAmount(): void {
-    const f = this.trForm();
-    const destAmount = Math.round(f.sourceAmount * f.exchangeRate * 100) / 100;
-    this.trForm.update((form) => ({ ...form, destinationAmount: destAmount }));
-  }
-
   getAccountCurrency(accountId: number): string {
     return this.accounts().find((a) => a.id === accountId)?.currency ?? '';
   }
 
-  async saveTransfer(): Promise<void> {
-    if (!this.canSubmitTransfer()) return;
-    this.transferSaving.set(true);
-    try {
-      const f = this.trForm();
-      const wasEdit = this.editingId() !== null;
-      if (this.editingId()) {
-        await this.transferService.update(this.editingId()!, {
-          sourceAccountId: f.sourceAccountId,
-          destinationAccountId: f.destAccountId,
-          sourceAmount: f.sourceAmount,
-          destinationAmount: f.destinationAmount,
-          exchangeRate: f.exchangeRate,
-          date: new Date(f.date),
-          period: f.period,
-          year: f.year,
-          note: f.note,
-        });
-      } else {
-        await this.transferService.create(
-          f.sourceAccountId,
-          f.destAccountId,
-          f.sourceAmount,
-          new Date(f.date),
-          f.period,
-          f.note,
-          f.exchangeRate,
-          f.year,
-        );
-      }
-      this.cancelForm();
-      await this.refresh();
-      await this.applyScopeOptions();
-      this.movementAnnouncement.set(
-        wasEdit
-          ? this.language.t('movements.announcement.transferUpdated')
-          : this.language.t('movements.announcement.transferSaved'),
-      );
-    } catch (e: unknown) {
-      this.setTransferError(e);
-    } finally {
-      this.transferSaving.set(false);
-    }
-  }
-
-  private setTransferError(e: unknown): void {
-    const raw = e instanceof Error ? e.message : String(e);
-    const known: Record<string, string> = {
-      'Source and destination accounts must be different':
-        this.language.t('movements.error.differentAccounts'),
-      'Amount must be positive': this.language.t('movements.error.amountPositive'),
-      'Source amount must be positive': this.language.t('movements.error.amountPositive'),
-      'Exchange rate must be positive': this.language.t('movements.error.ratePositive'),
-      'Source account not found': this.language.t('movements.error.accountMissing'),
-      'Destination account not found': this.language.t('movements.error.accountMissing'),
-    };
-    this.errorMessage.set(
-      known[raw] ?? this.language.t('movements.error.saveFailed'),
+  /* Each capture form persists through its own store and reports whether the
+     save was an edit; the page only closes the form, refreshes the list, and
+     announces the result. */
+  async onTransferSaved(wasEdit: boolean): Promise<void> {
+    this.cancelTransferForm();
+    await this.refresh();
+    await this.applyScopeOptions();
+    this.movementAnnouncement.set(
+      wasEdit
+        ? this.language.t('movements.announcement.transferUpdated')
+        : this.language.t('movements.announcement.transferSaved'),
     );
-    this.errorDetail.set(raw);
   }
 
-  async onSaveTransaction(payload: TransactionFormPayload): Promise<void> {
-    try {      if (payload.id != null) {
-        await this.transactionService.update(payload.id, {
-          accountId: payload.accountId,
-          categoryId: payload.categoryId,
-          amount: payload.amount,
-          date: new Date(payload.date),
-          period: payload.period,
-          year: payload.year,
-          exchangeRate: payload.exchangeRate,
-          baseCurrencyAmount: payload.baseCurrencyAmount,
-          note: payload.note,
-        });
-      } else {
-        await this.transactionService.create(
-          payload.accountId,
-          payload.categoryId,
-          payload.amount,
-          new Date(payload.date),
-          payload.period,
-          payload.exchangeRate,
-          payload.baseCurrencyAmount,
-          payload.year,
-          payload.note,
-        );
-      }
-      this.editTransaction.set(null);
-      await this.refresh();
-      await this.applyScopeOptions();
-      this.quickAddCard()?.markSaved(payload.id != null);
-    } catch (e: unknown) {
-      this.quickAddCard()?.markFailed(this.setTransactionError(e));
-    }
-  }
-
-  private setTransactionError(e: unknown): string {
-    const raw = e instanceof Error ? e.message : String(e);
-    const known: Record<string, string> = {
-      'Amount must be positive': this.language.t('movements.error.amountPositive'),
-      'Account not found': this.language.t('movements.error.accountMissing'),
-      'Category not found': this.language.t('quickAdd.error.categoryMissing'),
-    };
-    return known[raw] ?? this.language.t('quickAdd.error.failedToSave');
-  }
-
-  onCancelEdit(): void {
-    this.editTransaction.set(null);
+  async onTransactionSaved(wasEdit: boolean): Promise<void> {
+    this.closeTransactionForm();
+    await this.refresh();
+    await this.applyScopeOptions();
+    this.movementAnnouncement.set(
+      wasEdit
+        ? this.language.t('movements.announcement.transactionUpdated')
+        : this.language.t('movements.announcement.transactionSaved'),
+    );
   }
 
   deleteConfirmationLabel(item: MovementItem): string {
@@ -679,8 +621,15 @@ export class MovementsComponent implements OnInit, OnDestroy {
     await this.applyScopeOptions();
   }
 
+  dismissUndo(): void {
+    this.clearUndo();
+  }
+
   private setUndo(pending: PendingDelete): void {
     this.undo.set(pending);
+    this.undoAnnouncement.set(
+      this.language.t('movements.undoWindow', { seconds: this.undoWindowMs / 1000 }),
+    );
     this.scheduleUndoAutoDismiss();
   }
 
@@ -688,7 +637,10 @@ export class MovementsComponent implements OnInit, OnDestroy {
     if (this.undoHandle !== null) {
       clearTimeout(this.undoHandle);
     }
-    this.undoHandle = setTimeout(() => this.clearUndo(), this.undoWindowMs);
+    this.undoHandle = setTimeout(() => {
+      this.clearUndo();
+      this.undoAnnouncement.set(this.language.t('movements.undoWindowClosed'));
+    }, this.undoWindowMs);
   }
 
   pauseUndo(): void {
@@ -710,6 +662,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
       this.undoHandle = null;
     }
     this.undo.set(null);
+    this.undoAnnouncement.set('');
   }
 
   ngOnDestroy(): void {
@@ -742,24 +695,27 @@ export class MovementsComponent implements OnInit, OnDestroy {
     return this.language.periodLabel(period);
   }
 
-  scopePeriod(): number | null {
-    const s = this.scope();
-    return !isAllTime(s) ? s.period : null;
+  scopePeriod(): MonthNumber {
+    return this.scope().period;
   }
 
-  scopeYearValue(): number | 'all-time' {
-    const s = this.scope();
-    return !isAllTime(s) ? s.year : 'all-time';
-  }
-
-  getDirectionArrow(item: Transaction | Transfer, type: 'transaction' | 'transfer'): string {
-    if (type === 'transfer') return '=';
-    return this.isIncomeTransaction(item as Transaction) ? '→' : '←';
+  scopeYearValue(): number {
+    return this.scope().year;
   }
 
   isIncomeTransaction(txn: Transaction): boolean {
     const type = this.allCategoriesForNameResolution().find((c) => c.id === txn.categoryId)?.type;
     return isIncomeCategory(type);
+  }
+
+  kindLabel(item: MovementItem): string {
+    if (this.isTransaction(item)) {
+      const kind = this.isIncomeTransaction(this.getTransactionData(item))
+        ? 'type.income'
+        : 'type.expense';
+      return this.language.t(kind);
+    }
+    return this.language.t('type.transfer');
   }
 
   isForeignCurrencyTransaction(txn: Transaction): boolean {
@@ -796,11 +752,6 @@ export class MovementsComponent implements OnInit, OnDestroy {
     return this.formatMoney(tr.sourceAmount);
   }
 
-  getDirectionArrowClass(item: MovementItem): string {
-    if (item.type === 'transfer') return 'arrow-transfer';
-    return this.isIncomeTransaction(item.data as Transaction) ? 'arrow-income' : 'arrow-expense';
-  }
-
   isTransaction(item: MovementItem): boolean {
     return item.type === 'transaction';
   }
@@ -813,3 +764,4 @@ export class MovementsComponent implements OnInit, OnDestroy {
     return item.data as Transfer;
   }
 }
+

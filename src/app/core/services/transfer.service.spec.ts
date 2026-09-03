@@ -48,37 +48,37 @@ describe('TransferService', () => {
   it('should reject self-transfer', async () => {
     await expect(
       transferService.create(cashId, cashId, 50000, new Date(), 1),
-    ).rejects.toThrow('Source and destination accounts must be different');
+    ).rejects.toThrow('errors.accountsMustDiffer');
   });
 
   it('should reject zero amount', async () => {
     await expect(
       transferService.create(cashId, savingsId, 0, new Date(), 1),
-    ).rejects.toThrow('Amount must be positive');
+    ).rejects.toThrow('errors.amountPositive');
   });
 
   it('should reject negative amount', async () => {
     await expect(
       transferService.create(cashId, savingsId, -100, new Date(), 1),
-    ).rejects.toThrow('Amount must be positive');
+    ).rejects.toThrow('errors.amountPositive');
   });
 
   it('should reject an out-of-range period', async () => {
     await expect(
       transferService.create(cashId, savingsId, 100, new Date(), 13),
-    ).rejects.toThrow('Period must be a month between 1 and 12');
+    ).rejects.toThrow('errors.periodInvalid');
   });
 
   it('should reject invalid source account', async () => {
     await expect(
       transferService.create(999, savingsId, 100, new Date(), 1),
-    ).rejects.toThrow('Source account not found');
+    ).rejects.toThrow('errors.sourceAccountNotFound');
   });
 
   it('should reject invalid destination account', async () => {
     await expect(
       transferService.create(cashId, 999, 100, new Date(), 1),
-    ).rejects.toThrow('Destination account not found');
+    ).rejects.toThrow('errors.destinationAccountNotFound');
   });
 
   it('should update a transfer', async () => {
@@ -116,14 +116,14 @@ describe('TransferService', () => {
     const t = await transferService.create(cashId, savingsId, 50000, new Date('2026-01-15'), 1);
     await expect(
       transferService.update(t.id!, { sourceAccountId: savingsId, destinationAccountId: savingsId }),
-    ).rejects.toThrow('Source and destination accounts must be different');
+    ).rejects.toThrow('errors.accountsMustDiffer');
   });
 
   it('should reject self-transfer on update (single field change)', async () => {
     const t = await transferService.create(cashId, savingsId, 50000, new Date('2026-01-15'), 1);
     await expect(
       transferService.update(t.id!, { sourceAccountId: savingsId }),
-    ).rejects.toThrow('Source and destination accounts must be different');
+    ).rejects.toThrow('errors.accountsMustDiffer');
   });
 
   it('should delete a transfer', async () => {
@@ -161,7 +161,7 @@ describe('TransferService', () => {
     const t = await transferService.create(cashId, savingsId, 50000, new Date('2026-01-15'), 1);
     await expect(
       transferService.restore(t),
-    ).rejects.toThrow('Transfer already exists');
+    ).rejects.toThrow('errors.transferExists');
   });
 
   it('should get transfers by period', async () => {
@@ -206,14 +206,6 @@ describe('TransferService', () => {
     expect(jan26[0].sourceAmount).toBe(100);
   });
 
-  it('should get all transfers for the all-time scope', async () => {
-    await transferService.create(cashId, savingsId, 100, new Date('2010-05-01'), 5, '', 1, 2010);
-    await transferService.create(cashId, savingsId, 200, new Date('2026-06-01'), 6, '', 1, 2026);
-
-    const all = await transferService.getByScope({ kind: 'all-time' });
-    expect(all.length).toBe(2);
-  });
-
   it('should update the period year', async () => {
     const t = await transferService.create(cashId, savingsId, 100, new Date('2025-12-22'), 1);
     const updated = await transferService.update(t.id!, { year: 2025 });
@@ -223,13 +215,13 @@ describe('TransferService', () => {
   it('should reject an invalid period year on create', async () => {
     await expect(
       transferService.create(cashId, savingsId, 100, new Date(), 1, '', 1, 22),
-    ).rejects.toThrow('Year must be a valid 4-digit year');
+    ).rejects.toThrow('errors.yearInvalid');
   });
 
   it('should reject an invalid period year on update', async () => {
     const t = await transferService.create(cashId, savingsId, 100, new Date(), 1);
     await expect(
       transferService.update(t.id!, { year: 22 }),
-    ).rejects.toThrow('Year must be a valid 4-digit year');
+    ).rejects.toThrow('errors.yearInvalid');
   });
 });

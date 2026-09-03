@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ProfileService } from '../../core/services/profile.service';
@@ -7,13 +7,17 @@ import { CategoryService } from '../../core/services/category.service';
 import { DriveBackupService } from '../../core/services/drive-backup.service';
 import { LanguageService } from '../../core/services/language.service';
 import { NoBackupFoundError } from '../../backup/drive-backup-provider';
-import { SUPPORTED_CURRENCIES } from '../../core/constants/currencies';
+import { CURRENCY_SYMBOLS, SUPPORTED_CURRENCIES } from '../../core/constants/currencies';
 import { CategoryType } from '../../core/models/category.model';
 import { isLanguage, LANGUAGES, detectBrowserLanguage, Language } from '../../core/types/language.type';
+import { DismissibleAlertComponent } from '../../shared/components/dismissible-alert/dismissible-alert.component';
+import { errorCopy } from '../../core/models/translation-error';
 
 const STEPS = ['language', 'restore', 'currency', 'accounts', 'categories'] as const;
 
 type Step = (typeof STEPS)[number];
+
+const FEATURED_CURRENCIES = ['EUR', 'USD', 'GBP', 'JPY'] as const;
 
 interface EditableCategory {
   name: string;
@@ -23,7 +27,7 @@ interface EditableCategory {
 
 @Component({
   selector: 'app-onboarding',
-  imports: [FormsModule],
+  imports: [FormsModule, DismissibleAlertComponent],
   templateUrl: './onboarding.component.html',
   styleUrl: './onboarding.component.scss',
 })
@@ -37,7 +41,12 @@ export class OnboardingComponent {
 
   supportedCurrencies = SUPPORTED_CURRENCIES;
   languages = LANGUAGES;
+  steps = STEPS;
   step = signal<Step>('language');
+  statusEpoch = signal(0);
+  stepIndex = computed(() => STEPS.indexOf(this.step()));
+  currencyQuery = signal('');
+  filteredCurrencies = computed(() => this.matchingCurrencies(this.currencyQuery()));
   language = signal(detectBrowserLanguage());
   isRestoring = signal(false);
   noBackupMessage = signal('');
@@ -62,6 +71,41 @@ export class OnboardingComponent {
 
   stepNumber(step: Step): number {
     return STEPS.indexOf(step) + 1;
+  }
+
+  currencySymbol(code: string): string {
+    return CURRENCY_SYMBOLS[code as keyof typeof CURRENCY_SYMBOLS] ?? code;
+  }
+
+  currencyName(code: string): string {
+    try {
+      return (
+        this.currencyDisplayNames().of(code) ?? code
+      );
+    } catch {
+      return code;
+    }
+  }
+
+  private currencyDisplayNames(): Intl.DisplayNames {
+    const language = this.languageService.activeLanguage();
+    if (!this.displayNames || this.displayNames.language !== language) {
+      this.displayNames = {
+        language,
+        names: new Intl.DisplayNames([language], { type: 'currency' }),
+      };
+    }
+    return this.displayNames.names;
+  }
+
+  private displayNames?: { language: Language; names: Intl.DisplayNames };
+
+  private matchingCurrencies(query: string): string[] {
+    const q = query.trim().toLowerCase();
+    if (!q) return [...FEATURED_CURRENCIES];
+    return SUPPORTED_CURRENCIES.filter(
+      c => c.toLowerCase().includes(q) || this.currencyName(c).toLowerCase().includes(q),
+    );
   }
 
   async onLanguageChange(value: string): Promise<void> {
@@ -108,18 +152,22 @@ export class OnboardingComponent {
 
   private async runRestore(action: () => Promise<void>): Promise<void> {
     this.isRestoring.set(true);
-    this.errorMessage.set('');
+    this.resetError();
     this.noBackupMessage.set('');
 
     try {
       await action();
-      this.router.navigate(['/dashboard']);
+      this.router.navigate(['/movements']);
     } catch (e: unknown) {
       if (e instanceof NoBackupFoundError) {
         this.noBackupMessage.set(this.languageService.t('onboarding.restore.noBackupFound'));
       } else {
         this.errorMessage.set(
-          e instanceof Error ? e.message : this.languageService.t('backup.error.restoreFailed'),
+          errorCopy(
+            e,
+            this.languageService.translateFn,
+            'backup.error.restoreFailed',
+          ),
         );
       }
     } finally {
@@ -127,16 +175,24 @@ export class OnboardingComponent {
     }
   }
 
+  private resetError(): void {
+    this.statusEpoch.update((n) => n + 1);
+    this.errorMessage.set('');
+  }
+
   addAccount(): void {
+    this.resetError();
     if (!this.accountName()) {
-      this.errorMessage.set(this.languageService.t('onboarding.accounts.nameRequired'));
+      this.errorMessage.set(this.languageService.t('errors.accountNameRequired'));
       return;
     }
     const exists = this.accounts().some(
       a => a.name.toLowerCase() === this.accountName().toLowerCase(),
     );
     if (exists) {
-      this.errorMessage.set(this.languageService.t('onboarding.accounts.nameExists'));
+      this.errorMessage.set(
+        this.languageService.t('errors.accountNameTaken', { name: this.accountName() }),
+      );
       return;
     }
     this.accounts.update(accs => [
@@ -180,6 +236,7 @@ export class OnboardingComponent {
   }
 
   async completeOnboarding(): Promise<void> {
+    this.resetError();
     if (!this.canProceedFromCategories()) {
       this.errorMessage.set(this.languageService.t('onboarding.categories.minRequired'));
       return;
@@ -187,12 +244,11 @@ export class OnboardingComponent {
 
     const emptyCategory = this.categories().find(c => !c.name.trim());
     if (emptyCategory) {
-      this.errorMessage.set(this.languageService.t('onboarding.categories.namesRequired'));
+      this.errorMessage.set(this.languageService.t('errors.categoryNameRequired'));
       return;
     }
 
     try {
-      this.errorMessage.set('');
       await this.profileService.completeOnboarding(this.baseCurrency(), this.language());
       for (const acc of this.accounts()) {
         await this.accountService.create(acc.name, acc.currency, acc.balance);
@@ -200,11 +256,16 @@ export class OnboardingComponent {
       for (const cat of this.categories()) {
         await this.categoryService.create(cat.name, cat.type);
       }
-      this.router.navigate(['/dashboard']);
+      this.router.navigate(['/movements']);
     } catch (e: unknown) {
       this.errorMessage.set(
-        e instanceof Error ? e.message : this.languageService.t('onboarding.completionFailed'),
+        errorCopy(
+          e,
+          this.languageService.translateFn,
+          'onboarding.completionFailed',
+        ),
       );
     }
   }
 }
+

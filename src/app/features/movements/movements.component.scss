@@ -4,6 +4,28 @@
   padding-bottom: 1rem;
 }
 
+.page-header {
+  @extend %page-header;
+}
+
+.scope-control {
+  @extend %scope-control;
+
+  /* One labeled control pair (#102): the caps label groups the month/year
+     selects so they read as a single Scope control, not stray dropdowns. */
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-xs);
+}
+
+.scope-label {
+  @extend %caps-label-muted;
+}
+
+.scope-selects {
+  @extend %scope-selects;
+}
+
 .controls {
   display: flex;
   gap: 0.5rem;
@@ -31,12 +53,8 @@
   }
 }
 
-.delete-confirm {
-  display: inline-block;
-  margin-right: 0.375rem;
-  color: var(--officers-red);
-  font-size: 0.8rem;
-  font-weight: 500;
+.icon-btn {
+  @extend %icon-btn;
 }
 
 .undo-toast {
@@ -44,122 +62,179 @@
   left: 50%;
   bottom: 1rem;
   transform: translateX(-50%);
-  z-index: 30;
+  z-index: 60;
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: var(--space-md);
   max-width: calc(100% - 2rem);
-  background: var(--paper-white);
-  border: 1px solid var(--hairline-graphite);
-  border-radius: var(--radius-md);
-  padding: 0.5rem 0.75rem;
+  background: var(--surface-lowest);
+  border: var(--border-hard);
+  padding: var(--space-sm) var(--space-md);
 
   .undo-message {
-    font-size: var(--type-caption);
-    color: var(--body-ink);
+    @extend %caps-label;
+
+    color: var(--on-surface);
+  }
+
+  .toast-dismiss {
+    @extend %alert-dismiss;
   }
 }
 
-.form-card {
-  background: var(--mist-paper);
-  border: 1px solid var(--hairline-graphite);
-  border-radius: var(--radius-lg);
-  padding: 1rem;
-  margin-bottom: 1rem;
+/* The capture forms render from their own components: the Transaction Form
+   (transaction-form) and the Transfer Form (transfer-form) own their card,
+   grid, and actions styles — both extending the shared capture-form blocks
+   (#107, ADR 0014). */
 
-  h3 {
-    font-size: var(--type-headline);
-    font-weight: 600;
-    line-height: var(--leading-headline);
-    margin-bottom: 0.75rem;
+/* Visible keyboard-shortcut documentation for the capture triggers (#98).
+   Hidden on coarse pointers (#100): the legend documents keyboard keys,
+   which a touch screen has no use for; it stays inline on desktop. */
+.shortcut-hint {
+  @extend %caps-label-muted;
+
+  margin-left: auto;
+  text-align: right;
+}
+
+@media (pointer: coarse) {
+  .shortcut-hint {
+    display: none;
   }
-}
-
-.form-hint {
-  margin: 0 0 0.75rem;
-  font-size: var(--type-caption);
-  color: var(--muted-slate);
-}
-
-.form-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.75rem;
-
-  label {
-    @extend %stacked-label;
-
-    input,
-    select {
-      @extend %field;
-      margin-top: 0.25rem;
-    }
-  }
-}
-
-.form-actions {
-  display: flex;
-  gap: 0.5rem;
-  margin-top: 0.75rem;
 }
 
 .filter-bar {
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  background: var(--background);
+  border: var(--border-hard);
+  border-radius: var(--radius-md);
+}
+
+/* Progressive disclosure (#102): collapsed, the card is a single search row
+   with removable chips for any active filters; the category/account selects
+   live in the panel below, revealed only on demand — the same treatment the
+   exchange-rate capture uses. */
+.filter-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.filter-search {
+  /* A real basis (not bare `flex: 1`): when chips share the summary row on a
+     narrow screen the field wraps onto its own line instead of shrinking
+     into an empty bordered square (#105). 12rem comfortably holds the
+     "Category, account, note…" placeholder at 375px. */
+  flex: 1 1 12rem;
+  min-width: 0;
+
+  input {
+    @extend %field;
+    width: 100%;
+  }
+}
+
+.filter-toggle {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+/* Filter chips are tags: caps-label type on the 1px Outline stroke — the
+   same treatment as the ledger's category chips (the sanctioned Outline
+   exception to the interactive-control On Surface stroke). */
+.filter-chip {
+  @extend %caps-label;
+
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--outline);
+  background: var(--surface-lowest);
+  color: var(--on-surface-variant);
+  cursor: pointer;
+
+  svg {
+    width: 0.625rem;
+    height: 0.625rem;
+  }
+
+  &:hover {
+    color: var(--on-surface);
+    border-color: var(--on-surface);
+  }
+}
+
+.filter-panel {
   display: flex;
   gap: 0.75rem;
   align-items: flex-end;
-  margin-bottom: 1rem;
-  padding: 0.75rem;
-  background: var(--mist-paper);
-  border: 1px solid var(--hairline-graphite);
-  border-radius: var(--radius-md);
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--outline-variant);
 
   label {
     @extend %stacked-label;
 
-    select,
-    input {
+    flex: 1;
+
+    select {
       @extend %field;
       margin-top: 0.25rem;
+      width: 100%;
     }
   }
 }
 
-.month-group-row td {
-  padding-top: 1rem;
-  font-size: var(--type-label);
-  font-weight: 500;
-  color: var(--muted-slate);
-  letter-spacing: var(--tracking-micro);
-  line-height: var(--leading-label);
-  background: var(--paper-white);
+.filter-hint {
+  font-size: var(--type-tag);
+  color: var(--on-surface-variant);
+  align-self: center;
 }
 
+/* Active-filter count: a neutral outline tag, not action blue — a count is
+   metadata, not an affordance (the Blue Acts Rule). */
 .filter-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 1.5rem;
-  height: 1.5rem;
-  background: var(--ledger-ink);
-  color: var(--paper-white);
-  border-radius: var(--radius-pill);
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.375rem;
+  border: 1px solid var(--outline);
+  background: var(--surface-lowest);
+  color: var(--on-surface);
   font-size: var(--type-tag);
   font-weight: 600;
-  padding: 0 0.375rem;
-  align-self: flex-end;
-  margin-bottom: 0.25rem;
 }
 
 .movement-table {
   width: 100%;
-  border-collapse: collapse;
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--surface-lowest);
+    border: var(--border-hard);
+  }
 
   th {
-    font-size: var(--type-label);
-    color: var(--muted-slate);
-    font-weight: 500;
-    letter-spacing: var(--tracking-micro);
-    line-height: var(--leading-label);
+    @extend %caps-label-muted;
+    padding: var(--space-sm) var(--space-md);
+    background: var(--surface-container-low);
+    border-bottom: var(--border-hard);
+
+    &.col-amount {
+      text-align: right;
+    }
+
+    &.col-actions {
+      text-align: center;
+    }
   }
 
   .th-sort {
@@ -173,12 +248,6 @@
     font: inherit;
     color: inherit;
     letter-spacing: inherit;
-
-    &:focus-visible {
-      outline: 2px solid var(--ledger-ink);
-      outline-offset: 2px;
-      border-radius: var(--radius-sm);
-    }
   }
 
   .sort-indicator {
@@ -188,30 +257,90 @@
 
   th,
   td {
-    padding: 0.5rem;
+    padding: var(--space-sm) var(--space-md);
     text-align: left;
-    border-bottom: 1px solid var(--silvered-paper);
+    border-bottom: 1px solid var(--surface-container-low);
+  }
+
+  tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  /* 4px directional stripe on every data row's left edge: green income,
+     red expense, grey transfer — the type's only signal since the Type
+      column went away (D8 reversed). */
+  tbody td:first-child {
+    border-left: 4px solid transparent;
+  }
+
+  tbody tr.row-income td:first-child {
+    border-left: var(--stripe-income);
+  }
+
+  tbody tr.row-expense td:first-child {
+    border-left: var(--stripe-expense);
+  }
+
+  tbody tr.transfer-row td:first-child {
+    border-left: var(--stripe-transfer);
+  }
+
+  tbody tr:hover td {
+    background: var(--row-hover);
   }
 
   td {
     &.income,
     &.expense,
     &.amount-cell {
+      @extend %mono-data;
+
       font-weight: 600;
-      font-variant-numeric: tabular-nums;
+      text-align: right;
+      white-space: nowrap;
     }
 
     &.income {
-      color: var(--ledger-green);
+      color: var(--income);
     }
 
     &.expense {
-      color: var(--officers-red);
+      color: var(--error);
     }
   }
 
+  /* Mobile-only day dividers (#101): the rows are grouped per day below 480px.
+     On desktop the table's Date column already carries this, so the divider
+     rows never render here. */
+  tr.day-divider {
+    display: none;
+  }
+
+  td.actions-cell {
+    text-align: center;
+    white-space: nowrap;
+
+    .icon-btn + .icon-btn {
+      margin-left: var(--space-sm);
+    }
+  }
+
+  .cat-chip {
+    @extend %caps-label;
+
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: middle;
+    padding: 2px var(--space-xs);
+    background: var(--surface-container-high);
+    color: var(--on-surface);
+  }
+
   tr.transfer-row td {
-    background: var(--mist-paper);
+    background: var(--background);
   }
 }
 
@@ -223,81 +352,229 @@
   font-style: italic;
 }
 
-.arrow {
-  font-weight: 600;
-  text-align: center;
-
-  &.arrow-income {
-    color: var(--ledger-green);
-  }
-
-  &.arrow-expense {
-    color: var(--officers-red);
-  }
-
-  &.arrow-transfer {
-    color: var(--muted-slate);
-  }
-}
-
 .empty {
-  text-align: center;
-  color: var(--muted-slate);
-  padding: 2rem;
+  @extend %empty-state;
 }
 
-.error {
-  color: var(--officers-red);
-  margin: 0.5rem 0;
-  font-size: var(--type-caption);
+/* Same card surface as %empty-state, but with the Hard Stroke Rule's solid
+   border: the dashed outline is reserved for the "nothing here yet" state,
+   and while loading the ledger must not claim emptiness. */
+.loading-state {
+  @extend %empty-state;
+
+  border: var(--border-hard);
 }
 
-.exchange-rate-section {
-  @extend %exchange-well;
-}
+/* The exchange-rate well's own styling lives in the shared well component
+   (#108), and the capture forms' inline errors in their own components. */
 
-.exchange-rate-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.75rem;
+@media (max-width: 768px) {
 
-  label {
-    @extend %stacked-label;
-
-    input {
-      @extend %field;
-      margin-top: 0.25rem;
-
-      &.readonly {
-        @extend %readonly-field;
-      }
-    }
-  }
-}
-
-.rate-status {
-  @extend %rate-status;
-}
-
-.rate-error {
-  @extend %rate-error;
-}
-
-.rate-source {
-  @extend %rate-source;
-}
-
-@media (max-width: 560px) {
   .controls {
     flex-wrap: wrap;
   }
 
-  .form-grid,
-  .exchange-rate-grid {
-    grid-template-columns: 1fr;
+  .filter-panel {
+    flex-direction: column;
+    align-items: stretch;
+
+    label {
+      width: 100%;
+    }
   }
 
-  .filter-bar {
-    flex-wrap: wrap;
+  /* Keep the toast clear of the fixed bottom nav bar (MIGRATION.md risk 8):
+     nav height + safe-area inset + a small breathing gap. */
+  .undo-toast {
+    bottom: calc(var(--nav-bar-size) + env(safe-area-inset-bottom, 0px) + 0.5rem);
+  }
+}
+
+/* Narrow-screen ledger (#97, #101): at phone widths the five columns with
+   nowrap mono amounts push Edit/Delete into horizontal scroll, so below 480px
+   each row stacks into a one-thumb card instead of scrolling sideways. The
+   ledger grammar survives: rows group under caps-label day dividers that
+   announce each day, the 4px directional stripe moves from the first cell to
+   the row edge, amounts stay right-aligned mono tabular figures, and transfer
+   rows keep their grey tint. The per-row caps data-labels and date cell become
+   visually hidden — announced to screen readers, never shown — so the card
+   compresses toward a receipt: amount, one muted category/account line, and
+   44px actions aligned right. */
+@media (max-width: 480px) {
+  /* One-line subtitle (#102): the first Movement row must clear the fold on
+     a 375px phone, so the page subtitle clamps to a single line. */
+  .page-header .headline {
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .page-header .subtitle {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .movement-table {
+    table,
+    tbody {
+      display: block;
+    }
+
+    thead {
+      display: none;
+    }
+
+    /* The day divider announces each section: caps label in the muted
+       metadata ink (mirrors %caps-label-muted; @extend cannot cross a
+       media-query boundary). */
+    tbody tr.day-divider {
+      display: block;
+      padding: var(--space-sm) var(--space-md);
+      background: var(--surface-container-low);
+      font-size: var(--type-label);
+      font-weight: 700;
+      letter-spacing: var(--tracking-caps);
+      text-transform: uppercase;
+      line-height: var(--leading-label);
+      color: var(--on-surface-variant);
+
+      td {
+        padding: 0;
+      }
+    }
+
+    tbody tr {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-areas:
+        'amount amount'
+        'category account'
+        'actions actions';
+      align-items: baseline;
+      gap: var(--space-xs) var(--space-md);
+      padding: var(--space-sm) var(--space-md);
+      border-bottom: 1px solid var(--surface-container-low);
+    }
+
+    tbody tr:last-child {
+      border-bottom: none;
+    }
+
+    td {
+      display: block;
+      min-width: 0;
+      padding: 0;
+      border-bottom: none;
+      overflow-wrap: break-word;
+    }
+
+    /* The stripe lives on the row edge now; the per-cell borders go. */
+    tbody td:first-child,
+    tbody tr.row-income td:first-child,
+    tbody tr.row-expense td:first-child,
+    tbody tr.transfer-row td:first-child {
+      border-left: none;
+    }
+
+    tbody tr.row-income {
+      border-left: var(--stripe-income);
+    }
+
+    tbody tr.row-expense {
+      border-left: var(--stripe-expense);
+    }
+
+    tbody tr.transfer-row {
+      border-left: var(--stripe-transfer);
+      background: var(--background);
+    }
+
+    /* Transfer rows carry the same five-cell grammar as transactions so the
+       action buttons land in the Actions column on desktop; the empty account
+       slot is hidden here and the route cell keeps the full width. */
+    tbody tr.transfer-row {
+      grid-template-areas:
+        'amount amount'
+        'category category'
+        'actions actions';
+    }
+
+    tbody tr.transfer-row td:nth-child(4) {
+      display: none;
+    }
+
+    /* The day divider above each section already announces the date, so the
+       row's own date cell drops out of the card but stays in the DOM for
+       screen readers. */
+    tbody tr:not(.day-divider) td:nth-child(1) {
+      @include sr-only;
+    }
+
+    td:nth-child(2) {
+      grid-area: category;
+    }
+
+    td:nth-child(3) {
+      grid-area: amount;
+    }
+
+    td:nth-child(4) {
+      grid-area: account;
+      color: var(--on-surface-variant);
+      text-align: right;
+    }
+
+    td:nth-child(5) {
+      grid-area: actions;
+      text-align: right;
+    }
+
+    /* Amounts step up to 1rem on the compact card; direction colors and the
+       mono tabular figures are untouched. */
+    td {
+      &.income,
+      &.expense,
+      &.amount-cell {
+        font-size: var(--type-body);
+      }
+    }
+
+    /* The caps data-labels stay announced to screen readers via the existing
+       data-label mechanism, but are clipped from view: the divider carries the
+       date and the compact card reads as a receipt. */
+    td[data-label]::before {
+      content: attr(data-label);
+      @include sr-only;
+    }
+  }
+}
+
+/* Comfortable touch targets for the icon-only row actions: 44px square on
+   any coarse pointer and at narrow widths, up from the 28px desktop size. */
+@media (pointer: coarse), (max-width: 480px) {
+  .movement-table .icon-btn {
+    width: 2.75rem;
+    height: 2.75rem;
+
+    svg {
+      width: 1.25rem;
+      height: 1.25rem;
+    }
+  }
+
+  /* Same 44px minimum for the text-bearing primary actions (#100): New
+     Transaction / New Transfer and the capture forms' Cancel/Save. Only the
+     height grows — min-height keeps the press shadow and desktop layout
+     untouched at fine pointers. */
+  .controls .btn,
+  .form-actions .btn {
+    min-height: 2.75rem;
+  }
+
+  /* The filter card's tappable affordances join the thumb minimum (#102):
+     the disclosure toggle and the removable chips. */
+  .filter-bar .filter-toggle,
+  .filter-bar .filter-chip {
+    min-height: 2.75rem;
   }
 }

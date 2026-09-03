@@ -13,10 +13,11 @@ export const routes: Routes = [
     children: [
       { path: '', redirectTo: 'movements', pathMatch: 'full' },
       {
-        path: 'dashboard',
+        path: 'stats',
         loadComponent: () =>
           import('./features/dashboard/dashboard.component').then(m => m.DashboardComponent),
       },
+      { path: 'dashboard', redirectTo: 'stats' },
       {
         path: 'movements',
         loadComponent: () =>

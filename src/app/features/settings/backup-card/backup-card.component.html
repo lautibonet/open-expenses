@@ -1,9 +1,28 @@
-<section class="card">
-  <h2>{{ language.t('backup.card.title') }}</h2>
+<section class="card" id="backup">
+  <h2>
+    <svg aria-hidden="true" viewBox="0 0 16 16" focusable="false">
+      <path
+        d="M4.5 12.5a3 3 0 0 1-.4-5.97 4 4 0 0 1 7.8-.8 2.75 2.75 0 0 1-.4 5.47z"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.5"
+      />
+    </svg>
+    {{ language.t('backup.card.title') }}
+  </h2>
   <p class="description">{{ language.t('backup.card.description') }}</p>
-
+  
   <div class="backup-actions">
-    <button type="button" class="btn primary" [disabled]="isBusy()" (click)="downloadBackup()">
+    <button
+      type="button"
+      class="btn primary"
+      [disabled]="isBusy() || !isOnline()"
+      (click)="backUp()"
+    >
+      {{ language.t('backup.card.backUpTo', { method: method }) }}
+    </button>
+
+    <button type="button" class="btn" [disabled]="isBusy()" (click)="downloadBackup()">
       {{ language.t('backup.card.download') }}
     </button>
 
@@ -14,23 +33,41 @@
       class="file-input"
       (change)="onFileSelected($event)"
     />
-    <button type="button" class="btn" [disabled]="isBusy()" (click)="fileInput.click()">
-      {{ language.t('backup.card.restoreFromFile') }}
-    </button>
-
+    
     <button type="button" class="btn" [disabled]="isBusy()" (click)="restoreFromCloud()">
       {{ language.t('backup.card.restoreFrom', { method: method }) }}
     </button>
+
+    <button type="button" class="btn" [disabled]="isBusy()" (click)="fileInput.click()">
+      {{ language.t('backup.card.restoreFromFile') }}
+    </button>
   </div>
 
-  @if (isBusy()) {
-    <p class="info">{{ language.t('backup.card.working') }}</p>
-  }
-  @if (message()) {
-    <p class="success">{{ message() }}</p>
-  }
-  @if (errorMessage()) {
-    <p class="error">{{ errorMessage() }}</p>
+  <p class="last-backup">{{ lastBackupDisplay() }}</p>
+
+  <app-dismissible-alert
+    variant="info"
+    [message]="isBusy() ? language.t('backup.card.working') : ''"
+    [resetKey]="statusEpoch()"
+  />
+  <app-dismissible-alert
+    variant="success"
+    [message]="message()"
+    [resetKey]="statusEpoch()"
+  />
+  <app-dismissible-alert
+    variant="error"
+    [message]="errorMessage()"
+    [resetKey]="statusEpoch()"
+  />
+  @if (serviceErrorCopy(); as copy) {
+    <app-dismissible-alert
+      role="alert"
+      variant="error"
+      [message]="copy.text"
+      [attr.title]="copy.code"
+      [resetKey]="copy.text"
+    />
   }
 
   @if (pendingRestore()) {
