@@ -48,6 +48,12 @@ describe('InstallPromptComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('Descartar');
   });
 
+  it('announces its appearance politely via a status live region', () => {
+    const strip = fixture.nativeElement.querySelector('[role="status"]');
+    expect(strip).not.toBeNull();
+    expect(strip.textContent).toContain('Install Open Expenses for quick access');
+  });
+
   it('delegates to the install service', async () => {
     (fixture.nativeElement.querySelector('.btn.primary') as HTMLButtonElement).click();
     await fixture.whenStable();

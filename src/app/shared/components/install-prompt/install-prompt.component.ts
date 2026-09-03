@@ -6,7 +6,7 @@ import { LanguageService } from '../../../core/services/language.service';
   selector: 'app-install-prompt',
   template: `
     @if (pwaInstall.canInstall()) {
-      <div class="install-banner">
+      <div class="install-banner" role="status">
         <span>{{ language.t('install.prompt') }}</span>
         <button class="btn primary small" (click)="install()">{{ language.t('install.action') }}</button>
         <button class="btn small" (click)="dismiss()">{{ language.t('install.dismiss') }}</button>
@@ -17,20 +17,24 @@ import { LanguageService } from '../../../core/services/language.service';
     `
       @use '../../../shared/styles/patterns' as *;
 
+      /* Strip language per DESIGN.md ("Backup Banner"): Primary Fixed fill,
+         Primary bottom hairline, chrome-gutter alignment. Prose message set
+         in Body Caption, not caps-label — it is a sentence, not metadata. */
       .install-banner {
         display: flex;
         align-items: center;
         flex-wrap: wrap;
         gap: 0.5rem;
         padding: 0.6rem var(--chrome-gutter);
-        background: var(--surface-lowest);
-        border-bottom: 1px solid var(--on-surface);
+        background: var(--primary-fixed);
+        border-bottom: 1px solid var(--primary);
 
         > span {
           flex: 1 1 auto;
           min-width: 0;
-          @extend %caps-label;
-          color: var(--on-surface);
+          font-size: var(--type-caption);
+          line-height: var(--leading-caption);
+          color: var(--on-primary-fixed);
         }
       }
 
