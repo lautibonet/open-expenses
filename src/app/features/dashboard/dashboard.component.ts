@@ -68,6 +68,7 @@ export class DashboardComponent implements OnInit {
   yearTotalExpenses = signal(0);
   yearTotalNet = signal(0);
   yearHasData = signal(false);
+  yearHasMovements = signal(false);
   categoryBreakdown = signal<{ name: string; total: number }[]>([]);
   accountBalances = signal<{ account: Account; balance: number }[]>([]);
   totalBalanceBaseCurrency = signal(0);
@@ -245,7 +246,11 @@ export class DashboardComponent implements OnInit {
   }
 
   kpiScopeLabel(): string {
-    return this.language.t('stats.kpiScope', { year: this.scope().year });
+    const scope = this.scope();
+    return this.language.t('stats.kpiScope', {
+      year: scope.year,
+      range: this.language.monthRangeLabel(1, scope.period),
+    });
   }
 
   savingsRate(): number | null {
@@ -306,7 +311,11 @@ export class DashboardComponent implements OnInit {
     const scope = this.scope();
     const selectedYear = String(scope.year);
 
-    const filteredTxns = allTxns.filter(t => String(getPeriodYear(t)) === selectedYear);
+    const yearTxns = allTxns.filter(t => String(getPeriodYear(t)) === selectedYear);
+    const filteredTxns = yearTxns.filter(t => t.period <= scope.period);
+
+    this.yearNets.set(netByPeriod(allTxns, this.incomeClassifier(catMap), scope.year));
+    this.yearHasMovements.set(yearTxns.length > 0);
 
     const monthsWithData = new Set(filteredTxns.map(t => t.period));
 
@@ -318,7 +327,6 @@ export class DashboardComponent implements OnInit {
       this.avgMonthlyIncome.set(0);
       this.avgMonthlyExpenses.set(0);
       this.avgMonthlyNet.set(0);
-      this.yearNets.set([]);
       return;
     }
 
@@ -343,8 +351,6 @@ export class DashboardComponent implements OnInit {
     this.avgMonthlyIncome.set(Math.round(totalIncome / months * 100) / 100);
     this.avgMonthlyExpenses.set(Math.round(totalExpenses / months * 100) / 100);
     this.avgMonthlyNet.set(Math.round((totalIncome - totalExpenses) / months * 100) / 100);
-
-    this.yearNets.set(netByPeriod(allTxns, this.incomeClassifier(catMap), scope.year));
   }
 
   /* Bars scale against the year's max Net magnitude; the fill reaches at most

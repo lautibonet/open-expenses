@@ -57,6 +57,16 @@ export class LanguageService {
     return this.monthName(period).charAt(0).toLocaleUpperCase(this.activeLanguage());
   }
 
+  monthAbbrev(period: number): string {
+    return this.monthName(period)
+      .slice(0, 3)
+      .toLocaleUpperCase(this.activeLanguage());
+  }
+
+  monthRangeLabel(from: number, to: number): string {
+    return `${this.monthAbbrev(from)}–${this.monthAbbrev(to)}`;
+  }
+
   periodLabel(period: number | string): string {
     return isMonthNumber(period) ? this.monthName(period) : String(period);
   }
