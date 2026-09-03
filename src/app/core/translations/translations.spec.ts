@@ -270,6 +270,8 @@ describe('translations', () => {
       'stats.expenses',
       'stats.net',
       'stats.netStripZero',
+      'stats.netStripCaption',
+      'stats.netStripLegend',
       'stats.kpiZero',
       'stats.categoryZero',
       'stats.noAccounts',

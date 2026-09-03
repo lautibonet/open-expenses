@@ -1270,6 +1270,7 @@ describe('DashboardComponent - KPI row layout and mono weights', () => {
       '.kpi-card .savings-rate',
       '.stat .value',
       '.category-bar-row .cat-amount',
+      '.net-strip-caption .value',
       '.balance-tile',
       '.balance-amount',
     ] as const;
@@ -1445,6 +1446,98 @@ describe('DashboardComponent - year spine (12-month Net strip)', () => {
     expect(items[0].textContent).toContain(component.formatMoney(3000));
     expect(items[1].textContent).toContain('February');
     expect(items[1].textContent).toContain(component.formatMoney(-500));
+  });
+
+  it('shows the scope Period\'s Net figure as a visible mono caption on the card', async () => {
+    await seedMovement(getCurrentPeriod());
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const caption = fixture.nativeElement.querySelector('.net-strip-caption');
+    expect(caption).toBeTruthy();
+
+    const value = caption.querySelector('.value');
+    expect(value).toBeTruthy();
+    expect(value.textContent).toContain(
+      component.formatMoney(component.yearNets().find(n => n.period === getCurrentPeriod())!.net),
+    );
+
+    const label = caption.querySelector('.label');
+    expect(label).toBeTruthy();
+    expect(label.textContent).toContain(languageService.monthName(getCurrentPeriod()));
+  });
+
+  it('keeps the caption figure in the mono data voice', async () => {
+    await seedMovement(getCurrentPeriod());
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const css = compiledComponentCss();
+    expect(css).toMatch(/\.net-strip-caption[^{]*\.value[^{]*\{[^}]*font-family:\s*var\(--font-data\)/);
+    expect(css).toMatch(/\.net-strip-caption[^{]*\.value[^{]*\{[^}]*font-variant-numeric:\s*tabular-nums/);
+  });
+
+  it('explains the above/below-midline convention with a one-line caps legend', async () => {
+    await seedMovement(getCurrentPeriod());
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const legend = fixture.nativeElement.querySelector('.net-strip-legend');
+    expect(legend).toBeTruthy();
+
+    const css = compiledComponentCss();
+    expect(css).toMatch(/\.net-strip-legend[^{]*\{[^}]*text-transform:\s*uppercase/);
+  });
+
+  it('keeps the decorative bars aria-hidden and the screen-reader figure list beside the caption', async () => {
+    await seedMovement(getCurrentPeriod());
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const strip = fixture.nativeElement.querySelector('.net-strip');
+    expect(strip).toBeTruthy();
+    expect(strip.getAttribute('aria-hidden')).toBe('true');
+
+    const list = fixture.nativeElement.querySelector('.net-strip-figures');
+    expect(list).toBeTruthy();
+    expect(list.classList).toContain('visually-hidden');
+    expect(list.querySelectorAll('li').length).toBe(12);
+  });
+
+  it('follows the scope month: the caption figure updates when the Scope changes', async () => {
+    const acc = await accountService.create('Cash', 'EUR', 0);
+    const incomeCat = await categoryService.create('Payroll', 'income');
+    const expenseCat = await categoryService.create('Food', 'expense');
+    const year = getCurrentYear();
+
+    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(`${year}-01-15`), 1, null, null, year);
+    await transactionService.create(acc.id!, expenseCat.id!, 500, new Date(`${year}-02-15`), 2, null, null, year);
+
+    await component.ngOnInit();
+    await component.onScopeMonthChange(1);
+    fixture.detectChanges();
+
+    let value = fixture.nativeElement.querySelector('.net-strip-caption .value');
+    expect(value.textContent).toContain(component.formatMoney(3000));
+    expect(fixture.nativeElement.querySelector('.net-strip-caption .label').textContent)
+      .toContain(languageService.monthName(1));
+
+    await component.onScopeMonthChange(2);
+    fixture.detectChanges();
+
+    value = fixture.nativeElement.querySelector('.net-strip-caption .value');
+    expect(value.textContent).toContain(component.formatMoney(-500));
+    expect(fixture.nativeElement.querySelector('.net-strip-caption .label').textContent)
+      .toContain(languageService.monthName(2));
+  });
+
+  it('shows no caption or legend in the strip zero state', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.net-strip')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.net-strip-caption')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.net-strip-legend')).toBeNull();
   });
 
   it('takes month initials from the Language service, correct in both Languages', async () => {

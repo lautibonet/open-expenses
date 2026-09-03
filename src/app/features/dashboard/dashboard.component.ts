@@ -362,6 +362,12 @@ export class DashboardComponent implements OnInit {
     return Math.round((Math.abs(net) / max) * 50 * 100) / 100;
   }
 
+  /* Net of the scope's Period: the one figure the strip hides behind its
+     relative bars, promoted to a visible caption on the card. */
+  selectedPeriodNet(): number {
+    return this.yearNets().find(n => n.period === this.scope().period)?.net ?? 0;
+  }
+
   formatMoney(amount: number): string {
     return this.language.formatMoney(amount, this.baseCurrency());
   }
