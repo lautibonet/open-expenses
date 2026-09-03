@@ -208,6 +208,11 @@ $sidebar-width: 256px;
     border-right: none;
     border-top: 1px solid var(--on-surface);
     padding-bottom: env(safe-area-inset-bottom);
+    /* The bar is sized from the token itself (#112): border-box so the 1px
+       top border counts inside --nav-bar-size, and the tabs stretch to fill
+       it instead of stacking their own padding on top of a min-height. */
+    box-sizing: border-box;
+    min-height: calc(var(--nav-bar-size) + env(safe-area-inset-bottom));
   }
 
   .brand-block,
@@ -224,7 +229,8 @@ $sidebar-width: 256px;
   .tab {
     flex: 1;
     justify-content: center;
-    min-height: var(--nav-bar-size);
+    /* No min-height here (#112): the bar's own border-box height sizes the
+       tabs by stretch, so their padding can't re-stack onto the token. */
 
     .tab-icon {
       width: 1.25rem;
@@ -240,15 +246,14 @@ $sidebar-width: 256px;
 
   /* The nav's center capture slot (#103): the one blue element on mobile —
      square, zero radius, Primary Container fill with the hard border and
-     press interaction every button carries (%btn-base's properties are
-     repeated by hand: @extend cannot cross a media-query boundary). Same
-     nav height as the tabs. */
+      press interaction every button carries (%btn-base's properties are
+      repeated by hand: @extend cannot cross a media-query boundary). Same
+      nav height as the tabs — sized by the bar's stretch (#112). */
   .capture-slot {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     flex: 1;
-    min-height: var(--nav-bar-size);
     padding: 0;
     background: var(--primary-container);
     color: var(--surface-lowest);
@@ -281,6 +286,9 @@ $sidebar-width: 256px;
     position: sticky;
     top: 0;
     z-index: 40;
+    /* Border-box so padding and the 1px bottom border count inside the
+       token height instead of stacking onto it (#112). */
+    box-sizing: border-box;
     min-height: var(--nav-bar-size);
     padding: var(--space-sm) var(--space-md);
     background: var(--surface-lowest);
