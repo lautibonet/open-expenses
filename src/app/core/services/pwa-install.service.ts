@@ -44,12 +44,19 @@ export class PwaInstallService {
     const { outcome } = await this.deferredPrompt.userChoice;
     this.deferredPrompt = null;
     this.canInstall.set(false);
+    if (outcome === 'dismissed') {
+      this.rememberDismissal();
+    }
     return outcome === 'accepted';
   }
 
   dismiss(): void {
     this.canInstall.set(false);
     this.deferredPrompt = null;
+    this.rememberDismissal();
+  }
+
+  private rememberDismissal(): void {
     localStorage.setItem(DISMISS_KEY, String(Date.now()));
   }
 
