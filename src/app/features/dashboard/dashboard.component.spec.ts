@@ -1149,6 +1149,22 @@ describe('DashboardComponent - KPI row layout and mono weights', () => {
     expect(css).toMatch(/@media[^{]*\{[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\)/);
   });
 
+  // The KPI cards are `dl` elements: without an explicit reset they carry the
+  // UA's 1em block margin on top of the grid gap, doubling the stacked gap to
+  // 48px while the page's section cards sit 24px apart (#111). jsdom does no
+  // layout, so the compiled declarations are the seam; --space-lg's own value
+  // is asserted so the 24px section rhythm cannot silently drift.
+  it('stacks the KPI cards on the page\'s 24px section rhythm, not the UA dl margin', async () => {
+    await renderWithData();
+
+    const tokens = readFileSync('src/styles.scss', 'utf-8');
+    expect(tokens).toMatch(/--space-lg:\s*1\.5rem/);
+
+    const css = compiledComponentCss();
+    expect(css).toMatch(/\.kpi-card[^{]*\{[^}]*margin:\s*0;[^}]*background:\s*var\(--surface-lowest\)/);
+    expect(css).toMatch(/@media[^{]*\{[^}]*\.kpi-row[^{]*\{[^}]*row-gap:\s*var\(--space-lg\)/);
+  });
+
   it('renders every mono figure on Stats at the data spec weight (500, no faux bold)', async () => {
     await renderWithData();
 
