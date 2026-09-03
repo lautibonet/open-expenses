@@ -202,6 +202,41 @@
   margin: 0;
 }
 
+/* Caption and legend: the scope Period's Net figure — previously visible only
+   to screen readers — promoted to the visible card footer, and the strip's
+   above/below-midline convention stated once in the caps-label voice. Both sit
+   under the strip on their own lines, so no bar track gives up width. */
+.net-strip-caption {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-md);
+  margin: 0 0 var(--space-xs);
+
+  dt,
+  dd {
+    margin: 0;
+  }
+
+  .label {
+    @extend %caps-label-muted;
+  }
+
+  .value {
+    @extend %mono-data;
+
+    font-weight: 500;
+    color: var(--on-surface);
+    white-space: nowrap;
+  }
+}
+
+.net-strip-legend {
+  @extend %caps-label-muted;
+
+  margin: 0;
+}
+
 /* The shared empty-state pattern (same as Movements): dashed border on a flat
    surface, centered muted ink. In the KPI row's grid the empty state spans
    all three tracks so it keeps the full column width. */

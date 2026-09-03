@@ -89,6 +89,13 @@
           </div>
         }
       </div>
+      <dl class="net-strip-caption">
+        <dt class="label">
+          {{ language.t('stats.netStripCaption', { month: language.monthName(scope().period) }) }}
+        </dt>
+        <dd class="value">{{ formatMoney(selectedPeriodNet()) }}</dd>
+      </dl>
+      <p class="net-strip-legend">{{ language.t('stats.netStripLegend') }}</p>
       <ul class="net-strip-figures visually-hidden">
         @for (item of yearNets(); track item.period) {
           <li>
