@@ -25,7 +25,7 @@ A calendar month (January through December) assigned to a Transaction or Transfe
 _Avoid_: Cycle, fiscal period, date range
 
 **Scope**:
-The reporting window chosen on the Stats and Movements screens: a single Period (a month together with its year). Filtering by Scope always uses the stored Period year, never the movement's date. Aggregations that span multiple Periods are not narrowed to the Scope's month: the total and per-account balances are cumulative balances as of the end of the Scope's Period (initial balances plus every movement whose stored Period is at or before it), while yearly totals and averages follow the Scope's year. There is no All Time Scope: selecting the latest Period shows the all-time figure.
+The reporting window chosen on the Stats and Movements screens: a single Period (a month together with its year). Filtering by Scope always uses the stored Period year, never the movement's date. Aggregations that span multiple Periods are not narrowed to the Scope's month: the total and per-account balances are cumulative balances as of the end of the Scope's Period (initial balances plus every movement whose stored Period is at or before it), and the Income, Expenses, and Net totals and averages on Stats are year-to-period: January through the Scope's Period of the Scope's year. There is no All Time Scope: selecting the latest Period shows the all-time figure.
 _Avoid_: Filter, range, timeframe, selection, All Time
 
 **Base Currency**:
@@ -53,7 +53,7 @@ Income minus Expenses aggregated over an aggregation window — a single Period 
 _Avoid_: profit, earnings, balance
 
 **Stats** (formerly Dashboard):
-A read-only summary screen showing a total balance in Base Currency as of the end of the Scope's Period (per-account balances accumulated from initial balances and movements at or before that Period; cross-currency movements counted at their stored conversions), yearly totals and monthly averages of Income, Expenses, and Net for the Scope's year, per-category expense breakdown, and per-account balances as of the end of the Scope's Period. Reached via the `/stats` route (legacy `/dashboard` redirects here).
+A read-only summary screen showing a total balance in Base Currency as of the end of the Scope's Period (per-account balances accumulated from initial balances and movements at or before that Period; cross-currency movements counted at their stored conversions), year-to-period totals and monthly averages of Income, Expenses, and Net (January through the Scope's Period of the Scope's year), per-category expense breakdown, and per-account balances as of the end of the Scope's Period. Reached via the `/stats` route (legacy `/dashboard` redirects here).
 _Avoid_: overview, summary page
 
 **Language**:

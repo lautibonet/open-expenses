@@ -68,13 +68,13 @@
         }
       </dl>
     } @else {
-      <p class="empty-state">{{ language.t('stats.kpiZero', { year: scope().year }) }}</p>
+      <p class="empty-state">{{ language.t('stats.kpiZero', { scope: scopeLabelText() }) }}</p>
     }
   </section>
 
   <section class="card net-strip-card">
     <h2>{{ language.t('stats.netByPeriod', { scope: scope().year }) }}</h2>
-    @if (yearHasData()) {
+    @if (yearHasMovements()) {
       <div class="net-strip" aria-hidden="true">
         @for (item of yearNets(); track item.period) {
           <div class="net-strip-month" [class.current]="item.period === scope().period">

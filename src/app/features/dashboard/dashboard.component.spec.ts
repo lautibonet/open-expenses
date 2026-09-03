@@ -197,6 +197,115 @@ describe('DashboardComponent', () => {
     });
   });
 
+  describe('KPI trio follows the selected month (year-to-period)', () => {
+    async function seedIncome(period: number, year: number = getCurrentYear()): Promise<void> {
+      const acc = await accountService.create('Cash', 'EUR', 0);
+      const cat = await categoryService.create('Payroll', 'income');
+      await transactionService.create(
+        acc.id!, cat.id!, 3000, new Date(`${year}-${String(period).padStart(2, '0')}-15`), period, null, null, year,
+      );
+    }
+
+    async function seedYearSpread(): Promise<{ incomeCat: number; expenseCat: number }> {
+      const acc = await accountService.create('Cash', 'EUR', 0);
+      const incomeCat = await categoryService.create('Payroll', 'income');
+      const expenseCat = await categoryService.create('Food', 'expense');
+      const year = getCurrentYear();
+
+      await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(`${year}-01-15`), 1);
+      await transactionService.create(acc.id!, incomeCat.id!, 1000, new Date(`${year}-02-15`), 2);
+      await transactionService.create(acc.id!, incomeCat.id!, 2000, new Date(`${year}-09-15`), 9);
+      await transactionService.create(acc.id!, expenseCat.id!, 500, new Date(`${year}-02-15`), 2);
+      await transactionService.create(acc.id!, expenseCat.id!, 700, new Date(`${year}-09-15`), 9);
+
+      return { incomeCat: incomeCat.id!, expenseCat: expenseCat.id! };
+    }
+
+    it('shows totals from January through the selected month of the selected year', async () => {
+      await seedYearSpread();
+
+      await component.ngOnInit();
+      await component.onScopeMonthChange(2);
+
+      expect(component.yearTotalIncome()).toBe(4000);
+      expect(component.yearTotalExpenses()).toBe(500);
+      expect(component.yearTotalNet()).toBe(3500);
+    });
+
+    it('excludes later months of the same year from the selected period', async () => {
+      await seedYearSpread();
+
+      await component.ngOnInit();
+      await component.onScopeMonthChange(1);
+
+      expect(component.yearTotalIncome()).toBe(3000);
+      expect(component.yearTotalExpenses()).toBe(0);
+    });
+
+    it('shows the same figures as the old year-to-date when the latest month with data is selected', async () => {
+      await seedYearSpread();
+
+      await component.ngOnInit();
+      await component.onScopeMonthChange(getCurrentPeriod());
+
+      expect(component.yearTotalIncome()).toBe(6000);
+      expect(component.yearTotalExpenses()).toBe(1200);
+      expect(component.yearTotalNet()).toBe(4800);
+    });
+
+    it('averages across the months with data through the selected month', async () => {
+      await seedYearSpread();
+
+      await component.ngOnInit();
+      await component.onScopeMonthChange(2);
+
+      expect(component.avgMonthlyIncome()).toBe(2000);
+      expect(component.avgMonthlyExpenses()).toBe(250);
+      expect(component.avgMonthlyNet()).toBe(1750);
+    });
+
+    it('visually states the covered range as a caps label on every KPI card', async () => {
+      const acc = await accountService.create('Cash', 'EUR', 0);
+      const cat = await categoryService.create('Payroll', 'income');
+      const year = getCurrentYear();
+      for (const period of [1, 8]) {
+        await transactionService.create(
+          acc.id!, cat.id!, 3000, new Date(`${year}-${String(period).padStart(2, '0')}-15`), period,
+        );
+      }
+
+      await component.ngOnInit();
+      await component.onScopeMonthChange(8);
+      fixture.detectChanges();
+
+      const scopes = Array.from(
+        fixture.nativeElement.querySelectorAll('.kpi-card dt .scope') as NodeListOf<HTMLElement>,
+      );
+      expect(scopes.length).toBe(3);
+      for (const scope of scopes) {
+        expect(scope.textContent).toContain(String(getCurrentYear()));
+        expect(scope.textContent).toContain('JAN');
+        expect(scope.textContent).toContain('AUG');
+      }
+    });
+
+    it('shows the KPI empty state when the selected month has no data, keeping the year net strip', async () => {
+      await seedIncome(getCurrentPeriod());
+      await component.ngOnInit();
+      await component.onScopeMonthChange(2);
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.querySelectorAll('.kpi-card').length).toBe(0);
+      const empty = fixture.nativeElement.querySelector('.kpi-row .empty-state');
+      expect(empty).toBeTruthy();
+      expect(empty.textContent).toContain('February');
+
+      expect(fixture.nativeElement.querySelector('.net-strip')).toBeTruthy();
+      expect(fixture.nativeElement.querySelector('.net-strip-zero')).toBeNull();
+      expect(component.yearNets().find(n => n.period === getCurrentPeriod())!.net).toBe(3000);
+    });
+  });
+
   describe('totalBalanceBaseCurrency', () => {
     let networkService: NetworkService;
 
@@ -696,21 +805,6 @@ describe('DashboardComponent - shared scope', () => {
     expect(empty.textContent).toContain(String(getCurrentYear()));
   });
 
-  it('visually states the scope year as a caps label on every KPI card', async () => {
-    await seedIncome(getCurrentPeriod());
-    await component.ngOnInit();
-    fixture.detectChanges();
-
-    const scopes = Array.from(
-      fixture.nativeElement.querySelectorAll('.kpi-card dt .scope') as NodeListOf<HTMLElement>,
-    );
-    expect(scopes.length).toBe(3);
-    for (const scope of scopes) {
-      expect(scope.textContent).toContain(String(getCurrentYear()));
-      expect(scope.textContent).toContain('YEAR TO DATE');
-    }
-  });
-
   it('keeps the KPI scope label in sync when the scope year changes', async () => {
     await seedIncome(getCurrentPeriod());
     const previousYear = getCurrentYear() - 1;
@@ -886,7 +980,7 @@ describe('DashboardComponent - page header, scope control and restyled cards', (
     expect(fixture.nativeElement.querySelector('.scope-selects select')).toBeTruthy();
   });
 
-  it('refreshes averages when the scope month changes, keeping the year-average semantics', async () => {
+  it('refreshes averages when the scope month changes, following the covered period', async () => {
     const acc = await accountService.create('Cash', 'EUR', 0);
     const incomeCat = await categoryService.create('Payroll', 'income');
     const year = getCurrentYear();
@@ -896,7 +990,7 @@ describe('DashboardComponent - page header, scope control and restyled cards', (
 
     await component.ngOnInit();
     await scopeTo(1, year);
-    expect(component.avgMonthlyIncome()).toBe(4500);
+    expect(component.avgMonthlyIncome()).toBe(3000);
 
     await component.onScopeMonthChange(2);
     expect(component.scope()).toEqual({ kind: 'month', period: 2, year });
