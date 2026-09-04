@@ -549,17 +549,13 @@
   }
 }
 
-/* Comfortable touch targets for the icon-only row actions: 44px square on
-   any coarse pointer and at narrow widths, up from the 28px desktop size. */
+/* Comfortable touch targets for the icon-only row actions: 44px on any
+   coarse pointer and at narrow widths, up from the 28px desktop size —
+   rendered as ghost icons (no border, no press shadow): a row utility
+   whispers; the boxed press chrome is reserved for primary actions. */
 @media (pointer: coarse), (max-width: 480px) {
   .movement-table .icon-btn {
-    width: 2.75rem;
-    height: 2.75rem;
-
-    svg {
-      width: 1.25rem;
-      height: 1.25rem;
-    }
+    @include ghost-row-actions;
   }
 
   /* Same 44px minimum for the text-bearing primary actions (#100): New
