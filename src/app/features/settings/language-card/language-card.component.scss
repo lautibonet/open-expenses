@@ -57,3 +57,21 @@
 .icon-btn {
   @extend %icon-btn;
 }
+
+/* Same touch grammar as the Settings cards: ghost 44px row actions; the
+   edit-state primary tick keeps its blue box. */
+@media (pointer: coarse), (max-width: 480px) {
+  .card .icon-btn:not(.primary) {
+    @include ghost-row-actions;
+  }
+
+  .card .btn.primary.icon-btn {
+    width: 2.75rem;
+    height: 2.75rem;
+
+    svg {
+      width: 1.25rem;
+      height: 1.25rem;
+    }
+  }
+}

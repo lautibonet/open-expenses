@@ -229,3 +229,31 @@ app-backup-card {
     grid-template-columns: 1fr;
   }
 }
+
+/* Touch ergonomics, mirrored from the movement ledger: the card row actions
+   go ghost at the 44px thumb minimum — no border, no press shadow, muted
+   ink with red danger glyphs — and the text buttons reach the same height.
+   The edit-state primary tick keeps its blue box: it is the form's action,
+   not a row utility. */
+@media (pointer: coarse), (max-width: 480px) {
+  .settings .icon-btn:not(.primary) {
+    @include ghost-row-actions;
+  }
+
+  /* The edit-state primary tick keeps its blue box but still reaches the
+     44px thumb minimum (an explicit %icon-btn height beats min-height). */
+  .settings .btn.primary.icon-btn {
+    width: 2.75rem;
+    height: 2.75rem;
+
+    svg {
+      width: 1.25rem;
+      height: 1.25rem;
+    }
+  }
+
+  .settings .btn.small,
+  .inline-form .btn {
+    min-height: 2.75rem;
+  }
+}
