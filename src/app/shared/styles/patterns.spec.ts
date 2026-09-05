@@ -143,3 +143,15 @@ describe('shared row-action confirm/edit grammar (#140)', () => {
     }
   });
 });
+
+// The onboarding inline add forms (#141, #142) and edit states are flex rows
+// sized by align-items: stretch — the row renders at the tallest margin box.
+// A stray bottom margin on the fields inflates that line, so the row's
+// buttons render ~8px taller than the fields beside them.
+describe('the onboarding flex-row fields', () => {
+  it('keeps field margins out of the stretch rows so fields and buttons share the height', () => {
+    // Every remaining .input lives inside .inline-form or .edit-line; the
+    // rows' own gaps own the spacing.
+    expect(onboardingScss).not.toMatch(/\.input\s*\{[^}]*margin-bottom/);
+  });
+});

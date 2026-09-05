@@ -125,11 +125,14 @@
   margin: 0 0 var(--space-lg);
 }
 
+/* Fields: no bottom margin — every remaining .input sits in a flex row
+   (.inline-form, .edit-line) sized by align-items: stretch, so a stray
+   margin would inflate the row's line and leave its buttons taller than
+   the fields. The rows' own gaps own the spacing. */
 .input {
   @extend %field;
   display: block;
   width: 100%;
-  margin-bottom: 0.5rem;
   box-sizing: border-box;
 
   &.small {
