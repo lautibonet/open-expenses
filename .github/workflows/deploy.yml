@@ -1,0 +1,63 @@
+name: Deploy
+
+# Every push to main publishes the production site on Cloudflare Pages;
+# pull requests get preview deployments. The deploy steps stay skipped
+# (not red) until CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID are set
+# as repo secrets — see docs/deploy.md for the owner setup walkthrough.
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+  deployments: write
+
+concurrency:
+  group: deploy-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build production bundle
+        run: npm run build
+
+      # Step-level `if` because the env context is unavailable in job-level
+      # `if`; this keeps runs green while the owner secrets are not yet set.
+      - name: Deploy to Cloudflare Pages
+        id: pages
+        if: ${{ env.CLOUDFLARE_API_TOKEN != '' && env.CLOUDFLARE_ACCOUNT_ID != '' }}
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # main pushes land on the production branch; PR head branches
+          # get their own preview deployment and stable alias URL.
+          command: pages deploy dist/open-expenses/browser --project-name=open-expenses --branch=${{ github.head_ref || github.ref_name }}
+
+      - name: Record deployment URL
+        if: ${{ env.CLOUDFLARE_API_TOKEN != '' && env.CLOUDFLARE_ACCOUNT_ID != '' }}
+        run: echo "Deployed to ${{ steps.pages.outputs.pages-deployment-url }}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Notice missing secrets
+        if: ${{ env.CLOUDFLARE_API_TOKEN == '' || env.CLOUDFLARE_ACCOUNT_ID == '' }}
+        run: echo "::notice::Deploy skipped — set the CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID repo secrets to enable deploys (docs/deploy.md)."
