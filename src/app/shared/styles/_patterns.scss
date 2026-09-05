@@ -112,24 +112,33 @@
   }
 }
 
+/* The shared geometry of the row-action touch rules: a 2.75rem square
+   (the 44px thumb minimum) with a 1.25rem glyph. Private to the
+   row-action grammar — consumers include ghost-row-actions or
+   boxed-row-action, never this directly. */
+@mixin -touch-icon-geometry {
+  width: 2.75rem;
+  height: 2.75rem;
+
+  svg {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+}
+
 /* Ghost row actions on touch: the 44px thumb minimum without the boxed
    chrome — no border, no press shadow, muted ink glyphs; danger keeps the
    red glyph but drops the red box. Shared by the movement ledger rows and
    the Settings card rows so both surfaces speak one row-action grammar.
    A mixin because @extend cannot cross a media-query boundary. */
 @mixin ghost-row-actions {
-  width: 2.75rem;
-  height: 2.75rem;
+  @include -touch-icon-geometry;
+
   padding: 0;
   border: none;
   background: none;
   box-shadow: none;
   color: var(--on-surface-variant);
-
-  svg {
-    width: 1.25rem;
-    height: 1.25rem;
-  }
 
   &:active:not(:disabled) {
     box-shadow: none;
@@ -139,6 +148,17 @@
   &.danger {
     color: var(--error);
   }
+}
+
+/* Boxed row action on touch (#140): the edit-state confirm tick keeps its
+   blue box — it is the form's action, not a row utility — but still
+   reaches the 44px thumb minimum. The ghost half of the row-action
+   confirm/edit grammar is ghost-row-actions above; both mixins share the
+   touch-icon geometry and are mixins for the same reason: @extend cannot
+   cross a media-query boundary, so consumers include them inside
+   touch-targets. */
+@mixin boxed-row-action {
+  @include -touch-icon-geometry;
 }
 
 /* Touch ergonomics for list/table surfaces: the 44px thumb minimum on any

@@ -14,6 +14,18 @@ const rateWellScss = readFileSync(
   resolve('src/app/shared/components/exchange-rate-well/exchange-rate-well.component.scss'),
   'utf-8',
 );
+const movementsScss = readFileSync(
+  resolve('src/app/features/movements/movements.component.scss'),
+  'utf-8',
+);
+const settingsScss = readFileSync(
+  resolve('src/app/features/settings/settings.component.scss'),
+  'utf-8',
+);
+const languageCardScss = readFileSync(
+  resolve('src/app/features/settings/language-card/language-card.component.scss'),
+  'utf-8',
+);
 
 // Issue #107: the Transaction Form and the Transfer Form render from one
 // visual grammar. The capture-form style blocks exist once, in the shared
@@ -76,5 +88,47 @@ describe('shared capture-form style placeholders (#107)', () => {
     expect(transferFormScss).not.toMatch(
       /calc\(-1 \* var\(--space-lg\)\) calc\(-1 \* var\(--space-lg\)\)/,
     );
+  });
+});
+
+// Issue #140: the inline tick/X confirm affordance used by movement deletion
+// and Settings deactivation/edit is one row-action grammar. Its touch-size
+// rules live in the shared pattern library; consumers include them and own
+// no copies of their own.
+describe('shared row-action confirm/edit grammar (#140)', () => {
+  it('defines the touch rules of the grammar once in the shared pattern library', () => {
+    // The shared 44px geometry lives once — both grammar halves include it.
+    expect(patternsScss).toMatch(
+      /@mixin -touch-icon-geometry\s*\{[^}]*width:\s*2\.75rem[^}]*height:\s*2\.75rem/,
+    );
+    expect(patternsScss).toMatch(/@mixin ghost-row-actions\s*\{[^}]*@include -touch-icon-geometry/);
+    // The edit-state primary tick keeps its blue box (it is the form's
+    // action, not a row utility) but still reaches 44px.
+    expect(patternsScss).toMatch(/@mixin boxed-row-action\s*\{[^}]*@include -touch-icon-geometry/);
+  });
+
+  it('Movements and Settings consume the shared grammar instead of owning copies', () => {
+    expect(movementsScss).toMatch(
+      /\.movement-table \.icon-btn\s*\{[^}]*@include ghost-row-actions/,
+    );
+    expect(settingsScss).toMatch(
+      /\.settings \.icon-btn:not\(\.primary\)\s*\{[^}]*@include ghost-row-actions/,
+    );
+    expect(settingsScss).toMatch(
+      /\.settings \.btn\.primary\.icon-btn\s*\{[^}]*@include boxed-row-action/,
+    );
+    expect(languageCardScss).toMatch(
+      /\.card \.icon-btn:not\(\.primary\)\s*\{[^}]*@include ghost-row-actions/,
+    );
+    expect(languageCardScss).toMatch(
+      /\.card \.btn\.primary\.icon-btn\s*\{[^}]*@include boxed-row-action/,
+    );
+  });
+
+  it('deletes the per-component copies', () => {
+    for (const scss of [settingsScss, languageCardScss]) {
+      // The boxed 44px tick geometry comes from the library now.
+      expect(scss).not.toMatch(/\.btn\.primary\.icon-btn\s*\{[^}]*width:\s*2\.75rem/);
+    }
   });
 });

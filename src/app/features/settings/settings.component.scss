@@ -243,13 +243,7 @@ app-backup-card {
   /* The edit-state primary tick keeps its blue box but still reaches the
      44px thumb minimum (an explicit %icon-btn height beats min-height). */
   .settings .btn.primary.icon-btn {
-    width: 2.75rem;
-    height: 2.75rem;
-
-    svg {
-      width: 1.25rem;
-      height: 1.25rem;
-    }
+    @include boxed-row-action;
   }
 
   .settings .btn.small,
