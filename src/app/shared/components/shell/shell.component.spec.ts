@@ -190,11 +190,15 @@ describe('ShellComponent', () => {
     );
   });
 
-  it('renders the brand block with the monogram and the untranslated wordmark', () => {
-    const brand = fixture.nativeElement.querySelector('.brand') as HTMLElement;
-    expect(brand).not.toBeNull();
-    expect(brand.querySelector('.monogram')?.textContent?.trim()).toBe('O');
-    expect(brand.querySelector('.wordmark')?.textContent?.trim()).toBe('Open Expenses');
+  it('renders the brand blocks with the Cell mark and the untranslated wordmark', () => {
+    const brands = fixture.nativeElement.querySelectorAll('.brand') as NodeListOf<HTMLElement>;
+    expect(brands.length).toBe(2);
+    for (const brand of brands) {
+      const mark = brand.querySelector('svg.cell-mark');
+      expect(mark).not.toBeNull();
+      expect(mark?.querySelector('rect[fill="#0052ff"]')).not.toBeNull();
+      expect(brand.querySelector('.wordmark')?.textContent?.trim()).toBe('Open Expenses');
+    }
   });
 
   // One strip at a time: the optional install suggestion never stacks with
