@@ -1,6 +1,6 @@
 # Google Drive Backup Setup
 
-The Google Drive backup uses OAuth 2.0 with PKCE to access a single file on the user's Google Drive. The client ID is stored in `src/index.html` as a meta tag. Follow these steps to configure it.
+The Google Drive backup uses Google Identity Services (GIS) with the OAuth 2.0 implicit flow to access a single file on the user's Google Drive. The GIS token client (`google.accounts.oauth2.initTokenClient`) obtains an access token directly in the browser — there is no authorization code exchange or PKCE. The client ID is stored in `src/index.html` as a meta tag. Follow these steps to configure it.
 
 ## Prerequisites
 
