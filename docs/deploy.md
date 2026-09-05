@@ -10,8 +10,7 @@ Every push to `main` builds the app and deploys it to Cloudflare Pages; every pu
 2. `cloudflare/wrangler-action@v3` runs `pages deploy dist/open-expenses/browser --project-name=open-expenses --branch=<head branch>`
 
 - Deploys whose branch matches the project's production branch (`main`) go live on the production domain.
-- Any other branch (PR head branches) becomes a preview deployment with a stable alias URL, printed to the workflow run summary.
-- Until the two repo secrets below exist, the deploy steps skip with a notice instead of failing the run.
+- Any other branch (PR head branches) becomes a preview deployment with a stable alias URL, printed to the workflow run summary.- Until the two repo secrets below exist, the deploy steps skip with a notice instead of failing the run.
 
 ## Caching contract
 
