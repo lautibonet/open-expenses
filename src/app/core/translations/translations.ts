@@ -343,6 +343,11 @@ const en: Record<string, string> = {
   'onboarding.categories.removePrompt': 'Remove this category?',
   'onboarding.categories.confirmRemoveAria': 'Confirm removal',
   'onboarding.categories.cancelRemoveAria': 'Cancel removal',
+  'onboarding.categories.deleteAll': 'Delete all',
+  'onboarding.categories.deleteAllPrompt': 'Delete all categories?',
+  'onboarding.categories.confirmDeleteAll': 'Confirm delete all',
+  'onboarding.categories.cancelDeleteAll': 'Cancel',
+  'onboarding.categories.restoreDefaults': 'Restore defaults',
   'onboarding.categories.minRequired': 'At least one category is required',
   'onboarding.completionFailed': 'Failed to complete onboarding',
 };
@@ -690,6 +695,11 @@ const es: Record<string, string> = {
   'onboarding.categories.removePrompt': '¿Quitar esta categoría?',
   'onboarding.categories.confirmRemoveAria': 'Confirmar la eliminación',
   'onboarding.categories.cancelRemoveAria': 'Cancelar la eliminación',
+  'onboarding.categories.deleteAll': 'Eliminar todo',
+  'onboarding.categories.deleteAllPrompt': '¿Eliminar todas las categorías?',
+  'onboarding.categories.confirmDeleteAll': 'Confirmar la eliminación total',
+  'onboarding.categories.cancelDeleteAll': 'Cancelar',
+  'onboarding.categories.restoreDefaults': 'Restaurar predeterminadas',
   'onboarding.categories.minRequired': 'Se necesita al menos una categoría',
   'onboarding.completionFailed': 'No se pudo completar la configuración',
 };
