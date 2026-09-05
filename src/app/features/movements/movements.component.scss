@@ -553,7 +553,7 @@
    coarse pointer and at narrow widths, up from the 28px desktop size —
    rendered as ghost icons (no border, no press shadow): a row utility
    whispers; the boxed press chrome is reserved for primary actions. */
-@media (pointer: coarse), (max-width: 480px) {
+@include touch-targets {
   .movement-table .icon-btn {
     @include ghost-row-actions;
   }

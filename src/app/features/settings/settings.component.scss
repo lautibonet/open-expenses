@@ -235,7 +235,7 @@ app-backup-card {
    ink with red danger glyphs — and the text buttons reach the same height.
    The edit-state primary tick keeps its blue box: it is the form's action,
    not a row utility. */
-@media (pointer: coarse), (max-width: 480px) {
+@include touch-targets {
   .settings .icon-btn:not(.primary) {
     @include ghost-row-actions;
   }
