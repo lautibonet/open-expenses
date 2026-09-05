@@ -3,6 +3,11 @@ import { ShellComponent } from './shared/components/shell/shell.component';
 
 export const routes: Routes = [
   {
+    path: '',
+    loadComponent: () =>
+      import('./features/landing/landing.component').then(m => m.LandingComponent),
+  },
+  {
     path: 'onboarding',
     loadComponent: () =>
       import('./features/onboarding/onboarding.component').then(m => m.OnboardingComponent),
@@ -11,7 +16,6 @@ export const routes: Routes = [
     path: '',
     component: ShellComponent,
     children: [
-      { path: '', redirectTo: 'movements', pathMatch: 'full' },
       {
         path: 'stats',
         loadComponent: () =>

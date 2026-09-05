@@ -1,0 +1,89 @@
+<div class="landing">
+  <header class="top-bar">
+    <div class="lang-toggle" role="group" [attr.aria-label]="copy().langToggleAria">
+      <button
+        type="button"
+        [class.active]="lang() === 'en'"
+        [attr.aria-pressed]="lang() === 'en'"
+        (click)="setLang('en')"
+      >EN</button>
+      <button
+        type="button"
+        [class.active]="lang() === 'es'"
+        [attr.aria-pressed]="lang() === 'es'"
+        (click)="setLang('es')"
+      >ES</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="poster-hero">
+      <div class="hero-lockup">
+        <!-- Identity lockup (#121, #130): the Cell mark + caps wordmark. Ink
+             parts carry currentColor so the lockup reads white on the Poster's
+             inverted ink; inlined (not <img>) so the self-hosted Inter 800
+             applies. The mark appears exactly once in the first viewport. -->
+        <svg class="lockup" role="img" aria-label="Open Expenses" viewBox="0 0 696 96" focusable="false">
+          <rect x="4" y="4" width="88" height="88" fill="none" stroke="currentColor" stroke-width="8" />
+          <rect x="34" y="34" width="28" height="28" fill="#0052ff" />
+          <text
+            x="120"
+            y="71"
+            font-family="Inter, 'Inter Variable', sans-serif"
+            font-weight="800"
+            font-size="64"
+            letter-spacing="1"
+            fill="currentColor"
+            textLength="192"
+            lengthAdjust="spacingAndGlyphs"
+          >
+            OPEN
+          </text>
+          <text
+            x="328"
+            y="71"
+            font-family="Inter, 'Inter Variable', sans-serif"
+            font-weight="800"
+            font-size="64"
+            letter-spacing="1"
+            fill="#0052ff"
+            textLength="368"
+            lengthAdjust="spacingAndGlyphs"
+          >
+            EXPENSES
+          </text>
+        </svg>
+      </div>
+      <h1 class="poster-lines">
+        @for (line of copy().posterLines; track line) {
+          <span>{{ line }}</span>
+        }
+      </h1>
+    </section>
+
+    <section class="poster-no">
+      @for (line of copy().posterNoLines; track line) {
+        <p class="no-line">{{ line }}</p>
+      }
+    </section>
+
+    <section class="poster-manifesto">
+      <p>{{ copy().manifesto }}</p>
+      <div class="cta-row">
+        <a class="btn btn-primary" routerLink="/movements">{{ copy().ctaApp }}</a>
+        <a class="btn" [href]="repoUrl" rel="noopener">{{ copy().ctaSource }}</a>
+      </div>
+    </section>
+
+    <section class="poster-selfhost">
+      <p>
+        <span class="selfhost-label">{{ copy().selfHostLabel }}</span>
+        {{ copy().selfHostBody }}
+      </p>
+    </section>
+  </main>
+
+  <footer>
+    <p>{{ copy().footer }}</p>
+  </footer>
+</div>

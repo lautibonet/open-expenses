@@ -523,7 +523,7 @@ async function completeOnboarding(
   page: import('@playwright/test').Page,
   opts: { longCategory?: boolean; secondAccount?: boolean } = {},
 ) {
-  await page.goto('/');
+  await page.goto('/onboarding');
 
   // 1. Language
   await page.getByRole('button', { name: 'Continue' }).click();
