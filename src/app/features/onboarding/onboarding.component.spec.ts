@@ -93,14 +93,14 @@ describe('OnboardingComponent', () => {
   it('keeps restore state when going back from the restore step and returning', async () => {
     driveBackupService.restore.mockRejectedValue(new NoBackupFoundError());
     await component.restoreFromCloud();
-    expect(component.noBackupMessage()).toContain('No backup');
+    expect(component.infoMessage()).toContain('No backup');
 
     component.goTo('language');
     expect(component.step()).toBe('language');
 
     component.goTo('restore');
     fixture.detectChanges();
-    expect(component.noBackupMessage()).toContain('No backup');
+    expect(component.infoMessage()).toContain('No backup');
     expect(component.language()).toBe('en');
   });
 
@@ -367,18 +367,18 @@ describe('OnboardingComponent', () => {
     fixture.detectChanges();
 
     expect(component.step()).toBe('restore');
-    expect(component.noBackupMessage()).toContain('No backup');
+    expect(component.infoMessage()).toContain('No backup');
     expect(navigate).not.toHaveBeenCalled();
   });
 
   it('clears the no-backup message when the user starts fresh', async () => {
     driveBackupService.restore.mockRejectedValue(new NoBackupFoundError());
     await component.restoreFromCloud();
-    expect(component.noBackupMessage()).not.toBe('');
+    expect(component.infoMessage()).not.toBe('');
 
     component.startFresh();
 
-    expect(component.noBackupMessage()).toBe('');
+    expect(component.infoMessage()).toBe('');
     expect(component.errorMessage()).toBe('');
   });
 
@@ -390,8 +390,25 @@ describe('OnboardingComponent', () => {
     await component.restoreFromCloud();
     fixture.detectChanges();
 
-    expect(component.noBackupMessage()).toBe('');
+    expect(component.infoMessage()).toBe('');
     expect(component.errorMessage()).toBe('Cannot restore while offline');
+  });
+
+  it('re-enables the restore step with a neutral notice when sign-in is cancelled', async () => {
+    component.goTo('restore');
+    driveBackupService.connect.mockRejectedValue(
+      new TranslationError('backup.error.oauth.cancelled'),
+    );
+    const navigate = vi.spyOn(router, 'navigate');
+
+    await component.restoreFromCloud();
+    fixture.detectChanges();
+
+    expect(component.isRestoring()).toBe(false);
+    expect(component.step()).toBe('restore');
+    expect(component.infoMessage()).toContain('cancelled');
+    expect(component.errorMessage()).toBe('');
+    expect(navigate).not.toHaveBeenCalled();
   });
 
   it('restores from an uploaded file and lands on Movements', async () => {

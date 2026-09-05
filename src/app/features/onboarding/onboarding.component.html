@@ -107,8 +107,8 @@
           @if (isRestoring()) {
             <p class="info">{{ languageService.t('onboarding.restore.restoring') }}</p>
           }
-          @if (noBackupMessage()) {
-            <p class="info">{{ noBackupMessage() }}</p>
+          @if (infoMessage()) {
+            <p class="info">{{ infoMessage() }}</p>
           }
           <app-dismissible-alert appearance="note" variant="error" [message]="errorMessage()" [resetKey]="statusEpoch()" />
 

@@ -11,7 +11,7 @@ import { CURRENCY_SYMBOLS, SUPPORTED_CURRENCIES } from '../../core/constants/cur
 import { CategoryType } from '../../core/models/category.model';
 import { isLanguage, LANGUAGES, detectBrowserLanguage, Language } from '../../core/types/language.type';
 import { DismissibleAlertComponent } from '../../shared/components/dismissible-alert/dismissible-alert.component';
-import { errorCopy } from '../../core/models/translation-error';
+import { errorCopy, TranslationError } from '../../core/models/translation-error';
 
 const STEPS = ['language', 'restore', 'currency', 'accounts', 'categories'] as const;
 
@@ -49,7 +49,7 @@ export class OnboardingComponent {
   filteredCurrencies = computed(() => this.matchingCurrencies(this.currencyQuery()));
   language = signal(detectBrowserLanguage());
   isRestoring = signal(false);
-  noBackupMessage = signal('');
+  infoMessage = signal('');
   backupMethod = this.driveBackupService.method;
   baseCurrency = signal('EUR');
   accountName = signal('');
@@ -127,7 +127,7 @@ export class OnboardingComponent {
 
   startFresh(): void {
     this.errorMessage.set('');
-    this.noBackupMessage.set('');
+    this.infoMessage.set('');
     this.step.set('currency');
   }
 
@@ -153,14 +153,16 @@ export class OnboardingComponent {
   private async runRestore(action: () => Promise<void>): Promise<void> {
     this.isRestoring.set(true);
     this.resetError();
-    this.noBackupMessage.set('');
+    this.infoMessage.set('');
 
     try {
       await action();
       this.router.navigate(['/movements']);
     } catch (e: unknown) {
       if (e instanceof NoBackupFoundError) {
-        this.noBackupMessage.set(this.languageService.t('onboarding.restore.noBackupFound'));
+        this.infoMessage.set(this.languageService.t('onboarding.restore.noBackupFound'));
+      } else if (e instanceof TranslationError && e.key.startsWith('backup.error.oauth.')) {
+        this.infoMessage.set(this.languageService.t(e.key));
       } else {
         this.errorMessage.set(
           errorCopy(
