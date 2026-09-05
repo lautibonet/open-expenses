@@ -1,180 +1,185 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-08-28T18:05:00.000Z",
+  "generatedAt": "2026-09-05T11:45:00.000Z",
   "title": "Design System: Open Expenses",
   "extensions": {
     "colorMeta": {
       "primary": {
         "role": "primary",
-        "displayName": "Deep Ledger Ink",
-        "canonical": "#2563eb",
-        "tonalRamp": ["#0b1a3d", "#123062", "#1a4a97", "#2653b8", "#2563eb", "#4c7ef2", "#84a5f7", "#eef2fe"]
+        "displayName": "Action Ink",
+        "canonical": "#003ec7",
+        "tonalRamp": ["#000f33", "#001a5c", "#002685", "#0032ad", "#003ec7", "#2f63d6", "#7c9ae8", "#ccd8f7"]
+      },
+      "primary-container": {
+        "role": "primary",
+        "displayName": "Digital Blue",
+        "canonical": "#0052ff",
+        "tonalRamp": ["#001233", "#001f5c", "#002c85", "#0039ad", "#0052ff", "#3d78ff", "#85a8ff", "#ccdaff"]
       },
       "primary-deep": {
         "role": "primary",
-        "displayName": "Ink Well Blue",
-        "canonical": "#1e40af",
-        "tonalRamp": ["#0a1738", "#101f5c", "#162d86", "#1e40af", "#3d5cc9", "#6a85dc", "#aebff0", "#e6ebfa"]
+        "displayName": "Pressed Blue",
+        "canonical": "#0038b6",
+        "tonalRamp": ["#000e2e", "#001852", "#002276", "#002d9c", "#0038b6", "#2f5cd0", "#7c92e3", "#ccd5f2"]
+      },
+      "primary-fixed": {
+        "role": "primary",
+        "displayName": "Blueprint Wash",
+        "canonical": "#dde1ff",
+        "tonalRamp": ["#001452", "#002070", "#0030a0", "#0044c4", "#0052ff", "#6d8af0", "#aebdf7", "#dde1ff"]
+      },
+      "on-primary-fixed": {
+        "role": "primary",
+        "displayName": "Blueprint Ink",
+        "canonical": "#001452",
+        "tonalRamp": ["#00070f", "#00112e", "#001a45", "#001452", "#1e3a70", "#4a669c", "#9aabce", "#dfe3f7"]
+      },
+      "on-primary-container": {
+        "role": "primary",
+        "displayName": "CTA Caption Wash",
+        "canonical": "#dfe3ff",
+        "tonalRamp": ["#001540", "#002060", "#002c85", "#0039ad", "#0052ff", "#6d92f0", "#aec4f9", "#dfe3ff"]
       },
       "income": {
         "role": "semantic",
         "displayName": "Ledger Green",
-        "canonical": "#16a34a",
-        "tonalRamp": ["#05230f", "#0a3d1c", "#0e6330", "#128f45", "#16a34a", "#3cb865", "#75d08f", "#eef9f2"]
+        "canonical": "#15803d",
+        "tonalRamp": ["#04210f", "#07351a", "#0a4f26", "#0e6a32", "#15803d", "#3ea45f", "#8cc79c", "#e2f3e7"]
       },
       "expense": {
         "role": "semantic",
-        "displayName": "Officer's Red",
-        "canonical": "#dc2626",
-        "tonalRamp": ["#3f0606", "#650a0a", "#8f1414", "#b51f1f", "#dc2626", "#e65050", "#ed8080", "#fdeded"]
+        "displayName": "Expense Red",
+        "canonical": "#ba1a1a",
+        "tonalRamp": ["#2e0505", "#4f0808", "#741010", "#981515", "#ba1a1a", "#d14a4a", "#e39a9a", "#f9e2e2"]
       },
-      "neutral-bg": {
-        "role": "neutral",
-        "displayName": "Paper White",
-        "canonical": "#ffffff",
-        "tonalRamp": ["#0a0a0a", "#242424", "#484848", "#6b6b6b", "#969696", "#bcbcbc", "#e0e0e0", "#ffffff"]
-      },
-      "neutral-surface": {
-        "role": "neutral",
-        "displayName": "Mist Paper",
-        "canonical": "#f9fafb",
-        "tonalRamp": ["#0b0c0e", "#16171b", "#23252b", "#33353d", "#474b55", "#6b7280", "#c3c7d1", "#f9fafb"]
-      },
-      "neutral-surface-muted": {
-        "role": "neutral",
-        "displayName": "Silvered Paper",
-        "canonical": "#f3f4f6",
-        "tonalRamp": ["#0c0d0f", "#17181b", "#24262a", "#34363c", "#484b52", "#6e7179", "#c6c9d0", "#f3f4f6"]
-      },
-      "neutral-border": {
-        "role": "neutral",
-        "displayName": "Hairline Graphite",
-        "canonical": "#e5e7eb",
-        "tonalRamp": ["#0e0f11", "#1a1b1e", "#282a2f", "#3a3d44", "#50535c", "#767982", "#c9ccd2", "#f4f5f7"]
-      },
-      "neutral-border-strong": {
-        "role": "neutral",
-        "displayName": "Edge Graphite",
-        "canonical": "#d1d5db",
-        "tonalRamp": ["#101114", "#1d1e22", "#2d2f34", "#40434a", "#575b63", "#7e828b", "#cdd0d6", "#f4f5f7"]
-      },
-      "neutral-text": {
-        "role": "neutral",
-        "displayName": "Body Ink",
-        "canonical": "#374151",
-        "tonalRamp": ["#1f2530", "#2c333f", "#374151", "#485265", "#5d6880", "#79849b", "#a7aec0", "#e2e5ea"]
-      },
-      "neutral-text-muted": {
-        "role": "neutral",
-        "displayName": "Muted Slate",
-        "canonical": "#6b7280",
-        "tonalRamp": ["#33363d", "#454950", "#5a5e67", "#6b7280", "#8a909b", "#a8adb6", "#cfd2d8", "#f0f1f3"]
-      },
-      "neutral-text-faint": {
-        "role": "neutral",
-        "displayName": "Faint Ash",
-        "canonical": "#9ca3af",
-        "tonalRamp": ["#4b5059", "#5f656f", "#747b86", "#87909b", "#9ca3af", "#b6bcc5", "#d5d8de", "#f1f2f4"]
-      },
-      "ledger-ink-bright": {
+      "error": {
         "role": "semantic",
-        "displayName": "Ledger Ink Bright",
-        "canonical": "#3b82f6",
-        "tonalRamp": ["#0a1f3d", "#12345f", "#1d4f92", "#2a62b8", "#3b82f6", "#6da2f8", "#9ec1fa", "#dbeafe"]
+        "displayName": "Error Red",
+        "canonical": "#ba1a1a",
+        "tonalRamp": ["#2e0505", "#4f0808", "#741010", "#981515", "#ba1a1a", "#d14a4a", "#e39a9a", "#f9e2e2"]
       },
-      "ink-tint": {
+      "error-container": {
         "role": "semantic",
-        "displayName": "Ink Tint",
-        "canonical": "#eff6ff",
-        "tonalRamp": ["#0b1a3d", "#123062", "#1a4a97", "#2653b8", "#2563eb", "#4c7ef2", "#84a5f7", "#eff6ff"]
+        "displayName": "Warning Wash",
+        "canonical": "#ffdad6",
+        "tonalRamp": ["#2e0505", "#4f0808", "#741010", "#93000a", "#ba1a1a", "#e35c5c", "#f5b0aa", "#ffdad6"]
       },
-      "ink-tint-hover": {
-        "role": "semantic",
-        "displayName": "Ink Tint Hover",
-        "canonical": "#dbeafe",
-        "tonalRamp": ["#0b1a3d", "#123062", "#1a4a97", "#2653b8", "#2563eb", "#6d9af5", "#a8c4f9", "#dbeafe"]
-      },
-      "ink-tint-edge": {
-        "role": "semantic",
-        "displayName": "Ink Tint Edge",
-        "canonical": "#bfdbfe",
-        "tonalRamp": ["#0b1a3d", "#123062", "#1a4a97", "#2653b8", "#2563eb", "#6d9af5", "#9dc0f9", "#bfdbfe"]
-      },
-      "amber-surface": {
-        "role": "semantic",
-        "displayName": "Warning Surface",
-        "canonical": "#fef3c7",
-        "tonalRamp": ["#452a03", "#6b4205", "#8f5a07", "#b37209", "#d19a12", "#fcd34d", "#fee68a", "#fef3c7"]
-      },
-      "amber-border": {
-        "role": "semantic",
-        "displayName": "Warning Border",
-        "canonical": "#fcd34d",
-        "tonalRamp": ["#452a03", "#6b4205", "#8f5a07", "#b37209", "#d19a12", "#fcd34d", "#fde68a", "#fef3c7"]
-      },
-      "amber-ink": {
+      "on-error-container": {
         "role": "semantic",
         "displayName": "Warning Ink",
-        "canonical": "#92400e",
-        "tonalRamp": ["#452a03", "#6b4205", "#92400e", "#b45309", "#d97706", "#f59e0b", "#fcd34d", "#fef3c7"]
+        "canonical": "#93000a",
+        "tonalRamp": ["#1f0303", "#380505", "#590707", "#93000a", "#ba1a1a", "#d65252", "#eba3a3", "#fce4e2"]
       },
-      "danger-surface": {
-        "role": "semantic",
-        "displayName": "Danger Surface",
-        "canonical": "#fef2f2",
-        "tonalRamp": ["#450a0a", "#7f1d1d", "#991b1b", "#b91c1c", "#dc2626", "#ef4444", "#fecaca", "#fef2f2"]
+      "surface-lowest": {
+        "role": "neutral",
+        "displayName": "Card White",
+        "canonical": "#ffffff",
+        "tonalRamp": ["#0a0c0c", "#1a1c1c", "#3a3c3c", "#5c5e5e", "#8a8c8c", "#c2c4c4", "#e8eaea", "#ffffff"]
       },
-      "danger-border": {
-        "role": "semantic",
-        "displayName": "Danger Border",
-        "canonical": "#fecaca",
-        "tonalRamp": ["#450a0a", "#7f1d1d", "#991b1b", "#b91c1c", "#dc2626", "#ef4444", "#fecaca", "#fef2f2"]
+      "surface": {
+        "role": "neutral",
+        "displayName": "Page Paper",
+        "canonical": "#f9f9f9",
+        "tonalRamp": ["#0b0b0b", "#1b1b1b", "#3b3b3b", "#5d5d5d", "#8b8b8b", "#c4c4c4", "#ececec", "#f9f9f9"]
       },
-      "danger-ink": {
-        "role": "semantic",
-        "displayName": "Danger Ink",
-        "canonical": "#dc2626",
-        "tonalRamp": ["#450a0a", "#7f1d1d", "#991b1b", "#b91c1c", "#dc2626", "#ef4444", "#f87171", "#fee2e2"]
+      "surface-container-low": {
+        "role": "neutral",
+        "displayName": "Paper Step Low",
+        "canonical": "#f3f3f3",
+        "tonalRamp": ["#0b0b0b", "#1b1b1b", "#3b3b3b", "#5d5d5d", "#8b8b8b", "#c3c3c3", "#e7e7e7", "#f3f3f3"]
       },
-      "danger-text": {
-        "role": "semantic",
-        "displayName": "Danger Text",
-        "canonical": "#b91c1c",
-        "tonalRamp": ["#450a0a", "#7f1d1d", "#991b1b", "#b91c1c", "#dc2626", "#ef4444", "#f87171", "#fee2e2"]
+      "surface-container": {
+        "role": "neutral",
+        "displayName": "Paper Step Mid",
+        "canonical": "#eeeeee",
+        "tonalRamp": ["#0b0b0b", "#1b1b1b", "#3a3a3a", "#5c5c5c", "#8a8a8a", "#c2c2c2", "#e4e4e4", "#eeeeee"]
       },
-      "danger-edge": {
-        "role": "semantic",
-        "displayName": "Danger Edge",
-        "canonical": "#fca5a5",
-        "tonalRamp": ["#450a0a", "#7f1d1d", "#991b1b", "#b91c1c", "#dc2626", "#ef4444", "#fca5a5", "#fee2e2"]
+      "surface-container-high": {
+        "role": "neutral",
+        "displayName": "Paper Step High",
+        "canonical": "#e8e8e8",
+        "tonalRamp": ["#0b0b0b", "#1a1a1a", "#3a3a3a", "#5b5b5b", "#898989", "#c1c1c1", "#e0e0e0", "#e8e8e8"]
+      },
+      "surface-container-highest": {
+        "role": "neutral",
+        "displayName": "Paper Step Highest",
+        "canonical": "#e2e2e2",
+        "tonalRamp": ["#0b0b0b", "#1a1a1a", "#393939", "#5a5a5a", "#888888", "#c0c0c0", "#dcdcdc", "#e2e2e2"]
+      },
+      "surface-dim": {
+        "role": "neutral",
+        "displayName": "Dimmed Paper",
+        "canonical": "#dadada",
+        "tonalRamp": ["#0b0b0b", "#1a1a1a", "#383838", "#585858", "#868686", "#bebebe", "#d6d6d6", "#dadada"]
+      },
+      "outline": {
+        "role": "neutral",
+        "displayName": "Slate Stroke",
+        "canonical": "#737688",
+        "tonalRamp": ["#16171d", "#23242c", "#33353f", "#4b4e5e", "#737688", "#97a0b0", "#c2c9d6", "#e6e9f0"]
+      },
+      "outline-variant": {
+        "role": "neutral",
+        "displayName": "Hairline Lavender",
+        "canonical": "#c3c5d9",
+        "tonalRamp": ["#191a22", "#262838", "#383b52", "#585e80", "#c3c5d9", "#d2d4e3", "#e2e3ee", "#f1f2f7"]
+      },
+      "border": {
+        "role": "neutral",
+        "displayName": "Hard Ink",
+        "canonical": "#1a1c1c",
+        "tonalRamp": ["#050606", "#1a1c1c", "#2e3030", "#454747", "#636565", "#969898", "#cdd0d0", "#f0f2f2"]
+      },
+      "text": {
+        "role": "neutral",
+        "displayName": "On Surface Ink",
+        "canonical": "#1a1c1c",
+        "tonalRamp": ["#050606", "#1a1c1c", "#2e3030", "#454747", "#636565", "#969898", "#cdd0d0", "#f0f2f2"]
+      },
+      "text-muted": {
+        "role": "neutral",
+        "displayName": "Variant Ink",
+        "canonical": "#434656",
+        "tonalRamp": ["#0e0f13", "#1d1f28", "#2b2e3c", "#434656", "#5f6377", "#8a8ea3", "#c0c3d2", "#e8e9f1"]
+      },
+      "row-hover": {
+        "role": "neutral",
+        "displayName": "Row Wash",
+        "canonical": "#f5f5f5",
+        "tonalRamp": ["#0b0b0b", "#1b1b1b", "#3b3b3b", "#5d5d5d", "#8b8b8b", "#c4c4c4", "#eaeaea", "#f5f5f5"]
       }
     },
     "typographyMeta": {
-      "headline": { "displayName": "Headline", "purpose": "Card titles (h2 inside cards)." },
-      "title": { "displayName": "Title", "purpose": "Onboarding heading and page-level h1." },
-      "body": { "displayName": "Body", "purpose": "Buttons, inputs, selects, and general content." },
-      "body-caption": { "displayName": "Body Caption", "purpose": "Secondary explanation, backup timestamps, error messages." },
-      "label": { "displayName": "Label", "purpose": "Form field labels, table headers." },
-      "meta": { "displayName": "Meta", "purpose": "Badges, inline type labels, relative-time text — the recognized floor." }
+      "display": { "displayName": "Display", "purpose": "Page-level headlines (3rem/800 desktop, 1.5rem mobile) — the loudest block on the page." },
+      "headline": { "displayName": "Headline", "purpose": "Card titles (2rem/700 desktop, 1.5rem mobile)." },
+      "title": { "displayName": "Title", "purpose": "Onboarding heading and page-level h1 (1.25rem/600)." },
+      "body": { "displayName": "Body", "purpose": "Buttons, inputs, selects, and general interface prose (1rem/400)." },
+      "body-caption": { "displayName": "Body Caption", "purpose": "Secondary explanation, backup timestamps, banner prose, error messages (0.875rem/400)." },
+      "label": { "displayName": "Caps Label", "purpose": "Form field labels, table headers, buttons, tags — 12px/700/+0.1em/uppercase. Metadata is never whispered in mixed case." },
+      "data": { "displayName": "Data", "purpose": "Every monetary figure and numeric input — JetBrains Mono 500, tabular figures, so columns of amounts align as one ledger." }
     },
     "shadows": [
       {
-        "name": "float",
-        "value": "0 2px 4px rgba(0, 0, 0, 0.1)",
-        "purpose": "Only floating menus (autocomplete suggestion dropdowns) lift off the page. Resting surfaces never cast shadows."
+        "name": "press",
+        "value": "2px 2px 0 0 #1a1c1c",
+        "purpose": "The only sanctioned shadow. Buttons carry it at rest and shed it on :active, translating 2px down-right — tactile feedback without elevation. Anything without a press interaction has no shadow, ever."
       }
     ],
     "motion": [
       {
-        "name": "ease-quick",
-        "value": "color 0.15s ease, border-color 0.15s ease",
-        "purpose": "Tab hover and active state color/border transitions."
+        "name": "banner-in",
+        "value": "transform 0.25s ease-out (translateY -100% → 0, max-height 0 → 8rem); suppressed under prefers-reduced-motion",
+        "purpose": "Chrome-strip entrance slide shared by the install and update prompts, so the strip slides in instead of popping mid-scroll."
       },
       {
-        "name": "banner-in",
-        "value": "transform 0.25s ease-out, reduced-motion aware",
-        "purpose": "Install banner entrance slide so the strip no longer pops in mid-scroll."
+        "name": "press-shift",
+        "value": "instant (no transition): box-shadow shed + translate(2px, 2px) on :active",
+        "purpose": "The press interaction is deliberately transitionless — the button snaps into the page."
       }
+    ],
+    "breakpoints": [
+      { "name": "mobile-regime", "value": "768px — sidebar collapses to bottom nav bar + sticky top bar; display/headline step down to 1.5rem; grids collapse to one column; capture forms present in the bottom sheet" },
+      { "name": "day-sections", "value": "480px — the movement ledger groups into day sections of one-thumb cards" }
     ]
   },
   "components": [
@@ -182,124 +187,135 @@
       "name": "Primary Button",
       "kind": "button",
       "refersTo": "button-primary",
-      "description": "The single prominent action on a form or view (Save, + Transaction).",
-      "html": "<button class=\"ds-btn-primary\">Save</button>",
-      "css": ".ds-btn-primary { background: #2563eb; color: #fff; border: 1px solid #2563eb; border-radius: 4px; padding: 0.5rem 1rem; font-size: 0.9rem; font-family: inherit; cursor: pointer; transition: background 0.2s ease, color 0.2s ease; }\n.ds-btn-primary:hover:not(:disabled) { background: #1e40af; border-color: #1e40af; }\n.ds-btn-primary:disabled { opacity: 0.6; cursor: default; }\n.ds-btn-primary:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }"
+      "description": "The single prominent action on a form or view (Save, + Transaction). Digital Blue fill, caps-label text, press shadow at rest.",
+      "html": "<button class=\"ds-btn-primary\" type=\"button\">+ Transaction</button>",
+      "css": ".ds-btn-primary { padding: 0.5rem 1rem; background: #0052ff; color: #ffffff; border: 1px solid #1a1c1c; border-radius: 0; cursor: pointer; font-family: inherit; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; box-shadow: 2px 2px 0 0 #1a1c1c; }\n.ds-btn-primary:hover:not(:disabled) { background: #0038b6; border-color: #0038b6; }\n.ds-btn-primary:active:not(:disabled) { box-shadow: none; transform: translate(2px, 2px); }\n.ds-btn-primary:disabled { opacity: 0.6; cursor: default; }\n.ds-btn-primary:focus-visible { outline: 2px solid #003ec7; outline-offset: 2px; }"
     },
     {
       "name": "Secondary Button",
       "kind": "button",
       "refersTo": "button",
-      "description": "Quiet supporting action (Cancel, + Transfer). Paper fill with an Edge Graphite hairline.",
-      "html": "<button class=\"ds-btn-secondary\">Cancel</button>",
-      "css": ".ds-btn-secondary { background: #fff; color: #374151; border: 1px solid #d1d5db; border-radius: 4px; padding: 0.5rem 1rem; font-size: 0.9rem; font-family: inherit; cursor: pointer; transition: color 0.15s ease, border-color 0.15s ease; }\n.ds-btn-secondary:hover:not(:disabled) { background: #f3f4f6; }\n.ds-btn-secondary:disabled { opacity: 0.6; cursor: default; }\n.ds-btn-secondary:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }"
+      "description": "Quiet supporting action (Cancel, Later, Dismiss). Card White fill, hard black border, press shadow at rest.",
+      "html": "<button class=\"ds-btn-secondary\" type=\"button\">Cancel</button>",
+      "css": ".ds-btn-secondary { padding: 0.5rem 1rem; background: #ffffff; color: #1a1c1c; border: 1px solid #1a1c1c; border-radius: 0; cursor: pointer; font-family: inherit; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; box-shadow: 2px 2px 0 0 #1a1c1c; }\n.ds-btn-secondary:hover:not(:disabled) { background: #f3f3f3; }\n.ds-btn-secondary:active:not(:disabled) { box-shadow: none; transform: translate(2px, 2px); }\n.ds-btn-secondary:disabled { opacity: 0.6; cursor: default; }\n.ds-btn-secondary:focus-visible { outline: 2px solid #003ec7; outline-offset: 2px; }"
     },
     {
-      "name": "Compact Danger Button",
+      "name": "Danger Button (filled)",
       "kind": "button",
       "refersTo": "button-danger",
-      "description": "Row-level destructive Delete on dense tables: Officer's Red text on a red-300 hairline.",
-      "html": "<button class=\"ds-btn-danger\">Delete</button>",
-      "css": ".ds-btn-danger { background: transparent; color: #dc2626; border: 1px solid #fca5a5; border-radius: 4px; padding: 0.25rem 0.5rem; font-size: 0.8rem; font-family: inherit; cursor: pointer; transition: background 0.2s ease; }\n.ds-btn-danger:hover { background: #fef2f2; }\n.ds-btn-danger:focus-visible { outline: 2px solid #dc2626; outline-offset: 2px; }"
+      "description": "Panel/card-level destructive confirmation only. Error Red fill; the idle delete affordance is never red.",
+      "html": "<button class=\"ds-btn-danger\" type=\"button\">Delete</button>",
+      "css": ".ds-btn-danger { padding: 0.5rem 1rem; background: #ba1a1a; color: #ffffff; border: 1px solid #1a1c1c; border-radius: 0; cursor: pointer; font-family: inherit; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; box-shadow: 2px 2px 0 0 #1a1c1c; }\n.ds-btn-danger:hover:not(:disabled) { background: #93000a; }\n.ds-btn-danger:active:not(:disabled) { box-shadow: none; transform: translate(2px, 2px); }\n.ds-btn-danger:focus-visible { outline: 2px solid #ba1a1a; outline-offset: 2px; }"
     },
     {
-      "name": "Text Input (labeled)",
+      "name": "Labeled Field (mono data input)",
       "kind": "input",
       "refersTo": "input",
-      "description": "Label above a Paper White field with an Edge Graphite hairline, 4px radius.",
-      "html": "<label class=\"ds-field\">Amount<input class=\"ds-input\" type=\"text\" value=\"42.00\" /></label>",
-      "css": ".ds-field { display: flex; flex-direction: column; font-size: 0.8rem; color: #374151; font-family: inherit; }\n.ds-input { margin-top: 0.25rem; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.9rem; font-family: inherit; background: #fff; color: #374151; }\n.ds-input:focus, .ds-input:focus-visible { outline: 2px solid #2563eb; outline-offset: 1px; border-color: #2563eb; }"
+      "description": "Caps label strictly above a square Card White field with a hard black border; numeric inputs render in JetBrains Mono tabular figures.",
+      "html": "<label class=\"ds-field\"><span>Amount</span><input class=\"ds-field__input ds-field__input--data\" type=\"text\" value=\"42.00\" /></label>",
+      "css": ".ds-field { display: flex; flex-direction: column; font-family: inherit; }\n.ds-field > span { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; line-height: 1; color: #1a1c1c; }\n.ds-field__input { box-sizing: border-box; margin-top: 0.25rem; width: 100%; padding: 0.5rem; border: 1px solid #1a1c1c; border-radius: 0; background: #ffffff; color: #1a1c1c; font-family: inherit; font-size: 1rem; font-weight: 400; line-height: 1.5; }\n.ds-field__input--data { font-family: ui-monospace, 'JetBrains Mono', Consolas, monospace; font-variant-numeric: tabular-nums; font-size: 0.875rem; }\n.ds-field__input:focus, .ds-field__input:focus-visible { outline: 2px solid #003ec7; outline-offset: 2px; }"
     },
     {
       "name": "Card",
       "kind": "card",
       "refersTo": "card",
-      "description": "The universal unit of Stats and Settings: Paper White, 1px hairline, 8px corners.",
-      "html": "<div class=\"ds-card\"><h2>Period Totals</h2><p class=\"ds-card__lede\">Income and expenses for the selected period.</p></div>",
-      "css": ".ds-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 1rem; font-family: inherit; }\n.ds-card h2 { font-size: 1.1rem; font-weight: 600; margin: 0 0 0.75rem; }\n.ds-card__lede { margin: 0; font-size: 0.85rem; color: #6b7280; }"
+      "description": "The universal unit of Stats and Settings: Card White, 1px hard black border, square corners, 1rem padding; caps-label header separated from the body by spacing alone.",
+      "html": "<section class=\"ds-card\"><h2 class=\"ds-card__header\">Period Totals</h2><p class=\"ds-card__lede\">Income and expenses for the selected period.</p></section>",
+      "css": ".ds-card { background: #ffffff; border: 1px solid #1a1c1c; border-radius: 0; padding: 1rem; font-family: inherit; }\n.ds-card__header { margin: 0 0 1.5rem; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; line-height: 1; color: #1a1c1c; }\n.ds-card__lede { margin: 0; font-size: 0.875rem; color: #434656; }"
     },
     {
-      "name": "Tab Navigation",
+      "name": "Sidebar Navigation",
       "kind": "nav",
       "refersTo": "navigation",
-      "description": "Three equal links constrained to the content column; the active tab is Deep Ledger Ink with a 2px underline and aria-current.",
-      "html": "<nav class=\"ds-tabs\" aria-label=\"Primary\"><a class=\"ds-tab is-active\" aria-current=\"page\" href=\"#\">Movements</a><a class=\"ds-tab\" href=\"#\">Stats</a><a class=\"ds-tab\" href=\"#\">Settings</a></nav>",
-      "css": ".ds-tabs { display: flex; border-bottom: 1px solid #e5e7eb; font-family: inherit; }\n.ds-tab { flex: 1; padding: 0.75rem 1rem; text-align: center; text-decoration: none; color: #6b7280; font-weight: 500; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color 0.15s ease, border-color 0.15s ease; font-family: inherit; }\n.ds-tab:hover { color: #374151; }\n.ds-tab.is-active { color: #2563eb; border-bottom-color: #2563eb; }\n.ds-tab:focus-visible { outline: 2px solid #2563eb; outline-offset: -2px; }\n@media (pointer: coarse) { .ds-tab { min-height: 44px; } }"
+      "description": "Fixed 256px desktop sidebar with a 1px black right border; caps-label links whose active state is a Primary Fixed tint with a 4px Primary left edge and ink text.",
+      "html": "<nav class=\"ds-nav\" aria-label=\"Primary\"><a class=\"ds-nav__link ds-nav__link--active\" aria-current=\"page\" href=\"#\">Movements</a><a class=\"ds-nav__link\" href=\"#\">Stats</a><a class=\"ds-nav__link\" href=\"#\">Settings</a></nav>",
+      "css": ".ds-nav { display: flex; flex-direction: column; border-right: 1px solid #1a1c1c; font-family: inherit; }\n.ds-nav__link { display: block; padding: 0.5rem 1rem; text-decoration: none; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; line-height: 1; color: #1a1c1c; border-left: 4px solid transparent; }\n.ds-nav__link:hover { background: #eeeeee; }\n.ds-nav__link--active { background: #dde1ff; border-left-color: #003ec7; }\n.ds-nav__link:focus-visible { outline: 2px solid #003ec7; outline-offset: 2px; }"
     },
     {
-      "name": "Backup Banner",
+      "name": "Status Strip (banner family)",
       "kind": "custom",
-      "description": "Signature status strip: non-interactive ink-tint well with the method and timestamp left, compact primary Back up button right.",
-      "html": "<section class=\"ds-banner\" aria-label=\"Backup status\"><div class=\"ds-banner__status\"><span class=\"ds-banner__method\">Google Drive</span><span class=\"ds-banner__time\">Last backup: 2 hours ago</span></div><button class=\"ds-banner__action\" type=\"button\">Back up</button></section>",
-      "css": ".ds-banner { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; width: 100%; box-sizing: border-box; padding: 0.6rem 1rem; background: #eff6ff; border-bottom: 1px solid #bfdbfe; font-family: inherit; }\n.ds-banner__status { display: flex; flex-direction: column; gap: 0.125rem; min-width: 0; }\n.ds-banner__method { font-weight: 600; color: #1e40af; }\n.ds-banner__time { color: #1e40af; font-size: 0.85rem; }\n.ds-banner__action { background: #2563eb; color: #fff; border: 1px solid #2563eb; border-radius: 4px; padding: 0.25rem 0.5rem; font-size: 0.8rem; font-family: inherit; cursor: pointer; flex-shrink: 0; transition: background 0.2s ease, border-color 0.2s ease; }\n.ds-banner__action:hover:not(:disabled) { background: #1e40af; border-color: #1e40af; }\n.ds-banner__action:disabled { opacity: 0.6; cursor: default; }\n.ds-banner__action:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }\n@media (pointer: coarse) { .ds-banner__action { min-height: 44px; } }"
-    },
-    {
-      "name": "Backup Error Strip",
-      "kind": "custom",
-      "description": "Danger-tint failure strip below the banner: role=alert, ledger-voice copy in Danger Text, outline-danger Dismiss.",
-      "html": "<p class=\"ds-error\" role=\"alert\" title=\"popup_closed_by_user\"><span class=\"ds-error__text\">Google sign-in was cancelled — try again when you are ready.</span><button class=\"ds-error__dismiss\" type=\"button\">Dismiss</button></p>",
-      "css": ".ds-error { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin: 0; padding: 0.5rem 1rem; background: #fef2f2; color: #b91c1c; font-size: 0.85rem; font-family: inherit; border-bottom: 1px solid #fecaca; }\n.ds-error__text { min-width: 0; }\n.ds-error__dismiss { background: #fff; color: #b91c1c; border: 1px solid #fca5a5; border-radius: 4px; padding: 0.25rem 0.5rem; font-size: 0.8rem; font-family: inherit; cursor: pointer; flex-shrink: 0; }\n.ds-error__dismiss:hover { background: #fef2f2; }\n.ds-error__dismiss:focus-visible { outline: 2px solid #dc2626; outline-offset: 2px; }"
+      "description": "Full-bleed chrome strip shared by the Backup Banner, Install Prompt, and Update Prompt: Primary Fixed fill, Primary bottom hairline, prose in Body Caption, one compact primary action pinned right. The strips never stack — the urgent update banner owns the slot.",
+      "html": "<section class=\"ds-strip\" aria-label=\"Backup status\"><span class=\"ds-strip__message\">Google Drive · Last backup: 2 hours ago</span><button class=\"ds-strip__action\" type=\"button\">Back up</button></section>",
+      "css": ".ds-strip { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem; box-sizing: border-box; width: 100%; padding: 0.6rem max(1rem, calc((100% - 800px) / 2)); background: #dde1ff; border-bottom: 1px solid #003ec7; font-family: inherit; }\n.ds-strip__message { flex: 1 1 auto; min-width: 0; font-size: 0.875rem; line-height: 1.4; color: #001452; }\n.ds-strip__action { flex-shrink: 0; padding: 0.25rem 0.5rem; background: #0052ff; color: #ffffff; border: 1px solid #1a1c1c; border-radius: 0; cursor: pointer; font-family: inherit; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; box-shadow: 2px 2px 0 0 #1a1c1c; }\n.ds-strip__action:hover:not(:disabled) { background: #0038b6; border-color: #0038b6; }\n.ds-strip__action:active:not(:disabled) { box-shadow: none; transform: translate(2px, 2px); }\n.ds-strip__action:focus-visible { outline: 2px solid #003ec7; outline-offset: 2px; }\n@media (pointer: coarse) { .ds-strip__action { min-height: 44px; } }"
     },
     {
       "name": "Movement Row",
       "kind": "custom",
-      "description": "Signature list line: direction glyph, category, account/meta, and 600-weight amount colored by direction.",
-      "html": "<div class=\"ds-movement\"><span class=\"ds-movement__arrow ds-movement__arrow--expense\">←</span><span class=\"ds-movement__category\">Food</span><span class=\"ds-movement__meta\">· Aug 14 · Checking</span><span class=\"ds-movement__amount ds-movement__amount--expense\">$42.00</span></div>",
-      "css": ".ds-movement { display: flex; align-items: center; gap: 0.75rem; font-size: 0.9rem; font-family: inherit; padding: 0.5rem 0; border-bottom: 1px solid #f3f4f6; }\n.ds-movement__arrow { font-weight: 600; text-align: center; width: 1.25rem; }\n.ds-movement__arrow--income { color: #16a34a; }\n.ds-movement__arrow--expense { color: #dc2626; }\n.ds-movement__arrow--transfer { color: #6b7280; }\n.ds-movement__category { font-weight: 500; }\n.ds-movement__meta { font-size: 0.8rem; color: #6b7280; }\n.ds-movement__amount { margin-left: auto; font-weight: 600; }\n.ds-movement__amount--income { color: #16a34a; }\n.ds-movement__amount--expense { color: #dc2626; }"
+      "description": "Signature ledger line: the 4px left stripe is the type's only signal (green in, red out, grey transfer); the amount is JetBrains Mono tabular, colored only by direction; actions are icon-only ghost squares on touch.",
+      "html": "<div class=\"ds-row ds-row--expense\"><span class=\"ds-row__date\">Aug 14</span><span class=\"ds-row__category\">Food</span><span class=\"ds-row__amount\">42.00</span><span class=\"ds-row__actions\"><button class=\"ds-row__icon\" type=\"button\" aria-label=\"Edit\" title=\"Edit\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" aria-hidden=\"true\"><path d=\"M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z\"/></svg></button><button class=\"ds-row__icon\" type=\"button\" aria-label=\"Delete\" title=\"Delete\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" aria-hidden=\"true\"><path d=\"M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z\"/></svg></button></span></div>",
+      "css": ".ds-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f3f3; border-left: 4px solid #ba1a1a; font-family: inherit; }\n.ds-row--income { border-left-color: #15803d; }\n.ds-row--expense { border-left-color: #ba1a1a; }\n.ds-row--transfer { border-left-color: #737688; }\n.ds-row__date { font-size: 0.875rem; color: #434656; font-variant-numeric: tabular-nums; }\n.ds-row__category { font-size: 1rem; color: #1a1c1c; }\n.ds-row__amount { margin-left: auto; font-family: ui-monospace, 'JetBrains Mono', Consolas, monospace; font-variant-numeric: tabular-nums; font-size: 0.875rem; font-weight: 500; color: #ba1a1a; }\n.ds-row--income .ds-row__amount { color: #15803d; }\n.ds-row--transfer .ds-row__amount { color: #1a1c1c; }\n.ds-row__actions { display: inline-flex; gap: 0.25rem; }\n.ds-row__icon { display: inline-flex; align-items: center; justify-content: center; width: 1.75rem; height: 1.75rem; padding: 0; border: 1px solid transparent; border-radius: 0; background: none; cursor: pointer; color: #434656; }\n.ds-row__icon svg { width: 1rem; height: 1rem; }\n.ds-row__icon:hover { background: #f5f5f5; }\n.ds-row__icon:focus-visible { outline: 2px solid #003ec7; outline-offset: 2px; }\n@media (pointer: coarse) { .ds-row__icon { width: 2.75rem; height: 2.75rem; border: none; box-shadow: none; } .ds-row__icon svg { width: 1.25rem; height: 1.25rem; } }"
+    },
+    {
+      "name": "Empty State",
+      "kind": "custom",
+      "description": "The dashed 'nothing here yet' affordance: flat Card White surface with a dashed Slate Stroke border and a centered muted message, with a caps-label action.",
+      "html": "<p class=\"ds-empty\">No movements for September 2026. <button class=\"ds-empty__action\" type=\"button\">Add a transaction</button></p>",
+      "css": ".ds-empty { margin: 0; padding: 1.5rem; text-align: center; background: #ffffff; border: 1px dashed #737688; border-radius: 0; font-family: inherit; font-size: 1rem; color: #434656; }\n.ds-empty__action { margin-left: 0.25rem; padding: 0.25rem 0.5rem; background: #ffffff; color: #1a1c1c; border: 1px solid #1a1c1c; border-radius: 0; cursor: pointer; font-family: inherit; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; box-shadow: 2px 2px 0 0 #1a1c1c; }\n.ds-empty__action:active:not(:disabled) { box-shadow: none; transform: translate(2px, 2px); }\n.ds-empty__action:focus-visible { outline: 2px solid #003ec7; outline-offset: 2px; }"
     }
   ],
   "narrative": {
-    "northStar": "The Quiet Register",
-    "overview": "Open Expenses is the calm, precise successor to the trusted paper ledger — a spreadsheet made into furniture. Every screen is a page of an account book that never raises its voice: white paper surfaces, hairline rules between rows, and a single blue ink reserved for the places the user acts. The interface is honest utility first: nothing decorative earns space unless it helps the user record or read a number correctly.\n\nDensity is comfortable and scannable. Cards stack as clean ruled pages inside a centered 800px column; tables run hairline row rules and muted labels; forms sit in two-column gridded wells. Depth is flat by construction — one-pixel borders and gray surface steps carry structure, never shadows. The whole system is assembled from a small neutral ramp plus three functional accents (blue for action, green for income, red for expense), which is exactly as much color as a ledger needs.\n\nThe layout treats accuracy as the product. Type carries hierarchy through size and weight alone; amounts are always weighted 600 so figures stand out of the page at a glance; muted gray supplies context, faint gray signals absence. Nothing distracts, nothing nags, and every surface sits quietly behind the work of keeping money straight.",
+    "northStar": "Monolith Ledger",
+    "overview": "Open Expenses is a slab of financial architecture: rigid minimalism and modern flat design applied to a personal expense tracker. Every screen is a block of machined surfaces — stark whites on a near-black grid of 1px strokes, sharp 90-degree corners, one saturated Digital Blue reserved for action, and ledger green reserved for income. Depth is communicated through color blocking and stroke weight, never shadows or gradients; the interface reads as controlled authority and absolute transparency.\n\nType is the loudest tool: an Inter ramp stepped way up (48px display, 32px headlines) so headlines dominate, uppercase letter-spaced caps labels for all metadata, and JetBrains Mono tabular figures for every number so columns of amounts align as one ledger. Nothing decorative earns space unless it helps record or read a number correctly.",
     "keyCharacteristics": [
-      "Flat, tonal, paper-based surfaces (no gradients, no glass, no shadows at rest)",
-      "A single blue accent that only ever marks action, active state, or information",
-      "Weight-driven type hierarchy on a neutral gray ramp",
-      "Hairline borders (1px) as the universal separator",
-      "Rounded corners kept small and functional (4px inputs to 8px cards)"
+      "Zero-radius geometry: every element is square (radius 0 on controls, wells, cards, chips, and pills)",
+      "Hard 1px black borders on cards and controls; tonal gray steps only zone, never separate",
+      "Flat hierarchy: the single sanctioned shadow is the 2px press shadow on buttons, removed on :active",
+      "High-contrast utility: near-black ink, stark whites, saturated functional blues, one urgent red, and one ledger green",
+      "Inter for interface, JetBrains Mono (tabular) for all monetary/numeric data, both self-hosted"
     ],
     "rules": [
       {
-        "name": "The Ledger's Ink Rule",
-        "body": "Deep Ledger Ink appears only on action, active state, and information. It is never a background fill, never a full-bleed panel, never decoration. Blue on a screen means \"here is where you do something.\" Derived, computed figures — such as the Stats Net and Avg Monthly Savings amounts — are information, not money in or out, so they read in Deep Ledger Ink rather than green or red.",
+        "name": "The Blue Acts Rule",
+        "body": "Blue appears only on action, active state, and information. Blue on a screen means \"here is something live or something you can do.\" Blue never warns, never destroys — that is Error's job — and no longer colors income: money in is green.",
         "section": "colors"
       },
       {
-        "name": "The Paper Ramp Rule",
-        "body": "Surface stepping uses only the neutral paper family (Paper White → Mist Paper → Silvered Paper). Tinted fills are limited to the ink-tint (#eff6ff), the ink-tint hover step (#dbeafe), the exchange-rate callout, the backup banner, status wells (amber), and danger wells (#fef2f2) — never as gratuitous cards.",
+        "name": "The Ledger Green Rule (D8 reversed, ADR 0011)",
+        "body": "Income is green (#15803d), expense is Error red, transfers are neutral with a quiet grey stripe. Direction is carried by color plus the 4px directional stripes — green, red, grey — which are the movement type's only signal (the Type column was dropped, arrows with it). Green never touches interactive elements; blue never marks money direction.",
         "section": "colors"
       },
       {
-        "name": "The Ink Is the Voice Rule",
-        "body": "Hierarchy is carried by size and weight alone. Never add color, italics (except the accepted note-italic), underlines, or styling tricks to make text stand out — the figures and headings already do that by weight.",
+        "name": "The Negative-Stays-Ink Rule",
+        "body": "A sign never flips a color: negative figures render in On Surface ink, whatever the page. Derived figures — the Movements Net Flow net, the Stats Net and Avg Monthly Savings, the year-spine months — are information, not money moving, so they stay ink at every sign; a minus is a fact, not an alarm. Red marks movement direction (expense figures and expense stripes) and warnings only (error strips, destructive confirmations, an overdrawn account balance); green marks money in; grey carries no direction (ADR 0011).",
+        "section": "colors"
+      },
+      {
+        "name": "The Hard Stroke Rule",
+        "body": "Cards and interactive controls are drawn with 1px solid On Surface; hairlines between rows and strips use Outline Variant. Tinted fills are limited to the primary-fixed wash and the error container — never as gratuitous cards.",
+        "section": "colors"
+      },
+      {
+        "name": "The Caps-Label Rule",
+        "body": "Metadata is never whispered in mixed case: labels, table headers, buttons, and tags render in 12px bold uppercase with +0.1em tracking. Fields and inputs inside a caps label reset to Body.",
         "section": "typography"
       },
       {
-        "name": "The No-Whisper Rule",
-        "body": "Nothing renders below 0.75rem. Faint Ash is for placeholders and disabled hints; type that users must read — empty states included — renders in Muted Slate, never Faint Ash at a small size.",
+        "name": "The Numbers-Are-Mono Rule",
+        "body": "Every monetary amount, rate, and numeric input renders in JetBrains Mono with font-variant-numeric: tabular-nums. Interface prose never does.",
         "section": "typography"
       },
       {
-        "name": "The Flat-By-Default Rule",
-        "body": "Depth is tonal, never shadowed. A surface that isn't floating in a menu has no shadow, ever. Hover on a button darkens ink — it never lifts, scales, or casts.",
+        "name": "The Press-Don't-Lift Rule",
+        "body": "Interactive elements press into the page; they never lift off it. Anything without a press interaction has no shadow, ever.",
         "section": "elevation"
       }
     ],
     "dos": [
-      "Do build depth from the paper ramp — Paper White, Mist Paper, Silvered Paper — with 1px hairline borders.",
-      "Do reserve Deep Ledger Ink for actions, the active tab, and info; let figures speak through 600-weight type instead.",
-      "Do keep corners small and role-scaled: 4px controls, 6px wells, 8px cards.",
-      "Do color amounts only by direction: Ledger Green for income, Officer's Red for expense, gray for transfers.",
-      "Do render derived figures (Net, Avg Monthly Savings) in Deep Ledger Ink as information, never in income/expense green or red.",
-      "Do signal destructive confirmations with the filled danger button and anything inside a table row or dense list with the outline danger hairline; render destructive-confirmation wells and error strips in the danger tint family."
+      "Do build structure from hard black borders and tonal surface steps — color blocking over shadows.",
+      "Do keep everything square: zero radius on every element, pills included.",
+      "Do use caps labels (12px/700/+0.1em/uppercase) for all metadata — labels, headers, buttons, tags.",
+      "Do render every amount in JetBrains Mono tabular figures, right-aligned in data tables.",
+      "Do color money only by direction: Income green for money in, Error red for money out, neutral ink for transfers; the directional stripe carries the same signal.",
+      "Do put warnings on the error ramp (Error Container fill, On Error Container ink) — there is no amber.",
+      "Do press buttons (shadow shed + 2px shift on :active) instead of lifting them."
     ],
     "donts": [
-      "Don't add drop shadows to cards or buttons (float shadows belong only to menus).",
+      "Don't round anything, or cast a shadow at rest — the press shadow on buttons is the only shadow.",
       "Don't use gradients, glassmorphism, backdrop blur, or full-bleed color panels anywhere.",
-      "Don't invent off-ramp grays or ad-hoc tints (#ccc, #eee, #666, one-off washes) — every fill beyond the paper ramp must belong to a sanctioned family (ink-tint, amber, danger) before it touches a component.",
-      "Don't round controls past 4px, and never move an active tab's affordance off the underline.",
-      "Don't whisper content below 0.75rem or render readable copy (empty states included) in Faint Ash.",
-      "Don't let the primary accent fill a whole screen or decorate a card background."
+      "Don't invent off-ramp grays or ad-hoc tints — every fill must belong to the surface ramp, the primary-fixed wash, or the error container before it touches a component.",
+      "Don't let green act or blue signal money direction (D8 reversed): green is only income, blue is only action/information, and amber is retired.",
+      "Don't set interface prose in mono or numbers in Inter — the two families have strict jobs.",
+      "Don't whisper metadata in mixed case below the caps-label spec."
     ]
   }
 }
