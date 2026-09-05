@@ -4,7 +4,8 @@ import { NetworkService } from './network.service';
 import { LanguageService } from './language.service';
 import { DataVersionService } from './data-version.service';
 import { BackupProvider } from '../../backup/backup-provider';
-import { DriveBackupProvider } from '../../backup/drive-backup-provider';
+import { DriveBackupProvider, NoBackupFoundError } from '../../backup/drive-backup-provider';
+import { oauthErrorKey } from '../../backup/backup-errors';
 import { TranslationError } from '../models/translation-error';
 import {
   BackupSnapshot,
@@ -81,13 +82,18 @@ export class DriveBackupService {
         callback: (response: any) => {
           if (response.error) {
             this.error.set(response.error);
-            reject(new Error(response.error));
+            reject(new TranslationError(oauthErrorKey(response.error)));
             return;
           }
           this.accessToken = response.access_token;
           this.storeToken(response.access_token, response.expires_in);
           this.isConnected.set(true);
           resolve();
+        },
+        error_callback: (oauthError: { type?: string }) => {
+          const type = oauthError?.type ?? 'popup_closed';
+          this.error.set(type);
+          reject(new TranslationError(oauthErrorKey(type)));
         },
       });
       client.requestAccessToken();

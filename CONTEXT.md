@@ -86,3 +86,7 @@ _Avoid_: Provider, cloud service, storage
 **Restore**:
 A user-initiated, full overwrite of local data from a prior Backup — from a cloud provider or an uploaded file. Restore replaces the entire local dataset and never triggers a new Backup.
 _Avoid_: Recovery, import, rollback
+
+**Cancelled Restore**:
+A Restore attempt that ends before any data changes because the user backed out — closing the sign-in window, declining access, or not picking a file. It leaves local data untouched, re-enables the Restore controls, and is not a failed Restore.
+_Avoid_: Failed restore, restore error
