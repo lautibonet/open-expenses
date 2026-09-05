@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 696 96">
+  <!-- The Cell mark + caps wordmark, Open Expenses identity (#121).
+       Ink parts use currentColor so the lockup adapts to the inverted Poster (#122):
+       on the ink background, the landing sets color to surface-lowest.
+       The wordmark requires Inter 800; inline this SVG in the app (not <img>) so the
+       self-hosted font applies. textLength pins the wordmark's geometry. -->
+  <g aria-label="Open Expenses">
+    <rect x="4" y="4" width="88" height="88" fill="none" stroke="currentColor" stroke-width="8"/>
+    <rect x="34" y="34" width="28" height="28" fill="#0052ff"/>
+    <text x="120" y="71" font-family="Inter, 'Inter Variable', sans-serif" font-weight="800" font-size="64" letter-spacing="1" fill="currentColor" textLength="192" lengthAdjust="spacingAndGlyphs">OPEN</text>
+    <text x="328" y="71" font-family="Inter, 'Inter Variable', sans-serif" font-weight="800" font-size="64" letter-spacing="1" fill="#0052ff" textLength="368" lengthAdjust="spacingAndGlyphs">EXPENSES</text>
+  </g>
+</svg>
