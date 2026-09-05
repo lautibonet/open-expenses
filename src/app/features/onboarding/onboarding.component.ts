@@ -92,6 +92,7 @@ export class OnboardingComponent {
   newCategoryType = signal<CategoryType>('expense');
   editingCategory = signal<CategoryEditState | null>(null);
   confirmingCategoryRemove = signal<number | null>(null);
+  confirmingDeleteAll = signal(false);
   categoryEditError = signal('');
   accountNameInput = viewChild<ElementRef<HTMLInputElement>>('accountNameInput');
   categoryNameInput = viewChild<ElementRef<HTMLInputElement>>('categoryNameInput');
@@ -348,7 +349,8 @@ export class OnboardingComponent {
 
   /* New rows come from the fixed-width inline add form — name plus type —
      validated before staging, the Settings categories-card composition
-     (#142). */
+     (#142). A pending Delete all confirm disarms: the list it was about to
+     clear just grew (#143). */
   addCategory(): void {
     this.resetError();
     const name = this.newCategoryName().trim();
@@ -367,6 +369,7 @@ export class OnboardingComponent {
     }
     this.categories.update(cats => [...cats, { name, type: this.newCategoryType() }]);
     this.newCategoryName.set('');
+    this.confirmingDeleteAll.set(false);
     this.errorMessage.set('');
   }
 
@@ -374,12 +377,21 @@ export class OnboardingComponent {
      pencil opens an expanded edit state, tick saves, X discards. Renaming a
      default category detaches it from the seeded defaults so a later
      language change no longer rewrites its name. */
+  /* Only one staged category state is ever active — an open edit, a row
+     removal confirm, or the Delete all confirm (#142, #143). Requesting one
+     discards the others, like the Settings card. */
+  private clearStagedCategoryState(): void {
+    this.editingCategory.set(null);
+    this.categoryEditError.set('');
+    this.confirmingCategoryRemove.set(null);
+    this.confirmingDeleteAll.set(false);
+  }
+
   startEditCategory(index: number): void {
     const category = this.categories()[index];
     if (!category) return;
-    this.confirmingCategoryRemove.set(null);
+    this.clearStagedCategoryState();
     this.editingCategory.set({ index, name: category.name, type: category.type });
-    this.categoryEditError.set('');
   }
 
   editCategoryName(value: string): void {
@@ -433,8 +445,7 @@ export class OnboardingComponent {
      deletes (#142). Requesting a removal also discards any open edit, so
      only one staged row state is ever active, like the Settings card. */
   requestRemoveCategory(index: number): void {
-    this.editingCategory.set(null);
-    this.categoryEditError.set('');
+    this.clearStagedCategoryState();
     this.confirmingCategoryRemove.set(index);
   }
 
@@ -445,6 +456,39 @@ export class OnboardingComponent {
   confirmRemoveCategory(index: number): void {
     this.categories.update(cats => cats.filter((_, i) => i !== index));
     this.confirmingCategoryRemove.set(null);
+  }
+
+  /* Delete all is the step's one red mass action (#143): red = mass or
+     irreversible, so unlike the row X it is red at rest, behind a single
+     lightweight confirm. Requesting it discards any staged row state so
+     only one destructive moment is ever active. */
+  requestDeleteAll(): void {
+    this.clearStagedCategoryState();
+    this.confirmingDeleteAll.set(true);
+  }
+
+  cancelDeleteAll(): void {
+    this.confirmingDeleteAll.set(false);
+  }
+
+  confirmDeleteAll(): void {
+    this.categories.set([]);
+    this.confirmingDeleteAll.set(false);
+  }
+
+  /* The empty list's way back (#143): re-seed the localized defaults with
+     their default keys attached, so a later Language change still rewrites
+     their names. */
+  restoreDefaultCategories(): void {
+    this.categories.set(
+      CategoryService.defaultCategories(this.language()).map(c => ({
+        name: c.name,
+        type: c.type,
+        defaultKey: c.key,
+      })),
+    );
+    this.clearStagedCategoryState();
+    this.errorMessage.set('');
   }
 
   canProceedFromCategories(): boolean {

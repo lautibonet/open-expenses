@@ -341,6 +341,11 @@ describe('translations', () => {
       'onboarding.categories.removePrompt',
       'onboarding.categories.confirmRemoveAria',
       'onboarding.categories.cancelRemoveAria',
+      'onboarding.categories.deleteAll',
+      'onboarding.categories.deleteAllPrompt',
+      'onboarding.categories.confirmDeleteAll',
+      'onboarding.categories.cancelDeleteAll',
+      'onboarding.categories.restoreDefaults',
       'onboarding.categories.minRequired',
       'onboarding.completionFailed',
     ]) {

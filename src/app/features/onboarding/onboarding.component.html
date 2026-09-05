@@ -413,6 +413,38 @@
           <app-dismissible-alert appearance="note" variant="error" [message]="errorMessage()" [resetKey]="statusEpoch()" />
 
           @if (categories().length > 0) {
+            <div class="list-actions">
+              @if (confirmingDeleteAll()) {
+                <span class="visually-hidden" aria-live="polite">
+                  {{ languageService.t('onboarding.categories.deleteAllPrompt') }}
+                </span>
+                <button
+                  type="button"
+                  class="btn small danger filled"
+                  data-confirm-delete-all
+                  (click)="confirmDeleteAll()"
+                >
+                  {{ languageService.t('onboarding.categories.confirmDeleteAll') }}
+                </button>
+                <button
+                  type="button"
+                  class="btn small"
+                  data-cancel-delete-all
+                  (click)="cancelDeleteAll()"
+                >
+                  {{ languageService.t('onboarding.categories.cancelDeleteAll') }}
+                </button>
+              } @else {
+                <button
+                  type="button"
+                  class="btn small danger"
+                  data-delete-all
+                  (click)="requestDeleteAll()"
+                >
+                  {{ languageService.t('onboarding.categories.deleteAll') }}
+                </button>
+              }
+            </div>
             <ul class="category-list">
               @for (cat of categories(); track $index; let i = $index) {
                 <li
@@ -571,6 +603,17 @@
                 </li>
               }
             </ul>
+          } @else {
+            <div class="empty-categories">
+              <button
+                type="button"
+                class="restore-chip"
+                data-restore-defaults
+                (click)="restoreDefaultCategories()"
+              >
+                {{ languageService.t('onboarding.categories.restoreDefaults') }}
+              </button>
+            </div>
           }
 
           <div class="nav-buttons">

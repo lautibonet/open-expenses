@@ -825,6 +825,129 @@ describe('OnboardingComponent', () => {
     expect(component.categories().map(c => c.name)).not.toContain('Food');
   });
 
+  // Issue #143: the step's one red destructive control — the Delete all mass
+  // action — sits behind a single lightweight confirm, and the empty list it
+  // leaves offers a restore-defaults chip that re-seeds the localized
+  // defaults. Single-row removes keep the inline tick/X confirm and stay
+  // non-red (asserted above): red means mass/irreversible.
+  it('clears every category after one lightweight Delete all confirm', () => {
+    stageCategories();
+
+    const deleteAll = deleteAllButton();
+    expect(deleteAll).toBeTruthy();
+    expect(deleteAll.classList).toContain('danger');
+
+    deleteAll.click();
+    fixture.detectChanges();
+
+    expect(categoryRows().length).toBe(9);
+    expect(component.categories().length).toBe(9);
+    expect(confirmDeleteAllButton()).toBeTruthy();
+    expect(cancelDeleteAllButton()).toBeTruthy();
+    const prompt = fixture.nativeElement.querySelector('.visually-hidden[aria-live="polite"]') as HTMLElement;
+    expect(prompt.textContent).toContain('Delete all categories?');
+
+    (confirmDeleteAllButton() as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(categoryRows().length).toBe(0);
+    expect(component.categories().length).toBe(0);
+  });
+
+  it('keeps every category when the Delete all confirm is cancelled', () => {
+    stageCategories();
+
+    deleteAllButton().click();
+    fixture.detectChanges();
+    (cancelDeleteAllButton() as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(categoryRows().length).toBe(9);
+    expect(confirmDeleteAllButton()).toBeNull();
+  });
+
+  it('discards staged row states when Delete all is requested', () => {
+    stageCategories();
+
+    const row = rowForCategory('Food');
+    pencilForCategory(row).click();
+    fixture.detectChanges();
+    (rowForCategory('Transport').querySelector('button[aria-label="Remove"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(component.confirmingCategoryRemove()).not.toBeNull();
+
+    openDeleteAllConfirm();
+    fixture.detectChanges();
+
+    expect(component.editingCategory()).toBeNull();
+    expect(component.confirmingCategoryRemove()).toBeNull();
+    expect(component.confirmingDeleteAll()).toBe(true);
+  });
+
+  it('disarms a pending Delete all confirm when a category is added', () => {
+    stageCategories();
+    openDeleteAllConfirm();
+    expect(component.confirmingDeleteAll()).toBe(true);
+
+    component.newCategoryName.set('Groceries');
+    component.addCategory();
+    fixture.detectChanges();
+
+    expect(component.confirmingDeleteAll()).toBe(false);
+    expect(component.categories().length).toBe(10);
+    expect(confirmDeleteAllButton()).toBeNull();
+  });
+
+  it('offers restore defaults on the empty list and re-seeds the localized defaults', async () => {
+    stageCategories();
+
+    // The chip belongs to the empty list only — not while rows are staged.
+    expect(restoreDefaultsChip()).toBeNull();
+
+    openDeleteAllConfirm();
+    (confirmDeleteAllButton() as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    // An empty list cannot proceed; it offers the restore chip instead.
+    expect(component.canProceedFromCategories()).toBe(false);
+    const chip = restoreDefaultsChip() as HTMLButtonElement;
+    expect(chip).toBeTruthy();
+    expect(chip.textContent).toContain('Restore defaults');
+
+    chip.click();
+    fixture.detectChanges();
+
+    expect(categoryRows().length).toBe(9);
+    expect(component.categories().map(c => c.name)).toContain('Food');
+    expect(component.canProceedFromCategories()).toBe(true);
+    // The re-seeded rows carry their default keys, so the chosen Language
+    // still rewrites their names.
+    expect(component.categories().every(c => c.defaultKey)).toBe(true);
+    await component.onLanguageChange('es');
+    expect(component.categories().map(c => c.name)).toContain('Comida');
+  });
+
+  function deleteAllButton(): HTMLButtonElement {
+    return fixture.nativeElement.querySelector('[data-delete-all]') as HTMLButtonElement;
+  }
+
+  function confirmDeleteAllButton(): HTMLButtonElement {
+    return fixture.nativeElement.querySelector('[data-confirm-delete-all]') as HTMLButtonElement;
+  }
+
+  function cancelDeleteAllButton(): HTMLButtonElement {
+    return fixture.nativeElement.querySelector('[data-cancel-delete-all]') as HTMLButtonElement;
+  }
+
+  function restoreDefaultsChip(): HTMLButtonElement {
+    return fixture.nativeElement.querySelector('[data-restore-defaults]') as HTMLButtonElement;
+  }
+
+  function openDeleteAllConfirm(): void {
+    deleteAllButton().click();
+    fixture.detectChanges();
+  }
+
   it('lands on Movements when the fresh wizard completes', async () => {
     const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
 
