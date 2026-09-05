@@ -8,7 +8,7 @@ import { TranslationError } from '../../core/models/translation-error';
 import { db } from '../../core/db/database';
 
 function stubNavigator(language: string): void {
-  vi.stubGlobal('navigator', { language, languages: [language] });
+  vi.stubGlobal('navigator', { language, languages: [language], userAgent: 'vitest' });
 }
 
 describe('OnboardingComponent', () => {
@@ -242,12 +242,9 @@ describe('OnboardingComponent', () => {
     expect(codes()).toEqual(['EUR', 'USD', 'GBP', 'JPY']);
   });
 
-  it('renders account rows as name plus symbol amount, removed via an X icon without confirm', () => {
-    vi.stubGlobal('navigator', {
-      language: 'en-GB',
-      languages: ['en-GB'],
-      userAgent: 'vitest',
-    });
+  const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 10));
+
+  function stageAccounts(): void {
     component.goTo('accounts');
     fixture.detectChanges();
 
@@ -256,26 +253,291 @@ describe('OnboardingComponent', () => {
       { name: 'Cash', currency: 'CLP', balance: 30000 },
     ]);
     fixture.detectChanges();
+  }
 
-    const rows = Array.from(
-      fixture.nativeElement.querySelectorAll('.account-list li'),
+  function accountRows(): HTMLElement[] {
+    return Array.from(
+      fixture.nativeElement.querySelectorAll('.account-list .account-row'),
     ) as HTMLElement[];
+  }
+
+  function rowFor(name: string): HTMLElement {
+    return accountRows().find((r) => r.textContent!.includes(name))!;
+  }
+
+  function pencilFor(row: HTMLElement): HTMLButtonElement {
+    return row.querySelector('button[data-edit-pencil]') as HTMLButtonElement;
+  }
+
+  function setNgModelValue(input: HTMLInputElement | HTMLSelectElement, value: string): void {
+    input.value = value;
+    input.dispatchEvent(new Event('input'));
+    input.dispatchEvent(new Event('change'));
+  }
+
+  // Issue #141: the accounts step adopts the Settings accounts-card
+  // composition — list tiles, inline add form, the shared edit grammar
+  // (pencil / tick / X, Enter / Escape) and the inline tick/X remove
+  // confirmation. Nothing row-level is red at rest.
+  it('renders account rows as Settings-style list tiles with pencil and remove actions', () => {
+    stageAccounts();
+
+    const rows = accountRows();
     expect(rows.length).toBe(2);
-    // Symbol before amount, no em dash; code falls back when no symbol exists.
-    expect(rows[0].textContent).toContain('Checking');
-    expect(rows[0].textContent).toContain('€ 1250');
-    expect(rows[0].textContent).not.toContain('—');
-    expect(rows[1].textContent).toContain('Cash');
-    expect(rows[1].textContent).toContain('CLP 30000');
 
-    const remove = rows[0].querySelector('button') as HTMLButtonElement;
+    const checking = rowFor('Checking');
+    expect(checking.querySelector('.account-name')!.textContent!.trim()).toBe('Checking');
+    expect(checking.querySelector('.account-meta')!.textContent).toContain('EUR');
+    expect(checking.querySelector('.account-meta')!.textContent).toContain('1250');
+
+    const pencil = pencilFor(checking);
+    expect(pencil.getAttribute('data-edit-pencil')).toBe('account-0');
+    expect(pencil.getAttribute('aria-label')).toBe('Edit account');
+    expect(checking.querySelector('.account-name button')).toBeNull();
+
+    const remove = checking.querySelector('button[aria-label="Remove"]') as HTMLButtonElement;
+    expect(remove).toBeTruthy();
     expect(remove.classList).toContain('icon-btn');
-    expect(remove.getAttribute('aria-label')).toBe('Remove');
-    expect(remove.querySelector('svg')).toBeTruthy();
-    remove.click();
+    // No confirm-less deletes and nothing row-level is red at rest.
+    expect(remove.classList).not.toContain('danger');
+    expect(checking.querySelector('button[aria-label="Confirm removal"]')).toBeNull();
+  });
 
-    expect(component.accounts().length).toBe(1);
+  it('removes an account only after the inline tick/X confirmation', () => {
+    stageAccounts();
+
+    const row = rowFor('Checking');
+    (row.querySelector('button[aria-label="Remove"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(row.querySelector('button[aria-label="Confirm removal"]')).toBeTruthy();
+    expect(row.querySelector('button[aria-label="Cancel removal"]')).toBeTruthy();
+    expect(accountRows().length).toBe(2);
+
+    (row.querySelector('button[aria-label="Cancel removal"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(accountRows().length).toBe(2);
+    expect(row.querySelector('button[aria-label="Confirm removal"]')).toBeNull();
+
+    (row.querySelector('button[aria-label="Remove"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    (row.querySelector('button[aria-label="Confirm removal"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(accountRows().length).toBe(1);
     expect(component.accounts()[0].name).toBe('Cash');
+  });
+
+  it('adds an account through the Settings-style inline add form', async () => {
+    component.goTo('accounts');
+    fixture.detectChanges();
+
+    const form = fixture.nativeElement.querySelector('.inline-form') as HTMLElement;
+    expect(form.querySelector('.btn.dashed')).toBeTruthy();
+    expect(form.textContent).toContain('Add');
+
+    setNgModelValue(form.querySelector('input[type="text"]') as HTMLInputElement, 'Wallet');
+    setNgModelValue(form.querySelector('select') as HTMLSelectElement, 'USD');
+    setNgModelValue(form.querySelector('input[type="number"]') as HTMLInputElement, '500');
+    fixture.detectChanges();
+    (form.querySelector('.btn.dashed') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(accountRows().length).toBe(1);
+    const row = rowFor('Wallet');
+    expect(row.querySelector('.account-meta')!.textContent).toContain('USD');
+    expect(row.querySelector('.account-meta')!.textContent).toContain('500');
+
+    const nameInput = form.querySelector('input[type="text"]') as HTMLInputElement;
+    const balanceInput = form.querySelector('input[type="number"]') as HTMLInputElement;
+    await flush();
+    expect(nameInput.value).toBe('');
+    expect(balanceInput.value).toBe('0');
+  });
+
+  it('rejects a negative initial balance inline when adding', () => {    component.goTo('accounts');
+    fixture.detectChanges();
+
+    setNgModelValue(
+      fixture.nativeElement.querySelector('.inline-form input[type="text"]'),
+      'Wallet',
+    );
+    setNgModelValue(
+      fixture.nativeElement.querySelector('.inline-form input[type="number"]'),
+      '-5',
+    );
+    component.addAccount();
+    fixture.detectChanges();
+
+    const alert = fixture.nativeElement.querySelector('.alert') as HTMLElement;
+    expect(alert.textContent).toContain('cannot be negative');
+    expect(accountRows().length).toBe(0);
+  });
+
+  it('opens the inline edit state from the pencil; tick saves', async () => {
+    stageAccounts();
+
+    const row = rowFor('Checking');
+    pencilFor(row).click();
+    fixture.detectChanges();
+    await flush();
+    fixture.detectChanges();
+
+    const editState = row.querySelector('.edit-state') as HTMLElement;
+    expect(editState).toBeTruthy();
+    const nameInput = editState.querySelector('input[type="text"]') as HTMLInputElement;
+    const balanceInput = editState.querySelector('input[type="number"]') as HTMLInputElement;
+    expect(nameInput.value).toBe('Checking');
+    expect(balanceInput.value).toBe('1250');
+    expect(editState.textContent).toContain('EUR');
+
+    setNgModelValue(nameInput, 'Wallet');
+    setNgModelValue(balanceInput, '250000');
+    (editState.querySelector('button[aria-label="Save changes"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    await flush();
+    fixture.detectChanges();
+
+    expect(component.accounts()[0]).toEqual({ name: 'Wallet', currency: 'EUR', balance: 250000 });
+    expect(row.querySelector('.edit-state')).toBeNull();
+    expect(row.querySelector('.account-name')!.textContent!.trim()).toBe('Wallet');
+  });
+
+  it('discards inline edit changes from the X without touching the staged row', async () => {
+    stageAccounts();
+
+    const row = rowFor('Checking');
+    pencilFor(row).click();
+    fixture.detectChanges();
+    await flush();
+    fixture.detectChanges();
+
+    const editState = row.querySelector('.edit-state') as HTMLElement;
+    const nameInput = editState.querySelector('input[type="text"]') as HTMLInputElement;
+    setNgModelValue(nameInput, 'Wallet');
+    (editState.querySelector('button[aria-label="Discard changes"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    await flush();
+    fixture.detectChanges();
+
+    expect(component.accounts()[0].name).toBe('Checking');
+    expect(row.querySelector('.edit-state')).toBeNull();
+  });
+
+  it('saves inline edits on Enter and cancels them on Escape', async () => {
+    stageAccounts();
+
+    const row = rowFor('Checking');
+    pencilFor(row).click();
+    fixture.detectChanges();
+    await flush();
+    fixture.detectChanges();
+
+    let editState = row.querySelector('.edit-state') as HTMLElement;
+    let nameInput = editState.querySelector('input[type="text"]') as HTMLInputElement;
+    setNgModelValue(nameInput, 'Wallet');
+    nameInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+    fixture.detectChanges();
+    expect(component.accounts()[0].name).toBe('Wallet');
+    expect(row.querySelector('.edit-state')).toBeNull();
+
+    pencilFor(row).click();
+    fixture.detectChanges();
+    await flush();
+    fixture.detectChanges();
+    editState = row.querySelector('.edit-state') as HTMLElement;
+    nameInput = editState.querySelector('input[type="text"]') as HTMLInputElement;
+    setNgModelValue(nameInput, 'Changed');
+    nameInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    fixture.detectChanges();
+    await flush();
+    fixture.detectChanges();
+
+    expect(component.accounts()[0].name).toBe('Wallet');
+    expect(row.querySelector('.edit-state')).toBeNull();
+  });
+
+  it('moves focus to the first edit input on open and back to the pencil on cancel', async () => {
+    stageAccounts();
+
+    const row = rowFor('Checking');
+    pencilFor(row).click();
+    fixture.detectChanges();
+    await flush();
+    fixture.detectChanges();
+
+    const nameInput = row.querySelector(
+      '.edit-state input[type="text"]',
+    ) as HTMLInputElement;
+    expect(document.activeElement).toBe(nameInput);
+
+    nameInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    await flush();
+    fixture.detectChanges();
+
+    const pencil = row.querySelector('button[data-edit-pencil="account-0"]') as HTMLButtonElement;
+    expect(pencil).toBeTruthy();
+    expect(document.activeElement).toBe(pencil);
+  });
+
+  it('renders inline edit validation errors announced, without a page-level alert', async () => {
+    stageAccounts();
+
+    const row = rowFor('Checking');
+    pencilFor(row).click();
+    fixture.detectChanges();
+    await flush();
+    fixture.detectChanges();
+
+    const editState = row.querySelector('.edit-state') as HTMLElement;
+    const nameInput = editState.querySelector('input[type="text"]') as HTMLInputElement;
+    setNgModelValue(nameInput, 'Cash');
+    (editState.querySelector('button[aria-label="Save changes"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    const inlineError = row.querySelector('.edit-error') as HTMLElement;
+    expect(inlineError).toBeTruthy();
+    expect(inlineError.getAttribute('role')).toBe('alert');
+    expect(inlineError.textContent).toContain('already exists');
+    expect(fixture.nativeElement.querySelector('app-dismissible-alert .alert')).toBeNull();
+    expect(row.querySelector('.edit-state')).toBeTruthy();
+  });
+
+  it('discards an open edit when a removal is requested on another row', () => {
+    stageAccounts();
+
+    const cash = rowFor('Cash');
+    pencilFor(accountRows()[0]).click();
+    fixture.detectChanges();
+    expect(accountRows()[0].querySelector('.edit-state')).toBeTruthy();
+
+    (cash.querySelector('button[aria-label="Remove"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(component.editingAccount()).toBeNull();
+    expect(cash.querySelector('button[aria-label="Confirm removal"]')).toBeTruthy();
+
+    (cash.querySelector('button[aria-label="Confirm removal"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(component.accounts().map((a) => a.name)).toEqual(['Checking']);
+  });
+
+  it('keeps staged accounts and confirmed removals across back navigation', () => {
+    stageAccounts();
+
+    const row = rowFor('Cash');
+    (row.querySelector('button[aria-label="Remove"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    (row.querySelector('button[aria-label="Confirm removal"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(accountRows().length).toBe(1);
+
+    component.goTo('currency');
+    component.goTo('accounts');
+    fixture.detectChanges();
+
+    expect(accountRows().length).toBe(1);
+    expect(accountRows()[0].textContent).toContain('Checking');
   });
 
   it('lands on Movements when the fresh wizard completes', async () => {
@@ -435,11 +697,6 @@ describe('OnboardingComponent', () => {
   });
 
   it('dismisses an error note and shows it again on the next failure', () => {
-    vi.stubGlobal('navigator', {
-      language: 'en-GB',
-      languages: ['en-GB'],
-      userAgent: 'vitest',
-    });
     component.goTo('accounts');
     fixture.detectChanges();
 
