@@ -1425,7 +1425,9 @@ describe('MovementsComponent - icon row actions', () => {
     expect(buttons[0].querySelector('svg')).toBeTruthy();
     expect(buttons[1].getAttribute('aria-label')).toBe('Delete movement');
     expect(buttons[1].querySelector('svg')).toBeTruthy();
-    expect(buttons[1].classList.contains('danger')).toBe(true);
+    // The idle delete affordance is never red (1a33a36): red appears only on
+    // the confirm tick, at the moment of destructive intent.
+    expect(buttons[1].classList.contains('danger')).toBe(false);
     expect(buttons.every((b) => (b.textContent ?? '').trim() === '')).toBe(true);
   });
 
