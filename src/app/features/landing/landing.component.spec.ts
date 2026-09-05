@@ -1,6 +1,9 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { LandingComponent } from './landing.component';
+import { routes } from '../../app.routes';
+import { ProfileService } from '../../core/services/profile.service';
+import { db } from '../../core/db/database';
 
 describe('LandingComponent (#131: The Poster)', () => {
   let fixture: ComponentFixture<LandingComponent>;
@@ -119,6 +122,43 @@ describe('LandingComponent (#131: The Poster)', () => {
     it('labels the toggle group for assistive tech in the active language', () => {
       const group = fixture.nativeElement.querySelector('.lang-toggle');
       expect(group.getAttribute('aria-label')).toBe('Language');
+    });
+  });
+
+  describe('CTA click-through (onboarding guard)', () => {
+    let router: Router;
+
+    beforeEach(async () => {
+      vi.stubGlobal('navigator', { language: 'en-US', languages: ['en-US'] });
+      await TestBed.configureTestingModule({
+        imports: [LandingComponent],
+        providers: [provideRouter(routes)],
+      }).compileComponents();
+      router = TestBed.inject(Router);
+      await db.delete();
+      await db.open();
+      await router.navigateByUrl('/');
+      fixture = createLanding();
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it('sends an un-onboarded user to Onboarding, not Movements', async () => {
+      const cta = fixture.nativeElement.querySelector('.cta-row a[routerLink="/movements"]');
+      cta.click();
+      await fixture.whenStable();
+      expect(router.url).toBe('/onboarding');
+    });
+
+    it('sends an onboarded user to Movements', async () => {
+      await TestBed.inject(ProfileService).completeOnboarding('EUR');
+      fixture = createLanding();
+      const cta = fixture.nativeElement.querySelector('.cta-row a[routerLink="/movements"]');
+      cta.click();
+      await fixture.whenStable();
+      expect(router.url).toBe('/movements');
     });
   });
 

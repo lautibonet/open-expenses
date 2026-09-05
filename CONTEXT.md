@@ -64,6 +64,14 @@ _Avoid_: locale, i18n, translation setting
 "Open Expenses" — the product's brand name. Rendered identically in every Language and never translated; the sole exception to Language governing all displayed words.
 _Avoid_: localized name, translated title
 
+**Landing**:
+The Public Page presented to visitors before the app is usable. Introduces the product and offers a single call to action that opens the app; also links to the Privacy page. Reached when the app is launched with no path. Opening the app from the Landing follows the same entry contract as any other navigation: an un-onboarded user is sent to Onboarding.
+_Avoid_: home page, marketing page, poster
+
+**Public Page**:
+A screen reachable without completing Onboarding — the Landing and the Privacy page. The complement of the app's shell screens (Movements, Stats, Settings), which are gated by the Onboarding entry contract.
+_Avoid_: public route, open page, unauthenticated page
+
 **Onboarding**:
 The first-run flow that collects language, base currency, initial accounts, and initial categories before the app is usable. Its first step asks the preferred Language; the second asks whether to restore a Backup from a cloud provider or from an uploaded file, before the wizard itself runs. Steps after the first carry a Back control; going back only navigates — it never undoes completed work (a completed Restore, the chosen Language, staged accounts and categories all persist). Restoring a Backup overwrites the chosen Language with the Backup's.
 _Avoid_: Setup, wizard, first-time flow

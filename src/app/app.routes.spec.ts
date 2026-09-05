@@ -1,35 +1,101 @@
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { routes } from './app.routes';
+import { ProfileService } from './core/services/profile.service';
+import { db } from './core/db/database';
 
 describe('app routes', () => {
   let router: Router;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     TestBed.configureTestingModule({
       providers: [provideRouter(routes)],
     });
     router = TestBed.inject(Router);
+    await db.delete();
+    await db.open();
+  });
+
+  function shellRoute() {
+    return routes.find((r) => r.path === '' && !!r.children);
+  }
+
+  describe('when onboarding is not completed', () => {
+    it('redirects Movements to Onboarding', async () => {
+      await router.navigateByUrl('/movements');
+      expect(router.url).toBe('/onboarding');
+    });
+
+    it('redirects Stats to Onboarding', async () => {
+      await router.navigateByUrl('/stats');
+      expect(router.url).toBe('/onboarding');
+    });
+
+    it('redirects Settings to Onboarding', async () => {
+      await router.navigateByUrl('/settings');
+      expect(router.url).toBe('/onboarding');
+    });
+
+    it('redirects unknown URLs (wildcard into the shell) to Onboarding', async () => {
+      await router.navigateByUrl('/nonsense');
+      expect(router.url).toBe('/onboarding');
+    });
+
+    it('keeps the public landing at the root', async () => {
+      await router.navigateByUrl('/');
+      expect(router.url).toBe('/');
+    });
+
+    it('keeps the public Privacy page reachable, query parameters included', async () => {
+      await router.navigateByUrl('/privacy?utm_source=google');
+      expect(router.url).toBe('/privacy?utm_source=google');
+    });
+
+    it('keeps Onboarding itself reachable without a loop', async () => {
+      await router.navigateByUrl('/onboarding');
+      expect(router.url).toBe('/onboarding');
+    });
+  });
+
+  describe('when onboarding is completed', () => {
+    beforeEach(async () => {
+      await TestBed.inject(ProfileService).completeOnboarding('EUR');
+    });
+
+    it('resolves Movements', async () => {
+      await router.navigateByUrl('/movements');
+      expect(router.url).toBe('/movements');
+    });
+
+    it('resolves Stats', async () => {
+      await router.navigateByUrl('/stats');
+      expect(router.url).toBe('/stats');
+    });
+
+    it('resolves Settings', async () => {
+      await router.navigateByUrl('/settings');
+      expect(router.url).toBe('/settings');
+    });
+
+    it('redirects the legacy dashboard route to Stats for existing deep links', async () => {
+      await router.navigateByUrl('/dashboard');
+      expect(router.url).toBe('/stats');
+    });
+
+    it('keeps the public landing at the root', async () => {
+      await router.navigateByUrl('/');
+      expect(router.url).toBe('/');
+    });
+
+    it('resolves the public Privacy route', async () => {
+      await router.navigateByUrl('/privacy');
+      expect(router.url).toBe('/privacy');
+    });
   });
 
   it('lands on the public landing when the app is launched with no path', async () => {
     await router.navigateByUrl('/');
     expect(router.url).toBe('/');
-  });
-
-  it('resolves the Stats route', async () => {
-    await router.navigateByUrl('/stats');
-    expect(router.url).toBe('/stats');
-  });
-
-  it('resolves the public Privacy route', async () => {
-    await router.navigateByUrl('/privacy');
-    expect(router.url).toBe('/privacy');
-  });
-
-  it('redirects the legacy dashboard route to Stats for existing deep links', async () => {
-    await router.navigateByUrl('/dashboard');
-    expect(router.url).toBe('/stats');
   });
 
   it('registers the public landing surface outside the shell', () => {
@@ -43,10 +109,9 @@ describe('app routes', () => {
   });
 
   it('registers the Stats surface and the legacy dashboard redirect', () => {
-    const shell = routes.find((r) => r.path === '' && !!r.children);
-    const stats = shell?.children?.find((r) => r.path === 'stats');
+    const stats = shellRoute()?.children?.find((r) => r.path === 'stats');
     expect(stats).toBeDefined();
-    const legacy = shell?.children?.find((r) => r.path === 'dashboard');
+    const legacy = shellRoute()?.children?.find((r) => r.path === 'dashboard');
     expect(legacy?.redirectTo).toBe('stats');
   });
 });
