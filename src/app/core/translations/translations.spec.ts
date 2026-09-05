@@ -114,6 +114,13 @@ describe('translations', () => {
     }
   });
 
+  it('covers the update prompt keys', () => {
+    for (const key of ['update.prompt', 'update.action', 'update.dismiss']) {
+      expect(TRANSLATIONS.en[key]).toBeTruthy();
+      expect(TRANSLATIONS.es[key]).toBeTruthy();
+    }
+  });
+
   it('covers the app metadata keys', () => {
     expect(TRANSLATIONS.en['app.title']).toBeTruthy();
     expect(TRANSLATIONS.es['app.title']).toBeTruthy();

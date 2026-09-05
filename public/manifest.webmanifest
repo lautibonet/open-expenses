@@ -1,4 +1,5 @@
 {
+  "id": "https://openexpenses.app/",
   "name": "Open Expenses",
   "short_name": "Expenses",
   "description": "A personal expense tracking app",
