@@ -65,7 +65,7 @@ _Avoid_: locale, i18n, translation setting
 _Avoid_: localized name, translated title
 
 **Landing**:
-The Public Page presented to visitors before the app is usable. Introduces the product and offers a single call to action that opens the app; also links to the Privacy page. Reached when the app is launched with no path. Opening the app from the Landing follows the same entry contract as any other navigation: an un-onboarded user is sent to Onboarding.
+The Public Page that introduces the product, with a single call to action that opens the app and a link to the Privacy page. Reached deliberately at the `/landing` route — via the app footer, the Privacy page, or a shared URL — and never as the default entry: the root URL enters the app directly. Opening the app from the Landing follows the same entry contract as any other navigation: an un-onboarded user is sent to Onboarding.
 _Avoid_: home page, marketing page, poster
 
 **Public Page**:

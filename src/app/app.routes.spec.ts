@@ -41,9 +41,14 @@ describe('app routes', () => {
       expect(router.url).toBe('/onboarding');
     });
 
-    it('keeps the public landing at the root', async () => {
+    it('sends a visitor at the root to Onboarding', async () => {
       await router.navigateByUrl('/');
-      expect(router.url).toBe('/');
+      expect(router.url).toBe('/onboarding');
+    });
+
+    it('keeps the public Landing reachable', async () => {
+      await router.navigateByUrl('/landing');
+      expect(router.url).toBe('/landing');
     });
 
     it('keeps the public Privacy page reachable, query parameters included', async () => {
@@ -82,9 +87,14 @@ describe('app routes', () => {
       expect(router.url).toBe('/stats');
     });
 
-    it('keeps the public landing at the root', async () => {
+    it('enters the app at the root', async () => {
       await router.navigateByUrl('/');
-      expect(router.url).toBe('/');
+      expect(router.url).toBe('/movements');
+    });
+
+    it('keeps the public Landing reachable', async () => {
+      await router.navigateByUrl('/landing');
+      expect(router.url).toBe('/landing');
     });
 
     it('resolves the public Privacy route', async () => {
@@ -93,14 +103,16 @@ describe('app routes', () => {
     });
   });
 
-  it('lands on the public landing when the app is launched with no path', async () => {
-    await router.navigateByUrl('/');
-    expect(router.url).toBe('/');
+  it('registers the public Landing surface outside the shell', () => {
+    const landing = routes.find((r) => r.path === 'landing' && r.loadComponent && !r.children);
+    expect(landing).toBeDefined();
   });
 
-  it('registers the public landing surface outside the shell', () => {
+  it('keeps the root out of the Landing, redirecting into the shell instead', () => {
+    const rootRedirect = routes.find((r) => r.path === '' && r.redirectTo && !r.children);
+    expect(rootRedirect?.redirectTo).toBe('movements');
     const landing = routes.find((r) => r.path === '' && r.loadComponent && !r.children);
-    expect(landing).toBeDefined();
+    expect(landing).toBeUndefined();
   });
 
   it('registers the public Privacy surface outside the shell', () => {
