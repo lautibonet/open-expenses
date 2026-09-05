@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 696 96" width="696" height="96" role="img" aria-label="Open Expenses">
+  <!-- The Cell mark + caps wordmark (#121, #123): outlined ink square, solid
+       Digital Blue cell, OPEN in ink, EXPENSES in Digital Blue, Inter 800.
+       Standalone README variant of the landing lockup: explicit fills instead
+       of currentColor, textLength keeps the caps rhythm across font fallbacks. -->
+  <rect x="4" y="4" width="88" height="88" fill="none" stroke="#1a1c1c" stroke-width="8"/>
+  <rect x="34" y="34" width="28" height="28" fill="#0052ff"/>
+  <text x="120" y="71" font-family="Inter, 'Inter Variable', 'Helvetica Neue', Arial, sans-serif" font-weight="800" font-size="64" letter-spacing="1" fill="#1a1c1c" textLength="192" lengthAdjust="spacingAndGlyphs">OPEN</text>
+  <text x="328" y="71" font-family="Inter, 'Inter Variable', 'Helvetica Neue', Arial, sans-serif" font-weight="800" font-size="64" letter-spacing="1" fill="#0052ff" textLength="368" lengthAdjust="spacingAndGlyphs">EXPENSES</text>
+</svg>
