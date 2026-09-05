@@ -66,6 +66,16 @@ describe('App boot landing', () => {
       expect(router.url).toBe('/');
     });
 
+    it('keeps the public Privacy page without redirecting to Onboarding', async () => {
+      await bootAt('/privacy');
+      expect(router.url).toBe('/privacy');
+    });
+
+    it('keeps the public Privacy page with query parameters', async () => {
+      await bootAt('/privacy?utm_source=google');
+      expect(router.url).toBe('/privacy?utm_source=google');
+    });
+
     it('takes priority over a deep link to Movements', async () => {
       await bootAt('/movements');
       expect(router.url).toBe('/onboarding');

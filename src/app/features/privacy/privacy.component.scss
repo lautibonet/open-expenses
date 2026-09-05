@@ -1,0 +1,122 @@
+/* The Privacy page (#132): a public sibling of the Poster (#131), same
+   inverted-ink surface and tokens (DESIGN.md, ADR 0010); prose instead of
+   poster lines. */
+
+.privacy {
+  min-height: 100dvh;
+  background: var(--on-surface);
+  color: var(--surface-lowest);
+  display: flex;
+  flex-direction: column;
+
+  main {
+    width: min(100% - 2rem, 800px);
+    margin: 0 auto;
+    flex: 1;
+  }
+
+  /* The design's blue focus border loses contrast on the inverted ink; the
+     Poster's analog is the surface-lowest outline at the same geometry. */
+  :focus-visible {
+    outline-color: var(--surface-lowest);
+  }
+}
+
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: var(--space-sm) var(--chrome-gutter);
+}
+
+.lang-toggle {
+  display: flex;
+  gap: var(--space-xs);
+
+  button {
+    background: transparent;
+    border: none;
+    color: var(--surface-dim);
+    font-family: inherit;
+    font-size: var(--type-label);
+    font-weight: 700;
+    letter-spacing: var(--tracking-caps);
+    padding: var(--space-xs) var(--space-sm);
+    cursor: pointer;
+
+    &.active {
+      color: var(--surface-lowest);
+      text-decoration: underline;
+      text-underline-offset: 4px;
+    }
+  }
+}
+
+main {
+  h1 {
+    font-size: clamp(2.5rem, 8vw, 4.5rem);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    margin: 0;
+    padding: var(--space-lg) 0;
+  }
+}
+
+.intro {
+  font-size: var(--type-body-lg);
+  line-height: var(--leading-body-lg);
+  max-width: var(--prose-measure);
+  margin: 0 0 var(--space-xl);
+}
+
+.policy-section {
+  border-top: 1px solid var(--surface-dim);
+  padding: var(--space-lg) 0;
+
+  h2 {
+    font-size: var(--type-label);
+    font-weight: 700;
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    margin: 0 0 var(--space-sm);
+  }
+
+  p {
+    color: var(--surface-dim);
+    font-size: var(--type-body);
+    line-height: var(--leading-body);
+    max-width: var(--prose-measure);
+    margin: 0 0 var(--space-sm);
+  }
+}
+
+.contact-email {
+  color: var(--primary-container);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+
+  &:hover {
+    color: var(--surface-lowest);
+  }
+}
+
+footer {
+  border-top: 1px solid var(--surface-dim);
+
+  .home-link {
+    display: inline-block;
+    padding: var(--space-md) var(--chrome-gutter);
+    color: var(--surface-dim);
+    font-size: var(--type-caption);
+    line-height: var(--leading-caption);
+    text-decoration: none;
+
+    &:hover {
+      color: var(--surface-lowest);
+      text-decoration: underline;
+      text-underline-offset: 4px;
+    }
+  }
+}

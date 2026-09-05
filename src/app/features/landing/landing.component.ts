@@ -11,6 +11,7 @@ interface LandingCopy {
   ctaSource: string;
   selfHostLabel: string;
   selfHostBody: string;
+  privacyLink: string;
   footer: string;
 }
 
@@ -28,6 +29,7 @@ const COPY: Record<Language, LandingCopy> = {
     selfHostLabel: 'Self-host',
     selfHostBody:
       'It is a static site: clone the repo and host it anywhere. This hosted copy is just the easy way in.',
+    privacyLink: 'Privacy',
     footer: 'Open Expenses is free software under AGPL-3.0.',
   },
   es: {
@@ -41,6 +43,7 @@ const COPY: Record<Language, LandingCopy> = {
     selfHostLabel: 'Autoalojamiento',
     selfHostBody:
       'Es un sitio estático: clona el repo y alójalo donde quieras. Esta copia alojada es solo la forma fácil de entrar.',
+    privacyLink: 'Privacidad',
     footer: 'Open Expenses es software libre bajo AGPL-3.0.',
   },
 };

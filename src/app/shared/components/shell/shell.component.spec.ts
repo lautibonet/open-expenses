@@ -112,6 +112,18 @@ describe('ShellComponent', () => {
     expect(button.textContent?.trim()).toBe('Backing up…');
   });
 
+  it('links the Privacy page from the app footer, in the active language (#132)', async () => {
+    const link = fixture.nativeElement.querySelector(
+      'footer.app-footer a',
+    ) as HTMLAnchorElement;
+    expect(link.getAttribute('href')).toBe('/privacy');
+    expect(link.textContent?.trim()).toBe('Privacy');
+
+    await TestBed.inject(LanguageService).setLanguage('es');
+    fixture.detectChanges();
+    expect(link.textContent?.trim()).toBe('Privacidad');
+  });
+
   it('renders the main navigation tabs in Movements, Stats, Settings order', () => {
     const links = Array.from(fixture.nativeElement.querySelectorAll('a.tab')).map(
       (a) => (a as HTMLAnchorElement).textContent?.trim(),

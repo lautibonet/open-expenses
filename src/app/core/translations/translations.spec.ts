@@ -44,6 +44,7 @@ describe('translations', () => {
       'shell.settings',
       'shell.newTransaction',
       'shell.newTransactionShortcut',
+      'shell.privacy',
     ]) {
       expect(TRANSLATIONS.en[key]).toBeTruthy();
       expect(TRANSLATIONS.es[key]).toBeTruthy();

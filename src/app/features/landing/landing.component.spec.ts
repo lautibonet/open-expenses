@@ -47,6 +47,14 @@ describe('LandingComponent (#131: The Poster)', () => {
       expect(text(fixture.nativeElement)).toContain('It is a static site');
       expect(text(fixture.nativeElement)).toContain('Open Expenses is free software under AGPL-3.0.');
     });
+
+    it('links the Privacy page from the footer (#132)', () => {
+      const link = fixture.nativeElement.querySelector(
+        'footer a[routerLink="/privacy"]',
+      ) as HTMLAnchorElement | null;
+      expect(link).not.toBeNull();
+      expect(link?.textContent?.trim()).toBe('Privacy');
+    });
   });
 
   describe('with a Spanish browser', () => {
