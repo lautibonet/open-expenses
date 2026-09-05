@@ -10,18 +10,12 @@ $sidebar-width: 256px;
   gap: var(--space-sm);
 }
 
-.monogram {
+.cell-mark {
   width: 2rem;
   height: 2rem;
   flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--on-surface);
-  color: var(--surface-lowest);
-  font-size: var(--type-title);
-  font-weight: 800;
-  line-height: 1;
+  display: block;
+  color: var(--on-surface);
 }
 
 .wordmark {
