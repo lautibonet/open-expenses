@@ -540,6 +540,291 @@ describe('OnboardingComponent', () => {
     expect(accountRows()[0].textContent).toContain('Checking');
   });
 
+  function stageCategories(): void {
+    component.goTo('categories');
+    fixture.detectChanges();
+  }
+
+  function categoryRows(): HTMLElement[] {
+    return Array.from(
+      fixture.nativeElement.querySelectorAll('.category-list .category-row'),
+    ) as HTMLElement[];
+  }
+
+  function rowForCategory(name: string): HTMLElement {
+    return categoryRows().find((r) => r.textContent!.includes(name))!;
+  }
+
+  function pencilForCategory(row: HTMLElement): HTMLButtonElement {
+    return row.querySelector('button[data-edit-pencil]') as HTMLButtonElement;
+  }
+
+  // Issue #142: the categories step adopts the Settings categories-card
+  // composition — list tiles plus a fixed-width inline add form, the shared
+  // edit grammar (pencil / tick / X, Enter / Escape) and the inline tick/X
+  // remove confirmation. Nothing row-level is red at rest.
+  it('renders category rows as Settings-style list tiles with pencil and remove actions', () => {
+    stageCategories();
+
+    const rows = categoryRows();
+    expect(rows.length).toBe(9);
+
+    const food = rowForCategory('Food');
+    expect(food.querySelector('.category-name')!.textContent!.trim()).toBe('Food');
+    expect(food.querySelector('.category-meta')!.textContent).toContain('Expense');
+
+    const pencil = pencilForCategory(food);
+    expect(pencil.getAttribute('data-edit-pencil')).toBe('category-0');
+    expect(pencil.getAttribute('aria-label')).toBe('Edit category');
+    expect(food.querySelector('.category-name button')).toBeNull();
+
+    const remove = food.querySelector('button[aria-label="Remove"]') as HTMLButtonElement;
+    expect(remove).toBeTruthy();
+    expect(remove.classList).toContain('icon-btn');
+    // No confirm-less deletes and nothing row-level is red at rest.
+    expect(remove.classList).not.toContain('danger');
+    expect(food.querySelector('button[aria-label="Confirm removal"]')).toBeNull();
+  });
+
+  it('removes a category only after the inline tick/X confirmation', () => {
+    stageCategories();
+
+    const row = rowForCategory('Food');
+    (row.querySelector('button[aria-label="Remove"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(row.querySelector('button[aria-label="Confirm removal"]')).toBeTruthy();
+    expect(row.querySelector('button[aria-label="Cancel removal"]')).toBeTruthy();
+    expect(categoryRows().length).toBe(9);
+
+    (row.querySelector('button[aria-label="Cancel removal"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(categoryRows().length).toBe(9);
+    expect(row.querySelector('button[aria-label="Confirm removal"]')).toBeNull();
+
+    (row.querySelector('button[aria-label="Remove"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    (row.querySelector('button[aria-label="Confirm removal"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(categoryRows().length).toBe(8);
+    expect(component.categories().map(c => c.name)).not.toContain('Food');
+  });
+
+  it('adds a category through the Settings-style inline add form', async () => {
+    stageCategories();
+
+    const form = fixture.nativeElement.querySelector('.inline-form') as HTMLElement;
+    expect(form.querySelector('.btn.dashed')).toBeTruthy();
+    expect(form.textContent).toContain('Add');
+
+    setNgModelValue(form.querySelector('input[type="text"]') as HTMLInputElement, 'Groceries');
+    setNgModelValue(form.querySelector('select') as HTMLSelectElement, 'income');
+    fixture.detectChanges();
+    (form.querySelector('.btn.dashed') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(categoryRows().length).toBe(10);
+    const row = rowForCategory('Groceries');
+    expect(row.querySelector('.category-meta')!.textContent).toContain('Income');
+    expect(row.classList).toContain('stripe-income');
+
+    const nameInput = form.querySelector('input[type="text"]') as HTMLInputElement;
+    await flush();
+    expect(nameInput.value).toBe('');
+  });
+
+  it('rejects an empty and a duplicate category name when adding', () => {
+    stageCategories();
+
+    const form = fixture.nativeElement.querySelector('.inline-form') as HTMLElement;
+    (form.querySelector('.btn.dashed') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    let alert = fixture.nativeElement.querySelector('.alert') as HTMLElement;
+    expect(alert.textContent).toContain('required');
+    expect(categoryRows().length).toBe(9);
+
+    setNgModelValue(form.querySelector('input[type="text"]') as HTMLInputElement, 'Transport');
+    fixture.detectChanges();
+    (form.querySelector('.btn.dashed') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    alert = fixture.nativeElement.querySelector('.alert') as HTMLElement;
+    expect(alert.textContent).toContain('already exists');
+    expect(categoryRows().length).toBe(9);
+  });
+
+  it('opens the inline edit state from the pencil; tick saves', async () => {
+    stageCategories();
+
+    const row = rowForCategory('Food');
+    pencilForCategory(row).click();
+    fixture.detectChanges();
+    await flush();
+    fixture.detectChanges();
+
+    const editState = row.querySelector('.edit-state') as HTMLElement;
+    expect(editState).toBeTruthy();
+    const nameInput = editState.querySelector('input[type="text"]') as HTMLInputElement;
+    const typeSelect = editState.querySelector('select') as HTMLSelectElement;
+    expect(nameInput.value).toBe('Food');
+    expect(typeSelect.value).toBe('expense');
+
+    setNgModelValue(nameInput, 'Groceries');
+    setNgModelValue(typeSelect, 'income');
+    (editState.querySelector('button[aria-label="Save changes"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    await flush();
+    fixture.detectChanges();
+
+    expect(row.querySelector('.edit-state')).toBeNull();
+    expect(row.querySelector('.category-name')!.textContent!.trim()).toBe('Groceries');
+    expect(row.querySelector('.category-meta')!.textContent).toContain('Income');
+
+    // A rename detaches the row from the seeded defaults, so the chosen
+    // Language no longer rewrites it.
+    await component.onLanguageChange('es');
+    expect(component.categories()[0].name).toBe('Groceries');
+  });
+
+  it('discards inline edit changes from the X without touching the staged row', async () => {
+    stageCategories();
+
+    const row = rowForCategory('Food');
+    pencilForCategory(row).click();
+    fixture.detectChanges();
+    await flush();
+    fixture.detectChanges();
+
+    const editState = row.querySelector('.edit-state') as HTMLElement;
+    const nameInput = editState.querySelector('input[type="text"]') as HTMLInputElement;
+    setNgModelValue(nameInput, 'Groceries');
+    (editState.querySelector('button[aria-label="Discard changes"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    await flush();
+    fixture.detectChanges();
+
+    expect(component.categories()[0].name).toBe('Food');
+    expect(row.querySelector('.edit-state')).toBeNull();
+  });
+
+  it('saves inline edits on Enter and cancels them on Escape', async () => {
+    stageCategories();
+
+    const row = rowForCategory('Food');
+    pencilForCategory(row).click();
+    fixture.detectChanges();
+    await flush();
+    fixture.detectChanges();
+
+    let editState = row.querySelector('.edit-state') as HTMLElement;
+    let nameInput = editState.querySelector('input[type="text"]') as HTMLInputElement;
+    setNgModelValue(nameInput, 'Groceries');
+    nameInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+    fixture.detectChanges();
+    expect(component.categories()[0].name).toBe('Groceries');
+    expect(row.querySelector('.edit-state')).toBeNull();
+
+    pencilForCategory(row).click();
+    fixture.detectChanges();
+    await flush();
+    fixture.detectChanges();
+    editState = row.querySelector('.edit-state') as HTMLElement;
+    nameInput = editState.querySelector('input[type="text"]') as HTMLInputElement;
+    setNgModelValue(nameInput, 'Changed');
+    nameInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    fixture.detectChanges();
+    await flush();
+    fixture.detectChanges();
+
+    expect(component.categories()[0].name).toBe('Groceries');
+    expect(row.querySelector('.edit-state')).toBeNull();
+  });
+
+  it('renders inline edit validation errors announced, without a page-level alert', async () => {
+    stageCategories();
+
+    const row = rowForCategory('Food');
+    pencilForCategory(row).click();
+    fixture.detectChanges();
+    await flush();
+    fixture.detectChanges();
+
+    const editState = row.querySelector('.edit-state') as HTMLElement;
+    const nameInput = editState.querySelector('input[type="text"]') as HTMLInputElement;
+    setNgModelValue(nameInput, 'Transport');
+    (editState.querySelector('button[aria-label="Save changes"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    const inlineError = row.querySelector('.edit-error') as HTMLElement;
+    expect(inlineError).toBeTruthy();
+    expect(inlineError.getAttribute('role')).toBe('alert');
+    expect(inlineError.textContent).toContain('already exists');
+    expect(fixture.nativeElement.querySelector('app-dismissible-alert .alert')).toBeNull();
+    expect(row.querySelector('.edit-state')).toBeTruthy();
+  });
+
+  it('discards an open category edit when a removal is requested on another row', () => {
+    stageCategories();
+
+    const transport = rowForCategory('Transport');
+    pencilForCategory(categoryRows()[0]).click();
+    fixture.detectChanges();
+    expect(categoryRows()[0].querySelector('.edit-state')).toBeTruthy();
+
+    (transport.querySelector('button[aria-label="Remove"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(component.editingCategory()).toBeNull();
+    expect(transport.querySelector('button[aria-label="Confirm removal"]')).toBeTruthy();
+
+    (transport.querySelector('button[aria-label="Confirm removal"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(component.categories().map((c) => c.name)).not.toContain('Transport');
+  });
+
+  it('moves focus to the first edit input on open and back to the pencil on cancel', async () => {
+    stageCategories();
+
+    const row = rowForCategory('Food');
+    pencilForCategory(row).click();
+    fixture.detectChanges();
+    await flush();
+    fixture.detectChanges();
+
+    const nameInput = row.querySelector(
+      '.edit-state input[type="text"]',
+    ) as HTMLInputElement;
+    expect(document.activeElement).toBe(nameInput);
+
+    nameInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    await flush();
+    fixture.detectChanges();
+
+    const pencil = row.querySelector('button[data-edit-pencil="category-0"]') as HTMLButtonElement;
+    expect(pencil).toBeTruthy();
+    expect(document.activeElement).toBe(pencil);
+  });
+
+  it('keeps staged categories and confirmed removals across back navigation', () => {
+    stageCategories();
+
+    const row = rowForCategory('Food');
+    (row.querySelector('button[aria-label="Remove"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    (row.querySelector('button[aria-label="Confirm removal"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(categoryRows().length).toBe(8);
+
+    component.goTo('accounts');
+    component.goTo('categories');
+    fixture.detectChanges();
+
+    expect(categoryRows().length).toBe(8);
+    expect(component.categories().map(c => c.name)).not.toContain('Food');
+  });
+
   it('lands on Movements when the fresh wizard completes', async () => {
     const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
 
@@ -578,7 +863,17 @@ describe('OnboardingComponent', () => {
   });
 
   it('keeps user-renamed categories when the language changes', async () => {
-    component.updateCategoryField(0, 'name', 'Groceries');
+    stageCategories();
+
+    const row = rowForCategory('Food');
+    pencilForCategory(row).click();
+    fixture.detectChanges();
+    await flush();
+    fixture.detectChanges();
+    const nameInput = row.querySelector('.edit-state input[type="text"]') as HTMLInputElement;
+    setNgModelValue(nameInput, 'Groceries');
+    (row.querySelector('button[aria-label="Save changes"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
 
     await component.onLanguageChange('es');
 

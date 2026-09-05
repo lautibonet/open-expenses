@@ -16,7 +16,7 @@ import { DriveBackupService } from '../../core/services/drive-backup.service';
 import { LanguageService } from '../../core/services/language.service';
 import { NoBackupFoundError } from '../../backup/drive-backup-provider';
 import { CURRENCY_SYMBOLS, SUPPORTED_CURRENCIES } from '../../core/constants/currencies';
-import { CategoryType } from '../../core/models/category.model';
+import { CategoryType, isCategoryType } from '../../core/models/category.model';
 import { isLanguage, LANGUAGES, detectBrowserLanguage, Language } from '../../core/types/language.type';
 import { DismissibleAlertComponent } from '../../shared/components/dismissible-alert/dismissible-alert.component';
 import { errorCopy, TranslationError } from '../../core/models/translation-error';
@@ -37,6 +37,12 @@ interface AccountEditState {
   index: number;
   name: string;
   balance: number;
+}
+
+interface CategoryEditState {
+  index: number;
+  name: string;
+  type: CategoryType;
 }
 
 @Component({
@@ -82,13 +88,22 @@ export class OnboardingComponent {
     })),
   );
   errorMessage = signal('');
+  newCategoryName = signal('');
+  newCategoryType = signal<CategoryType>('expense');
+  editingCategory = signal<CategoryEditState | null>(null);
+  confirmingCategoryRemove = signal<number | null>(null);
+  categoryEditError = signal('');
   accountNameInput = viewChild<ElementRef<HTMLInputElement>>('accountNameInput');
+  categoryNameInput = viewChild<ElementRef<HTMLInputElement>>('categoryNameInput');
 
   /* On open, focus the first input of the expanded edit state — the same
-     grammar as the Settings accounts card. */
+     grammar as the Settings accounts and categories cards. */
   private focusEditState = effect(() => {
     if (this.editingAccount()) {
       this.accountNameInput()?.nativeElement.focus();
+    }
+    if (this.editingCategory()) {
+      this.categoryNameInput()?.nativeElement.focus();
     }
   });
 
@@ -267,7 +282,7 @@ export class OnboardingComponent {
     const index = this.editingAccount()?.index;
     this.editingAccount.set(null);
     this.editError.set('');
-    if (index !== undefined) this.returnToPencil(index);
+    if (index !== undefined) this.returnToPencil(`account-${index}`);
   }
 
   saveAccountEdit(): void {
@@ -299,7 +314,7 @@ export class OnboardingComponent {
     );
     this.editingAccount.set(null);
     this.editError.set('');
-    this.returnToPencil(editing.index);
+    this.returnToPencil(`account-${editing.index}`);
   }
 
   /* Removal swaps the X into an inline tick/X confirm — no confirm-less
@@ -323,31 +338,113 @@ export class OnboardingComponent {
   /* After the edit state collapses, hand focus back to the pencil that
      opened it — the Settings accounts-card grammar. Runs on a macrotask so
      the pencil element is back in the DOM before it is focused. */
-  private returnToPencil(index: number): void {
+  private returnToPencil(key: string): void {
     setTimeout(() => {
       this.host.nativeElement
-        .querySelector<HTMLButtonElement>(`[data-edit-pencil="account-${index}"]`)
+        .querySelector<HTMLButtonElement>(`[data-edit-pencil="${key}"]`)
         ?.focus();
     });
   }
 
-  updateCategoryField<K extends keyof EditableCategory>(index: number, field: K, value: EditableCategory[K]): void {
+  /* New rows come from the fixed-width inline add form — name plus type —
+     validated before staging, the Settings categories-card composition
+     (#142). */
+  addCategory(): void {
+    this.resetError();
+    const name = this.newCategoryName().trim();
+    if (!name) {
+      this.errorMessage.set(this.languageService.t('errors.categoryNameRequired'));
+      return;
+    }
+    const exists = this.categories().some(
+      c => c.name.toLowerCase() === name.toLowerCase(),
+    );
+    if (exists) {
+      this.errorMessage.set(
+        this.languageService.t('errors.categoryNameTaken', { name }),
+      );
+      return;
+    }
+    this.categories.update(cats => [...cats, { name, type: this.newCategoryType() }]);
+    this.newCategoryName.set('');
+    this.errorMessage.set('');
+  }
+
+  /* Staged rows adopt the Settings categories-card edit grammar (#142):
+     pencil opens an expanded edit state, tick saves, X discards. Renaming a
+     default category detaches it from the seeded defaults so a later
+     language change no longer rewrites its name. */
+  startEditCategory(index: number): void {
+    const category = this.categories()[index];
+    if (!category) return;
+    this.confirmingCategoryRemove.set(null);
+    this.editingCategory.set({ index, name: category.name, type: category.type });
+    this.categoryEditError.set('');
+  }
+
+  editCategoryName(value: string): void {
+    this.editingCategory.update((c) => (c ? { ...c, name: value } : c));
+  }
+
+  editCategoryType(value: string): void {
+    if (!isCategoryType(value)) return;
+    this.editingCategory.update((c) => (c ? { ...c, type: value } : c));
+  }
+
+  cancelEditCategory(): void {
+    const index = this.editingCategory()?.index;
+    this.editingCategory.set(null);
+    this.categoryEditError.set('');
+    if (index !== undefined) this.returnToPencil(`category-${index}`);
+  }
+
+  saveCategoryEdit(): void {
+    const editing = this.editingCategory();
+    if (!editing) return;
+    if (!editing.name.trim()) {
+      this.categoryEditError.set(this.languageService.t('errors.categoryNameRequired'));
+      return;
+    }
+    const taken = this.categories().some(
+      (c, i) =>
+        i !== editing.index && c.name.toLowerCase() === editing.name.trim().toLowerCase(),
+    );
+    if (taken) {
+      this.categoryEditError.set(
+        this.languageService.t('errors.categoryNameTaken', { name: editing.name.trim() }),
+      );
+      return;
+    }
+    const renamed = editing.name !== this.categories()[editing.index]?.name;
     this.categories.update(cats =>
       cats.map((c, i) => {
-        if (i !== index) return c;
-        const next = { ...c, [field]: value };
-        if (field === 'name') delete next.defaultKey;
+        if (i !== editing.index) return c;
+        const next = { ...c, name: editing.name.trim(), type: editing.type };
+        if (renamed) delete next.defaultKey;
         return next;
       }),
     );
+    this.editingCategory.set(null);
+    this.categoryEditError.set('');
+    this.returnToPencil(`category-${editing.index}`);
   }
 
-  addCategory(): void {
-    this.categories.update(cats => [...cats, { name: '', type: 'expense' }]);
+  /* Removal swaps the X into an inline tick/X confirm — no confirm-less
+     deletes (#142). Requesting a removal also discards any open edit, so
+     only one staged row state is ever active, like the Settings card. */
+  requestRemoveCategory(index: number): void {
+    this.editingCategory.set(null);
+    this.categoryEditError.set('');
+    this.confirmingCategoryRemove.set(index);
   }
 
-  removeCategory(index: number): void {
+  cancelRemoveCategory(): void {
+    this.confirmingCategoryRemove.set(null);
+  }
+
+  confirmRemoveCategory(index: number): void {
     this.categories.update(cats => cats.filter((_, i) => i !== index));
+    this.confirmingCategoryRemove.set(null);
   }
 
   canProceedFromCategories(): boolean {
