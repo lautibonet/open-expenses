@@ -49,6 +49,14 @@ Angular 21, TypeScript, Dexie over IndexedDB, and self-hosted Inter and JetBrain
 
 **SELF-HOST.** It is a static site: clone the repo, run `npm ci` and `npm run build`, and serve `dist/open-expenses/browser` from any static host. Production runs on Cloudflare Pages; GitHub Pages works as a fallback.
 
+## Support
+
+If Open Expenses saves you a spreadsheet's worth of headaches, you can buy me a coffee:
+
+<p align="center">
+  <a href='https://ko-fi.com/N6E5263BIN' target='_blank'><img height='36' style='border:0px;height:36px;' src='https://storage.ko-fi.com/cdn/kofi3.png?v=6' border='0' alt='Buy Me a Coffee at ko-fi.com' /></a>
+</p>
+
 ## License
 
 Open Expenses is free software under [AGPL-3.0](LICENSE).
@@ -100,6 +108,14 @@ Open Expenses empezó como una plantilla de Google Sheets, afinada a mano durant
 Angular 21, TypeScript, Dexie sobre IndexedDB y las tipografías Inter y JetBrains Mono autoalojadas. Cada decisión de arquitectura está escrita en [docs/adr/](docs/adr/).
 
 **AUTOALOJAMIENTO.** Es un sitio estático: clona el repo, ejecuta `npm ci` y `npm run build`, y sirve `dist/open-expenses/browser` en cualquier host estático. La producción corre en Cloudflare Pages; GitHub Pages sirve como alternativa.
+
+## Apóyame
+
+Si Open Expenses te ahorra los dolores de cabeza de una hoja de cálculo, puedes invitarme a un café:
+
+<p align="center">
+  <a href='https://ko-fi.com/N6E5263BIN' target='_blank'><img height='36' style='border:0px;height:36px;' src='https://storage.ko-fi.com/cdn/kofi3.png?v=6' border='0' alt='Buy Me a Coffee at ko-fi.com' /></a>
+</p>
 
 ## Licencia
 
