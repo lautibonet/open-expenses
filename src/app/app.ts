@@ -3,6 +3,9 @@ import { Router, RouterOutlet } from '@angular/router';
 import { ProfileService } from './core/services/profile.service';
 import { LanguageService } from './core/services/language.service';
 
+/* The landing route (#131): public, reachable without onboarding. */
+const PUBLIC_ROOT = '/';
+
 @Component({
   selector: 'app-root',
   imports: [RouterOutlet],
@@ -16,7 +19,7 @@ export class App implements OnInit {
   async ngOnInit(): Promise<void> {
     await this.languageService.init();
     const completed = await this.profileService.isOnboardingCompleted();
-    if (!completed) {
+    if (!completed && this.router.url !== PUBLIC_ROOT) {
       this.router.navigate(['/onboarding']);
     }
   }

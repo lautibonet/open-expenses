@@ -12,9 +12,9 @@ describe('app routes', () => {
     router = TestBed.inject(Router);
   });
 
-  it('lands on Movements when the app is launched with no path', async () => {
+  it('lands on the public landing when the app is launched with no path', async () => {
     await router.navigateByUrl('/');
-    expect(router.url).toBe('/movements');
+    expect(router.url).toBe('/');
   });
 
   it('resolves the Stats route', async () => {
@@ -27,8 +27,13 @@ describe('app routes', () => {
     expect(router.url).toBe('/stats');
   });
 
+  it('registers the public landing surface outside the shell', () => {
+    const landing = routes.find((r) => r.path === '' && r.loadComponent && !r.children);
+    expect(landing).toBeDefined();
+  });
+
   it('registers the Stats surface and the legacy dashboard redirect', () => {
-    const shell = routes.find((r) => r.path === '');
+    const shell = routes.find((r) => r.path === '' && !!r.children);
     const stats = shell?.children?.find((r) => r.path === 'stats');
     expect(stats).toBeDefined();
     const legacy = shell?.children?.find((r) => r.path === 'dashboard');

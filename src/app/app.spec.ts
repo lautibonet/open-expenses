@@ -54,16 +54,16 @@ describe('App boot landing', () => {
       expect(router.url).toBe('/settings');
     });
 
-    it('lands on Movements when launched at the root', async () => {
+    it('keeps the public landing at the root', async () => {
       await bootAt('/');
-      expect(router.url).toBe('/movements');
+      expect(router.url).toBe('/');
     });
   });
 
   describe('when onboarding is not completed', () => {
-    it('lands on Onboarding when launched at the root', async () => {
+    it('keeps the public landing at the root without redirecting to Onboarding', async () => {
       await bootAt('/');
-      expect(router.url).toBe('/onboarding');
+      expect(router.url).toBe('/');
     });
 
     it('takes priority over a deep link to Movements', async () => {

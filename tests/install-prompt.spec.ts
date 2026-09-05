@@ -113,7 +113,7 @@ test.describe('install prompt (#115)', () => {
 
 async function resumeApp(page: import('@playwright/test').Page) {
   // After a reload the app restores its persisted data and skips onboarding.
-  await page.goto('/');
+  await page.goto('/movements');
   await expect(page.getByRole('button', { name: '+ Transaction' })).toBeVisible();
 }
 
@@ -131,7 +131,7 @@ async function fireInstallPrompt(
 }
 
 async function completeOnboarding(page: import('@playwright/test').Page) {
-  await page.goto('/');
+  await page.goto('/onboarding');
 
   // 1. Language
   await page.getByRole('button', { name: 'Continue' }).click();
