@@ -133,8 +133,7 @@
   box-sizing: border-box;
 
   &.small {
-    width: auto;
-    display: inline-block;
+    width: 100px;
   }
 }
 
@@ -278,38 +277,101 @@
   }
 }
 
-.account-form {
+/* Add form: name input, currency select and Add button share the same
+   width and height — the Settings accounts-card composition (#141). */
+.inline-form {
   display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-  align-items: flex-end;
+  gap: var(--space-sm);
+  align-items: stretch;
   margin-bottom: var(--space-md);
+  flex-wrap: wrap;
 
-  /* Fields sit flush in the row — the field pattern's bottom margin would
-     otherwise lift them above the Add button. */
   .input {
-    margin-bottom: 0;
+    @extend %field;
+
+    width: 10rem;
+  }
+
+  .btn.dashed {
+    width: 10rem;
   }
 }
 
+/* Staged accounts render as the Settings accounts-card list tiles: name,
+   currency and opening balance are display-by-default, edits open from the
+   pencil into an expanded edit state, removal is the icon confirm flow. */
 .account-list {
   list-style: none;
+  margin: 0;
   padding: 0;
-  margin: 0 0 var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
 
-  li {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: var(--space-sm);
-    padding: 0.5rem 0;
-    border-bottom: 1px solid var(--outline-variant);
-  }
+.account-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+  border: var(--border-hard);
+  padding: var(--space-sm) var(--space-md);
+}
 
-  .data-figure {
-    @extend %mono-data;
-    margin-right: auto;
-  }
+.account-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.account-name {
+  align-self: flex-start;
+  font-weight: 600;
+  color: var(--on-surface);
+}
+
+.account-meta {
+  @extend %mono-data;
+
+  display: flex;
+  gap: var(--space-sm);
+  color: var(--on-surface-variant);
+}
+
+.account-side {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+/* Expanded edit state: fields plus tick/X confirm grammar, with the
+   validation error rendered inline. */
+.edit-state {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
+.edit-line {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  flex-wrap: wrap;
+}
+
+.edit-static {
+  @extend %mono-data;
+
+  color: var(--on-surface-variant);
+}
+
+.edit-error {
+  margin: var(--space-xs) 0 0;
+  font-size: var(--type-caption);
+  color: var(--error);
 }
 
 .icon-btn {
@@ -404,15 +466,25 @@ app-dismissible-alert {
   }
 }
 
-/* Touch ergonomics, the same grammar as the movement ledger and Settings:
-   row actions go ghost at the 44px thumb minimum and every text button —
-   nav, add, remove — reaches the same height. */
+/* Touch ergonomics, the same row-action grammar as the movement ledger and
+   Settings: row actions go ghost at the 44px thumb minimum — no border, no
+   press shadow, muted ink with red danger glyphs on the confirm tick — and
+   every text button reaches the same height. The edit-state primary tick
+   keeps its blue box: it is the form's action, not a row utility. */
 @include touch-targets {
-  /* Scoped to the wizard so the ghost (0,2,0) wins over .btn.danger /
-     .btn.small (0,2,0) by source order, exactly like the movement ledger's
-     .movement-table .icon-btn. */
-  .wizard .icon-btn {
+  /* Scoped to the step panel; :not(.primary) keeps the edit-state tick
+     out of the ghost half of the grammar. */
+  .wizard .icon-btn:not(.primary) {
     @include ghost-row-actions;
+  }
+
+  .wizard .btn.primary.icon-btn {
+    @include boxed-row-action;
+  }
+
+  .wizard .btn.small,
+  .inline-form .btn {
+    min-height: 2.75rem;
   }
 
   .btn {

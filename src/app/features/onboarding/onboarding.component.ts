@@ -1,4 +1,12 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  computed,
+  effect,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ProfileService } from '../../core/services/profile.service';
@@ -25,6 +33,12 @@ interface EditableCategory {
   defaultKey?: string;
 }
 
+interface AccountEditState {
+  index: number;
+  name: string;
+  balance: number;
+}
+
 @Component({
   selector: 'app-onboarding',
   imports: [FormsModule, DismissibleAlertComponent],
@@ -38,6 +52,7 @@ export class OnboardingComponent {
   private driveBackupService = inject(DriveBackupService);
   languageService = inject(LanguageService);
   private router = inject(Router);
+  private host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   supportedCurrencies = SUPPORTED_CURRENCIES;
   languages = LANGUAGES;
@@ -56,6 +71,9 @@ export class OnboardingComponent {
   accountCurrency = signal('EUR');
   accountBalance = signal(0);
   accounts = signal<{ name: string; currency: string; balance: number }[]>([]);
+  editingAccount = signal<AccountEditState | null>(null);
+  confirmingRemove = signal<number | null>(null);
+  editError = signal('');
   categories = signal<EditableCategory[]>(
     CategoryService.defaultCategories(detectBrowserLanguage()).map(c => ({
       name: c.name,
@@ -64,6 +82,15 @@ export class OnboardingComponent {
     })),
   );
   errorMessage = signal('');
+  accountNameInput = viewChild<ElementRef<HTMLInputElement>>('accountNameInput');
+
+  /* On open, focus the first input of the expanded edit state — the same
+     grammar as the Settings accounts card. */
+  private focusEditState = effect(() => {
+    if (this.editingAccount()) {
+      this.accountNameInput()?.nativeElement.focus();
+    }
+  });
 
   goTo(step: Step): void {
     this.step.set(step);
@@ -197,6 +224,10 @@ export class OnboardingComponent {
       );
       return;
     }
+    if (this.accountBalance() < 0) {
+      this.errorMessage.set(this.languageService.t('errors.initialBalanceNegative'));
+      return;
+    }
     this.accounts.update(accs => [
       ...accs,
       {
@@ -210,8 +241,94 @@ export class OnboardingComponent {
     this.errorMessage.set('');
   }
 
-  removeAccount(index: number): void {
+  /* Staged rows adopt the Settings accounts-card edit grammar (#141):
+     pencil opens an expanded edit state, tick saves, X discards. */
+  startEditAccount(index: number): void {
+    const account = this.accounts()[index];
+    if (!account) return;
+    this.confirmingRemove.set(null);
+    this.editingAccount.set({
+      index,
+      name: account.name,
+      balance: account.balance,
+    });
+    this.editError.set('');
+  }
+
+  editAccountName(value: string): void {
+    this.editingAccount.update((e) => (e ? { ...e, name: value } : e));
+  }
+
+  editAccountBalance(value: number): void {
+    this.editingAccount.update((e) => (e ? { ...e, balance: value } : e));
+  }
+
+  cancelEditAccount(): void {
+    const index = this.editingAccount()?.index;
+    this.editingAccount.set(null);
+    this.editError.set('');
+    if (index !== undefined) this.returnToPencil(index);
+  }
+
+  saveAccountEdit(): void {
+    const editing = this.editingAccount();
+    if (!editing) return;
+    if (!editing.name.trim()) {
+      this.editError.set(this.languageService.t('errors.accountNameRequired'));
+      return;
+    }
+    const taken = this.accounts().some(
+      (a, i) => i !== editing.index && a.name.toLowerCase() === editing.name.toLowerCase(),
+    );
+    if (taken) {
+      this.editError.set(
+        this.languageService.t('errors.accountNameTaken', { name: editing.name }),
+      );
+      return;
+    }
+    if (editing.balance < 0) {
+      this.editError.set(this.languageService.t('errors.initialBalanceNegative'));
+      return;
+    }
+    this.accounts.update(accs =>
+      accs.map((a, i) =>
+        i === editing.index
+          ? { name: editing.name, currency: a.currency, balance: editing.balance }
+          : a,
+      ),
+    );
+    this.editingAccount.set(null);
+    this.editError.set('');
+    this.returnToPencil(editing.index);
+  }
+
+  /* Removal swaps the X into an inline tick/X confirm — no confirm-less
+     deletes (#141). Requesting a removal also discards any open edit, so
+     only one staged row state is ever active, like the Settings card. */
+  requestRemove(index: number): void {
+    this.editingAccount.set(null);
+    this.editError.set('');
+    this.confirmingRemove.set(index);
+  }
+
+  cancelRemove(): void {
+    this.confirmingRemove.set(null);
+  }
+
+  confirmRemove(index: number): void {
     this.accounts.update(accs => accs.filter((_, i) => i !== index));
+    this.confirmingRemove.set(null);
+  }
+
+  /* After the edit state collapses, hand focus back to the pencil that
+     opened it — the Settings accounts-card grammar. Runs on a macrotask so
+     the pencil element is back in the DOM before it is focused. */
+  private returnToPencil(index: number): void {
+    setTimeout(() => {
+      this.host.nativeElement
+        .querySelector<HTMLButtonElement>(`[data-edit-pencil="account-${index}"]`)
+        ?.focus();
+    });
   }
 
   updateCategoryField<K extends keyof EditableCategory>(index: number, field: K, value: EditableCategory[K]): void {

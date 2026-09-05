@@ -26,6 +26,10 @@ const languageCardScss = readFileSync(
   resolve('src/app/features/settings/language-card/language-card.component.scss'),
   'utf-8',
 );
+const onboardingScss = readFileSync(
+  resolve('src/app/features/onboarding/onboarding.component.scss'),
+  'utf-8',
+);
 
 // Issue #107: the Transaction Form and the Transfer Form render from one
 // visual grammar. The capture-form style blocks exist once, in the shared
@@ -107,7 +111,7 @@ describe('shared row-action confirm/edit grammar (#140)', () => {
     expect(patternsScss).toMatch(/@mixin boxed-row-action\s*\{[^}]*@include -touch-icon-geometry/);
   });
 
-  it('Movements and Settings consume the shared grammar instead of owning copies', () => {
+  it('Movements, Settings and Onboarding consume the shared grammar instead of owning copies', () => {
     expect(movementsScss).toMatch(
       /\.movement-table \.icon-btn\s*\{[^}]*@include ghost-row-actions/,
     );
@@ -123,10 +127,17 @@ describe('shared row-action confirm/edit grammar (#140)', () => {
     expect(languageCardScss).toMatch(
       /\.card \.btn\.primary\.icon-btn\s*\{[^}]*@include boxed-row-action/,
     );
+    // The onboarding wizard's accounts step speaks the same grammar (#141).
+    expect(onboardingScss).toMatch(
+      /\.wizard \.icon-btn:not\(\.primary\)\s*\{[^}]*@include ghost-row-actions/,
+    );
+    expect(onboardingScss).toMatch(
+      /\.wizard \.btn\.primary\.icon-btn\s*\{[^}]*@include boxed-row-action/,
+    );
   });
 
   it('deletes the per-component copies', () => {
-    for (const scss of [settingsScss, languageCardScss]) {
+    for (const scss of [settingsScss, languageCardScss, onboardingScss]) {
       // The boxed 44px tick geometry comes from the library now.
       expect(scss).not.toMatch(/\.btn\.primary\.icon-btn\s*\{[^}]*width:\s*2\.75rem/);
     }
