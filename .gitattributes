@@ -1,0 +1,2 @@
+# Shell scripts must stay LF or bash fails on checkout under autocrlf.
+*.sh text eol=lf
