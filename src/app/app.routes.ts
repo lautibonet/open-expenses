@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { ShellComponent } from './shared/components/shell/shell.component';
+import { onboardingGuard } from './core/guards/onboarding.guard';
 
 export const routes: Routes = [
   {
@@ -20,6 +21,7 @@ export const routes: Routes = [
   {
     path: '',
     component: ShellComponent,
+    canActivate: [onboardingGuard],
     children: [
       {
         path: 'stats',
