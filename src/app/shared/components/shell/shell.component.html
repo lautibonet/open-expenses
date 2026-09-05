@@ -135,7 +135,9 @@
 </header>
 
 <div class="main-area">
-  <app-install-prompt />
+  @if (showInstallPrompt()) {
+    <app-install-prompt />
+  }
   <app-update-prompt />
   <main class="content" id="main-content" tabindex="-1">
     <router-outlet />

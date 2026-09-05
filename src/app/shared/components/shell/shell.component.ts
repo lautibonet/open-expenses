@@ -5,6 +5,7 @@ import { UpdatePromptComponent } from '../update-prompt/update-prompt.component'
 import { LanguageService } from '../../../core/services/language.service';
 import { CaptureFormService } from '../../../core/services/capture-form.service';
 import { DriveBackupService } from '../../../core/services/drive-backup.service';
+import { PwaUpdateService } from '../../../core/services/pwa-update.service';
 import { formatLastBackupStatus } from '../../../backup/last-backup-status';
 
 @Component({
@@ -19,10 +20,14 @@ export class ShellComponent {
   private router = inject(Router);
   private captureFormService = inject(CaptureFormService);
   private backupService = inject(DriveBackupService);
+  private pwaUpdate = inject(PwaUpdateService);
 
   private minuteTick = signal(0);
 
   isBackingUp = this.backupService.isBackingUp;
+
+  /** The install suggestion yields the strip to the urgent update banner. */
+  showInstallPrompt = computed(() => !this.pwaUpdate.updateReady());
 
   backupCaption = computed(() => {
     this.minuteTick();

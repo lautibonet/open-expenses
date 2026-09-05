@@ -6,6 +6,8 @@ import { routes } from '../../../app.routes';
 import { LanguageService } from '../../../core/services/language.service';
 import { CaptureFormService } from '../../../core/services/capture-form.service';
 import { DriveBackupService } from '../../../core/services/drive-backup.service';
+import { PwaInstallService } from '../../../core/services/pwa-install.service';
+import { PwaUpdateService } from '../../../core/services/pwa-update.service';
 import { db } from '../../../core/db/database';
 
 describe('ShellComponent', () => {
@@ -193,6 +195,28 @@ describe('ShellComponent', () => {
     expect(brand).not.toBeNull();
     expect(brand.querySelector('.monogram')?.textContent?.trim()).toBe('O');
     expect(brand.querySelector('.wordmark')?.textContent?.trim()).toBe('Open Expenses');
+  });
+
+  // One strip at a time: the optional install suggestion never stacks with
+  // the urgent update banner; it returns once the update banner is resolved.
+  it('suppresses the install prompt while an update is ready and restores it after', () => {
+    const pwaInstall = TestBed.inject(PwaInstallService);
+    const pwaUpdate = TestBed.inject(PwaUpdateService);
+
+    pwaInstall.canInstall.set(true);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.install-banner')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.update-banner')).toBeNull();
+
+    pwaUpdate.updateReady.set(true);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.install-banner')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.update-banner')).not.toBeNull();
+
+    pwaUpdate.updateReady.set(false);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.install-banner')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.update-banner')).toBeNull();
   });
 
   it('routes the New Transaction CTA to Movements when used from another page', async () => {
