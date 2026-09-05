@@ -403,3 +403,16 @@ app-dismissible-alert {
     font-size: var(--type-headline);
   }
 }
+
+/* Touch ergonomics, the same grammar as the movement ledger and Settings:
+   row actions go ghost at the 44px thumb minimum and every text button —
+   nav, add, remove — reaches the same height. */
+@include touch-targets {
+  .icon-btn {
+    @include ghost-row-actions;
+  }
+
+  .btn {
+    min-height: 2.75rem;
+  }
+}

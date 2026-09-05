@@ -141,6 +141,17 @@
   }
 }
 
+/* Touch ergonomics for list/table surfaces: the 44px thumb minimum on any
+   coarse pointer and at narrow widths. Consumers bring their own selectors
+   (ghost row actions, min-heights) via @content; the media query itself
+   lives here once. A mixin because @extend cannot cross a media-query
+   boundary. */
+@mixin touch-targets {
+  @media (pointer: coarse), (max-width: 480px) {
+    @content;
+  }
+}
+
 /* Primary: the solid blue CTA fill, press shadow from the base. */
 %btn-primary {
   background: var(--primary-container);
