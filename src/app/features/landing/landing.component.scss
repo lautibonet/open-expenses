@@ -111,6 +111,33 @@
   }
 }
 
+/* Desktop fits the first viewport: the display type yields to short
+   viewports (dvh-aware clamp middles) and the section paddings tighten
+   just enough that the CTA row stays above the fold on desktop widths.
+   Phones keep the scroll — the poster breathes there. */
+@media (min-width: 769px) {
+  .poster-hero {
+    padding: var(--space-lg) 0;
+    gap: var(--space-md);
+  }
+
+  .poster-lines {
+    font-size: clamp(2.5rem, min(9vw, 7.5dvh), 5.5rem);
+  }
+
+  .poster-no {
+    padding: var(--space-md) 0;
+
+    .no-line {
+      font-size: clamp(1.75rem, min(6vw, 4.5dvh), 3rem);
+    }
+  }
+
+  .poster-manifesto {
+    padding: var(--space-lg) 0;
+  }
+}
+
 .cta-row {
   display: flex;
   flex-wrap: wrap;
