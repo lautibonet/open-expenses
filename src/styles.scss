@@ -1,4 +1,4 @@
-/* Self-hosted webfonts (D7) — zero CDN dependency; precached by public/sw.js.
+/* Self-hosted webfonts (D7) — zero CDN dependency; precached by the Angular service worker (ngsw-config.json, "fonts" asset group).
    Inter ships as one variable woff2 covering weights 400–800. */
 @font-face {
   font-family: 'Inter';

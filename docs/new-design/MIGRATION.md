@@ -216,7 +216,7 @@ the mobile regime (`headline-lg` 32→24, `display` 48→24).
 | `onboarding.component` | §3.4 |
 | `index.html` | `theme-color` → `#003ec7`, font preloads |
 | `public/manifest.webmanifest` | `theme_color`/`background_color` |
-| `public/sw.js` | add `/fonts/*.woff2` to `PRECACHE_URLS`; **bump `CACHE_NAME`** |
+| ngsw asset groups | fonts cached offline by the Angular service worker's `fonts` asset group (`ngsw-config.json`; replaces the original `sw.js` `PRECACHE_URLS` contract, migrated in #128) |
 | `core/translations/translations.ts` | new keys: Net Flow, status-chip label, Quick Add CTA, step labels (EN/ES) |
 | `DESIGN.md` | rewrite for Monolith Ledger (front-matter token table format kept) |
 
@@ -239,7 +239,8 @@ the mobile regime (`headline-lg` 32→24, `display` 48→24).
 
 Fonts ship with `font-display: swap`, system fallback stacks (`--font-ui` / `--font-data` in
 `styles.scss`), `<link rel="preload">` for both files in `index.html` (the only fonts used at
-first paint), and entries in `sw.js` `PRECACHE_URLS` with the cache name bumped.
+first paint), and offline caching by the service worker (`ngsw-config.json` fonts asset group;
+the original `sw.js` `PRECACHE_URLS` contract was migrated to `ngsw` in #128).
 
 ---
 
@@ -250,8 +251,9 @@ first paint), and entries in `sw.js` `PRECACHE_URLS` with the cache name bumped.
 2. **Test brittleness**: specs query class names (`.tab`, `.undo-toast`, `.tag`, `.rate-source`,
    `.backup-banner`, `.stat .value.information`, `a.tab`, `nav.tab-bar`). Keep these hooks or
    update the specs in the same commit — never delete assertions to go green.
-3. **Service worker staleness**: new font URLs must be in `PRECACHE_URLS` and `CACHE_NAME`
-   bumped, or installed PWAs never fetch the fonts offline.
+3. **Service worker staleness**: the font URLs must stay matched by a prefetch asset group in
+   `ngsw-config.json` (originally `sw.js` `PRECACHE_URLS` + `CACHE_NAME` bump), or installed
+   PWAs never fetch the fonts offline.
 4. **Radius-pill removal** (`--radius-pill: 0`) may deform any element assuming roundness —
    grep usages before flipping to 0.
 5. **Warning visibility**: amber→error remap must keep conversion-failure and backup-error
@@ -275,7 +277,7 @@ Each phase: implement → `ng test` green → quick manual smoke of the affected
 | Phase | Content |
 |---|---|
 | **0. Baseline** | Branch; run `ng test`; note current screenshots for comparison. |
-| **1. Foundations** | Fonts into `public/fonts/` + `@font-face`; sw.js precache + cache bump; icon decision; token replacement in `styles.scss` (§1); retire green/amber; `_patterns.scss` restyle; `theme-color`/manifest; rewrite `DESIGN.md`. App is structurally old but fully re-skinned. |
+| **1. Foundations** | Fonts into `public/fonts/` + `@font-face`; fonts precached by the service worker; icon decision; token replacement in `styles.scss` (§1); retire green/amber; `_patterns.scss` restyle; `theme-color`/manifest; rewrite `DESIGN.md`. App is structurally old but fully re-skinned. |
 | **2. Shell & navigation** | Sidebar (desktop), top bar + bottom nav (mobile), strips restyle, Quick Add CTA wiring. Verify skip-link/aria hooks. |
 | **3. Onboarding** | Grid background, step bar, currency tiles, footer buttons. Smoke: full fresh-profile onboarding. |
 | **4. Movements** | Scope chrome, Net Flow card (new component), table/stripes/chips, Quick Add restyle, transfer editor, undo toast. Smoke: add, edit inline, transfer, delete+undo, offline rate failure. |

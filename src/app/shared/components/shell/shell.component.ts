@@ -1,6 +1,7 @@
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { Router, RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { InstallPromptComponent } from '../install-prompt/install-prompt.component';
+import { UpdatePromptComponent } from '../update-prompt/update-prompt.component';
 import { LanguageService } from '../../../core/services/language.service';
 import { CaptureFormService } from '../../../core/services/capture-form.service';
 import { DriveBackupService } from '../../../core/services/drive-backup.service';
@@ -8,7 +9,7 @@ import { formatLastBackupStatus } from '../../../backup/last-backup-status';
 
 @Component({
   selector: 'app-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, InstallPromptComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, InstallPromptComponent, UpdatePromptComponent],
   templateUrl: './shell.component.html',
   styleUrl: './shell.component.scss',
   host: { '(document:keydown)': 'onDocKeydown($event)' },

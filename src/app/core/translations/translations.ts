@@ -15,6 +15,9 @@ const en: Record<string, string> = {
   'install.prompt': `Install ${APP_NAME} for quick access`,
   'install.action': 'Install',
   'install.dismiss': 'Dismiss',
+  'update.prompt': `A new version of ${APP_NAME} is ready`,
+  'update.action': 'Reload',
+  'update.dismiss': 'Later',
   'backup.card.title': 'Backup',
   'backup.card.description':
     'Save a copy of your data as a file, or restore from a previous backup. Restoring replaces all of your current data.',
@@ -347,6 +350,9 @@ const es: Record<string, string> = {
   'install.prompt': `Instala ${APP_NAME} para acceder rápidamente`,
   'install.action': 'Instalar',
   'install.dismiss': 'Descartar',
+  'update.prompt': `Una nueva versión de ${APP_NAME} está lista`,
+  'update.action': 'Recargar',
+  'update.dismiss': 'Más tarde',
   'backup.card.title': 'Copia de seguridad',
   'backup.card.description':
     'Guarda una copia de tus datos en un archivo o restaura desde una copia anterior. Restaurar reemplaza todos tus datos actuales.',

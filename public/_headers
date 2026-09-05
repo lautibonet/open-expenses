@@ -1,0 +1,22 @@
+# Cache rules for Cloudflare Pages (deploy root is the Angular `browser/` output).
+# Hashed build output is safe to cache forever; everything unhashed (index.html,
+# ngsw.json, /fonts, /icons, favicon.ico) keeps the Pages defaults so redeploys
+# are picked up immediately by the service worker's update check.
+
+/*.js
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.css
+  Cache-Control: public, max-age=31536000, immutable
+
+/media/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# The worker scripts are copied unhashed into the output root; they must never
+# inherit the immutable /*.js rule or browsers would pin a stale worker.
+/ngsw-worker.js
+  ! Cache-Control
+/safety-worker.js
+  ! Cache-Control
+/worker-basic.min.js
+  ! Cache-Control
