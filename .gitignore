@@ -9,7 +9,6 @@
 
 # Node modules and dependency files
 /node_modules/
-/package-lock.json
 /yarn.lock
 
 # Environment files
@@ -42,5 +41,7 @@ node_modules/
 /playwright/.cache/
 /playwright/.auth/
 
-# Impeccable
-/.impeccable/live/
+# AI tooling (files stay on disk, not tracked)
+/.claude/
+/.opencode/
+/.impeccable/
