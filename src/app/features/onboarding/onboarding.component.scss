@@ -277,8 +277,8 @@
   }
 }
 
-/* Add form: name input, currency select and Add button share the same
-   width and height — the Settings accounts-card composition (#141). */
+/* Add form: name input, currency/type select and Add button share the same
+   width and height — the Settings card composition (#141, #142). */
 .inline-form {
   display: flex;
   gap: var(--space-sm);
@@ -297,10 +297,13 @@
   }
 }
 
-/* Staged accounts render as the Settings accounts-card list tiles: name,
-   currency and opening balance are display-by-default, edits open from the
-   pencil into an expanded edit state, removal is the icon confirm flow. */
-.account-list {
+/* Staged rows render as the Settings list tiles (#141, #142): accounts
+   keep name, currency and opening balance display-by-default; categories
+   carry the income/expense edge stripe over name and type. Edits open from
+   the pencil into an expanded edit state, removal is the icon confirm
+   flow. */
+.account-list,
+.category-list {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -309,7 +312,8 @@
   gap: var(--space-sm);
 }
 
-.account-row {
+.account-row,
+.category-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -319,20 +323,33 @@
   padding: var(--space-sm) var(--space-md);
 }
 
-.account-main {
+.category-row {
+  &.stripe-income {
+    @extend %stripe-income;
+  }
+
+  &.stripe-expense {
+    @extend %stripe-expense;
+  }
+}
+
+.account-main,
+.category-main {
   display: flex;
   flex-direction: column;
   gap: 2px;
   min-width: 0;
 }
 
-.account-name {
+.account-name,
+.category-name {
   align-self: flex-start;
   font-weight: 600;
   color: var(--on-surface);
 }
 
-.account-meta {
+.account-meta,
+.category-meta {
   @extend %mono-data;
 
   display: flex;
@@ -340,7 +357,8 @@
   color: var(--on-surface-variant);
 }
 
-.account-side {
+.account-side,
+.category-side {
   display: flex;
   align-items: center;
   gap: var(--space-sm);
@@ -376,34 +394,6 @@
 
 .icon-btn {
   @extend %icon-btn;
-}
-
-.category-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-bottom: var(--space-md);
-
-  th,
-  td {
-    padding: 0.5rem;
-    text-align: left;
-    border-bottom: 1px solid var(--outline-variant);
-  }
-
-  /* Action cells keep their content on the right edge of the table. */
-  th:last-child,
-  td:last-child {
-    text-align: right;
-  }
-
-  th {
-    @extend %caps-label-muted;
-  }
-
-  .input {
-    margin-bottom: 0;
-    width: 100%;
-  }
 }
 
 /* ===== Footer — hairline divider, Back left / Continue right ===== */

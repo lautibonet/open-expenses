@@ -389,59 +389,189 @@
           <h1 class="step-title">{{ languageService.t('onboarding.categories.title') }}</h1>
           <p class="step-description">{{ languageService.t('onboarding.categories.description') }}</p>
 
+          <div class="inline-form">
+            <input
+              type="text"
+              [ngModel]="newCategoryName()"
+              (ngModelChange)="newCategoryName.set($event)"
+              [placeholder]="languageService.t('onboarding.categories.namePlaceholder')"
+              class="input"
+              [attr.aria-label]="languageService.t('onboarding.categories.nameAria')"
+            />
+            <select
+              [ngModel]="newCategoryType()"
+              (ngModelChange)="newCategoryType.set($event)"
+              class="input"
+              [attr.aria-label]="languageService.t('onboarding.categories.typeAria')"
+            >
+              <option value="expense">{{ languageService.t('type.expense') }}</option>
+              <option value="income">{{ languageService.t('type.income') }}</option>
+            </select>
+            <button class="btn dashed" (click)="addCategory()">+ {{ languageService.t('onboarding.categories.add') }}</button>
+          </div>
+
           <app-dismissible-alert appearance="note" variant="error" [message]="errorMessage()" [resetKey]="statusEpoch()" />
 
-          <table class="category-table">
-            <thead>
-              <tr>
-                <th>{{ languageService.t('onboarding.categories.nameHeader') }}</th>
-                <th>{{ languageService.t('onboarding.categories.typeHeader') }}</th>
-                <th>{{ languageService.t('onboarding.categories.actionsHeader') }}</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (cat of categories(); track $index) {
-                <tr>
-                  <td>
-                    <input
-                      type="text"
-                      [ngModel]="cat.name"
-                      (ngModelChange)="updateCategoryField($index, 'name', $event)"
-                      [placeholder]="languageService.t('onboarding.categories.namePlaceholder')"
-                      class="input"
-                    />
-                  </td>
-                  <td>
-                    <select
-                      [ngModel]="cat.type"
-                      (ngModelChange)="updateCategoryField($index, 'type', $event)"
-                      class="input"
-                      [attr.aria-label]="languageService.t('onboarding.categories.typeAria')"
-                    >
-                      <option value="expense">{{ languageService.t('type.expense') }}</option>
-                      <option value="income">{{ languageService.t('type.income') }}</option>
-                    </select>
-                  </td>
-                  <td>
-                    <button class="btn small icon-btn" (click)="removeCategory($index)">
-                      <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
-                        <path
-                          d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z"
-                          fill="none"
-                          stroke="currentColor"
-                          stroke-width="2"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
+          @if (categories().length > 0) {
+            <ul class="category-list">
+              @for (cat of categories(); track $index; let i = $index) {
+                <li
+                  class="category-row"
+                  [class.stripe-income]="cat.type === 'income'"
+                  [class.stripe-expense]="cat.type === 'expense'"
+                >
+                  @if (editingCategory()?.index === i) {
+                    <div class="edit-state">
+                      <div class="edit-line">
+                        <input
+                          #categoryNameInput
+                          type="text"
+                          [ngModel]="editingCategory()!.name"
+                          (ngModelChange)="editCategoryName($event)"
+                          (keydown.enter)="saveCategoryEdit()"
+                          (keydown.escape)="cancelEditCategory()"
+                          class="input"
+                          [attr.aria-label]="languageService.t('onboarding.categories.nameAria')"
                         />
-                      </svg>
-                    </button>
-                  </td>
-                </tr>
+                        <select
+                          [ngModel]="editingCategory()!.type"
+                          (ngModelChange)="editCategoryType($event)"
+                          (keydown.enter)="saveCategoryEdit()"
+                          (keydown.escape)="cancelEditCategory()"
+                          class="input small"
+                          [attr.aria-label]="languageService.t('onboarding.categories.typeAria')"
+                        >
+                          <option value="expense">{{ languageService.t('type.expense') }}</option>
+                          <option value="income">{{ languageService.t('type.income') }}</option>
+                        </select>
+                        <button
+                          type="button"
+                          class="btn small primary icon-btn"
+                          (click)="saveCategoryEdit()"
+                          [attr.aria-label]="languageService.t('settings.confirmEditAria')"
+                          [title]="languageService.t('settings.confirmEditAria')"
+                        >
+                          <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                            <path
+                              d="M20 6 9 17l-5-5"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="2"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                            />
+                          </svg>
+                        </button>
+                        <button
+                          type="button"
+                          class="btn small icon-btn"
+                          (click)="cancelEditCategory()"
+                          [attr.aria-label]="languageService.t('settings.cancelEditAria')"
+                          [title]="languageService.t('settings.cancelEditAria')"
+                        >
+                          <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                            <path
+                              d="M18 6 6 18M6 6l12 12"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="2"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                            />
+                          </svg>
+                        </button>
+                      </div>
+                      @if (categoryEditError()) {
+                        <p class="edit-error" role="alert">{{ categoryEditError() }}</p>
+                      }
+                    </div>
+                  } @else {
+                    <div class="category-main">
+                      <span class="category-name">{{ cat.name }}</span>
+                    </div>
+                    <div class="category-side">
+                      <span class="category-meta">{{ languageService.t('type.' + cat.type) }}</span>
+                      <button
+                        type="button"
+                        class="btn small icon-btn"
+                        [attr.data-edit-pencil]="'category-' + i"
+                        (click)="startEditCategory(i)"
+                        [attr.aria-label]="languageService.t('onboarding.categories.editAria')"
+                        [title]="languageService.t('onboarding.categories.editAria')"
+                      >
+                        <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                          <path
+                            d="M3 17.25V21h3.75L17.8 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"
+                            fill="currentColor"
+                          />
+                        </svg>
+                      </button>
+                      @if (confirmingCategoryRemove() === i) {
+                        <span class="visually-hidden" aria-live="polite">
+                          {{ languageService.t('onboarding.categories.removePrompt') }}
+                        </span>
+                        <button
+                          type="button"
+                          class="btn small danger icon-btn"
+                          (click)="confirmRemoveCategory(i)"
+                          [attr.aria-label]="languageService.t('onboarding.categories.confirmRemoveAria')"
+                          [title]="languageService.t('onboarding.categories.confirmRemoveAria')"
+                        >
+                          <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                            <path
+                              d="M20 6 9 17l-5-5"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="2"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                            />
+                          </svg>
+                        </button>
+                        <button
+                          type="button"
+                          class="btn small icon-btn"
+                          (click)="cancelRemoveCategory()"
+                          [attr.aria-label]="languageService.t('onboarding.categories.cancelRemoveAria')"
+                          [title]="languageService.t('onboarding.categories.cancelRemoveAria')"
+                        >
+                          <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                            <path
+                              d="M18 6 6 18M6 6l12 12"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="2"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                            />
+                          </svg>
+                        </button>
+                      } @else {
+                        <button
+                          type="button"
+                          class="btn small icon-btn"
+                          (click)="requestRemoveCategory(i)"
+                          [attr.aria-label]="languageService.t('onboarding.categories.remove')"
+                          [title]="languageService.t('onboarding.categories.remove')"
+                        >
+                          <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                            <path
+                              d="M18 6 6 18M6 6l12 12"
+                              fill="none"
+                              stroke="currentColor"
+                              stroke-width="2"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                            />
+                          </svg>
+                        </button>
+                      }
+                    </div>
+                  }
+                </li>
               }
-            </tbody>
-          </table>
-
-          <button class="btn dashed" (click)="addCategory()">{{ languageService.t('onboarding.categories.addCategory') }}</button>
+            </ul>
+          }
 
           <div class="nav-buttons">
             <button class="btn" (click)="goTo('accounts')">
