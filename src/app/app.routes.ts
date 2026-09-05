@@ -8,6 +8,11 @@ export const routes: Routes = [
       import('./features/landing/landing.component').then(m => m.LandingComponent),
   },
   {
+    path: 'privacy',
+    loadComponent: () =>
+      import('./features/privacy/privacy.component').then(m => m.PrivacyComponent),
+  },
+  {
     path: 'onboarding',
     loadComponent: () =>
       import('./features/onboarding/onboarding.component').then(m => m.OnboardingComponent),

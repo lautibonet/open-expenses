@@ -179,4 +179,17 @@ footer {
     font-size: var(--type-caption);
     color: var(--surface-dim);
   }
+
+  /* The Privacy link (#132) rides on the AGPL line. */
+  .footer-link {
+    color: var(--surface-dim);
+    text-decoration: underline;
+    text-underline-offset: 4px;
+    margin-left: var(--space-sm);
+
+    &:hover,
+    &:focus-visible {
+      color: var(--surface-lowest);
+    }
+  }
 }
