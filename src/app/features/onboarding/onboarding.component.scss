@@ -408,7 +408,10 @@ app-dismissible-alert {
    row actions go ghost at the 44px thumb minimum and every text button —
    nav, add, remove — reaches the same height. */
 @include touch-targets {
-  .icon-btn {
+  /* Scoped to the wizard so the ghost (0,2,0) wins over .btn.danger /
+     .btn.small (0,2,0) by source order, exactly like the movement ledger's
+     .movement-table .icon-btn. */
+  .wizard .icon-btn {
     @include ghost-row-actions;
   }
 
