@@ -7,12 +7,14 @@ Every value needed to fill in Google Cloud Console's OAuth consent screen (now c
 | Field | Value |
 | --- | --- |
 | App name | `Open Expenses` |
-| User support email | `contact@openexpenses.app` |
+| User support email | a Google account owned by the operator (see note below) |
 | App logo | `public/icons/icon.svg` |
 | App home page | `https://openexpenses.app` |
 | Privacy policy URL | `https://openexpenses.app/privacy` |
 | Terms of service URL | leave empty (none published) |
 | Authorized domain 1 | `openexpenses.app` |
+
+The user support email must be a Google account or Google Group — Google's picker rejects plain domain addresses, and custom-domain groups now require paid Google Workspace. The operator's own Google account is used; the public-facing contact stays `contact@openexpenses.app` (the privacy policy page and the free-text **Developer contact email** field).
 
 The privacy policy URL is a client-side route (`/privacy`, #132). Cloudflare Pages serves `index.html` for unmatched routes (see `docs/deploy.md`), so Google's crawler can fetch the rendered page from `https://openexpenses.app/privacy` without special handling. The app must be deployed to the apex domain before submitting; Google rejects URLs it cannot reach.
 
@@ -31,18 +33,16 @@ Add exactly one scope: `https://www.googleapis.com/auth/drive.file`. Never add t
 
 ## Owner steps (gates issue #135, budget 1–2 weeks, free)
 
-1. **Publish the consent screen to In production** on the Audience page. Google shows a warning that unverified apps with sensitive scopes trigger an "unverified app" screen; that screen disappears once verification below is approved. Publishing costs nothing.
-2. **Brand verification**: verify domain ownership of `openexpenses.app` in [Google Search Console](https://search.google.com/search-console/) (DNS record verification on the domain property is the cleanest path; the domain lives in Cloudflare, so a TXT record is a two-minute change). Search Console verification of the home-page domain is what Google uses to approve the branding above. This is the same ownership check as the domain ticket (#134), which is already live.
-3. **Sensitive-scope verification**: on the Data access page (or via the verification email link), request verification for `drive.file`. Submit the justification text from [sensitive-scope-justification.md](sensitive-scope-justification.md) and the demo video from [demo-video-script.md](demo-video-script.md), recorded, uploaded to YouTube as **unlisted**, in **English**.
-4. **Add the production origin**: on Credentials → the OAuth 2.0 client, add `https://openexpenses.app` under **Authorized JavaScript origins**. Keep `http://localhost:4200` for local development. The client ID may be reused or a new production client created; either way the one wired into the app must list the apex origin (ADR 0016 — no `www`, the redirect rule already handles it).
-5. **Put the production client ID in `src/index.html`**: replace the meta tag's content:
+Completed 2026-09-05:
 
-   ```html
-   <meta name="google-client-id" content="PRODUCTION_CLIENT_ID.apps.googleusercontent.com">
-   ```
+1. **Consent screen published to In production.** Google's console reports sensitive-scope verification as **not needed below 100 users**; the obligation activates (by console status change and email) when usage crosses that cap, at which point the justification and video below get submitted.
+2. **Brand verification** — the Search Console domain-property verification done for the custom domain (#134) carries over; Branding shows verified.
+3. **Sensitive-scope verification** — not required yet (see 1). The [justification](sensitive-scope-justification.md) and [demo video script](demo-video-script.md) are ready to submit when it becomes due.
+4. **Production origin added**: `https://openexpenses.app` joined `http://localhost:4200` on the single OAuth client. One client serves both dev and production; the distinction lives in the publishing status, not the client.
+5. **Client ID**: the existing client ID was reused, so `src/index.html` is unchanged — there is no separate production client ID to install.
 
-   This is the only code change left in #135 and it is owner-gated: it cannot happen before step 4 exists.
+Note for step 4: after saving a new origin, Google can serve stale client config for 10–30 minutes; a browser that saw the old config reports `origin_mismatch` (or a "does not comply with Google's OAuth 2.0 policy" block) even though the console is correct. Retry later from a fresh session before debugging further.
 
 ## Acceptance check
 
-After steps 1–5, connect Google Drive from a Google account that is not on the test-users list. The consent popup must appear with the verified branding and the single `drive.file` scope, with no "unverified app" or "Google hasn't verified this app" warning screen. That is the final acceptance criterion of #135.
+Connect Google Drive from a Google account that is not on the test-users list. The consent popup must show the verified branding and the single `drive.file` scope, with no "unverified app" or "Google hasn't verified this app" warning screen. Confirmed 2026-09-05 on a non-test account (#135 closed).

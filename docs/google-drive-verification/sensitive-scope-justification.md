@@ -18,7 +18,7 @@ https://openexpenses.app/privacy
 
 **Support email**
 
-contact@openexpenses.app
+the support email configured on the consent screen (see [consent-screen-config.md](consent-screen-config.md)); public-facing contact is contact@openexpenses.app
 
 **Requested scopes**
 
