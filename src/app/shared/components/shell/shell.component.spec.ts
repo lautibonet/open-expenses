@@ -112,16 +112,16 @@ describe('ShellComponent', () => {
     expect(button.textContent?.trim()).toBe('Backing up…');
   });
 
-  it('links the Privacy page from the app footer, in the active language (#132)', async () => {
-    const link = fixture.nativeElement.querySelector(
-      'footer.app-footer a',
-    ) as HTMLAnchorElement;
-    expect(link.getAttribute('href')).toBe('/privacy');
-    expect(link.textContent?.trim()).toBe('Privacy');
+  it('links the Privacy page and the Landing from the app footer, in the active language (#132)', async () => {
+    const links = Array.from(
+      fixture.nativeElement.querySelectorAll('footer.app-footer a'),
+    ) as HTMLAnchorElement[];
+    expect(links.map((link) => link.getAttribute('href'))).toEqual(['/privacy', '/landing']);
+    expect(links.map((link) => link.textContent?.trim())).toEqual(['Privacy', 'About']);
 
     await TestBed.inject(LanguageService).setLanguage('es');
     fixture.detectChanges();
-    expect(link.textContent?.trim()).toBe('Privacidad');
+    expect(links.map((link) => link.textContent?.trim())).toEqual(['Privacidad', 'Acerca de']);
   });
 
   it('renders the main navigation tabs in Movements, Stats, Settings order', () => {

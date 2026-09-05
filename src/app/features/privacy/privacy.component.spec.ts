@@ -82,6 +82,14 @@ describe('PrivacyComponent (#132)', () => {
       expect(body).toContain('Limited Use');
       expect(body).toContain('Google API Services User Data Policy');
     });
+
+    it('links the brand back to the Landing, not into the app', () => {
+      const link = fixture.nativeElement.querySelector(
+        'footer a.landing-link',
+      ) as HTMLAnchorElement;
+      expect(link.getAttribute('href')).toBe('/landing');
+      expect(link.textContent?.trim()).toBe('Open Expenses');
+    });
   });
 
   describe('language', () => {

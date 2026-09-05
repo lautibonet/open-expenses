@@ -27,6 +27,11 @@ describe('App boot', () => {
     await db.open();
   });
 
+  afterEach(async () => {
+    fixture?.destroy();
+    await db.delete();
+  });
+
   async function bootAt(url: string): Promise<void> {
     await router.navigateByUrl(url);
     fixture = TestBed.createComponent(App);
@@ -34,9 +39,9 @@ describe('App boot', () => {
     await fixture.whenStable();
   }
 
-  it('keeps the public landing at the root without redirecting to Onboarding', async () => {
-    await bootAt('/');
-    expect(router.url).toBe('/');
+  it('keeps the public Landing without redirecting to Onboarding', async () => {
+    await bootAt('/landing');
+    expect(router.url).toBe('/landing');
   });
 
   it('keeps the public Privacy page without redirecting to Onboarding', async () => {
