@@ -26,9 +26,11 @@ The Google Drive backup uses Google Identity Services (GIS) with the OAuth 2.0 i
 1. Go to **APIs & Services** → **OAuth consent screen**
 2. Select **External** user type → **Create**
 3. Fill in:
-   - **App name**: "Open Expenses" (or your preferred name)
-   - **User support email**: your email
-   - **Developer contact email**: your email
+   - **App name**: "Open Expenses"
+   - **User support email**: `contact@openexpenses.app`
+   - **Developer contact email**: `contact@openexpenses.app`
+   - **App home page**: `https://openexpenses.app`
+   - **Privacy policy URL**: `https://openexpenses.app/privacy`
 4. **Save and Continue**
 5. On **Scopes** page: click **Add or Remove Scopes** → add `https://www.googleapis.com/auth/drive.file` → **Update** → **Save and Continue**
 6. On **Test users** page: click **Add Users** → add your Google email → **Save and Continue**
@@ -66,6 +68,6 @@ Replace the placeholder in `src/index.html`:
 
 ## Important Notes
 
-- The app is in **Testing** mode by default. Only added test users can authorize. To allow anyone, you'd need to go through Google's verification process (not required for personal use).
+- The app is in **Testing** mode by default. Only added test users can authorize. To allow anyone, the consent screen must be published to **In production** and the `drive.file` sensitive scope verified — see [Google Drive production verification](google-drive-verification/consent-screen-config.md).
 - The app only requests `drive.file` scope — it can only access files it creates, not the user's entire Drive.
-- The backup file is named `open-expenses-backup.json` and stored in the root of the user's Drive.
+- The backup file is named `open-expenses-backup.json` and stored inside an `Open Expenses` folder at the root of the user's Drive.
