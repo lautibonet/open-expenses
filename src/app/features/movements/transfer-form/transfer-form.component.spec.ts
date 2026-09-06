@@ -257,6 +257,76 @@ describe('TransferFormComponent', () => {
       expect(rateText.textContent).toContain('EUR');
     });
 
+    it('keeps the suggested rate text and date when a rate is typed manually', async () => {
+      await component.ngOnInit();
+      fixture.detectChanges();
+
+      component.onSourceChange(usdAccountId);
+      component.form.update((f) => ({ ...f, destAccountId: eurAccountId }));
+      component.onDateChange('2026-08-20');
+      fixture.detectChanges();
+      await flush();
+      fixture.detectChanges();
+
+      const el = fixture.nativeElement;
+      const before = el.querySelector('.rate-source').textContent;
+
+      const rateInput = el.querySelector('input[name="rate"]') as HTMLInputElement;
+      rateInput.value = '1.2';
+      rateInput.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+
+      expect(component.form().exchangeRate).toBe(1.2);
+      expect(el.querySelector('.rate-source').textContent).toBe(before);
+    });
+
+    it('updates the suggested rate text when the transfer date changes', async () => {
+      await component.ngOnInit();
+      fixture.detectChanges();
+
+      component.onSourceChange(usdAccountId);
+      component.form.update((f) => ({ ...f, destAccountId: eurAccountId }));
+      component.onDateChange('2026-08-20');
+      fixture.detectChanges();
+      await flush();
+      fixture.detectChanges();
+
+      exchangeRateService.getRate.mockResolvedValueOnce({
+        rate: 1.14,
+        from: 'USD',
+        to: 'EUR',
+        date: '2026-02-01',
+      });
+      component.onDateChange('2026-02-01');
+      fixture.detectChanges();
+      await flush();
+      fixture.detectChanges();
+
+      const rateText = fixture.nativeElement.querySelector('.rate-source');
+      expect(rateText.textContent).toContain('1.14');
+      expect(rateText.textContent).toContain('2026-02-01');
+    });
+
+    it('shows one Exchange Rate heading without a visible pair label on the rate input', async () => {
+      await component.ngOnInit();
+      fixture.detectChanges();
+
+      component.onSourceChange(usdAccountId);
+      component.form.update((f) => ({ ...f, destAccountId: eurAccountId }));
+      fixture.detectChanges();
+      await flush();
+      fixture.detectChanges();
+
+      const el = fixture.nativeElement;
+      const section = el.querySelector('.exchange-rate-section');
+      const headings = section.querySelectorAll('h4');
+      expect(headings.length).toBe(1);
+      expect(headings[0].textContent).toContain('Exchange Rate');
+      expect(section.textContent).not.toContain('Exchange Rate (USD → EUR)');
+      const rateInput = el.querySelector('input[name="rate"]') as HTMLInputElement;
+      expect(rateInput.getAttribute('aria-label')).toBe('Exchange rate');
+    });
+
     it('gates the save on the rate fetch and states why', async () => {
       await component.ngOnInit();
       fixture.detectChanges();
