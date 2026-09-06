@@ -161,10 +161,7 @@ export class DriveBackupService {
 
     try {
       const snapshot = await this.provider.downloadSnapshot();
-      await overwriteLocalDb(snapshot);
-      await this.refreshLastBackupStatus();
-      await this.languageService.applyFromProfile();
-      this.dataVersion.bump();
+      await this.applyRestoredSnapshot(snapshot);
     } catch (e: unknown) {
       this.setAndRethrow('backup.error.restoreFailed', e);
     } finally {
@@ -219,15 +216,20 @@ export class DriveBackupService {
     this.error.set(null);
 
     try {
-      await overwriteLocalDb(snapshot);
-      await this.refreshLastBackupStatus();
-      await this.languageService.applyFromProfile();
-      this.dataVersion.bump();
+      await this.applyRestoredSnapshot(snapshot);
     } catch (e: unknown) {
       this.setAndRethrow('backup.error.restoreFailed', e);
     } finally {
       this.isBackingUp.set(false);
     }
+  }
+
+  /** Shared success path for every Restore: overwrite, refresh status, apply language, notify listeners. */
+  private async applyRestoredSnapshot(snapshot: BackupSnapshot): Promise<void> {
+    await overwriteLocalDb(snapshot);
+    await this.refreshLastBackupStatus();
+    await this.languageService.applyFromProfile();
+    this.dataVersion.bump();
   }
 
   /**
@@ -237,9 +239,7 @@ export class DriveBackupService {
    */
   private async refreshLastBackupStatus(): Promise<void> {
     const profile = await this.profileService.get();
-    this.lastBackupAt.set(
-      profile?.lastBackupAt ? new Date(profile.lastBackupAt as unknown as string | Date) : null,
-    );
+    this.lastBackupAt.set(profile?.lastBackupAt ? new Date(profile.lastBackupAt) : null);
   }
 
   async restoreFromFile(file: File): Promise<void> {
