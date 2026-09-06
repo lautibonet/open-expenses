@@ -32,13 +32,22 @@ export interface RateSeed {
 }
 
 /**
+ * The Suggested Rate (CONTEXT.md): the rate fetched for the currency pair
+ * and the movement's date. A manual rate is an override and never becomes
+ * the suggestion.
+ */
+export interface SuggestedRate {
+  rate: number;
+  date: string;
+}
+
+/**
  * Translation keys the well renders. Parents keep their own namespaces
  * (the Transaction Form and the Transfer Form keep their existing copy).
  */
 export interface ExchangeRateWellLabels {
   heading: string;
   fetching: string;
-  pair: string;
   equivalent: string;
   suggested: string;
   rateAria?: string;
@@ -73,6 +82,13 @@ export class ExchangeRateWellComponent {
   stateChange = output<RateState>();
 
   state = signal<RateState>({ loading: false, error: '', rate: null, date: '' });
+
+  /**
+   * The Suggested Rate: the rate last fetched (or seeded) for the currency
+   * pair and date. Manual typing overrides the input's rate without ever
+   * touching the suggestion — only a pair/date change (or seed) replaces it.
+   */
+  suggestion = signal<SuggestedRate | null>(null);
 
   visible = computed(
     () => !!this.from() && !!this.to() && this.from() !== this.to(),
@@ -112,6 +128,7 @@ export class ExchangeRateWellComponent {
     if (!from || !to || from === to) {
       this.lastSeed = seed;
       this.lastHandled = { from, to, date };
+      this.suggestion.set(null);
       this.apply({ loading: false, error: '', rate: null, date: '' });
       return;
     }
@@ -119,6 +136,7 @@ export class ExchangeRateWellComponent {
     if (seed && seed !== this.lastSeed) {
       this.lastSeed = seed;
       this.lastHandled = { from, to, date };
+      this.suggestion.set(seed.rate !== null ? { rate: seed.rate, date: seed.date } : null);
       this.apply({
         loading: false,
         error: seed.error ?? '',
@@ -148,6 +166,10 @@ export class ExchangeRateWellComponent {
     date?: string,
   ): Promise<void> {
     const seq = ++this.fetchSeq;
+    /* The previous suggestion belongs to the old pair or date: drop it for
+       the duration of the fetch so the line never quotes a stale rate
+       against the new currencies. */
+    this.suggestion.set(null);
     this.apply({
       loading: true,
       error: '',
@@ -158,6 +180,7 @@ export class ExchangeRateWellComponent {
     try {
       const result = await this.exchangeRateService.getRate(from, to, date);
       if (seq !== this.fetchSeq || this.destroyed) return;
+      this.suggestion.set({ rate: result.rate, date: result.date });
       this.apply({
         loading: false,
         error: '',
@@ -171,6 +194,7 @@ export class ExchangeRateWellComponent {
         e instanceof OfflineError
           ? this.language.t(labels.errorOffline)
           : this.language.t(labels.errorFetch);
+      this.suggestion.set(null);
       this.apply({ loading: false, error: msg, rate: null, date: '' });
     }
   }

@@ -42,7 +42,6 @@ export interface TransactionFormDraft {
 const RATE_LABELS: ExchangeRateWellLabels = {
   heading: 'transactionForm.exchangeRate',
   fetching: 'transactionForm.fetchingRate',
-  pair: 'transactionForm.exchangeRatePair',
   equivalent: 'transactionForm.equivalent',
   suggested: 'transactionForm.suggestedRate',
   rateAria: 'transactionForm.exchangeRateAria',

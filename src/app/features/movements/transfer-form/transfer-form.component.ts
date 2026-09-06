@@ -53,7 +53,6 @@ export interface TransferDraft {
 const RATE_LABELS: ExchangeRateWellLabels = {
   heading: 'movements.exchangeRate',
   fetching: 'movements.fetchingRate',
-  pair: 'movements.exchangeRatePair',
   equivalent: 'movements.destAmount',
   suggested: 'movements.suggestedRate',
   rateAria: 'transactionForm.exchangeRateAria',
