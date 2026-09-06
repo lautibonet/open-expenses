@@ -63,6 +63,7 @@ describe('translations', () => {
       'settings.confirmDeletionAria',
       'settings.cancelDeletionAria',
       'settings.deactivateInstead',
+      'settings.cancel',
       'settings.editAccountAria',
       'settings.editCategoryAria',
       'settings.editBaseCurrencyAria',
