@@ -36,8 +36,12 @@ _Avoid_: Report currency, display currency
 The conversion factor between two currencies. Fetched from Frankfurter v2 (ECB rates) via `/rate/{FROM}/{TO}` for single pairs or `/rates?base={FROM}&quotes={TO1,TO2}` for batches. User-confirmed or manually overridden per Transaction or Transfer.
 _Avoid_: Conversion rate, FX rate
 
+**Suggested Rate**:
+The reference Exchange Rate fetched for a currency pair and the movement's date, offered in the Transfer Form. It refreshes only when the currency pair or the date changes — never in response to the user typing a rate, which is an override, not a new suggestion.
+_Avoid_: Recommended rate, default rate, auto rate
+
 **Movement**:
-The unified display of Transactions and Transfers in a single chronological list. Each row carries a colored edge stripe identifying its kind: green for Income, red for Expense, grey for Transfer. Amounts are always positive; cross-currency items show both original and converted amounts (e.g. `$10.00 → €8.57`).
+The unified display of Transactions and Transfers in a single chronological list. Each row carries a colored edge stripe identifying its kind: green for Income, red for Expense, grey for Transfer. Amounts are always positive; cross-currency items show both original and converted amounts (e.g. `$10.00 → €8.57`). As a data predicate, an Account or Category has movements when any Transaction or Transfer references it — having movements is what makes an item un-Deletable.
 _Avoid_: Feed, timeline, history
 
 **Transaction Form**:
@@ -90,3 +94,15 @@ _Avoid_: Recovery, import, rollback
 **Cancelled Restore**:
 A Restore attempt that ends before any data changes because the user backed out — closing the sign-in window, declining access, or not picking a file. It leaves local data untouched, re-enables the Restore controls, and is not a failed Restore.
 _Avoid_: Failed restore, restore error
+
+**Deactivate**:
+The reversible removal of an Account or Category from active use: it disappears from pickers, but every reference to it is kept intact and it can be reactivated at any time. The only form of removal available to items that have movements.
+_Avoid_: Archive, disable, delete, hide
+
+**Delete**:
+The permanent, irreversible removal of an Account or Category that has no movements (a Category is un-used when no Transaction references it). Never cascades: if anything references the item, Delete is refused with an explanation and Deactivation is offered instead.
+_Avoid_: Remove, erase, destroy
+
+**Erase**:
+A user-initiated, permanent wipe of all local data — Accounts, Categories, Transactions, Transfers, and the Profile — after which the app returns to Onboarding as a fresh start. Distinct from Restore: Erase never brings data back; it only throws it away.
+_Avoid_: Reset, wipe, factory reset, clear data
