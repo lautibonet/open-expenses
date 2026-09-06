@@ -420,6 +420,30 @@ describe('DriveBackupService', () => {
       expect(dataVersion.version()).toBe(before + 1);
     });
 
+    it('refreshes the last-backup status from the restored profile immediately', async () => {
+      await connectAsTestUser(service);
+
+      mockFetchByUrl({
+        [FOLDER_SEARCH]: () => ({ files: [{ id: 'folder-1' }] }),
+        [FILE_SEARCH]: () => ({ files: [{ id: 'backup-file-id' }] }),
+        [MEDIA_DOWNLOAD]: () => ({
+          accounts: [],
+          categories: [],
+          transactions: [],
+          transfers: [],
+          profile: [
+            { id: 1, baseCurrency: 'EUR', onboardingCompleted: true, lastBackupAt: '2026-08-27T10:00:00.000Z' },
+          ],
+          exportedAt: new Date().toISOString(),
+        }),
+      });
+
+      await service.restore();
+
+      expect(service.lastBackupAt()).toBeInstanceOf(Date);
+      expect(service.lastBackupAt()!.getTime()).toBe(new Date('2026-08-27T10:00:00.000Z').getTime());
+    });
+
     it('does not bump the data version when the cloud restore fails', async () => {
       await connectAsTestUser(service);
       const dataVersion = TestBed.inject(DataVersionService);
@@ -440,6 +464,29 @@ describe('DriveBackupService', () => {
 
       await expect(service.restore()).rejects.toThrow();
       expect(dataVersion.version()).toBe(0);
+    });
+
+    it('leaves the displayed last-backup status untouched when the restore fails', async () => {
+      await connectAsTestUser(service);
+      const previous = new Date('2026-01-01T00:00:00.000Z');
+      service.lastBackupAt.set(previous);
+
+      mockFetchByUrl({
+        [FOLDER_SEARCH]: () => ({ files: [{ id: 'folder-1' }] }),
+        [FILE_SEARCH]: () => ({ files: [{ id: 'backup-file-id' }] }),
+        [MEDIA_DOWNLOAD]: () => ({
+          schemaVersion: 999,
+          accounts: [],
+          categories: [],
+          transactions: [],
+          transfers: [],
+          profile: [],
+          exportedAt: new Date().toISOString(),
+        }),
+      });
+
+      await expect(service.restore()).rejects.toThrow();
+      expect(service.lastBackupAt()).toBe(previous);
     });
   });
 
@@ -742,6 +789,24 @@ describe('DriveBackupService', () => {
       expect(applySpy.mock.invocationCallOrder[0]).toBeLessThan(
         bumpSpy.mock.invocationCallOrder[0],
       );
+    });
+
+    it('refreshes the last-backup status from the restored profile immediately', async () => {
+      const snapshot: BackupSnapshot = {
+        accounts: [],
+        categories: [],
+        transactions: [],
+        transfers: [],
+        profile: [
+          { id: 1, baseCurrency: 'EUR', onboardingCompleted: true, lastBackupAt: '2026-08-27T10:00:00.000Z' },
+        ],
+        exportedAt: '2026-08-27T00:00:00.000Z',
+      };
+
+      await service.restoreFromSnapshot(snapshot);
+
+      expect(service.lastBackupAt()).toBeInstanceOf(Date);
+      expect(service.lastBackupAt()!.getTime()).toBe(new Date('2026-08-27T10:00:00.000Z').getTime());
     });
 
     it('does not bump the data version when the file restore fails', async () => {
