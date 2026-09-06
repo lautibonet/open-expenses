@@ -243,6 +243,10 @@ export class SettingsComponent implements OnInit {
     this.confirmingAccountDelete.set(null);
   }
 
+  cancelRefuseAccount(): void {
+    this.refusedAccount.set(null);
+  }
+
   async confirmDeleteAccount(): Promise<void> {
     const id = this.confirmingAccountDelete();
     if (id === null) return;
@@ -297,6 +301,10 @@ export class SettingsComponent implements OnInit {
 
   cancelDeleteCategory(): void {
     this.confirmingCategoryDelete.set(null);
+  }
+
+  cancelRefuseCategory(): void {
+    this.refusedCategory.set(null);
   }
 
   async confirmDeleteCategory(): Promise<void> {

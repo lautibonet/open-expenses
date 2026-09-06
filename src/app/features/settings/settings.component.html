@@ -337,6 +337,24 @@
                     {{ language.t('settings.deactivateInstead') }}
                   </button>
                 }
+                <button
+                  type="button"
+                  class="btn small icon-btn"
+                  (click)="cancelRefuseAccount()"
+                  [attr.aria-label]="language.t('settings.cancelDeletionAria')"
+                  [title]="language.t('settings.cancelDeletionAria')"
+                >
+                  <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                    <path
+                      d="M18 6 6 18M6 6l12 12"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </button>
               </div>
             }
           }
@@ -556,6 +574,24 @@
                     {{ language.t('settings.deactivateInstead') }}
                   </button>
                 }
+                <button
+                  type="button"
+                  class="btn small icon-btn"
+                  (click)="cancelRefuseCategory()"
+                  [attr.aria-label]="language.t('settings.cancelDeletionAria')"
+                  [title]="language.t('settings.cancelDeletionAria')"
+                >
+                  <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                    <path
+                      d="M18 6 6 18M6 6l12 12"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </button>
               </div>
             }
           }
