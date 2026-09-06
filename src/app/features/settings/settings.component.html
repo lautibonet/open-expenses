@@ -118,37 +118,47 @@
       {{ language.t('settings.accounts') }}
     </h2>
 
-    <div class="inline-form">
-      <input
-        type="text"
-        [ngModel]="newAccountName()"
-        (ngModelChange)="newAccountName.set($event)"
-        [placeholder]="language.t('settings.name')"
-        class="input"
-        [attr.aria-label]="language.t('settings.name')"
-      />
-      <select
-        [ngModel]="newAccountCurrency()"
-        (ngModelChange)="newAccountCurrency.set($event)"
-        class="input"
-        [attr.aria-label]="language.t('settings.accountCurrencyAria')"
-      >
-        @for (currency of supportedCurrencies; track currency) {
-          <option [value]="currency">{{ currency }}</option>
-        }
-      </select>
-      <input
-        type="number"
-        [ngModel]="newAccountBalance()"
-        (ngModelChange)="newAccountBalance.set($event)"
-        [placeholder]="language.t('settings.initialBalance')"
-        class="input"
-        [attr.aria-label]="language.t('settings.initialBalance')"
-      />
-      <button class="btn dashed" (click)="addAccount()">
-        + {{ language.t('settings.addAccount') }}
+    @if (addingAccount()) {
+      <div class="inline-form">
+        <input
+          #newAccountNameInput
+          type="text"
+          [ngModel]="newAccountName()"
+          (ngModelChange)="newAccountName.set($event)"
+          [placeholder]="language.t('settings.name')"
+          class="input"
+          [attr.aria-label]="language.t('settings.name')"
+        />
+        <select
+          [ngModel]="newAccountCurrency()"
+          (ngModelChange)="newAccountCurrency.set($event)"
+          class="input"
+          [attr.aria-label]="language.t('settings.accountCurrencyAria')"
+        >
+          @for (currency of supportedCurrencies; track currency) {
+            <option [value]="currency">{{ currency }}</option>
+          }
+        </select>
+        <input
+          type="number"
+          [ngModel]="newAccountBalance()"
+          (ngModelChange)="newAccountBalance.set($event)"
+          [placeholder]="language.t('settings.initialBalance')"
+          class="input"
+          [attr.aria-label]="language.t('settings.initialBalance')"
+        />
+        <button class="btn dashed" (click)="addAccount()">
+          + {{ language.t('settings.addAccount') }}
+        </button>
+        <button type="button" class="btn" (click)="cancelAddAccount()">
+          {{ language.t('settings.cancel') }}
+        </button>
+      </div>
+    } @else {
+      <button type="button" class="btn dashed add-toggle" (click)="startAddAccount()">
+        {{ language.t('settings.newAccount') }}
       </button>
-    </div>
+    }
 
     <ul class="account-list">
       @for (acc of accounts(); track acc.id) {
@@ -362,26 +372,36 @@
       {{ language.t('settings.categories') }}
     </h2>
 
-    <div class="inline-form">
-      <input
-        type="text"
-        [ngModel]="newCategoryName()"
-        (ngModelChange)="newCategoryName.set($event)"
-        [placeholder]="language.t('settings.name')"
-        class="input"
-        [attr.aria-label]="language.t('settings.name')"
-      />
-      <select
-        [ngModel]="newCategoryType()"
-        (ngModelChange)="newCategoryType.set($event)"
-        class="input"
-        [attr.aria-label]="language.t('settings.categoryTypeAria')"
-      >
-        <option value="expense">{{ language.t('type.expense') }}</option>
-        <option value="income">{{ language.t('type.income') }}</option>
-      </select>
-      <button class="btn dashed" (click)="addCategory()">+ {{ language.t('settings.add') }}</button>
-    </div>
+    @if (addingCategory()) {
+      <div class="inline-form">
+        <input
+          #newCategoryNameInput
+          type="text"
+          [ngModel]="newCategoryName()"
+          (ngModelChange)="newCategoryName.set($event)"
+          [placeholder]="language.t('settings.name')"
+          class="input"
+          [attr.aria-label]="language.t('settings.name')"
+        />
+        <select
+          [ngModel]="newCategoryType()"
+          (ngModelChange)="newCategoryType.set($event)"
+          class="input"
+          [attr.aria-label]="language.t('settings.categoryTypeAria')"
+        >
+          <option value="expense">{{ language.t('type.expense') }}</option>
+          <option value="income">{{ language.t('type.income') }}</option>
+        </select>
+        <button class="btn dashed" (click)="addCategory()">+ {{ language.t('settings.add') }}</button>
+        <button type="button" class="btn" (click)="cancelAddCategory()">
+          {{ language.t('settings.cancel') }}
+        </button>
+      </div>
+    } @else {
+      <button type="button" class="btn dashed add-toggle" (click)="startAddCategory()">
+        {{ language.t('settings.newCategory') }}
+      </button>
+    }
 
     <ul class="category-list">
       @for (cat of categories(); track cat.id) {

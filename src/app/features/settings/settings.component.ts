@@ -50,6 +50,8 @@ export class SettingsComponent implements OnInit {
   newAccountBalance = signal(0);
   newCategoryName = signal('');
   newCategoryType = signal<CategoryType>('expense');
+  addingAccount = signal(false);
+  addingCategory = signal(false);
   errorMessage = signal('');
   statusEpoch = signal(0);
   editingAccount = signal<AccountEditState | null>(null);
@@ -65,8 +67,11 @@ export class SettingsComponent implements OnInit {
   accountNameInput = viewChild<ElementRef<HTMLInputElement>>('accountNameInput');
   categoryNameInput = viewChild<ElementRef<HTMLInputElement>>('categoryNameInput');
   baseCurrencySelect = viewChild<ElementRef<HTMLSelectElement>>('baseCurrencySelect');
+  newAccountNameInput = viewChild<ElementRef<HTMLInputElement>>('newAccountNameInput');
+  newCategoryNameInput = viewChild<ElementRef<HTMLInputElement>>('newCategoryNameInput');
 
-  /* On open, focus the first input of the expanded edit state. */
+  /* On open, focus the first input of the expanded edit state or of the
+     New-button-revealed add form. */
   private focusEditState = effect(() => {
     if (this.editingAccount()) {
       this.accountNameInput()?.nativeElement.focus();
@@ -76,6 +81,12 @@ export class SettingsComponent implements OnInit {
     }
     if (this.editingBaseCurrency()) {
       this.baseCurrencySelect()?.nativeElement.focus();
+    }
+    if (this.addingAccount()) {
+      this.newAccountNameInput()?.nativeElement.focus();
+    }
+    if (this.addingCategory()) {
+      this.newCategoryNameInput()?.nativeElement.focus();
     }
   });
 
@@ -95,6 +106,21 @@ export class SettingsComponent implements OnInit {
     this.categories.set(await this.categoryService.getAll());
   }
 
+  /* Creation lives behind a New button: the reveal resets the draft so
+     every open starts from a fresh form; saving or cancelling hides it. */
+  startAddAccount(): void {
+    this.newAccountName.set('');
+    this.newAccountCurrency.set('EUR');
+    this.newAccountBalance.set(0);
+    this.clearStatus();
+    this.addingAccount.set(true);
+  }
+
+  cancelAddAccount(): void {
+    this.addingAccount.set(false);
+    this.clearStatus();
+  }
+
   async addAccount(): Promise<void> {
     this.clearStatus();
     try {
@@ -103,6 +129,7 @@ export class SettingsComponent implements OnInit {
         this.newAccountCurrency(),
         this.newAccountBalance(),
       );
+      this.addingAccount.set(false);
       this.newAccountName.set('');
       this.newAccountBalance.set(0);
       await this.refresh();
@@ -274,10 +301,23 @@ export class SettingsComponent implements OnInit {
     await this.refresh();
   }
 
+  startAddCategory(): void {
+    this.newCategoryName.set('');
+    this.newCategoryType.set('expense');
+    this.clearStatus();
+    this.addingCategory.set(true);
+  }
+
+  cancelAddCategory(): void {
+    this.addingCategory.set(false);
+    this.clearStatus();
+  }
+
   async addCategory(): Promise<void> {
     this.clearStatus();
     try {
       await this.categoryService.create(this.newCategoryName(), this.newCategoryType());
+      this.addingCategory.set(false);
       this.newCategoryName.set('');
       await this.refresh();
     } catch (e: unknown) {
