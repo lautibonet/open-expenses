@@ -78,6 +78,7 @@ export class OnboardingComponent {
   accountBalance = signal(0);
   accounts = signal<{ name: string; currency: string; balance: number }[]>([]);
   editingAccount = signal<AccountEditState | null>(null);
+  addingAccount = signal(false);
   confirmingRemove = signal<number | null>(null);
   editError = signal('');
   categories = signal<EditableCategory[]>(
@@ -91,20 +92,30 @@ export class OnboardingComponent {
   newCategoryName = signal('');
   newCategoryType = signal<CategoryType>('expense');
   editingCategory = signal<CategoryEditState | null>(null);
+  addingCategory = signal(false);
   confirmingCategoryRemove = signal<number | null>(null);
   confirmingDeleteAll = signal(false);
   categoryEditError = signal('');
   accountNameInput = viewChild<ElementRef<HTMLInputElement>>('accountNameInput');
   categoryNameInput = viewChild<ElementRef<HTMLInputElement>>('categoryNameInput');
+  newAccountNameInput = viewChild<ElementRef<HTMLInputElement>>('newAccountNameInput');
+  newCategoryNameInput = viewChild<ElementRef<HTMLInputElement>>('newCategoryNameInput');
 
-  /* On open, focus the first input of the expanded edit state — the same
-     grammar as the Settings accounts and categories cards. */
+  /* On open, focus the first input of the expanded edit state or of the
+     New-button-revealed add form — the same grammar as the Settings accounts
+     and categories cards. */
   private focusEditState = effect(() => {
     if (this.editingAccount()) {
       this.accountNameInput()?.nativeElement.focus();
     }
     if (this.editingCategory()) {
       this.categoryNameInput()?.nativeElement.focus();
+    }
+    if (this.addingAccount()) {
+      this.newAccountNameInput()?.nativeElement.focus();
+    }
+    if (this.addingCategory()) {
+      this.newCategoryNameInput()?.nativeElement.focus();
     }
   });
 
@@ -225,6 +236,22 @@ export class OnboardingComponent {
     this.errorMessage.set('');
   }
 
+  /* Creation lives behind a New button, like the Settings cards: the reveal
+     resets the draft so every open starts from a fresh form; saving or
+     cancelling hides it. Nothing is persisted until Onboarding completes. */
+  startAddAccount(): void {
+    this.accountName.set('');
+    this.accountCurrency.set('EUR');
+    this.accountBalance.set(0);
+    this.resetError();
+    this.addingAccount.set(true);
+  }
+
+  cancelAddAccount(): void {
+    this.addingAccount.set(false);
+    this.resetError();
+  }
+
   addAccount(): void {
     this.resetError();
     if (!this.accountName()) {
@@ -254,6 +281,7 @@ export class OnboardingComponent {
     ]);
     this.accountName.set('');
     this.accountBalance.set(0);
+    this.addingAccount.set(false);
     this.errorMessage.set('');
   }
 
@@ -347,10 +375,23 @@ export class OnboardingComponent {
     });
   }
 
-  /* New rows come from the fixed-width inline add form — name plus type —
-     validated before staging, the Settings categories-card composition
-     (#142). A pending Delete all confirm disarms: the list it was about to
-     clear just grew (#143). */
+  /* New rows come from the New-button-revealed inline add form — name plus
+     type — validated before staging, the Settings categories-card grammar
+     (#142). The reveal resets the draft; saving or cancelling hides it. A
+     pending Delete all confirm disarms: the list it was about to clear just
+     grew (#143). */
+  startAddCategory(): void {
+    this.newCategoryName.set('');
+    this.newCategoryType.set('expense');
+    this.resetError();
+    this.addingCategory.set(true);
+  }
+
+  cancelAddCategory(): void {
+    this.addingCategory.set(false);
+    this.resetError();
+  }
+
   addCategory(): void {
     this.resetError();
     const name = this.newCategoryName().trim();
@@ -369,6 +410,7 @@ export class OnboardingComponent {
     }
     this.categories.update(cats => [...cats, { name, type: this.newCategoryType() }]);
     this.newCategoryName.set('');
+    this.addingCategory.set(false);
     this.confirmingDeleteAll.set(false);
     this.errorMessage.set('');
   }

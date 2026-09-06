@@ -143,6 +143,7 @@ async function completeOnboarding(page: import('@playwright/test').Page) {
   await page.getByRole('button', { name: 'Continue' }).click();
 
   // 4. Accounts
+  await page.getByRole('button', { name: 'New account' }).click();
   await page.getByPlaceholder('Account name').fill('Checking');
   await page.getByPlaceholder('Initial balance').fill('100');
   await page.getByRole('button', { name: 'Add', exact: true }).click();

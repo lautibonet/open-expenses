@@ -178,37 +178,47 @@
           <h1 class="step-title">{{ languageService.t('onboarding.accounts.title') }}</h1>
           <p class="step-description">{{ languageService.t('onboarding.accounts.description') }}</p>
 
-          <div class="inline-form">
-            <input
-              type="text"
-              [ngModel]="accountName()"
-              (ngModelChange)="accountName.set($event)"
-              [placeholder]="languageService.t('onboarding.accounts.namePlaceholder')"
-              class="input"
-              [attr.aria-label]="languageService.t('onboarding.accounts.nameAria')"
-            />
-            <select
-              [ngModel]="accountCurrency()"
-              (ngModelChange)="accountCurrency.set($event)"
-              class="input"
-              [attr.aria-label]="languageService.t('onboarding.accounts.currencyAria')"
-            >
-              @for (currency of supportedCurrencies; track currency) {
-                <option [value]="currency">{{ currency }}</option>
-              }
-            </select>
-            <input
-              type="number"
-              [ngModel]="accountBalance()"
-              (ngModelChange)="accountBalance.set($event)"
-              [placeholder]="languageService.t('onboarding.accounts.balancePlaceholder')"
-              class="input"
-              [attr.aria-label]="languageService.t('onboarding.accounts.balanceAria')"
-            />
-            <button class="btn dashed" (click)="addAccount()">
-              + {{ languageService.t('onboarding.accounts.add') }}
+          @if (addingAccount()) {
+            <div class="inline-form">
+              <input
+                #newAccountNameInput
+                type="text"
+                [ngModel]="accountName()"
+                (ngModelChange)="accountName.set($event)"
+                [placeholder]="languageService.t('onboarding.accounts.namePlaceholder')"
+                class="input"
+                [attr.aria-label]="languageService.t('onboarding.accounts.nameAria')"
+              />
+              <select
+                [ngModel]="accountCurrency()"
+                (ngModelChange)="accountCurrency.set($event)"
+                class="input"
+                [attr.aria-label]="languageService.t('onboarding.accounts.currencyAria')"
+              >
+                @for (currency of supportedCurrencies; track currency) {
+                  <option [value]="currency">{{ currency }}</option>
+                }
+              </select>
+              <input
+                type="number"
+                [ngModel]="accountBalance()"
+                (ngModelChange)="accountBalance.set($event)"
+                [placeholder]="languageService.t('onboarding.accounts.balancePlaceholder')"
+                class="input"
+                [attr.aria-label]="languageService.t('onboarding.accounts.balanceAria')"
+              />
+              <button class="btn dashed" (click)="addAccount()">
+                + {{ languageService.t('onboarding.accounts.add') }}
+              </button>
+              <button type="button" class="btn" (click)="cancelAddAccount()">
+                {{ languageService.t('settings.cancel') }}
+              </button>
+            </div>
+          } @else {
+            <button type="button" class="btn dashed add-toggle" (click)="startAddAccount()">
+              {{ languageService.t('onboarding.accounts.new') }}
             </button>
-          </div>
+          }
 
           <app-dismissible-alert appearance="note" variant="error" [message]="errorMessage()" [resetKey]="statusEpoch()" />
 
@@ -389,26 +399,36 @@
           <h1 class="step-title">{{ languageService.t('onboarding.categories.title') }}</h1>
           <p class="step-description">{{ languageService.t('onboarding.categories.description') }}</p>
 
-          <div class="inline-form">
-            <input
-              type="text"
-              [ngModel]="newCategoryName()"
-              (ngModelChange)="newCategoryName.set($event)"
-              [placeholder]="languageService.t('onboarding.categories.namePlaceholder')"
-              class="input"
-              [attr.aria-label]="languageService.t('onboarding.categories.nameAria')"
-            />
-            <select
-              [ngModel]="newCategoryType()"
-              (ngModelChange)="newCategoryType.set($event)"
-              class="input"
-              [attr.aria-label]="languageService.t('onboarding.categories.typeAria')"
-            >
-              <option value="expense">{{ languageService.t('type.expense') }}</option>
-              <option value="income">{{ languageService.t('type.income') }}</option>
-            </select>
-            <button class="btn dashed" (click)="addCategory()">+ {{ languageService.t('onboarding.categories.add') }}</button>
-          </div>
+          @if (addingCategory()) {
+            <div class="inline-form">
+              <input
+                #newCategoryNameInput
+                type="text"
+                [ngModel]="newCategoryName()"
+                (ngModelChange)="newCategoryName.set($event)"
+                [placeholder]="languageService.t('onboarding.categories.namePlaceholder')"
+                class="input"
+                [attr.aria-label]="languageService.t('onboarding.categories.nameAria')"
+              />
+              <select
+                [ngModel]="newCategoryType()"
+                (ngModelChange)="newCategoryType.set($event)"
+                class="input"
+                [attr.aria-label]="languageService.t('onboarding.categories.typeAria')"
+              >
+                <option value="expense">{{ languageService.t('type.expense') }}</option>
+                <option value="income">{{ languageService.t('type.income') }}</option>
+              </select>
+              <button class="btn dashed" (click)="addCategory()">+ {{ languageService.t('onboarding.categories.add') }}</button>
+              <button type="button" class="btn" (click)="cancelAddCategory()">
+                {{ languageService.t('settings.cancel') }}
+              </button>
+            </div>
+          } @else {
+            <button type="button" class="btn dashed add-toggle" (click)="startAddCategory()">
+              {{ languageService.t('onboarding.categories.new') }}
+            </button>
+          }
 
           <app-dismissible-alert appearance="note" variant="error" [message]="errorMessage()" [resetKey]="statusEpoch()" />
 

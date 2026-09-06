@@ -287,7 +287,8 @@
 }
 
 /* Add form: name input, currency/type select and Add button share the same
-   width and height — the Settings card composition (#141, #142). */
+   width and height — the Settings card composition (#141, #142). Creation is
+   revealed by a New button that occupies the same slot when hidden. */
 .inline-form {
   display: flex;
   gap: var(--space-sm);
@@ -304,6 +305,10 @@
   .btn.dashed {
     width: 10rem;
   }
+}
+
+.btn.add-toggle {
+  margin-bottom: var(--space-md);
 }
 
 /* Staged rows render as the Settings list tiles (#141, #142): accounts
