@@ -768,9 +768,14 @@ describe('SettingsComponent - edit-on-demand rows', () => {
     (row.querySelector('button[aria-label="Delete account"]') as HTMLButtonElement).click();
     await flush();
     fixture.detectChanges();
-    expect(row.querySelector('.delete-refusal')).toBeTruthy();
+    const refusal = row.querySelector('.delete-refusal') as HTMLElement;
+    expect(refusal).toBeTruthy();
 
-    (row.querySelector('button[aria-label="Cancel deletion"]') as HTMLButtonElement).click();
+    const cancel = Array.from(
+      refusal.querySelectorAll('button') as NodeListOf<HTMLButtonElement>,
+    ).find((b) => b.textContent!.trim() === 'Cancel')!;
+    expect(cancel).toBeTruthy();
+    cancel.click();
     fixture.detectChanges();
 
     expect(row.querySelector('.delete-refusal')).toBeNull();
