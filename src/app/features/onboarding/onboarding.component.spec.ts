@@ -275,6 +275,26 @@ describe('OnboardingComponent', () => {
     input.dispatchEvent(new Event('change'));
   }
 
+  function newAccountToggle(): HTMLButtonElement {
+    return (Array.from(fixture.nativeElement.querySelectorAll('button')) as HTMLButtonElement[])
+      .find(b => b.textContent!.trim() === 'New account')!;
+  }
+
+  function newCategoryToggle(): HTMLButtonElement {
+    return (Array.from(fixture.nativeElement.querySelectorAll('button')) as HTMLButtonElement[])
+      .find(b => b.textContent!.trim() === 'New category')!;
+  }
+
+  function revealAccountForm(): void {
+    newAccountToggle().click();
+    fixture.detectChanges();
+  }
+
+  function revealCategoryForm(): void {
+    newCategoryToggle().click();
+    fixture.detectChanges();
+  }
+
   // Issue #141: the accounts step adopts the Settings accounts-card
   // composition — list tiles, inline add form, the shared edit grammar
   // (pencil / tick / X, Enter / Escape) and the inline tick/X remove
@@ -328,50 +348,130 @@ describe('OnboardingComponent', () => {
     expect(component.accounts()[0].name).toBe('Cash');
   });
 
-  it('adds an account through the Settings-style inline add form', async () => {
+  it('adds an account through the New-button-revealed inline form', async () => {
     component.goTo('accounts');
     fixture.detectChanges();
 
+    expect(newAccountToggle()).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.inline-form')).toBeNull();
+
+    revealAccountForm();
     const form = fixture.nativeElement.querySelector('.inline-form') as HTMLElement;
     expect(form.querySelector('.btn.dashed')).toBeTruthy();
     expect(form.textContent).toContain('Add');
+    expect(form.textContent).toContain('Cancel');
 
     setNgModelValue(form.querySelector('input[type="text"]') as HTMLInputElement, 'Wallet');
     setNgModelValue(form.querySelector('select') as HTMLSelectElement, 'USD');
     setNgModelValue(form.querySelector('input[type="number"]') as HTMLInputElement, '500');
     fixture.detectChanges();
     (form.querySelector('.btn.dashed') as HTMLButtonElement).click();
+    await flush();
     fixture.detectChanges();
 
+    expect(component.addingAccount()).toBe(false);
+    expect(fixture.nativeElement.querySelector('.inline-form')).toBeNull();
     expect(accountRows().length).toBe(1);
     const row = rowFor('Wallet');
     expect(row.querySelector('.account-meta')!.textContent).toContain('USD');
     expect(row.querySelector('.account-meta')!.textContent).toContain('500');
-
-    const nameInput = form.querySelector('input[type="text"]') as HTMLInputElement;
-    const balanceInput = form.querySelector('input[type="number"]') as HTMLInputElement;
-    await flush();
-    expect(nameInput.value).toBe('');
-    expect(balanceInput.value).toBe('0');
+    expect(component.accountName()).toBe('');
+    expect(component.accountBalance()).toBe(0);
   });
 
-  it('rejects a negative initial balance inline when adding', () => {    component.goTo('accounts');
+  it('rejects a negative initial balance inline when adding', () => {
+    component.goTo('accounts');
     fixture.detectChanges();
+    revealAccountForm();
 
+    const form = fixture.nativeElement.querySelector('.inline-form') as HTMLElement;
     setNgModelValue(
-      fixture.nativeElement.querySelector('.inline-form input[type="text"]'),
+      form.querySelector('input[type="text"]') as HTMLInputElement,
       'Wallet',
     );
     setNgModelValue(
-      fixture.nativeElement.querySelector('.inline-form input[type="number"]'),
+      form.querySelector('input[type="number"]') as HTMLInputElement,
       '-5',
     );
-    component.addAccount();
+    fixture.detectChanges();
+    (form.querySelector('.btn.dashed') as HTMLButtonElement).click();
     fixture.detectChanges();
 
     const alert = fixture.nativeElement.querySelector('.alert') as HTMLElement;
     expect(alert.textContent).toContain('cannot be negative');
     expect(accountRows().length).toBe(0);
+    expect(component.addingAccount()).toBe(true);
+    expect(fixture.nativeElement.querySelector('.inline-form')).toBeTruthy();
+  });
+
+  // Issue #149: both steps reveal their add form behind the same New button
+  // used in Settings — the reveal resets the draft, saving or cancelling
+  // hides it, and a failed add keeps it open.
+  it('shows a New button instead of always-visible add inputs on both steps', () => {
+    component.goTo('accounts');
+    fixture.detectChanges();
+    expect(newAccountToggle()).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.inline-form')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.step input')).toBeNull();
+
+    component.goTo('categories');
+    fixture.detectChanges();
+    expect(newCategoryToggle()).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.inline-form')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.step input')).toBeNull();
+  });
+
+  it('reveals the account form when New is clicked and focuses its name input', async () => {
+    component.goTo('accounts');
+    fixture.detectChanges();
+
+    revealAccountForm();
+    await flush();
+    fixture.detectChanges();
+
+    const form = fixture.nativeElement.querySelector('.inline-form') as HTMLElement;
+    const nameInput = form.querySelector('input[type="text"]') as HTMLInputElement;
+    expect(nameInput).toBeTruthy();
+    expect(document.activeElement).toBe(nameInput);
+  });
+
+  it('hides the account form on cancel without staging anything', () => {
+    component.goTo('accounts');
+    fixture.detectChanges();
+    revealAccountForm();
+
+    const form = fixture.nativeElement.querySelector('.inline-form') as HTMLElement;
+    setNgModelValue(form.querySelector('input[type="text"]') as HTMLInputElement, 'Wallet');
+    (
+      Array.from(form.querySelectorAll('button')) as HTMLButtonElement[]
+    ).find(b => b.textContent!.trim() === 'Cancel')!.click();
+    fixture.detectChanges();
+
+    expect(component.addingAccount()).toBe(false);
+    expect(fixture.nativeElement.querySelector('.inline-form')).toBeNull();
+    expect(accountRows().length).toBe(0);
+    expect(newAccountToggle()).toBeTruthy();
+  });
+
+  it('starts each account reveal with a fresh empty form', () => {
+    component.goTo('accounts');
+    fixture.detectChanges();
+
+    revealAccountForm();
+    let form = fixture.nativeElement.querySelector('.inline-form') as HTMLElement;
+    setNgModelValue(form.querySelector('input[type="text"]') as HTMLInputElement, 'Wallet');
+    fixture.detectChanges();
+    (
+      Array.from(form.querySelectorAll('button')) as HTMLButtonElement[]
+    ).find(b => b.textContent!.trim() === 'Cancel')!.click();
+    fixture.detectChanges();
+
+    revealAccountForm();
+    form = fixture.nativeElement.querySelector('.inline-form') as HTMLElement;
+    const nameInput = form.querySelector('input[type="text"]') as HTMLInputElement;
+    expect(nameInput.value).toBe('');
+    expect(component.accountName()).toBe('');
+    expect(component.accountBalance()).toBe(0);
   });
 
   it('opens the inline edit state from the pencil; tick saves', async () => {
@@ -611,31 +711,35 @@ describe('OnboardingComponent', () => {
     expect(component.categories().map(c => c.name)).not.toContain('Food');
   });
 
-  it('adds a category through the Settings-style inline add form', async () => {
+  it('adds a category through the New-button-revealed inline form', async () => {
     stageCategories();
 
+    expect(newCategoryToggle()).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.inline-form')).toBeNull();
+
+    revealCategoryForm();
     const form = fixture.nativeElement.querySelector('.inline-form') as HTMLElement;
-    expect(form.querySelector('.btn.dashed')).toBeTruthy();
-    expect(form.textContent).toContain('Add');
+    expect(form.textContent).toContain('Cancel');
 
     setNgModelValue(form.querySelector('input[type="text"]') as HTMLInputElement, 'Groceries');
     setNgModelValue(form.querySelector('select') as HTMLSelectElement, 'income');
     fixture.detectChanges();
     (form.querySelector('.btn.dashed') as HTMLButtonElement).click();
+    await flush();
     fixture.detectChanges();
 
+    expect(component.addingCategory()).toBe(false);
+    expect(fixture.nativeElement.querySelector('.inline-form')).toBeNull();
     expect(categoryRows().length).toBe(10);
     const row = rowForCategory('Groceries');
     expect(row.querySelector('.category-meta')!.textContent).toContain('Income');
     expect(row.classList).toContain('stripe-income');
-
-    const nameInput = form.querySelector('input[type="text"]') as HTMLInputElement;
-    await flush();
-    expect(nameInput.value).toBe('');
+    expect(component.newCategoryName()).toBe('');
   });
 
   it('rejects an empty and a duplicate category name when adding', () => {
     stageCategories();
+    revealCategoryForm();
 
     const form = fixture.nativeElement.querySelector('.inline-form') as HTMLElement;
     (form.querySelector('.btn.dashed') as HTMLButtonElement).click();
@@ -644,6 +748,7 @@ describe('OnboardingComponent', () => {
     let alert = fixture.nativeElement.querySelector('.alert') as HTMLElement;
     expect(alert.textContent).toContain('required');
     expect(categoryRows().length).toBe(9);
+    expect(component.addingCategory()).toBe(true);
 
     setNgModelValue(form.querySelector('input[type="text"]') as HTMLInputElement, 'Transport');
     fixture.detectChanges();
@@ -653,6 +758,24 @@ describe('OnboardingComponent', () => {
     alert = fixture.nativeElement.querySelector('.alert') as HTMLElement;
     expect(alert.textContent).toContain('already exists');
     expect(categoryRows().length).toBe(9);
+    expect(component.addingCategory()).toBe(true);
+  });
+
+  it('hides the category form on cancel without staging anything', () => {
+    stageCategories();
+    revealCategoryForm();
+
+    const form = fixture.nativeElement.querySelector('.inline-form') as HTMLElement;
+    setNgModelValue(form.querySelector('input[type="text"]') as HTMLInputElement, 'Groceries');
+    (
+      Array.from(form.querySelectorAll('button')) as HTMLButtonElement[]
+    ).find(b => b.textContent!.trim() === 'Cancel')!.click();
+    fixture.detectChanges();
+
+    expect(component.addingCategory()).toBe(false);
+    expect(fixture.nativeElement.querySelector('.inline-form')).toBeNull();
+    expect(categoryRows().length).toBe(9);
+    expect(newCategoryToggle()).toBeTruthy();
   });
 
   it('opens the inline edit state from the pencil; tick saves', async () => {
