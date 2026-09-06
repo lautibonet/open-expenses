@@ -37,7 +37,8 @@ app-backup-card {
 }
 
 /* Add forms: name input, currency/type select and Add button share the
-   same width and height — uniform fields, uniformly aligned. */
+   same width and height — uniform fields, uniformly aligned. Creation is
+   revealed by a New button that occupies the same slot when hidden. */
 .inline-form {
   display: flex;
   gap: var(--space-sm);
@@ -54,6 +55,10 @@ app-backup-card {
   .btn.dashed {
     width: 10rem;
   }
+}
+
+.btn.add-toggle {
+  margin-bottom: var(--space-md);
 }
 
 .input {

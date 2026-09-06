@@ -1117,6 +1117,7 @@ describe('SettingsComponent - dismissible alerts', () => {
   }
 
   it('keeps the page-level error strip for add-form failures', async () => {
+    component.startAddAccount();
     component.newAccountName.set('Cash');
     await component.addAccount();
     fixture.detectChanges();
@@ -1131,6 +1132,7 @@ describe('SettingsComponent - dismissible alerts', () => {
   });
 
   it('hides the error strip when dismissed and brings it back on the next failure', async () => {
+    component.startAddAccount();
     component.newAccountName.set('Cash');
     await component.addAccount();
     fixture.detectChanges();
@@ -1327,7 +1329,17 @@ describe('SettingsComponent - LedgerFlow restyle', () => {
     expect(updated?.active).toBe(true);
   });
 
-  it('renders dashed add affordances for accounts and categories', () => {
+  it('renders New buttons before reveal and dashed add affordances inside the revealed forms', () => {
+    const buttons = Array.from(
+      fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>,
+    ).map((b) => b.textContent!.trim());
+    expect(buttons).toContain('New account');
+    expect(buttons).toContain('New category');
+
+    component.startAddAccount();
+    component.startAddCategory();
+    fixture.detectChanges();
+
     const dashed = Array.from(
       fixture.nativeElement.querySelectorAll('.btn.dashed') as NodeListOf<HTMLButtonElement>,
     ).map((b) => b.textContent!.trim());
@@ -1336,7 +1348,11 @@ describe('SettingsComponent - LedgerFlow restyle', () => {
     expect(dashed[1]).toContain('Add');
   });
 
-  it('sizes every add-form field uniformly', () => {
+  it('sizes every revealed add-form field uniformly', () => {
+    component.startAddAccount();
+    component.startAddCategory();
+    fixture.detectChanges();
+
     const forms = Array.from(
       fixture.nativeElement.querySelectorAll('.inline-form') as NodeListOf<HTMLElement>,
     );
@@ -1349,6 +1365,184 @@ describe('SettingsComponent - LedgerFlow restyle', () => {
         expect(field.classList.contains('small')).toBe(false);
       }
     }
+  });
+});
+
+describe('SettingsComponent - New-button creation forms', () => {
+  let fixture: ComponentFixture<SettingsComponent>;
+  let component: SettingsComponent;
+  let accountService: AccountService;
+  let categoryService: CategoryService;
+  let accountId: number;
+  let categoryId: number;
+
+  const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 10));
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    await TestBed.configureTestingModule({
+      imports: [SettingsComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(SettingsComponent);
+    component = fixture.componentInstance;
+    accountService = TestBed.inject(AccountService);
+    categoryService = TestBed.inject(CategoryService);
+
+    const account = await accountService.create('Cash', 'EUR', 100000);
+    accountId = account.id!;
+    const category = await categoryService.create('Food', 'expense');
+    categoryId = category.id!;
+    await component.ngOnInit();
+    fixture.detectChanges();
+  });
+
+  afterEach(async () => {
+    await db.delete();
+  });
+
+  function cardFor(title: string): HTMLElement {
+    const cards = Array.from(
+      fixture.nativeElement.querySelectorAll('section.card') as NodeListOf<HTMLElement>,
+    );
+    return cards.find((c) => c.querySelector('h2')!.textContent!.includes(title))!;
+  }
+
+  function revealForm(card: HTMLElement): void {
+    const reveal = Array.from(
+      card.querySelectorAll('button') as NodeListOf<HTMLButtonElement>,
+    ).find((b) => b.textContent!.trim() === 'New account' || b.textContent!.trim() === 'New category')!;
+    reveal.click();
+    fixture.detectChanges();
+  }
+
+  it('shows a New button instead of always-visible add inputs on both cards', () => {
+    for (const [card, label] of [
+      [cardFor('Accounts'), 'New account'],
+      [cardFor('Categories'), 'New category'],
+    ] as const) {
+      expect(Array.from(card.querySelectorAll('button')).map((b) => b.textContent!.trim())).toContain(label);
+      expect(card.querySelector('.inline-form')).toBeNull();
+      expect(card.querySelector('input')).toBeNull();
+    }
+  });
+
+  it('reveals the inline form when New is clicked and focuses its name input', async () => {
+    const card = cardFor('Accounts');
+    revealForm(card);
+    await flush();
+    fixture.detectChanges();
+
+    const form = card.querySelector('.inline-form') as HTMLElement;
+    expect(form).toBeTruthy();
+    const nameInput = form.querySelector('input[type="text"]') as HTMLInputElement;
+    expect(nameInput).toBeTruthy();
+    expect(nameInput.value).toBe('');
+    expect(document.activeElement).toBe(nameInput);
+    expect(form.textContent).toContain('Add Account');
+  });
+
+  it('hides the form again on cancel without creating anything', async () => {
+    const card = cardFor('Accounts');
+    revealForm(card);
+    const form = card.querySelector('.inline-form') as HTMLElement;
+    const nameInput = form.querySelector('input[type="text"]') as HTMLInputElement;
+    nameInput.value = 'Wallet';
+    nameInput.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+
+    const cancel = Array.from(
+      form.querySelectorAll('button') as NodeListOf<HTMLButtonElement>,
+    ).find((b) => b.textContent!.trim() === 'Cancel')!;
+    expect(cancel).toBeTruthy();
+    cancel.click();
+    await flush();
+    fixture.detectChanges();
+
+    expect(card.querySelector('.inline-form')).toBeNull();
+    expect(card.querySelector('button[data-edit-pencil]')).toBeTruthy();
+    expect((await accountService.getAll()).some((a) => a.name === 'Wallet')).toBe(false);
+    expect(component.addingAccount()).toBe(false);
+  });
+
+  it('persists immediately through the revealed account form and hides it on save', async () => {
+    const card = cardFor('Accounts');
+    revealForm(card);
+    const form = card.querySelector('.inline-form') as HTMLElement;
+    const nameInput = form.querySelector('input[type="text"]') as HTMLInputElement;
+    nameInput.value = 'Wallet';
+    nameInput.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+
+    (form.querySelector('button.btn.dashed') as HTMLButtonElement).click();
+    await flush();
+    fixture.detectChanges();
+
+    const created = (await accountService.getAll()).find((a) => a.name === 'Wallet');
+    expect(created).toBeDefined();
+    expect(created?.currency).toBe('EUR');
+    expect(card.querySelector('.inline-form')).toBeNull();
+    expect(component.addingAccount()).toBe(false);
+  });
+
+  it('persists immediately through the revealed category form and hides it on save', async () => {
+    const card = cardFor('Categories');
+    revealForm(card);
+    const form = card.querySelector('.inline-form') as HTMLElement;
+    const nameInput = form.querySelector('input[type="text"]') as HTMLInputElement;
+    nameInput.value = 'Transport';
+    nameInput.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+
+    (form.querySelector('button.btn.dashed') as HTMLButtonElement).click();
+    await flush();
+    fixture.detectChanges();
+
+    const created = (await categoryService.getAll()).find((c) => c.name === 'Transport');
+    expect(created).toBeDefined();
+    expect(created?.type).toBe('expense');
+    expect(card.querySelector('.inline-form')).toBeNull();
+    expect(component.addingCategory()).toBe(false);
+  });
+
+  it('keeps the form open when creation fails', async () => {
+    const card = cardFor('Accounts');
+    revealForm(card);
+    const form = card.querySelector('.inline-form') as HTMLElement;
+    const nameInput = form.querySelector('input[type="text"]') as HTMLInputElement;
+    nameInput.value = 'Cash';
+    nameInput.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+
+    (form.querySelector('button.btn.dashed') as HTMLButtonElement).click();
+    await flush();
+    fixture.detectChanges();
+
+    expect(card.querySelector('.inline-form')).toBeTruthy();
+    expect(component.addingAccount()).toBe(true);
+    expect((await accountService.getAll()).filter((a) => a.name === 'Cash').length).toBe(1);
+  });
+
+  it('starts each reveal with a fresh empty form', async () => {
+    const card = cardFor('Accounts');
+    revealForm(card);
+    let form = card.querySelector('.inline-form') as HTMLElement;
+    let nameInput = form.querySelector('input[type="text"]') as HTMLInputElement;
+    nameInput.value = 'Wallet';
+    nameInput.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    (form.querySelector('button.btn.dashed') as HTMLButtonElement).click();
+    await flush();
+    fixture.detectChanges();
+
+    revealForm(card);
+    await flush();
+    fixture.detectChanges();
+    form = card.querySelector('.inline-form') as HTMLElement;
+    nameInput = form.querySelector('input[type="text"]') as HTMLInputElement;
+    expect(nameInput.value).toBe('');
+    expect(component.newAccountName()).toBe('');
   });
 });
 

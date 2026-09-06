@@ -56,6 +56,8 @@ describe('translations', () => {
     for (const key of [
       'settings.subtitle',
       'settings.addAccount',
+      'settings.newAccount',
+      'settings.newCategory',
       'settings.deleteAccountAria',
       'settings.deleteCategoryAria',
       'settings.accountDeletePrompt',
