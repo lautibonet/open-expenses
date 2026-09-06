@@ -199,7 +199,7 @@ describe('SettingsComponent - pencil edit state (component)', () => {
   });
 });
 
-describe('SettingsComponent - account deactivation confirmation', () => {
+describe('SettingsComponent - account delete-if-unused (ADR 0018)', () => {
   let fixture: ComponentFixture<SettingsComponent>;
   let component: SettingsComponent;
   let accountService: AccountService;
@@ -225,39 +225,92 @@ describe('SettingsComponent - account deactivation confirmation', () => {
     await db.delete();
   });
 
-  it('should set and clear the deactivation confirmation target', () => {
-    component.requestDeactivate(accountId);
-    expect(component.confirmingDeactivate()).toBe(accountId);
+  it('branches on the data: an unused account gets the inline delete confirm', async () => {
+    await component.requestDeleteAccount(accountId);
+    expect(component.confirmingAccountDelete()).toBe(accountId);
+    expect(component.refusedAccount()).toBeNull();
 
-    component.cancelDeactivate();
-    expect(component.confirmingDeactivate()).toBeNull();
+    component.cancelDeleteAccount();
+    expect(component.confirmingAccountDelete()).toBeNull();
   });
 
-  it('should not deactivate an account until confirmed', async () => {
-    component.requestDeactivate(accountId);
-    component.cancelDeactivate();
+  it('does not delete an unused account until confirmed', async () => {
+    await component.requestDeleteAccount(accountId);
+    component.cancelDeleteAccount();
 
-    const account = await accountService.getById(accountId);
-    expect(account?.active).toBe(true);
+    expect(await accountService.getById(accountId)).toBeDefined();
   });
 
-  it('should deactivate an account only after confirming', async () => {
-    component.requestDeactivate(accountId);
-    await component.confirmDeactivate();
+  it('deletes an unused account only after confirming', async () => {
+    await component.requestDeleteAccount(accountId);
+    await component.confirmDeleteAccount();
 
-    const account = await accountService.getById(accountId);
-    expect(account?.active).toBe(false);
-    expect(component.confirmingDeactivate()).toBeNull();
+    expect(await accountService.getById(accountId)).toBeUndefined();
+    expect(component.confirmingAccountDelete()).toBeNull();
+    expect(component.accounts().some((a) => a.id === accountId)).toBe(false);
   });
 
-  it('should do nothing when confirming with no target', async () => {
-    await component.confirmDeactivate();
-    const account = await accountService.getById(accountId);
-    expect(account?.active).toBe(true);
+  it('refuses to delete an account with movements and records the refusal target', async () => {
+    await db.transactions.add({
+      accountId,
+      categoryId: await db.categories.add({
+        name: 'Food',
+        type: 'expense',
+        active: true,
+        createdAt: new Date(),
+      }),
+      amount: 1000,
+      date: new Date(),
+      period: 1,
+      year: 2026,
+      exchangeRate: null,
+      baseCurrencyAmount: null,
+      note: '',
+      createdAt: new Date(),
+    });
+
+    await component.requestDeleteAccount(accountId);
+    expect(component.refusedAccount()).toBe(accountId);
+    expect(component.confirmingAccountDelete()).toBeNull();
+
+    expect(await accountService.getById(accountId)).toBeDefined();
+  });
+
+  it('does nothing when confirming with no target', async () => {
+    await component.confirmDeleteAccount();
+    expect(await accountService.getById(accountId)).toBeDefined();
+  });
+
+  it('refuses at confirm time when movements appear after the request', async () => {
+    await component.requestDeleteAccount(accountId);
+    expect(component.confirmingAccountDelete()).toBe(accountId);
+
+    const category = await db.categories.add({
+      name: 'Food',
+      type: 'expense',
+      active: true,
+      createdAt: new Date(),
+    });
+    await db.transactions.add({
+      accountId,
+      categoryId: category,
+      amount: 1000,
+      date: new Date(),
+      period: 1,
+      year: 2026,
+      exchangeRate: null,
+      baseCurrencyAmount: null,
+      note: '',
+      createdAt: new Date(),
+    });
+
+    await component.confirmDeleteAccount();
+    expect(component.refusedAccount()).toBe(accountId);
+    expect(await accountService.getById(accountId)).toBeDefined();
   });
 });
 
-describe('SettingsComponent - category deactivation confirmation', () => {
+describe('SettingsComponent - category delete-if-unused (ADR 0018)', () => {
   let fixture: ComponentFixture<SettingsComponent>;
   let component: SettingsComponent;
   let categoryService: CategoryService;
@@ -283,35 +336,61 @@ describe('SettingsComponent - category deactivation confirmation', () => {
     await db.delete();
   });
 
-  it('should set and clear the category deactivation confirmation target', () => {
-    component.requestCategoryDeactivate(categoryId);
-    expect(component.confirmingCategoryDeactivate()).toBe(categoryId);
+  it('branches on the data: an unused category gets the inline delete confirm', async () => {
+    await component.requestDeleteCategory(categoryId);
+    expect(component.confirmingCategoryDelete()).toBe(categoryId);
+    expect(component.refusedCategory()).toBeNull();
 
-    component.cancelCategoryDeactivate();
-    expect(component.confirmingCategoryDeactivate()).toBeNull();
+    component.cancelDeleteCategory();
+    expect(component.confirmingCategoryDelete()).toBeNull();
   });
 
-  it('should not deactivate a category until confirmed', async () => {
-    component.requestCategoryDeactivate(categoryId);
-    component.cancelCategoryDeactivate();
+  it('does not delete an unused category until confirmed', async () => {
+    await component.requestDeleteCategory(categoryId);
+    component.cancelDeleteCategory();
 
-    const category = await categoryService.getById(categoryId);
-    expect(category?.active).toBe(true);
+    expect(await categoryService.getById(categoryId)).toBeDefined();
   });
 
-  it('should deactivate a category only after confirming', async () => {
-    component.requestCategoryDeactivate(categoryId);
-    await component.confirmCategoryDeactivate();
+  it('deletes an unused category only after confirming', async () => {
+    await component.requestDeleteCategory(categoryId);
+    await component.confirmDeleteCategory();
 
-    const category = await categoryService.getById(categoryId);
-    expect(category?.active).toBe(false);
-    expect(component.confirmingCategoryDeactivate()).toBeNull();
+    expect(await categoryService.getById(categoryId)).toBeUndefined();
+    expect(component.confirmingCategoryDelete()).toBeNull();
   });
 
-  it('should do nothing when confirming a category with no target', async () => {
-    await component.confirmCategoryDeactivate();
-    const category = await categoryService.getById(categoryId);
-    expect(category?.active).toBe(true);
+  it('refuses to delete a category referenced by a transaction and records the refusal target', async () => {
+    const account = await db.accounts.add({
+      name: 'Cash',
+      currency: 'EUR',
+      initialBalance: 0,
+      active: true,
+      createdAt: new Date(),
+    });
+    await db.transactions.add({
+      accountId: account,
+      categoryId,
+      amount: 1000,
+      date: new Date(),
+      period: 1,
+      year: 2026,
+      exchangeRate: null,
+      baseCurrencyAmount: null,
+      note: '',
+      createdAt: new Date(),
+    });
+
+    await component.requestDeleteCategory(categoryId);
+    expect(component.refusedCategory()).toBe(categoryId);
+    expect(component.confirmingCategoryDelete()).toBeNull();
+
+    expect(await categoryService.getById(categoryId)).toBeDefined();
+  });
+
+  it('does nothing when confirming with no target', async () => {
+    await component.confirmDeleteCategory();
+    expect(await categoryService.getById(categoryId)).toBeDefined();
   });
 });
 
@@ -596,22 +675,64 @@ describe('SettingsComponent - edit-on-demand rows', () => {
     expect((await categoryService.getById(categoryId))?.name).toBe('Groceries');
   });
 
-  it('keeps the deactivation icon confirmation grammar on account rows', async () => {
+  it('keeps the delete-if-unused confirmation grammar on account rows', async () => {
     const row = rowFor('.account-row', 'Cash');
-    const deactivate = row.querySelector(
-      'button[aria-label="Deactivate account"]',
+    const remove = row.querySelector(
+      'button[aria-label="Delete account"]',
     ) as HTMLButtonElement;
-    expect(deactivate).toBeTruthy();
+    expect(remove).toBeTruthy();
 
-    deactivate.click();
+    remove.click();
+    await flush();
     fixture.detectChanges();
-    expect(row.querySelector('button[aria-label="Confirm deactivation"]')).toBeTruthy();
-    expect(row.querySelector('button[aria-label="Cancel deactivation"]')).toBeTruthy();
+    expect(row.querySelector('button[aria-label="Confirm deletion"]')).toBeTruthy();
+    expect(row.querySelector('button[aria-label="Cancel deletion"]')).toBeTruthy();
 
     (
-      row.querySelector('button[aria-label="Confirm deactivation"]') as HTMLButtonElement
+      row.querySelector('button[aria-label="Confirm deletion"]') as HTMLButtonElement
     ).click();
     await flush();
+    fixture.detectChanges();
+
+    expect(await accountService.getById(accountId)).toBeUndefined();
+    expect(rowFor('.account-row', 'Cash')).toBeUndefined();
+  });
+
+  it('refuses to delete an account with movements with an inline explanation and Deactivate fallback', async () => {
+    await db.transactions.add({
+      accountId,
+      categoryId,
+      amount: 1000,
+      date: new Date(),
+      period: 1,
+      year: 2026,
+      exchangeRate: null,
+      baseCurrencyAmount: null,
+      note: '',
+      createdAt: new Date(),
+    });
+    await component.refresh();
+    fixture.detectChanges();
+
+    const row = rowFor('.account-row', 'Cash');
+    (row.querySelector('button[aria-label="Delete account"]') as HTMLButtonElement).click();
+    await flush();
+    fixture.detectChanges();
+
+    const refusal = row.querySelector('.delete-refusal') as HTMLElement;
+    expect(refusal).toBeTruthy();
+    expect(refusal.getAttribute('role')).toBe('alert');
+    expect(refusal.textContent).toContain('movements');
+    expect(refusal.textContent).toContain("can't be deleted");
+    expect(await accountService.getById(accountId)).toBeDefined();
+
+    const fallback = Array.from(
+      refusal.querySelectorAll('button') as NodeListOf<HTMLButtonElement>,
+    ).find((b) => b.textContent!.trim() === 'Deactivate instead')!;
+    expect(fallback).toBeTruthy();
+    fallback.click();
+    await flush();
+
     expect((await accountService.getById(accountId))?.active).toBe(false);
   });
 });
@@ -1085,30 +1206,60 @@ describe('SettingsComponent - LedgerFlow restyle', () => {
     expect(expenseRow.classList.contains('stripe-expense')).toBe(true);
   });
 
-  it('deactivates a category via an X icon that swaps to tick/X confirmation', async () => {
+  it('deletes an unused category after the inline confirm', async () => {
     const row = rowFor('.category-row', 'Food');
-    const deactivate = row.querySelector(
-      'button[aria-label="Deactivate category"]',
-    ) as HTMLButtonElement;
-    expect(deactivate).toBeTruthy();
-
-    deactivate.click();
+    (row.querySelector('button[aria-label="Delete category"]') as HTMLButtonElement).click();
+    await flush();
     fixture.detectChanges();
 
-    let updated = await categoryService.getById(expenseCategoryId);
-    expect(updated?.active).toBe(true);
+    expect(row.querySelector('button[aria-label="Confirm deletion"]')).toBeTruthy();
+    (
+      row.querySelector('button[aria-label="Confirm deletion"]') as HTMLButtonElement
+    ).click();
+    await flush();
+    fixture.detectChanges();
 
-    const live = row.querySelector('.visually-hidden[aria-live="polite"]') as HTMLElement;
-    expect(live).toBeTruthy();
+    expect(await categoryService.getById(expenseCategoryId)).toBeUndefined();
+    expect(rowFor('.category-row', 'Food')).toBeUndefined();
+  });
 
-    const confirm = row.querySelector(
-      'button[aria-label="Confirm deactivation"]',
-    ) as HTMLButtonElement;
-    confirm.click();
+  it('refuses to delete a used category with an inline explanation and Deactivate fallback', async () => {
+    const accountId = (await accountService.getAll())[0].id!;
+    await db.transactions.add({
+      accountId,
+      categoryId: expenseCategoryId,
+      amount: 1000,
+      date: new Date(),
+      period: 1,
+      year: 2026,
+      exchangeRate: null,
+      baseCurrencyAmount: null,
+      note: '',
+      createdAt: new Date(),
+    });
+    await component.refresh();
+    fixture.detectChanges();
+
+    const row = rowFor('.category-row', 'Food');
+    (row.querySelector('button[aria-label="Delete category"]') as HTMLButtonElement).click();
+    await flush();
+    fixture.detectChanges();
+
+    const refusal = row.querySelector('.delete-refusal') as HTMLElement;
+    expect(refusal).toBeTruthy();
+    expect(refusal.getAttribute('role')).toBe('alert');
+    expect(refusal.textContent).toContain('movements');
+    expect(refusal.textContent).toContain("can't be deleted");
+    expect((await categoryService.getById(expenseCategoryId))?.active).toBe(true);
+
+    const fallback = Array.from(
+      refusal.querySelectorAll('button') as NodeListOf<HTMLButtonElement>,
+    ).find((b) => b.textContent!.trim() === 'Deactivate instead')!;
+    expect(fallback).toBeTruthy();
+    fallback.click();
     await flush();
 
-    updated = await categoryService.getById(expenseCategoryId);
-    expect(updated?.active).toBe(false);
+    expect((await categoryService.getById(expenseCategoryId))?.active).toBe(false);
   });
 
   it('offers a textual Reactivate button on inactive categories', async () => {

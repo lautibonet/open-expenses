@@ -8,7 +8,7 @@ import { DataVersionService } from '../../core/services/data-version.service';
 import { SUPPORTED_CURRENCIES } from '../../core/constants/currencies';
 import { Account } from '../../core/models/account.model';
 import { Category, CategoryType } from '../../core/models/category.model';
-import { errorCopy } from '../../core/models/translation-error';
+import { errorCopy, TranslationError } from '../../core/models/translation-error';
 import { BackupCardComponent } from './backup-card/backup-card.component';
 import { LanguageCardComponent } from './language-card/language-card.component';
 import { DismissibleAlertComponent } from '../../shared/components/dismissible-alert/dismissible-alert.component';
@@ -57,8 +57,10 @@ export class SettingsComponent implements OnInit {
   editingBaseCurrency = signal(false);
   baseCurrencyDraft = signal('EUR');
   editError = signal('');
-  confirmingDeactivate = signal<number | null>(null);
-  confirmingCategoryDeactivate = signal<number | null>(null);
+  confirmingAccountDelete = signal<number | null>(null);
+  confirmingCategoryDelete = signal<number | null>(null);
+  refusedAccount = signal<number | null>(null);
+  refusedCategory = signal<number | null>(null);
 
   accountNameInput = viewChild<ElementRef<HTMLInputElement>>('accountNameInput');
   categoryNameInput = viewChild<ElementRef<HTMLInputElement>>('categoryNameInput');
@@ -222,19 +224,44 @@ export class SettingsComponent implements OnInit {
     }
   }
 
-  requestDeactivate(id: number): void {
-    this.confirmingDeactivate.set(id);
+  /* ADR 0018: one remove action per row, branching on the data. An unused
+     item opens the inline delete confirm; an item with movements is refused
+     with an explanation that offers Deactivation as the fallback. */
+  async requestDeleteAccount(id: number): Promise<void> {
+    this.confirmingCategoryDelete.set(null);
+    this.refusedCategory.set(null);
+    this.confirmingAccountDelete.set(null);
+    this.refusedAccount.set(null);
+    if (await this.accountService.hasMovements(id)) {
+      this.refusedAccount.set(id);
+    } else {
+      this.confirmingAccountDelete.set(id);
+    }
   }
 
-  cancelDeactivate(): void {
-    this.confirmingDeactivate.set(null);
+  cancelDeleteAccount(): void {
+    this.confirmingAccountDelete.set(null);
   }
 
-  async confirmDeactivate(): Promise<void> {
-    const id = this.confirmingDeactivate();
+  async confirmDeleteAccount(): Promise<void> {
+    const id = this.confirmingAccountDelete();
     if (id === null) return;
+    this.confirmingAccountDelete.set(null);
+    try {
+      await this.accountService.delete(id);
+    } catch (e: unknown) {
+      if (e instanceof TranslationError && e.key === 'errors.accountHasMovements') {
+        this.refusedAccount.set(id);
+        return;
+      }
+      throw e;
+    }
+    await this.refresh();
+  }
+
+  async deactivateInstead(id: number): Promise<void> {
+    this.refusedAccount.set(null);
     await this.accountService.setActive(id, false);
-    this.confirmingDeactivate.set(null);
     await this.refresh();
   }
 
@@ -256,19 +283,41 @@ export class SettingsComponent implements OnInit {
     }
   }
 
-  requestCategoryDeactivate(id: number): void {
-    this.confirmingCategoryDeactivate.set(id);
+  async requestDeleteCategory(id: number): Promise<void> {
+    this.confirmingAccountDelete.set(null);
+    this.refusedAccount.set(null);
+    this.confirmingCategoryDelete.set(null);
+    this.refusedCategory.set(null);
+    if (await this.categoryService.hasMovements(id)) {
+      this.refusedCategory.set(id);
+    } else {
+      this.confirmingCategoryDelete.set(id);
+    }
   }
 
-  cancelCategoryDeactivate(): void {
-    this.confirmingCategoryDeactivate.set(null);
+  cancelDeleteCategory(): void {
+    this.confirmingCategoryDelete.set(null);
   }
 
-  async confirmCategoryDeactivate(): Promise<void> {
-    const id = this.confirmingCategoryDeactivate();
+  async confirmDeleteCategory(): Promise<void> {
+    const id = this.confirmingCategoryDelete();
     if (id === null) return;
+    this.confirmingCategoryDelete.set(null);
+    try {
+      await this.categoryService.delete(id);
+    } catch (e: unknown) {
+      if (e instanceof TranslationError && e.key === 'errors.categoryHasMovements') {
+        this.refusedCategory.set(id);
+        return;
+      }
+      throw e;
+    }
+    await this.refresh();
+  }
+
+  async deactivateCategoryInstead(id: number): Promise<void> {
+    this.refusedCategory.set(null);
     await this.categoryService.setActive(id, false);
-    this.confirmingCategoryDeactivate.set(null);
     await this.refresh();
   }
 

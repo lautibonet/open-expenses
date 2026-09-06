@@ -131,3 +131,74 @@ describe('CategoryService', () => {
     expect(active[0].name).toBe('Transport');
   });
 });
+
+describe('CategoryService - delete-if-unused (ADR 0018)', () => {
+  let service: CategoryService;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    TestBed.configureTestingModule({});
+    service = TestBed.inject(CategoryService);
+  });
+
+  afterEach(async () => {
+    await db.delete();
+  });
+
+  async function seedTransaction(categoryId: number): Promise<number> {
+    const accountId = await db.accounts.add({
+      name: 'Cash',
+      currency: 'EUR',
+      initialBalance: 0,
+      active: true,
+      createdAt: new Date(),
+    });
+    return db.transactions.add({
+      accountId,
+      categoryId,
+      amount: 1000,
+      date: new Date(),
+      period: 1,
+      year: 2026,
+      exchangeRate: null,
+      baseCurrencyAmount: null,
+      note: '',
+      createdAt: new Date(),
+    });
+  }
+
+  it('reports an unused category as having no movements', async () => {
+    const category = await service.create('Food', 'expense');
+    expect(await service.hasMovements(category.id!)).toBe(false);
+  });
+
+  it('reports a category referenced by a transaction as having movements', async () => {
+    const category = await service.create('Food', 'expense');
+    await seedTransaction(category.id!);
+    expect(await service.hasMovements(category.id!)).toBe(true);
+  });
+
+  it('permanently deletes an unused category', async () => {
+    const category = await service.create('Food', 'expense');
+    await service.delete(category.id!);
+    expect(await service.getById(category.id!)).toBeUndefined();
+    expect((await service.getAll()).length).toBe(0);
+  });
+
+  it('refuses to delete a category referenced by a transaction, leaving it intact', async () => {
+    const category = await service.create('Food', 'expense');
+    const transactionId = await seedTransaction(category.id!);
+
+    await expect(service.delete(category.id!)).rejects.toMatchObject({
+      key: 'errors.categoryHasMovements',
+    });
+
+    expect(await service.getById(category.id!)).toBeDefined();
+    expect(await db.transactions.get(transactionId)).toBeDefined();
+  });
+
+  it('throws categoryNotFound when deleting a missing category', async () => {
+    await expect(service.delete(999)).rejects.toThrow('errors.categoryNotFound');
+  });
+});

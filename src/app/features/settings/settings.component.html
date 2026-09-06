@@ -245,16 +245,16 @@
                     />
                   </svg>
                 </button>
-                @if (confirmingDeactivate() === acc.id) {
+                @if (confirmingAccountDelete() === acc.id) {
                   <span class="visually-hidden" aria-live="polite">
-                    {{ language.t('settings.accountDeactivationPrompt') }}
+                    {{ language.t('settings.accountDeletePrompt') }}
                   </span>
                   <button
                     type="button"
                     class="btn small danger icon-btn"
-                    (click)="confirmDeactivate()"
-                    [attr.aria-label]="language.t('settings.confirmDeactivationAria')"
-                    [title]="language.t('settings.confirmDeactivationAria')"
+                    (click)="confirmDeleteAccount()"
+                    [attr.aria-label]="language.t('settings.confirmDeletionAria')"
+                    [title]="language.t('settings.confirmDeletionAria')"
                   >
                     <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
                       <path
@@ -270,9 +270,9 @@
                   <button
                     type="button"
                     class="btn small icon-btn"
-                    (click)="cancelDeactivate()"
-                    [attr.aria-label]="language.t('settings.cancelDeactivationAria')"
-                    [title]="language.t('settings.cancelDeactivationAria')"
+                    (click)="cancelDeleteAccount()"
+                    [attr.aria-label]="language.t('settings.cancelDeletionAria')"
+                    [title]="language.t('settings.cancelDeletionAria')"
                   >
                     <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
                       <path
@@ -289,9 +289,9 @@
                   <button
                     type="button"
                     class="btn small icon-btn"
-                    (click)="requestDeactivate(acc.id!)"
-                    [attr.aria-label]="language.t('settings.deactivateAccountAria')"
-                    [title]="language.t('settings.deactivateAccountAria')"
+                    (click)="requestDeleteAccount(acc.id!)"
+                    [attr.aria-label]="language.t('settings.deleteAccountAria')"
+                    [title]="language.t('settings.deleteAccountAria')"
                   >
                     <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
                       <path
@@ -309,8 +309,36 @@
                 <button class="btn small" (click)="reactivateAccount(acc.id!)">
                   {{ language.t('settings.reactivate') }}
                 </button>
+                <button
+                  type="button"
+                  class="btn small icon-btn"
+                  (click)="requestDeleteAccount(acc.id!)"
+                  [attr.aria-label]="language.t('settings.deleteAccountAria')"
+                  [title]="language.t('settings.deleteAccountAria')"
+                >
+                  <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                    <path
+                      d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </button>
               }
             </div>
+            @if (refusedAccount() === acc.id) {
+              <div class="delete-refusal" role="alert">
+                <p>{{ language.t('errors.accountHasMovements') }}</p>
+                @if (acc.active) {
+                  <button type="button" class="btn small" (click)="deactivateInstead(acc.id!)">
+                    {{ language.t('settings.deactivateInstead') }}
+                  </button>
+                }
+              </div>
+            }
           }
         </li>
       }
@@ -435,16 +463,16 @@
                     />
                   </svg>
                 </button>
-                @if (confirmingCategoryDeactivate() === cat.id) {
+                @if (confirmingCategoryDelete() === cat.id) {
                   <span class="visually-hidden" aria-live="polite">
-                    {{ language.t('settings.categoryDeactivationPrompt') }}
+                    {{ language.t('settings.categoryDeletePrompt') }}
                   </span>
                   <button
                     type="button"
                     class="btn small danger icon-btn"
-                    (click)="confirmCategoryDeactivate()"
-                    [attr.aria-label]="language.t('settings.confirmDeactivationAria')"
-                    [title]="language.t('settings.confirmDeactivationAria')"
+                    (click)="confirmDeleteCategory()"
+                    [attr.aria-label]="language.t('settings.confirmDeletionAria')"
+                    [title]="language.t('settings.confirmDeletionAria')"
                   >
                     <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
                       <path
@@ -460,9 +488,9 @@
                   <button
                     type="button"
                     class="btn small icon-btn"
-                    (click)="cancelCategoryDeactivate()"
-                    [attr.aria-label]="language.t('settings.cancelDeactivationAria')"
-                    [title]="language.t('settings.cancelDeactivationAria')"
+                    (click)="cancelDeleteCategory()"
+                    [attr.aria-label]="language.t('settings.cancelDeletionAria')"
+                    [title]="language.t('settings.cancelDeletionAria')"
                   >
                     <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
                       <path
@@ -479,9 +507,9 @@
                   <button
                     type="button"
                     class="btn small icon-btn"
-                    (click)="requestCategoryDeactivate(cat.id!)"
-                    [attr.aria-label]="language.t('settings.deactivateCategoryAria')"
-                    [title]="language.t('settings.deactivateCategoryAria')"
+                    (click)="requestDeleteCategory(cat.id!)"
+                    [attr.aria-label]="language.t('settings.deleteCategoryAria')"
+                    [title]="language.t('settings.deleteCategoryAria')"
                   >
                     <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
                       <path
@@ -500,8 +528,36 @@
                 <button class="btn small" (click)="reactivateCategory(cat.id!)">
                   {{ language.t('settings.reactivate') }}
                 </button>
+                <button
+                  type="button"
+                  class="btn small icon-btn"
+                  (click)="requestDeleteCategory(cat.id!)"
+                  [attr.aria-label]="language.t('settings.deleteCategoryAria')"
+                  [title]="language.t('settings.deleteCategoryAria')"
+                >
+                  <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                    <path
+                      d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </button>
               }
             </div>
+            @if (refusedCategory() === cat.id) {
+              <div class="delete-refusal" role="alert">
+                <p>{{ language.t('errors.categoryHasMovements') }}</p>
+                @if (cat.active) {
+                  <button type="button" class="btn small" (click)="deactivateCategoryInstead(cat.id!)">
+                    {{ language.t('settings.deactivateInstead') }}
+                  </button>
+                }
+              </div>
+            }
           }
         </li>
       }
