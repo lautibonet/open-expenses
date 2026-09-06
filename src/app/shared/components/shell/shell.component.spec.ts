@@ -124,6 +124,16 @@ describe('ShellComponent', () => {
     expect(links.map((link) => link.textContent?.trim())).toEqual(['Privacidad', 'Acerca de']);
   });
 
+  // The visible version must be the released one: it comes straight from
+  // package.json, the same field the v1.0.0 release tag cuts (#137).
+  it('shows the package version in the app footer (#137)', () => {
+    const pkg = JSON.parse(readFileSync('package.json', 'utf-8')) as { version: string };
+
+    const version = fixture.nativeElement.querySelector('.app-version') as HTMLElement;
+    expect(version).not.toBeNull();
+    expect(version.textContent?.trim()).toBe(`v${pkg.version}`);
+  });
+
   it('renders the main navigation tabs in Movements, Stats, Settings order', () => {
     const links = Array.from(fixture.nativeElement.querySelectorAll('a.tab')).map(
       (a) => (a as HTMLAnchorElement).textContent?.trim(),
