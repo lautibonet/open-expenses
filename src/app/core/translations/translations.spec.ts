@@ -56,10 +56,13 @@ describe('translations', () => {
     for (const key of [
       'settings.subtitle',
       'settings.addAccount',
-      'settings.deactivateAccountAria',
-      'settings.deactivateCategoryAria',
-      'settings.confirmDeactivationAria',
-      'settings.cancelDeactivationAria',
+      'settings.deleteAccountAria',
+      'settings.deleteCategoryAria',
+      'settings.accountDeletePrompt',
+      'settings.categoryDeletePrompt',
+      'settings.confirmDeletionAria',
+      'settings.cancelDeletionAria',
+      'settings.deactivateInstead',
       'settings.editAccountAria',
       'settings.editCategoryAria',
       'settings.editBaseCurrencyAria',
@@ -140,6 +143,20 @@ describe('translations', () => {
     expect(TRANSLATIONS.en['movements.sortOldest']).toBeUndefined();
     expect(TRANSLATIONS.es['movements.sortNewest']).toBeUndefined();
     expect(TRANSLATIONS.es['movements.sortOldest']).toBeUndefined();
+  });
+
+  it('drops the abandoned deactivation-confirmation strings', () => {
+    for (const key of [
+      'settings.deactivateAccountAria',
+      'settings.deactivateCategoryAria',
+      'settings.confirmDeactivationAria',
+      'settings.cancelDeactivationAria',
+      'settings.accountDeactivationPrompt',
+      'settings.categoryDeactivationPrompt',
+    ]) {
+      expect(TRANSLATIONS.en[key]).toBeUndefined();
+      expect(TRANSLATIONS.es[key]).toBeUndefined();
+    }
   });
 
   it('covers the movements keys', () => {
@@ -380,6 +397,8 @@ describe('translations', () => {
       'errors.rateNotAvailable',
       'errors.quoteCurrenciesRequired',
       'errors.noRatesReturned',
+      'errors.accountHasMovements',
+      'errors.categoryHasMovements',
     ]) {
       expect(TRANSLATIONS.en[key]).toBeTruthy();
       expect(TRANSLATIONS.es[key]).toBeTruthy();

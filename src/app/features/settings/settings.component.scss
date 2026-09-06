@@ -183,6 +183,23 @@ app-backup-card {
   color: var(--error);
 }
 
+/* ADR 0018 refusal: an inline explanation under the row saying why Delete
+   was refused, with Deactivation offered as the fallback. */
+.delete-refusal {
+  flex: 1 1 100%;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+
+  p {
+    margin: 0;
+    font-size: var(--type-caption);
+    color: var(--error);
+  }
+}
+
 .card-value {
   display: flex;
   align-items: center;

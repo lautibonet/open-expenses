@@ -100,6 +100,24 @@ export class CategoryService {
     await db.categories.update(id, { active });
   }
 
+  /* ADR 0018: a Category has movements when any Transaction references it. */
+  async hasMovements(id: number): Promise<boolean> {
+    return (await db.transactions.where('categoryId').equals(id).count()) > 0;
+  }
+
+  /* Delete-if-unused, never cascade (ADR 0018): a Category referenced by a
+     Transaction is refused; an unused Category is permanently removed. */
+  async delete(id: number): Promise<void> {
+    const category = await db.categories.get(id);
+    if (!category) {
+      throw new TranslationError('errors.categoryNotFound');
+    }
+    if (await this.hasMovements(id)) {
+      throw new TranslationError('errors.categoryHasMovements');
+    }
+    await db.categories.delete(id);
+  }
+
   async getAll(): Promise<Category[]> {
     return db.categories.toArray();
   }

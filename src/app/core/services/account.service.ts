@@ -67,6 +67,30 @@ export class AccountService {
     await db.accounts.update(id, { active });
   }
 
+  /* ADR 0018: an Account has movements when any Transaction references it
+     or any Transfer references it on either side. */
+  async hasMovements(id: number): Promise<boolean> {
+    const inTransactions = await db.transactions.where('accountId').equals(id).count();
+    if (inTransactions > 0) return true;
+    const asSource = await db.transfers.where('sourceAccountId').equals(id).count();
+    if (asSource > 0) return true;
+    return (await db.transfers.where('destinationAccountId').equals(id).count()) > 0;
+  }
+
+  /* Delete-if-unused, never cascade (ADR 0018): an Account with movements
+     is refused; an unused Account is permanently removed. There is no
+     guard on deleting the last remaining Account. */
+  async delete(id: number): Promise<void> {
+    const account = await db.accounts.get(id);
+    if (!account) {
+      throw new TranslationError('errors.accountNotFound');
+    }
+    if (await this.hasMovements(id)) {
+      throw new TranslationError('errors.accountHasMovements');
+    }
+    await db.accounts.delete(id);
+  }
+
   async getAll(): Promise<Account[]> {
     return db.accounts.toArray();
   }
