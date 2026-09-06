@@ -162,6 +162,7 @@ export class DriveBackupService {
     try {
       const snapshot = await this.provider.downloadSnapshot();
       await overwriteLocalDb(snapshot);
+      await this.refreshLastBackupStatus();
       await this.languageService.applyFromProfile();
       this.dataVersion.bump();
     } catch (e: unknown) {
@@ -219,6 +220,7 @@ export class DriveBackupService {
 
     try {
       await overwriteLocalDb(snapshot);
+      await this.refreshLastBackupStatus();
       await this.languageService.applyFromProfile();
       this.dataVersion.bump();
     } catch (e: unknown) {
@@ -226,6 +228,18 @@ export class DriveBackupService {
     } finally {
       this.isBackingUp.set(false);
     }
+  }
+
+  /**
+   * After a Restore, the restored profile row carries the backed-up device's
+   * last-backup time; the displayed status must mirror it immediately, exactly
+   * as it would after an app reload.
+   */
+  private async refreshLastBackupStatus(): Promise<void> {
+    const profile = await this.profileService.get();
+    this.lastBackupAt.set(
+      profile?.lastBackupAt ? new Date(profile.lastBackupAt as unknown as string | Date) : null,
+    );
   }
 
   async restoreFromFile(file: File): Promise<void> {

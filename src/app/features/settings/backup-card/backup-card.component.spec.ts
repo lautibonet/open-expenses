@@ -258,6 +258,22 @@ describe('BackupCardComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('replaces all current data');
   });
 
+  it('shows the restored backup time immediately after confirming a restore', async () => {
+    const snapshot = sampleSnapshot();
+    snapshot.profile = [
+      { id: 1, baseCurrency: 'USD', onboardingCompleted: true, lastBackupAt: new Date(Date.now() - 5 * 60 * 1000).toISOString() },
+    ];
+    const file = new File([JSON.stringify(snapshot)], 'open-expenses-backup.json', {
+      type: 'application/json',
+    });
+    await component.onFileSelected({ target: { files: [file] } } as unknown as Event);
+    await component.confirmRestore();
+    fixture.detectChanges();
+
+    const lastBackup = fixture.nativeElement.querySelector('.last-backup') as HTMLElement;
+    expect(lastBackup.textContent?.trim()).toBe('Google Drive · Last backup: 5 minutes ago');
+  });
+
   it('cloud restore confirmed replaces the full local dataset and does not trigger a backup', async () => {
     await accountService.create('Old Cash', 'EUR', 100);
 
