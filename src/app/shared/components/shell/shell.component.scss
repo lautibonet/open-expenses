@@ -172,7 +172,7 @@ $sidebar-width: 256px;
   }
 }
 
-/* The app footer (#132): a single quiet Privacy link under the content. */
+/* The app footer (#132): quiet links plus the released version (#137). */
 .app-footer {
   border-top: 1px solid var(--outline-variant);
 
@@ -188,6 +188,12 @@ $sidebar-width: 256px;
       text-decoration: underline;
       text-underline-offset: 4px;
     }
+  }
+
+  .app-version {
+    @extend %caps-label-muted;
+    display: inline-block;
+    padding: var(--space-md);
   }
 }
 
