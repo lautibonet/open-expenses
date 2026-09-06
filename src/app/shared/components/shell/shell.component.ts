@@ -1,6 +1,6 @@
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { Router, RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
-import pkg from '../../../../../package.json';
+import { version } from '../../../../../package.json';
 import { InstallPromptComponent } from '../install-prompt/install-prompt.component';
 import { UpdatePromptComponent } from '../update-prompt/update-prompt.component';
 import { LanguageService } from '../../../core/services/language.service';
@@ -20,7 +20,7 @@ export class ShellComponent {
   language = inject(LanguageService);
 
   /** The released version, cut with the package.json field at each tag. */
-  readonly appVersion = pkg.version;
+  readonly appVersion = version;
 
   private router = inject(Router);
   private captureFormService = inject(CaptureFormService);
