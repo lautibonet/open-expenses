@@ -276,6 +276,12 @@ describe('SettingsComponent - account delete-if-unused (ADR 0018)', () => {
     expect(await accountService.getById(accountId)).toBeDefined();
   });
 
+  it('clears the refusal target on cancel', async () => {
+    await component.requestDeleteAccount(accountId);
+    component.cancelRefuseAccount();
+    expect(component.refusedAccount()).toBeNull();
+  });
+
   it('does nothing when confirming with no target', async () => {
     await component.confirmDeleteAccount();
     expect(await accountService.getById(accountId)).toBeDefined();
@@ -391,6 +397,12 @@ describe('SettingsComponent - category delete-if-unused (ADR 0018)', () => {
   it('does nothing when confirming with no target', async () => {
     await component.confirmDeleteCategory();
     expect(await categoryService.getById(categoryId)).toBeDefined();
+  });
+
+  it('clears the refusal target on cancel', async () => {
+    await component.requestDeleteCategory(categoryId);
+    component.cancelRefuseCategory();
+    expect(component.refusedCategory()).toBeNull();
   });
 });
 
@@ -734,6 +746,35 @@ describe('SettingsComponent - edit-on-demand rows', () => {
     await flush();
 
     expect((await accountService.getById(accountId))?.active).toBe(false);
+  });
+
+  it('closes the refusal explanation on cancel without touching the account', async () => {
+    await db.transactions.add({
+      accountId,
+      categoryId,
+      amount: 1000,
+      date: new Date(),
+      period: 1,
+      year: 2026,
+      exchangeRate: null,
+      baseCurrencyAmount: null,
+      note: '',
+      createdAt: new Date(),
+    });
+    await component.refresh();
+    fixture.detectChanges();
+
+    const row = rowFor('.account-row', 'Cash');
+    (row.querySelector('button[aria-label="Delete account"]') as HTMLButtonElement).click();
+    await flush();
+    fixture.detectChanges();
+    expect(row.querySelector('.delete-refusal')).toBeTruthy();
+
+    (row.querySelector('button[aria-label="Cancel deletion"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+
+    expect(row.querySelector('.delete-refusal')).toBeNull();
+    expect(await accountService.getById(accountId)).toBeDefined();
   });
 });
 
