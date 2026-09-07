@@ -11,7 +11,6 @@ import { Category, CategoryType } from '../../core/models/category.model';
 import { errorCopy, TranslationError } from '../../core/models/translation-error';
 import { BackupCardComponent } from './backup-card/backup-card.component';
 import { LanguageCardComponent } from './language-card/language-card.component';
-import { InstallCardComponent } from './install-card/install-card.component';
 import { EraseCardComponent } from './erase-card/erase-card.component';
 import { DismissibleAlertComponent } from '../../shared/components/dismissible-alert/dismissible-alert.component';
 
@@ -30,7 +29,7 @@ type PencilTarget = { kind: 'account' | 'category' | 'base-currency'; id: number
 
 @Component({
   selector: 'app-settings',
-  imports: [FormsModule, BackupCardComponent, LanguageCardComponent, InstallCardComponent, EraseCardComponent, DismissibleAlertComponent],
+  imports: [FormsModule, BackupCardComponent, LanguageCardComponent, EraseCardComponent, DismissibleAlertComponent],
   templateUrl: './settings.component.html',
   styleUrl: './settings.component.scss',
 })
