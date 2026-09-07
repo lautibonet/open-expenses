@@ -33,14 +33,17 @@ describe('InstallCardComponent', () => {
     const card = fixture.nativeElement.querySelector('#install') as HTMLElement;
     expect(card).not.toBeNull();
     expect(card.textContent).toContain('Install the app');
-    expect(card.textContent).toContain('Install');
+    expect(card.querySelector('.btn')).not.toBeNull();
   });
 
-  it('stays hidden until the browser offers installation', () => {
+  it('stays visible without a native prompt, showing a hint instead of the action', () => {
     pwaInstall.hasInstallPrompt.set(false);
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('#install')).toBeNull();
+    const card = fixture.nativeElement.querySelector('#install') as HTMLElement;
+    expect(card).not.toBeNull();
+    expect(card.querySelector('.btn')).toBeNull();
+    expect(card.textContent).toContain('not available');
   });
 
   it('stays hidden once the app is installed', () => {

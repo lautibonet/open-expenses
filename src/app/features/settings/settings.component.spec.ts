@@ -1212,6 +1212,7 @@ describe('SettingsComponent - LedgerFlow restyle', () => {
       'Accounts',
       'Categories',
       'Backup',
+      'Install the app',
       'Erase',
     ]);
 

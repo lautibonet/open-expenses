@@ -12,6 +12,12 @@
   @extend %card-description;
 }
 
+/* Muted note shown when the browser currently offers no native prompt. */
+.unavailable {
+  @extend %caps-label-muted;
+  margin: 0;
+}
+
 .btn {
   @extend %btn-base;
 

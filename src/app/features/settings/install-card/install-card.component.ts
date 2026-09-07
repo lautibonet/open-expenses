@@ -12,12 +12,13 @@ export class InstallCardComponent {
   pwaInstall = inject(PwaInstallService);
   language = inject(LanguageService);
 
-  /* Permanent fallback for the dismissible banner: shown whenever the
-     browser offers installation and the app is not already installed —
-     even if the banner itself was dismissed. */
-  visible = computed(
-    () => this.pwaInstall.hasInstallPrompt() && !this.pwaInstall.isInstalled(),
-  );
+  /* The card is the permanent home of the install option: shown regardless
+     of the banner's dismissal flag or whether the browser has currently
+     offered its native prompt — hidden only once the app is installed. */
+  visible = computed(() => !this.pwaInstall.isInstalled());
+
+  /* The native prompt only exists after the browser fires beforeinstallprompt. */
+  canPromptInstall = computed(() => this.pwaInstall.hasInstallPrompt());
 
   async install(): Promise<void> {
     await this.pwaInstall.install();

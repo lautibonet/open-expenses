@@ -18,6 +18,8 @@ const en: Record<string, string> = {
   'install.action': 'Install',
   'install.dismiss': 'Dismiss',
   'install.card.title': 'Install the app',
+  'install.card.unavailable':
+    'Installation is not available right now. You can also install Open Expenses from your browser menu.',
   'update.prompt': `A new version of ${APP_NAME} is ready`,
   'update.action': 'Reload',
   'update.dismiss': 'Later',
@@ -384,6 +386,8 @@ const es: Record<string, string> = {
   'install.action': 'Instalar',
   'install.dismiss': 'Descartar',
   'install.card.title': 'Instalar la app',
+  'install.card.unavailable':
+    'La instalación no está disponible ahora. También puedes instalar Open Expenses desde el menú de tu navegador.',
   'update.prompt': `Una nueva versión de ${APP_NAME} está lista`,
   'update.action': 'Recargar',
   'update.dismiss': 'Más tarde',

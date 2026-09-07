@@ -14,8 +14,12 @@
       {{ language.t('install.card.title') }}
     </h2>
     <p class="description">{{ language.t('install.prompt') }}</p>
-    <button type="button" class="btn primary" (click)="install()">
-      {{ language.t('install.action') }}
-    </button>
+    @if (canPromptInstall()) {
+      <button type="button" class="btn primary" (click)="install()">
+        {{ language.t('install.action') }}
+      </button>
+    } @else {
+      <p class="unavailable">{{ language.t('install.card.unavailable') }}</p>
+    }
   </section>
 }
