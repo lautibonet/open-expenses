@@ -1,0 +1,21 @@
+@use '../../../shared/styles/patterns' as *;
+
+.card {
+  @extend %card-surface;
+
+  h2 {
+    @extend %card-header-icon;
+  }
+}
+
+.description {
+  @extend %card-description;
+}
+
+.btn {
+  @extend %btn-base;
+
+  &.primary {
+    @extend %btn-primary;
+  }
+}

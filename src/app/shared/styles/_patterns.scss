@@ -19,6 +19,35 @@
   color: var(--on-surface-variant);
 }
 
+/* Settings card surface: the card shell shared by feature cards that render
+   their own `<section class="card">` (backup, install). */
+%card-surface {
+  background: var(--surface-lowest);
+  border: var(--border-hard);
+  padding: var(--space-lg);
+  margin: 0;
+}
+
+/* Muted body copy under a card heading. */
+%card-description {
+  color: var(--on-surface-variant);
+  font-size: var(--type-body);
+  line-height: var(--leading-body);
+  margin: 0 0 var(--space-md);
+}
+
+/* A field carrying a visible caps label above it — used where a placeholder
+   alone cannot explain the field (e.g. an initial balance). */
+%labeled-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+%labeled-field-label {
+  @extend %caps-label-muted;
+}
+
 /* Hard strokes — cards and controls (thick for modals/emphasis). */
 %hard-border {
   border: var(--border-hard);

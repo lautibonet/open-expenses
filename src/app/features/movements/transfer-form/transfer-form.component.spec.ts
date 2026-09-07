@@ -103,7 +103,7 @@ describe('TransferFormComponent', () => {
       expect(f.date).toBe(new Date().toISOString().split('T')[0]);
       expect(f.period).toBe(getCurrentPeriod());
       expect(f.year).toBe(getCurrentYear());
-      expect(f.sourceAmount).toBe(0);
+      expect(f.sourceAmount).toBeNull();
     });
 
     it('excludes the source account from the destination options', async () => {

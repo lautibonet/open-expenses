@@ -288,11 +288,13 @@
 
 /* Add form: name input, currency/type select and Add button share the same
    width and height — the Settings card composition (#141, #142). Creation is
-   revealed by a New button that occupies the same slot when hidden. */
+   revealed by a New button that occupies the same slot when hidden.
+   Bottom-aligned rather than stretched: the labeled balance field is taller
+   than a bare input and must not stretch its row-mates. */
 .inline-form {
   display: flex;
   gap: var(--space-sm);
-  align-items: stretch;
+  align-items: flex-end;
   margin-bottom: var(--space-md);
   flex-wrap: wrap;
 
@@ -300,6 +302,20 @@
     @extend %field;
 
     width: 10rem;
+  }
+
+  /* Visible label over the one field a placeholder cannot explain (the
+     initial balance), matching the Settings accounts card. */
+  .field {
+    @extend %labeled-field;
+
+    .input {
+      width: 10rem;
+    }
+  }
+
+  .field-label {
+    @extend %labeled-field-label;
   }
 
   .btn.dashed {

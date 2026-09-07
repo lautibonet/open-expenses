@@ -260,9 +260,7 @@ describe('BackupCardComponent', () => {
 
   it('shows the restored backup time immediately after confirming a restore', async () => {
     const snapshot = sampleSnapshot();
-    snapshot.profile = [
-      { id: 1, baseCurrency: 'USD', onboardingCompleted: true, lastBackupAt: new Date(Date.now() - 5 * 60 * 1000).toISOString() },
-    ];
+    snapshot.exportedAt = new Date(Date.now() - 5 * 60 * 1000).toISOString();
     const file = new File([JSON.stringify(snapshot)], 'open-expenses-backup.json', {
       type: 'application/json',
     });
@@ -276,9 +274,7 @@ describe('BackupCardComponent', () => {
 
   it('cloud restore confirmed shows the restored backup time immediately', async () => {
     const snapshot = sampleSnapshot();
-    snapshot.profile = [
-      { id: 1, baseCurrency: 'USD', onboardingCompleted: true, lastBackupAt: new Date(Date.now() - 5 * 60 * 1000).toISOString() },
-    ];
+    snapshot.exportedAt = new Date(Date.now() - 5 * 60 * 1000).toISOString();
     vi.spyOn(backupService, 'getCloudSnapshot').mockResolvedValue(snapshot);
 
     await component.restoreFromCloud();
@@ -322,7 +318,10 @@ describe('BackupCardComponent', () => {
     const accounts = await db.accounts.toArray();
     expect(accounts).toHaveLength(1);
     expect(accounts[0].name).toBe('Restored Savings');
-    expect(backupService.lastBackupAt()).toBeNull();
+    expect(backupService.lastBackupAt()).toBeInstanceOf(Date);
+    expect(backupService.lastBackupAt()!.getTime()).toBe(
+      new Date('2026-08-27T00:00:00.000Z').getTime(),
+    );
   });
 
   it('cloud restore cancel leaves local data unchanged', async () => {

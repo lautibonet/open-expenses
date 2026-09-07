@@ -60,7 +60,8 @@ interface LastSelection {
 interface TransactionFormState {
   accountId: number;
   categoryId: number;
-  amount: number;
+  /* Null while the field is empty; the Save guard requires a positive amount. */
+  amount: number | null;
   date: string;
   period: MonthNumber;
   year: number;
@@ -79,7 +80,7 @@ function defaultFormState(accountId = 0, categoryId = 0): TransactionFormState {
   return {
     accountId,
     categoryId,
-    amount: 0,
+    amount: null,
     date: today(),
     ...periodYearFromDate(today()),
     note: '',
@@ -114,7 +115,6 @@ export class TransactionFormComponent implements OnInit, AfterViewInit {
   saved = output<boolean>();
   close = output<void>();
 
-  amountInput = viewChild<ElementRef<HTMLInputElement>>('amountInput');
   formHeading = viewChild<ElementRef<HTMLHeadingElement>>('formHeading');
 
   months = MONTH_NUMBERS;
@@ -139,7 +139,7 @@ export class TransactionFormComponent implements OnInit, AfterViewInit {
   canSubmit = computed(() => {
     const f = this.form();
     if (!f.accountId || !f.categoryId) return false;
-    if (f.amount <= 0) return false;
+    if (!((f.amount ?? 0) > 0)) return false;
     if (this.saving()) return false;
     if (this.isForeignCurrency()) {
       if (this.rateState().loading) return false;
@@ -153,7 +153,7 @@ export class TransactionFormComponent implements OnInit, AfterViewInit {
     const f = this.form();
     if (!f.accountId) return this.language.t('transactionForm.saveDisabled.account');
     if (!f.categoryId) return this.language.t('transactionForm.saveDisabled.category');
-    if (f.amount <= 0) return this.language.t('transactionForm.saveDisabled.amount');
+    if (!((f.amount ?? 0) > 0)) return this.language.t('transactionForm.saveDisabled.amount');
     if (this.isForeignCurrency()) {
       if (this.rateState().loading || f.exchangeRate === null) {
         return this.language.t('transactionForm.saveDisabled.rate');
@@ -186,11 +186,6 @@ export class TransactionFormComponent implements OnInit, AfterViewInit {
         block: 'start',
       });
     }
-    this.focusAmount();
-  }
-
-  focusAmount(): void {
-    this.amountInput()?.nativeElement?.focus();
   }
 
   draft(): TransactionFormDraft {
@@ -201,7 +196,7 @@ export class TransactionFormComponent implements OnInit, AfterViewInit {
     };
   }
 
-  onAmountChange(value: number): void {
+  onAmountChange(value: number | null): void {
     this.form.update((f) => ({ ...f, amount: value }));
     this.errorMessage.set('');
   }
@@ -239,7 +234,7 @@ export class TransactionFormComponent implements OnInit, AfterViewInit {
     const f = this.form();
     const foreign = this.isForeignCurrency();
     const exchangeRate = foreign ? f.exchangeRate : null;
-    const baseCurrencyAmount = foreign ? round2(f.amount * f.exchangeRate!) : null;
+    const baseCurrencyAmount = foreign ? round2(f.amount! * f.exchangeRate!) : null;
 
     this.persistSelection(f.accountId, f.categoryId);
     this.saving.set(true);
@@ -248,7 +243,7 @@ export class TransactionFormComponent implements OnInit, AfterViewInit {
         await this.transactionService.update(this.editingId()!, {
           accountId: f.accountId,
           categoryId: f.categoryId,
-          amount: f.amount,
+          amount: f.amount!,
           date: new Date(f.date),
           period: f.period,
           year: f.year,
@@ -260,7 +255,7 @@ export class TransactionFormComponent implements OnInit, AfterViewInit {
         await this.transactionService.create(
           f.accountId,
           f.categoryId,
-          f.amount,
+          f.amount!,
           new Date(f.date),
           f.period,
           exchangeRate,
@@ -344,10 +339,10 @@ export class TransactionFormComponent implements OnInit, AfterViewInit {
 
   private recomputeBaseCurrencyAmount(): void {
     const f = this.form();
-    if (f.exchangeRate && f.amount > 0) {
+    if (f.exchangeRate && (f.amount ?? 0) > 0) {
       this.form.update((ff) => ({
         ...ff,
-        baseCurrencyAmount: round2(ff.amount * ff.exchangeRate!),
+        baseCurrencyAmount: round2(ff.amount! * ff.exchangeRate!),
       }));
     } else {
       this.form.update((ff) => ({ ...ff, baseCurrencyAmount: null }));

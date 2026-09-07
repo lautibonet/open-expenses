@@ -40,9 +40,11 @@ app-backup-card {
    same width and height — uniform fields, uniformly aligned. Creation is
    revealed by a New button that occupies the same slot when hidden. */
 .inline-form {
+  /* Bottom-aligned rather than stretched: the labeled balance field is
+     taller than a bare input and must not stretch its row-mates. */
   display: flex;
   gap: var(--space-sm);
-  align-items: stretch;
+  align-items: flex-end;
   margin-bottom: var(--space-md);
   flex-wrap: wrap;
 
@@ -50,6 +52,20 @@ app-backup-card {
     @extend %field;
 
     width: 10rem;
+  }
+
+  /* Visible label over the one field a placeholder cannot explain (the
+     initial balance), matching the uniform field width. */
+  .field {
+    @extend %labeled-field;
+
+    .input {
+      width: 10rem;
+    }
+  }
+
+  .field-label {
+    @extend %labeled-field-label;
   }
 
   .btn.dashed {

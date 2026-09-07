@@ -33,8 +33,9 @@ import {
 export interface TransferFormState {
   sourceAccountId: number;
   destAccountId: number;
-  sourceAmount: number;
-  destinationAmount: number;
+  /* Null while a field is empty; the Save guard requires a positive source amount. */
+  sourceAmount: number | null;
+  destinationAmount: number | null;
   exchangeRate: number;
   date: string;
   period: MonthNumber;
@@ -70,8 +71,8 @@ function defaultFormState(accounts: Account[]): TransferFormState {
   return {
     sourceAccountId,
     destAccountId,
-    sourceAmount: 0,
-    destinationAmount: 0,
+    sourceAmount: null,
+    destinationAmount: null,
     exchangeRate: 1,
     date,
     ...periodYearFromDate(date),
@@ -144,7 +145,7 @@ export class TransferFormComponent implements AfterViewInit {
     const f = this.form();
     if (!f.sourceAccountId || !f.destAccountId) return false;
     if (f.sourceAccountId === f.destAccountId) return false;
-    if (!(f.sourceAmount > 0)) return false;
+    if (!((f.sourceAmount ?? 0) > 0)) return false;
     if (this.isForeignCurrency() && this.rateState().loading) return false;
     return !this.saving();
   });
@@ -158,7 +159,7 @@ export class TransferFormComponent implements AfterViewInit {
     if (f.sourceAccountId === f.destAccountId) {
       return this.language.t('movements.saveDisabled.distinct');
     }
-    if (!(f.sourceAmount > 0)) return this.language.t('movements.saveDisabled.amount');
+    if (!((f.sourceAmount ?? 0) > 0)) return this.language.t('movements.saveDisabled.amount');
     if (this.isForeignCurrency() && this.rateState().loading) {
       return this.language.t('movements.saveDisabled.rate');
     }
@@ -210,7 +211,7 @@ export class TransferFormComponent implements AfterViewInit {
     this.form.update((f) => ({ ...f, destAccountId: destId }));
   }
 
-  onSourceAmountChange(value: number): void {
+  onSourceAmountChange(value: number | null): void {
     this.form.update((f) => ({ ...f, sourceAmount: value }));
     this.computeDestinationAmount();
   }
@@ -230,7 +231,10 @@ export class TransferFormComponent implements AfterViewInit {
   private computeDestinationAmount(): void {
     this.form.update((f) => ({
       ...f,
-      destinationAmount: Math.round(f.sourceAmount * f.exchangeRate * 100) / 100,
+      destinationAmount:
+        f.sourceAmount === null
+          ? null
+          : Math.round(f.sourceAmount * f.exchangeRate * 100) / 100,
     }));
   }
 
@@ -247,8 +251,8 @@ export class TransferFormComponent implements AfterViewInit {
         await this.transferService.update(this.editingId()!, {
           sourceAccountId: f.sourceAccountId,
           destinationAccountId: f.destAccountId,
-          sourceAmount: f.sourceAmount,
-          destinationAmount: f.destinationAmount,
+          sourceAmount: f.sourceAmount!,
+          destinationAmount: f.destinationAmount!,
           exchangeRate: f.exchangeRate,
           date: new Date(f.date),
           period: f.period,
@@ -259,7 +263,7 @@ export class TransferFormComponent implements AfterViewInit {
         await this.transferService.create(
           f.sourceAccountId,
           f.destAccountId,
-          f.sourceAmount,
+          f.sourceAmount!,
           new Date(f.date),
           f.period,
           f.note,

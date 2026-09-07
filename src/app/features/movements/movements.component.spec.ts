@@ -2188,7 +2188,7 @@ describe('MovementsComponent - Transaction Form capture form', () => {
     expect(component.transactionFormCard()!.form().note).toBe('coffee');
   });
 
-  it("focuses the amount field when the 'n' shortcut opens the form", async () => {
+  it("does not focus the amount field when the 'n' shortcut opens the form", async () => {
     await component.ngOnInit();
     fixture.detectChanges();
 
@@ -2200,7 +2200,7 @@ describe('MovementsComponent - Transaction Form capture form', () => {
       'app-transaction-form input[aria-label="Amount"]',
     );
     expect(amountInput).toBeTruthy();
-    expect(document.activeElement).toBe(amountInput);
+    expect(document.activeElement).not.toBe(amountInput);
   });
 
   it('opens the form when the sidebar New Transaction action requests it', async () => {
@@ -2547,7 +2547,7 @@ describe('MovementsComponent - capture form draft protection', () => {
 
     expect(component.showForm()).toBe('transfer');
     expect(component.transferFormCard()!.form().sourceAccountId).toBe(accountId2);
-    expect(component.transferFormCard()!.form().sourceAmount).toBe(0);
+    expect(component.transferFormCard()!.form().sourceAmount).toBeNull();
   });
 
   it('never restores a Transaction Form draft stuck in a loading rate fetch', async () => {
@@ -2593,7 +2593,7 @@ describe('MovementsComponent - capture form draft protection', () => {
     component.toggleTransactionForm();
     fixture.detectChanges();
 
-    expect(component.transactionFormCard()!.form().amount).toBe(0);
+    expect(component.transactionFormCard()!.form().amount).toBeNull();
     expect(component.transactionFormCard()!.form().note).toBe('');
   });
 
@@ -2618,7 +2618,7 @@ describe('MovementsComponent - capture form draft protection', () => {
     fixture.detectChanges();
 
     expect(component.showForm()).toBe('transfer');
-    expect(component.transferFormCard()!.form().sourceAmount).toBe(0);
+    expect(component.transferFormCard()!.form().sourceAmount).toBeNull();
     expect(component.transferFormCard()!.form().note).toBe('');
     expect(component.transferFormCard()!.editingId()).toBeNull();
   });

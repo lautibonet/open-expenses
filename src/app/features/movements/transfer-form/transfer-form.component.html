@@ -44,7 +44,7 @@
         type="number"
         min="0.01"
         [ngModel]="form().sourceAmount"
-        (ngModelChange)="onSourceAmountChange(+$event)"
+        (ngModelChange)="onSourceAmountChange($event)"
         name="sourceAmount"
         [attr.aria-label]="language.t('movements.amount')"
       />

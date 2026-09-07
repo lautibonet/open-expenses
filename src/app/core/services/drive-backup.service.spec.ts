@@ -420,7 +420,7 @@ describe('DriveBackupService', () => {
       expect(dataVersion.version()).toBe(before + 1);
     });
 
-    it('refreshes the last-backup status from the restored profile immediately', async () => {
+    it('stamps the last-backup status with the snapshot export time immediately', async () => {
       await connectAsTestUser(service);
 
       mockFetchByUrl({
@@ -434,14 +434,14 @@ describe('DriveBackupService', () => {
           profile: [
             { id: 1, baseCurrency: 'EUR', onboardingCompleted: true, lastBackupAt: '2026-08-27T10:00:00.000Z' },
           ],
-          exportedAt: new Date().toISOString(),
+          exportedAt: '2026-09-06T12:00:00.000Z',
         }),
       });
 
       await service.restore();
 
       expect(service.lastBackupAt()).toBeInstanceOf(Date);
-      expect(service.lastBackupAt()!.getTime()).toBe(new Date('2026-08-27T10:00:00.000Z').getTime());
+      expect(service.lastBackupAt()!.getTime()).toBe(new Date('2026-09-06T12:00:00.000Z').getTime());
     });
 
     it('does not bump the data version when the cloud restore fails', async () => {
@@ -722,7 +722,10 @@ describe('DriveBackupService', () => {
 
       await service.restoreFromSnapshot(snapshot);
 
-      expect(service.lastBackupAt()).toBeNull();
+      expect(service.lastBackupAt()).toBeInstanceOf(Date);
+      expect(service.lastBackupAt()!.getTime()).toBe(
+        new Date('2026-08-27T00:00:00.000Z').getTime(),
+      );
     });
 
     it('applies the language of the restored backup', async () => {
@@ -791,7 +794,7 @@ describe('DriveBackupService', () => {
       );
     });
 
-    it('refreshes the last-backup status from the restored profile immediately', async () => {
+    it('stamps the last-backup status with the snapshot export time immediately', async () => {
       const snapshot: BackupSnapshot = {
         accounts: [],
         categories: [],
@@ -806,7 +809,7 @@ describe('DriveBackupService', () => {
       await service.restoreFromSnapshot(snapshot);
 
       expect(service.lastBackupAt()).toBeInstanceOf(Date);
-      expect(service.lastBackupAt()!.getTime()).toBe(new Date('2026-08-27T10:00:00.000Z').getTime());
+      expect(service.lastBackupAt()!.getTime()).toBe(new Date('2026-08-27T00:00:00.000Z').getTime());
     });
 
     it('does not bump the data version when the file restore fails', async () => {

@@ -376,7 +376,7 @@ describe('OnboardingComponent', () => {
     expect(row.querySelector('.account-meta')!.textContent).toContain('USD');
     expect(row.querySelector('.account-meta')!.textContent).toContain('500');
     expect(component.accountName()).toBe('');
-    expect(component.accountBalance()).toBe(0);
+    expect(component.accountBalance()).toBeNull();
   });
 
   it('rejects a negative initial balance inline when adding', () => {
@@ -471,7 +471,7 @@ describe('OnboardingComponent', () => {
     const nameInput = form.querySelector('input[type="text"]') as HTMLInputElement;
     expect(nameInput.value).toBe('');
     expect(component.accountName()).toBe('');
-    expect(component.accountBalance()).toBe(0);
+    expect(component.accountBalance()).toBeNull();
   });
 
   it('opens the inline edit state from the pencil; tick saves', async () => {

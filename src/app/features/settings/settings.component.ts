@@ -11,6 +11,7 @@ import { Category, CategoryType } from '../../core/models/category.model';
 import { errorCopy, TranslationError } from '../../core/models/translation-error';
 import { BackupCardComponent } from './backup-card/backup-card.component';
 import { LanguageCardComponent } from './language-card/language-card.component';
+import { InstallCardComponent } from './install-card/install-card.component';
 import { DismissibleAlertComponent } from '../../shared/components/dismissible-alert/dismissible-alert.component';
 
 interface AccountEditState {
@@ -28,7 +29,7 @@ type PencilTarget = { kind: 'account' | 'category' | 'base-currency'; id: number
 
 @Component({
   selector: 'app-settings',
-  imports: [FormsModule, BackupCardComponent, LanguageCardComponent, DismissibleAlertComponent],
+  imports: [FormsModule, BackupCardComponent, LanguageCardComponent, InstallCardComponent, DismissibleAlertComponent],
   templateUrl: './settings.component.html',
   styleUrl: './settings.component.scss',
 })
@@ -47,7 +48,8 @@ export class SettingsComponent implements OnInit {
 
   newAccountName = signal('');
   newAccountCurrency = signal('EUR');
-  newAccountBalance = signal(0);
+  /* Null while the field is empty; an empty field creates the account with balance 0. */
+  newAccountBalance = signal<number | null>(null);
   newCategoryName = signal('');
   newCategoryType = signal<CategoryType>('expense');
   addingAccount = signal(false);
@@ -111,7 +113,7 @@ export class SettingsComponent implements OnInit {
   startAddAccount(): void {
     this.newAccountName.set('');
     this.newAccountCurrency.set('EUR');
-    this.newAccountBalance.set(0);
+    this.newAccountBalance.set(null);
     this.clearStatus();
     this.addingAccount.set(true);
   }
@@ -127,11 +129,11 @@ export class SettingsComponent implements OnInit {
       await this.accountService.create(
         this.newAccountName(),
         this.newAccountCurrency(),
-        this.newAccountBalance(),
+        this.newAccountBalance() ?? 0,
       );
       this.addingAccount.set(false);
       this.newAccountName.set('');
-      this.newAccountBalance.set(0);
+      this.newAccountBalance.set(null);
       await this.refresh();
     } catch (e: unknown) {
       this.errorMessage.set(

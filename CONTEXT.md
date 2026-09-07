@@ -91,6 +91,10 @@ _Avoid_: Provider, cloud service, storage
 A user-initiated, full overwrite of local data from a prior Backup — from a cloud provider or an uploaded file. Restore replaces the entire local dataset and never triggers a new Backup.
 _Avoid_: Recovery, import, rollback
 
+**Last Backup**:
+The freshness figure shown in the sidebar caption and the Settings backup card: the time of the most recent Backup whose data this device holds. A Backup sets it to the backup's own time; a Restore sets it to the time the restored snapshot was taken — never to the restoring device's action time, and never inherited from the snapshot's mirrored profile. It answers "how fresh is the data I'm holding", not "when did this device last act".
+_Avoid_: last sync, backup date of this device
+
 **Cancelled Restore**:
 A Restore attempt that ends before any data changes because the user backed out — closing the sign-in window, declining access, or not picking a file. It leaves local data untouched, re-enables the Restore controls, and is not a failed Restore.
 _Avoid_: Failed restore, restore error
