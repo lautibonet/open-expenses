@@ -75,7 +75,8 @@ export class OnboardingComponent {
   baseCurrency = signal('EUR');
   accountName = signal('');
   accountCurrency = signal('EUR');
-  accountBalance = signal(0);
+  /* Null while the field is empty; an empty field stages the account with balance 0. */
+  accountBalance = signal<number | null>(null);
   accounts = signal<{ name: string; currency: string; balance: number }[]>([]);
   editingAccount = signal<AccountEditState | null>(null);
   addingAccount = signal(false);
@@ -242,7 +243,7 @@ export class OnboardingComponent {
   startAddAccount(): void {
     this.accountName.set('');
     this.accountCurrency.set('EUR');
-    this.accountBalance.set(0);
+    this.accountBalance.set(null);
     this.resetError();
     this.addingAccount.set(true);
   }
@@ -267,7 +268,7 @@ export class OnboardingComponent {
       );
       return;
     }
-    if (this.accountBalance() < 0) {
+    if ((this.accountBalance() ?? 0) < 0) {
       this.errorMessage.set(this.languageService.t('errors.initialBalanceNegative'));
       return;
     }
@@ -276,11 +277,11 @@ export class OnboardingComponent {
       {
         name: this.accountName(),
         currency: this.accountCurrency(),
-        balance: this.accountBalance(),
+        balance: this.accountBalance() ?? 0,
       },
     ]);
     this.accountName.set('');
-    this.accountBalance.set(0);
+    this.accountBalance.set(null);
     this.addingAccount.set(false);
     this.errorMessage.set('');
   }

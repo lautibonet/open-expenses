@@ -341,7 +341,6 @@ describe('translations', () => {
       'onboarding.accounts.namePlaceholder',
       'onboarding.accounts.nameAria',
       'onboarding.accounts.currencyAria',
-      'onboarding.accounts.balancePlaceholder',
       'onboarding.accounts.balanceAria',
       'onboarding.accounts.add',
       'onboarding.accounts.new',

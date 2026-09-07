@@ -224,19 +224,26 @@ export class DriveBackupService {
     }
   }
 
-  /** Shared success path for every Restore: overwrite, refresh status, apply language, notify listeners. */
+  /** Shared success path for every Restore: overwrite, stamp Last Backup, apply language, notify listeners. */
   private async applyRestoredSnapshot(snapshot: BackupSnapshot): Promise<void> {
     await overwriteLocalDb(snapshot);
-    await this.refreshLastBackupStatus();
+    /* The Last Backup figure answers "how fresh is the data I'm holding":
+       it must reflect when the restored snapshot itself was taken, not the
+       source device's mirrored profile value, which lags behind that
+       device's final backup (the snapshot is created before it updates its
+       own lastBackupAt). A snapshot with an unparsable export time (only
+       possible from a hand-edited file) falls back to the restored profile. */
+    const takenAt = new Date(snapshot.exportedAt);
+    if (Number.isNaN(takenAt.getTime())) {
+      await this.refreshLastBackupStatus();
+    } else {
+      this.lastBackupAt.set(takenAt);
+      await this.profileService.updateLastBackupAt(takenAt);
+    }
     await this.languageService.applyFromProfile();
     this.dataVersion.bump();
   }
 
-  /**
-   * After a Restore, the restored profile row carries the backed-up device's
-   * last-backup time; the displayed status must mirror it immediately, exactly
-   * as it would after an app reload.
-   */
   private async refreshLastBackupStatus(): Promise<void> {
     const profile = await this.profileService.get();
     this.lastBackupAt.set(profile?.lastBackupAt ? new Date(profile.lastBackupAt) : null);

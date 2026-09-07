@@ -503,7 +503,6 @@ export class MovementsComponent implements OnInit, OnDestroy {
 
   openTransactionForm(): void {
     if (this.showForm() === 'transaction') {
-      this.transactionFormCard()?.focusAmount();
       return;
     }
     this.showForm.set('transaction');

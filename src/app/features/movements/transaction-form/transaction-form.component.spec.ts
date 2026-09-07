@@ -120,12 +120,12 @@ describe('TransactionFormComponent', () => {
     expect(component.form().categoryId).toBe(food.id);
   });
 
-  it('focuses the amount input on arrival', async () => {
+  it('does not focus the amount input on arrival', async () => {
     fixture.detectChanges();
     const input = fixture.nativeElement.querySelector(
       'input[aria-label="Amount"]',
     ) as HTMLInputElement;
-    expect(document.activeElement).toBe(input);
+    expect(document.activeElement).not.toBe(input);
   });
 
   it('saves a base-currency transaction through the transaction store and emits saved', async () => {

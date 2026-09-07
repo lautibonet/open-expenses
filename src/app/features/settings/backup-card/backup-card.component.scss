@@ -1,10 +1,7 @@
 @use '../../../shared/styles/patterns' as *;
 
 .card {
-  background: var(--surface-lowest);
-  border: var(--border-hard);
-  padding: var(--space-lg);
-  margin: 0;
+  @extend %card-surface;
 
   h2 {
     @extend %card-header-icon;
@@ -12,10 +9,7 @@
 }
 
 .description {
-  color: var(--on-surface-variant);
-  font-size: var(--type-body);
-  line-height: var(--leading-body);
-  margin: 0 0 var(--space-md);
+  @extend %card-description;
 }
 
 .last-backup {

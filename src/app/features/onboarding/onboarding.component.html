@@ -199,14 +199,16 @@
                   <option [value]="currency">{{ currency }}</option>
                 }
               </select>
-              <input
-                type="number"
-                [ngModel]="accountBalance()"
-                (ngModelChange)="accountBalance.set($event)"
-                [placeholder]="languageService.t('onboarding.accounts.balancePlaceholder')"
-                class="input"
-                [attr.aria-label]="languageService.t('onboarding.accounts.balanceAria')"
-              />
+              <div class="field">
+                <span class="field-label">{{ languageService.t('settings.initialBalance') }}</span>
+                <input
+                  type="number"
+                  [ngModel]="accountBalance()"
+                  (ngModelChange)="accountBalance.set($event)"
+                  class="input"
+                  [attr.aria-label]="languageService.t('onboarding.accounts.balanceAria')"
+                />
+              </div>
               <button class="btn dashed" (click)="addAccount()">
                 + {{ languageService.t('onboarding.accounts.add') }}
               </button>

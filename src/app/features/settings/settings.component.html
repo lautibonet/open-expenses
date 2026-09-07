@@ -139,14 +139,16 @@
             <option [value]="currency">{{ currency }}</option>
           }
         </select>
-        <input
-          type="number"
-          [ngModel]="newAccountBalance()"
-          (ngModelChange)="newAccountBalance.set($event)"
-          [placeholder]="language.t('settings.initialBalance')"
-          class="input"
-          [attr.aria-label]="language.t('settings.initialBalance')"
-        />
+        <div class="field">
+          <span class="field-label">{{ language.t('settings.initialBalance') }}</span>
+          <input
+            type="number"
+            [ngModel]="newAccountBalance()"
+            (ngModelChange)="newAccountBalance.set($event)"
+            class="input"
+            [attr.aria-label]="language.t('settings.initialBalance')"
+          />
+        </div>
         <button class="btn dashed" (click)="addAccount()">
           + {{ language.t('settings.addAccount') }}
         </button>
@@ -591,4 +593,6 @@
   </section>
 
   <app-backup-card />
+
+  <app-install-card />
 </div>

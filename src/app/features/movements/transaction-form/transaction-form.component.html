@@ -45,13 +45,12 @@
         <label class="amount-field">
           {{ language.t('transactionForm.amount') }}
           <input
-            #amountInput
             type="number"
             inputmode="decimal"
             min="0.01"
             step="0.01"
             [ngModel]="form().amount"
-            (ngModelChange)="onAmountChange(+$event || 0); onAmountOrRateChange()"
+            (ngModelChange)="onAmountChange($event); onAmountOrRateChange()"
             name="amount"
             [attr.aria-label]="language.t('transactionForm.amount')"
           />
