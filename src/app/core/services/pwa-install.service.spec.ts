@@ -111,29 +111,4 @@ describe('PwaInstallService', () => {
 
     expect(service.canInstall()).toBe(true);
   });
-
-  // The Settings install card is the permanent fallback: it must see the
-  // deferred prompt even while the banner's dismissal cooldown is active.
-  it('exposes the prompt to the install card while a cooldown is active', () => {
-    localStorage.setItem(DISMISS_KEY, String(Date.now()));
-
-    const service = freshService();
-    dispatchInstallEvent('dismissed');
-
-    expect(service.canInstall()).toBe(false);
-    expect(service.hasInstallPrompt()).toBe(true);
-  });
-
-  it('keeps the prompt available to the install card after the banner Dismiss button', async () => {
-    const service = freshService();
-    const event = dispatchInstallEvent('accepted');
-
-    service.dismiss();
-    expect(service.canInstall()).toBe(false);
-    expect(service.hasInstallPrompt()).toBe(true);
-
-    await service.install();
-    expect(event.prompt).toHaveBeenCalled();
-    expect(service.hasInstallPrompt()).toBe(false);
-  });
 });

@@ -10,11 +10,7 @@ interface BeforeInstallPromptEvent extends Event {
 
 @Injectable({ providedIn: 'root' })
 export class PwaInstallService {
-  /* Banner-facing availability: false while the dismissal cooldown is active. */
   canInstall = signal(false);
-  /* Raw availability, independent of the dismissal cooldown: the Settings
-     install card is the permanent fallback and must never be suppressed by it. */
-  hasInstallPrompt = signal(false);
   isInstalled = signal(false);
 
   private deferredPrompt: BeforeInstallPromptEvent | null = null;
@@ -22,19 +18,17 @@ export class PwaInstallService {
   constructor() {
     if (typeof window === 'undefined') return;
 
+    if (this.isDismissalActive()) return;
+
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       this.deferredPrompt = e as BeforeInstallPromptEvent;
-      this.hasInstallPrompt.set(true);
-      if (!this.isDismissalActive()) {
-        this.canInstall.set(true);
-      }
+      this.canInstall.set(true);
     });
 
     window.addEventListener('appinstalled', () => {
       this.isInstalled.set(true);
       this.canInstall.set(false);
-      this.hasInstallPrompt.set(false);
       this.deferredPrompt = null;
     });
 
@@ -53,17 +47,15 @@ export class PwaInstallService {
     const { outcome } = await this.deferredPrompt.userChoice;
     this.deferredPrompt = null;
     this.canInstall.set(false);
-    this.hasInstallPrompt.set(false);
     if (outcome === 'dismissed') {
       this.rememberDismissal();
     }
     return outcome === 'accepted';
   }
 
-  /* Banner-only dismissal: the deferred prompt stays alive so the Settings
-     install card can still offer installation. */
   dismiss(): void {
     this.canInstall.set(false);
+    this.deferredPrompt = null;
     this.rememberDismissal();
   }
 
