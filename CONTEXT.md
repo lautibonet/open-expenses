@@ -44,6 +44,10 @@ _Avoid_: Recommended rate, default rate, auto rate
 The unified display of Transactions and Transfers in a single chronological list. Each row carries a colored edge stripe identifying its kind: green for Income, red for Expense, grey for Transfer. Amounts are always positive; cross-currency items show both original and converted amounts (e.g. `$10.00 → €8.57`). As a data predicate, an Account or Category has movements when any Transaction or Transfer references it — having movements is what makes an item un-Deletable.
 _Avoid_: Feed, timeline, history
 
+**Movement Date**:
+The user-selected calendar day of a Transaction or Transfer. A date, not an instant: it has no time of day and never shifts with the device's timezone — a movement created for September 1st stays September 1st on every device, in every timezone. Informational only; reporting uses the movement's stored Period.
+_Avoid_: timestamp, datetime, created at
+
 **Transaction Form**:
 The Transaction capture form on the Movements screen — account, category, amount, note, date, and period shown all at once, with no compact/expanded distinction. Revealed by the New Transaction button, the sidebar capture action, or the mobile bottom nav's center capture slot; presents as a bottom sheet on mobile and inline on desktop. Used for both recording and editing a Transaction.
 _Avoid_: Quick Add, quick entry, mini form, inline add, more options

@@ -25,6 +25,11 @@ import { LanguageService } from '../../../core/services/language.service';
 import { TransactionService } from '../../../core/services/transaction.service';
 import { errorCopy } from '../../../core/models/translation-error';
 import {
+  dateToLocalISO,
+  parseLocalDate,
+  todayLocalISO,
+} from '../../../core/format/local-date';
+import {
   getCurrentYear,
   isMonthNumber,
   MONTH_NUMBERS,
@@ -74,15 +79,13 @@ export type { TransactionFormState };
 
 const round2 = (n: number): number => Math.round(n * 100) / 100;
 
-const today = (): string => new Date().toISOString().split('T')[0];
-
 function defaultFormState(accountId = 0, categoryId = 0): TransactionFormState {
   return {
     accountId,
     categoryId,
     amount: null,
-    date: today(),
-    ...periodYearFromDate(today()),
+    date: todayLocalISO(),
+    ...periodYearFromDate(todayLocalISO()),
     note: '',
     exchangeRate: null,
     baseCurrencyAmount: null,
@@ -244,7 +247,7 @@ export class TransactionFormComponent implements OnInit, AfterViewInit {
           accountId: f.accountId,
           categoryId: f.categoryId,
           amount: f.amount!,
-          date: new Date(f.date),
+          date: parseLocalDate(f.date),
           period: f.period,
           year: f.year,
           exchangeRate,
@@ -256,7 +259,7 @@ export class TransactionFormComponent implements OnInit, AfterViewInit {
           f.accountId,
           f.categoryId,
           f.amount!,
-          new Date(f.date),
+          parseLocalDate(f.date),
           f.period,
           exchangeRate,
           baseCurrencyAmount,
@@ -277,7 +280,7 @@ export class TransactionFormComponent implements OnInit, AfterViewInit {
   private handleEditInput(t: Transaction | null): void {
     if (!t) return;
 
-    const date = new Date(t.date).toISOString().split('T')[0];
+    const date = dateToLocalISO(new Date(t.date));
     const fallback = periodYearFromDate(date);
     this.editingId.set(t.id ?? null);
     this.form.set({

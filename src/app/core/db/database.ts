@@ -36,6 +36,17 @@ function toMonthNumber(period: unknown): number | null {
   return null;
 }
 
+const MS_PER_DAY = 86_400_000;
+
+function toLocalMidnight(date: unknown): Date | null {
+  if (!(date instanceof Date)) return null;
+  const t = date.getTime();
+  const utcRemainder = ((t % MS_PER_DAY) + MS_PER_DAY) % MS_PER_DAY;
+  if (utcRemainder !== 0) return null;
+  const shifted = new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+  return shifted.getTime() === t ? null : shifted;
+}
+
 export class AppDatabase extends Dexie {
   accounts!: Table<Account>;
   categories!: Table<Category>;
@@ -121,6 +132,23 @@ export class AppDatabase extends Dexie {
           const period = toMonthNumber(m.period);
           if (period !== null && period !== m.period) {
             await tx.table(tableName).update(m.id!, { period });
+          }
+        }
+      }
+    });
+    this.version(6).stores({
+      accounts: '++id, name, currency, active',
+      categories: '++id, name, type, active',
+      transactions: '++id, accountId, categoryId, date, period, year',
+      transfers: '++id, sourceAccountId, destinationAccountId, date, period, year',
+      profile: 'id',
+    }).upgrade(async tx => {
+      for (const tableName of ['transactions', 'transfers'] as const) {
+        const movements = await tx.table(tableName).toArray();
+        for (const m of movements) {
+          const shifted = toLocalMidnight(m.date);
+          if (shifted) {
+            await tx.table(tableName).update(m.id!, { date: shifted });
           }
         }
       }
