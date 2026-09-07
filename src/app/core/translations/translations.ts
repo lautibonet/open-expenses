@@ -44,7 +44,7 @@ const en: Record<string, string> = {
   'backup.card.backUpTo': 'Back up to {method}',
   'erase.card.title': 'Erase',
   'erase.card.description':
-    'Permanently delete all local data — accounts, categories, transactions, transfers, and your profile — and start over. This cannot be undone.',
+    'Permanently delete all local data, including accounts, categories, transactions, transfers, and your profile, and start over. This cannot be undone.',
   'erase.card.eraseAllData': 'Erase all data',
   'erase.card.warning':
     'This permanently deletes all of your data on this device, including the cloud sign-in. Nothing can be recovered.',
@@ -410,7 +410,7 @@ const es: Record<string, string> = {
   'backup.card.backUpTo': 'Hacer copia en {method}',
   'erase.card.title': 'Borrar',
   'erase.card.description':
-    'Elimina permanentemente todos los datos locales — cuentas, categorías, transacciones, transferencias y tu perfil — y empieza de nuevo. Esto no se puede deshacer.',
+    'Elimina permanentemente todos los datos locales, incluidas cuentas, categorías, transacciones, transferencias y tu perfil, y empieza de nuevo. Esto no se puede deshacer.',
   'erase.card.eraseAllData': 'Borrar todos los datos',
   'erase.card.warning':
     'Esto elimina permanentemente todos tus datos en este dispositivo, incluido el inicio de sesión en la nube. Nada se puede recuperar.',
