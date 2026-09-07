@@ -115,6 +115,20 @@ describe('translations', () => {
     }
   });
 
+  it('covers the erase card keys', () => {
+    for (const key of [
+      'erase.card.title',
+      'erase.card.description',
+      'erase.card.eraseAllData',
+      'erase.card.warning',
+      'erase.card.confirm',
+      'erase.card.cancel',
+    ]) {
+      expect(TRANSLATIONS.en[key]).toBeTruthy();
+      expect(TRANSLATIONS.es[key]).toBeTruthy();
+    }
+  });
+
   it('covers the install prompt keys', () => {
     for (const key of ['install.prompt', 'install.action', 'install.dismiss']) {
       expect(TRANSLATIONS.en[key]).toBeTruthy();

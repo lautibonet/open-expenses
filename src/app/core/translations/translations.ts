@@ -42,6 +42,14 @@ const en: Record<string, string> = {
   'backup.action.backUp': 'Back up',
   'backup.action.backingUp': 'Backing up…',
   'backup.card.backUpTo': 'Back up to {method}',
+  'erase.card.title': 'Erase',
+  'erase.card.description':
+    'Permanently delete all local data — accounts, categories, transactions, transfers, and your profile — and start over. This cannot be undone.',
+  'erase.card.eraseAllData': 'Erase all data',
+  'erase.card.warning':
+    'This permanently deletes all of your data on this device, including the cloud sign-in. Nothing can be recovered.',
+  'erase.card.confirm': 'Erase everything',
+  'erase.card.cancel': 'Cancel',
   'backup.relative.justNow': 'Just now',
   'backup.error.offlineConnect': 'Cannot connect while offline',
   'backup.error.offlineBackup': 'Cannot backup while offline',
@@ -400,6 +408,14 @@ const es: Record<string, string> = {
   'backup.action.backUp': 'Hacer copia',
   'backup.action.backingUp': 'Copiando…',
   'backup.card.backUpTo': 'Hacer copia en {method}',
+  'erase.card.title': 'Borrar',
+  'erase.card.description':
+    'Elimina permanentemente todos los datos locales — cuentas, categorías, transacciones, transferencias y tu perfil — y empieza de nuevo. Esto no se puede deshacer.',
+  'erase.card.eraseAllData': 'Borrar todos los datos',
+  'erase.card.warning':
+    'Esto elimina permanentemente todos tus datos en este dispositivo, incluido el inicio de sesión en la nube. Nada se puede recuperar.',
+  'erase.card.confirm': 'Borrar todo',
+  'erase.card.cancel': 'Cancelar',
   'backup.relative.justNow': 'Ahora mismo',
   'backup.error.offlineConnect': 'No se puede conectar sin conexión',
   'backup.error.offlineBackup': 'No se puede hacer la copia sin conexión',

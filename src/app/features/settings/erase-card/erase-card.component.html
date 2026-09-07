@@ -1,0 +1,46 @@
+<section class="card" id="erase">
+  <h2>
+    <svg aria-hidden="true" viewBox="0 0 16 16" focusable="false">
+      <path
+        d="M2.5 4.5h11M6.5 4.5V3a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v1.5m3 0-.6 8a1.5 1.5 0 0 1-1.5 1.4h-4.8a1.5 1.5 0 0 1-1.5-1.4l-.6-8"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      />
+    </svg>
+    {{ language.t('erase.card.title') }}
+  </h2>
+  <p class="description">{{ language.t('erase.card.description') }}</p>
+
+  <div class="erase-actions">
+    <button
+      type="button"
+      class="btn danger"
+      [disabled]="isBusy()"
+      (click)="requestErase()"
+    >
+      {{ language.t('erase.card.eraseAllData') }}
+    </button>
+  </div>
+
+  @if (pendingErase()) {
+    <div class="erase-confirm">
+      <p class="warning">{{ language.t('erase.card.warning') }}</p>
+      <div class="erase-confirm-actions">
+        <button
+          type="button"
+          class="btn danger filled"
+          [disabled]="isBusy()"
+          (click)="confirmErase()"
+        >
+          {{ language.t('erase.card.confirm') }}
+        </button>
+        <button type="button" class="btn" [disabled]="isBusy()" (click)="cancelErase()">
+          {{ language.t('erase.card.cancel') }}
+        </button>
+      </div>
+    </div>
+  }
+</section>

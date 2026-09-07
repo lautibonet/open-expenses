@@ -1206,7 +1206,14 @@ describe('SettingsComponent - LedgerFlow restyle', () => {
     const headings = Array.from(
       fixture.nativeElement.querySelectorAll('h2') as NodeListOf<HTMLElement>,
     ).map((h) => h.textContent!.trim());
-    expect(headings).toEqual(['Base Currency', 'Language', 'Accounts', 'Categories', 'Backup']);
+    expect(headings).toEqual([
+      'Base Currency',
+      'Language',
+      'Accounts',
+      'Categories',
+      'Backup',
+      'Erase',
+    ]);
 
     const text: string = fixture.nativeElement.textContent;
     expect(text).not.toContain('Save Changes');

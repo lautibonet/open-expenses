@@ -189,6 +189,20 @@ describe('DriveBackupService', () => {
     });
   });
 
+  describe('clearStoredToken', () => {
+    it('drops the stored token and connection state without a network call', async () => {
+      await connectAsTestUser(service);
+      const fetchSpy = vi.fn();
+      vi.stubGlobal('fetch', fetchSpy);
+
+      service.clearStoredToken();
+
+      expect(localStorage.getItem('open-expenses_google_token')).toBeNull();
+      expect(service.isConnected()).toBe(false);
+      expect(fetchSpy).not.toHaveBeenCalled();
+    });
+  });
+
   describe('backupNow', () => {
     it('should connect and back up when not connected', async () => {
       mockTokenClient();
