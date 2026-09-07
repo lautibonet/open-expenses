@@ -126,3 +126,67 @@ describe('database v5 upgrade (locale-neutral storage)', () => {
     expect(afterSecondOpen).toEqual(afterFirstOpen);
   });
 });
+
+describe('database v6 upgrade (local-midnight dates)', () => {
+  let legacy: LegacyDatabaseV4;
+
+  beforeEach(async () => {
+    await db.delete();
+    legacy = new LegacyDatabaseV4();
+    await legacy.open();
+  });
+
+  afterEach(async () => {
+    legacy.close();
+    await db.delete();
+  });
+
+  it('shifts UTC-midnight dates to local midnight of the same calendar day', async () => {
+    await legacy.table('transactions').bulkAdd([
+      {
+        accountId: 1, categoryId: 1, amount: 10, date: new Date('2026-09-01'),
+        period: 9, year: 2026, exchangeRate: null, baseCurrencyAmount: null,
+        note: '', createdAt: new Date(),
+      },
+    ]);
+    await legacy.table('transfers').bulkAdd([
+      {
+        sourceAccountId: 1, destinationAccountId: 2, sourceAmount: 100,
+        destinationAmount: 100, exchangeRate: 1, baseCurrencyAmount: 100,
+        date: new Date('2026-09-02'), period: 9, year: 2026,
+        note: '', createdAt: new Date(),
+      },
+    ]);
+    legacy.close();
+
+    await db.open();
+
+    const [txn] = await db.transactions.toArray();
+    expect([txn.date.getFullYear(), txn.date.getMonth() + 1, txn.date.getDate()]).toEqual([
+      2026, 9, 1,
+    ]);
+    const [transfer] = await db.transfers.toArray();
+    expect([
+      transfer.date.getFullYear(),
+      transfer.date.getMonth() + 1,
+      transfer.date.getDate(),
+    ]).toEqual([2026, 9, 2]);
+  });
+
+  it('leaves dates that are not UTC midnight untouched', async () => {
+    const withTime = new Date(2026, 8, 1, 10, 30);
+    await legacy.table('transactions').bulkAdd([
+      {
+        accountId: 1, categoryId: 1, amount: 10, date: withTime,
+        period: 9, year: 2026, exchangeRate: null, baseCurrencyAmount: null,
+        note: '', createdAt: new Date(),
+      },
+    ]);
+    legacy.close();
+
+    await db.open();
+
+    const [txn] = await db.transactions.toArray();
+    expect(txn.date.getTime()).toBe(withTime.getTime());
+  });
+});

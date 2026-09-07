@@ -29,6 +29,11 @@ import {
   getPeriodYear,
   periodYearFromDate,
 } from '../../../core/types/period.type';
+import {
+  dateToLocalISO,
+  parseLocalDate,
+  todayLocalISO,
+} from '../../../core/format/local-date';
 
 export interface TransferFormState {
   sourceAccountId: number;
@@ -62,7 +67,7 @@ const RATE_LABELS: ExchangeRateWellLabels = {
   errorFetch: 'movements.error.rateFetch',
 };
 
-const today = (): string => new Date().toISOString().split('T')[0];
+const today = todayLocalISO;
 
 function defaultFormState(accounts: Account[]): TransferFormState {
   const sourceAccountId = accounts[0]?.id ?? 0;
@@ -254,7 +259,7 @@ export class TransferFormComponent implements AfterViewInit {
           sourceAmount: f.sourceAmount!,
           destinationAmount: f.destinationAmount!,
           exchangeRate: f.exchangeRate,
-          date: new Date(f.date),
+          date: parseLocalDate(f.date),
           period: f.period,
           year: f.year,
           note: f.note,
@@ -264,7 +269,7 @@ export class TransferFormComponent implements AfterViewInit {
           f.sourceAccountId,
           f.destAccountId,
           f.sourceAmount!,
-          new Date(f.date),
+          parseLocalDate(f.date),
           f.period,
           f.note,
           f.exchangeRate,
@@ -286,7 +291,7 @@ export class TransferFormComponent implements AfterViewInit {
 
   private handleEditInput(t: Transfer | null): void {
     if (!t) return;
-    const date = new Date(t.date).toISOString().split('T')[0];
+    const date = dateToLocalISO(new Date(t.date));
     this.editingId.set(t.id ?? null);
     this.form.set({
       sourceAccountId: t.sourceAccountId,

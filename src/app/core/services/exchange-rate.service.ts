@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { NetworkService } from './network.service';
 import { OfflineError } from '../models/offline-error';
 import { TranslationError } from '../models/translation-error';
+import { dateToLocalISO } from '../format/local-date';
 
 const FRANKFURTER_BASE = 'https://api.frankfurter.dev/v2';
 
@@ -119,6 +120,6 @@ export class ExchangeRateService {
   }
 
   private formatDate(d: Date): string {
-    return d.toISOString().split('T')[0];
+    return dateToLocalISO(d);
   }
 }
