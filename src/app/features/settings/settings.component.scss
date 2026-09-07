@@ -20,7 +20,9 @@
 
 .settings .card + .card,
 .settings-top-row + .card,
-app-backup-card {
+app-backup-card,
+app-install-card,
+app-erase-card {
   display: block;
   margin-top: var(--space-lg);
 }
