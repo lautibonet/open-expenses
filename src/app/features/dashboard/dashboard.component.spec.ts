@@ -264,7 +264,7 @@ describe('DashboardComponent', () => {
       expect(component.avgMonthlyNet()).toBe(1750);
     });
 
-    it('visually states the covered range as a caps label on every KPI card', async () => {
+    it('visually states the covered range as a caps label over the KPI ledger', async () => {
       const acc = await accountService.create('Cash', 'EUR', 0);
       const cat = await categoryService.create('Payroll', 'income');
       const year = getCurrentYear();
@@ -279,14 +279,12 @@ describe('DashboardComponent', () => {
       fixture.detectChanges();
 
       const scopes = Array.from(
-        fixture.nativeElement.querySelectorAll('.kpi-card dt .scope') as NodeListOf<HTMLElement>,
+        fixture.nativeElement.querySelectorAll('.kpi-scope') as NodeListOf<HTMLElement>,
       );
-      expect(scopes.length).toBe(3);
-      for (const scope of scopes) {
-        expect(scope.textContent).toContain(String(getCurrentYear()));
-        expect(scope.textContent).toContain('JAN');
-        expect(scope.textContent).toContain('AUG');
-      }
+      expect(scopes.length).toBe(1);
+      expect(scopes[0].textContent).toContain(String(getCurrentYear()));
+      expect(scopes[0].textContent).toContain('JAN');
+      expect(scopes[0].textContent).toContain('AUG');
     });
 
     it('shows the KPI empty state when the selected month has no data, keeping the year net strip', async () => {
@@ -295,8 +293,8 @@ describe('DashboardComponent', () => {
       await component.onScopeMonthChange(2);
       fixture.detectChanges();
 
-      expect(fixture.nativeElement.querySelectorAll('.kpi-card').length).toBe(0);
-      const empty = fixture.nativeElement.querySelector('.kpi-row .empty-state');
+      expect(fixture.nativeElement.querySelector('.kpi-ledger')).toBeNull();
+      const empty = fixture.nativeElement.querySelector('.kpi-card .empty-state');
       expect(empty).toBeTruthy();
       expect(empty.textContent).toContain('February');
 
@@ -742,7 +740,7 @@ describe('DashboardComponent - shared scope', () => {
     expect(headings.length).toBe(1);
   });
 
-  it('renders Net as the inverted savings KPI card', async () => {
+  it('renders Net as the ledger\'s last ink line', async () => {
     const acc = await accountService.create('Cash', 'EUR', 0);
     const incomeCat = await categoryService.create('Payroll', 'income');
     const expenseCat = await categoryService.create('Food', 'expense');
@@ -753,22 +751,23 @@ describe('DashboardComponent - shared scope', () => {
     await component.ngOnInit();
     fixture.detectChanges();
 
-    const net = fixture.nativeElement.querySelector('.kpi-card.kpi-net .value');
+    const net = fixture.nativeElement.querySelector('.kpi-line.kpi-net .value');
     expect(net).toBeTruthy();
     expect(net.textContent).toContain(component.formatMoney(component.yearTotalNet()));
     expect(component.yearTotalNet()).toBe(2500);
   });
 
-  it('renders the KPI row as three cards: income, expenses, net', async () => {
+  it('renders the KPI ledger as three striped lines: income, expenses, net', async () => {
     await seedIncome(getCurrentPeriod());
     await component.ngOnInit();
     fixture.detectChanges();
 
-    const cards = fixture.nativeElement.querySelectorAll('.kpi-row .kpi-card');
-    expect(cards.length).toBe(3);
-    expect(fixture.nativeElement.querySelector('.kpi-card.kpi-income .value')).toBeTruthy();
-    expect(fixture.nativeElement.querySelector('.kpi-card.kpi-expense .value')).toBeTruthy();
-    expect(fixture.nativeElement.querySelector('.kpi-card.kpi-net .value')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.kpi-line.kpi-income')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.kpi-line.kpi-expense')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.kpi-line.kpi-net')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.kpi-line.kpi-income .value')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.kpi-line.kpi-expense .value')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.kpi-line.kpi-net .value')).toBeTruthy();
   });
 
   it('renders the year total as the KPI headline with the monthly average beneath', async () => {
@@ -784,23 +783,23 @@ describe('DashboardComponent - shared scope', () => {
     await component.ngOnInit();
     fixture.detectChanges();
 
-    const incomeValue = fixture.nativeElement.querySelector('.kpi-card.kpi-income .value');
+    const incomeValue = fixture.nativeElement.querySelector('.kpi-line.kpi-income .value');
     expect(incomeValue.textContent).toContain(component.formatMoney(5000));
 
-    const incomeSecondary = fixture.nativeElement.querySelector('.kpi-card.kpi-income .secondary');
+    const incomeSecondary = fixture.nativeElement.querySelector('.kpi-line.kpi-income .secondary');
     expect(incomeSecondary.textContent).toContain('AVG');
     expect(incomeSecondary.textContent).toContain(component.formatMoney(2500));
 
-    const netValue = fixture.nativeElement.querySelector('.kpi-card.kpi-net .value');
+    const netValue = fixture.nativeElement.querySelector('.kpi-line.kpi-net .value');
     expect(netValue.textContent).toContain(component.formatMoney(4500));
   });
 
-  it('shows the KPI empty state, not zero cards, when the scope year has no movements', async () => {
+  it('shows the KPI empty state, not the ledger, when the scope year has no movements', async () => {
     await component.ngOnInit();
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelectorAll('.kpi-card').length).toBe(0);
-    const empty = fixture.nativeElement.querySelector('.kpi-row .empty-state');
+    expect(fixture.nativeElement.querySelector('.kpi-ledger')).toBeNull();
+    const empty = fixture.nativeElement.querySelector('.kpi-card .empty-state');
     expect(empty).toBeTruthy();
     expect(empty.textContent).toContain(String(getCurrentYear()));
   });
@@ -814,11 +813,11 @@ describe('DashboardComponent - shared scope', () => {
     await component.onScopeYearChange(previousYear);
     fixture.detectChanges();
 
-    const scope = fixture.nativeElement.querySelector('.kpi-card.kpi-income dt .scope');
+    const scope = fixture.nativeElement.querySelector('.kpi-scope');
     expect(scope.textContent).toContain(String(previousYear));
   });
 
-  it('associates each KPI label, year and value in a definition list per card', async () => {
+  it('associates each KPI label, value and average in one ledger definition list', async () => {
     const acc = await accountService.create('Cash', 'EUR', 0);
     const incomeCat = await categoryService.create('Payroll', 'income');
     await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(), getCurrentPeriod());
@@ -826,43 +825,31 @@ describe('DashboardComponent - shared scope', () => {
     await component.ngOnInit();
     fixture.detectChanges();
 
-    const cards = Array.from(
-      fixture.nativeElement.querySelectorAll('dl.kpi-card') as NodeListOf<HTMLDListElement>,
-    );
-    expect(cards.length).toBe(3);
+    const ledger = fixture.nativeElement.querySelector('dl.kpi-ledger');
+    expect(ledger).toBeTruthy();
 
-    for (const card of cards) {
-      const terms = card.querySelectorAll('dt');
-      expect(terms.length).toBe(1);
-      const term = terms[0];
-      expect(term.textContent).toContain(String(getCurrentYear()));
-
-      const value = card.querySelector('dd.value');
-      expect(value).toBeTruthy();
-      expect(value!.textContent?.trim()).not.toBe('');
-    }
-
-    const incomeCard = fixture.nativeElement.querySelector('dl.kpi-card.kpi-income');
-    expect(incomeCard.querySelector('dt').textContent).toContain('Income');
-    expect(incomeCard.querySelector('dd.value').textContent).toContain(
+    const incomeLine = ledger.querySelector('.kpi-line.kpi-income');
+    expect(incomeLine.querySelector('dt').textContent).toContain('Income');
+    expect(incomeLine.querySelector('dd .value').textContent).toContain(
       component.formatMoney(component.yearTotalIncome()),
     );
+    expect(incomeLine.querySelector('dd .secondary').textContent).toContain('AVG');
   });
 
   it('hides the savings rate when there is no income', async () => {
     await component.ngOnInit();
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('.kpi-net .savings-rate')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.kpi-savings')).toBeNull();
   });
 
-  it('shows the savings rate in the net average card when there is income', async () => {
+  it('shows the savings rate as the ledger footer line when there is income', async () => {
     const acc = await accountService.create('Cash', 'EUR', 0);
     const incomeCat = await categoryService.create('Payroll', 'income');
     await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(), getCurrentPeriod());
 
     await component.ngOnInit();
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('.kpi-net .savings-rate')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.kpi-savings .savings-rate')).toBeTruthy();
   });
 
   it('computes the savings rate from the existing monthly averages', async () => {
@@ -1233,41 +1220,44 @@ describe('DashboardComponent - KPI row layout and mono weights', () => {
       .join('\n');
   }
 
-  // jsdom does no layout, so row alignment can't be asserted geometrically;
-  // the shrinkable-track declaration in the compiled stylesheet is the seam.
-  it('keeps the KPI row tracks shrinkable so wide figures cannot widen the row', async () => {
+  // jsdom does no layout, so the ledger alignment can't be asserted
+  // geometrically; the compiled stylesheet declarations are the seam.
+  it('right-aligns the KPI figures into one ledger column with directional stripes', async () => {
     await renderWithData();
 
     const css = compiledComponentCss();
-    expect(css).toMatch(/\.kpi-row[^{]*\{[^}]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/);
-    expect(css).toMatch(/@media[^{]*\{[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\)/);
+    expect(css).toMatch(/\.figures[^{]*\{[^}]*text-align:\s*right/);
+    expect(css).toMatch(/\.kpi-income[^{]*\{[^}]*border-left:\s*var\(--stripe-income\)/);
+    expect(css).toMatch(/\.kpi-expense[^{]*\{[^}]*border-left:\s*var\(--stripe-expense\)/);
+    expect(css).toMatch(/\.kpi-net[^{]*\{[^}]*border-left:\s*var\(--stripe-transfer\)/);
   });
 
-  // The KPI cards are `dl` elements: without an explicit reset they carry the
-  // UA's 1em block margin on top of the grid gap, doubling the stacked gap to
-  // 48px while the page's section cards sit 24px apart (#111). jsdom does no
-  // layout, so the compiled declarations are the seam; --space-lg's own value
-  // is asserted so the 24px section rhythm cannot silently drift.
-  it('stacks the KPI cards on the page\'s 24px section rhythm, not the UA dl margin', async () => {
+  // The KPI ledger presents as the page's shared card (Background section
+  // rhythm via the .card margin) with zero padding of its own: the stripes
+  // touch the card edge and the rows carry the 1rem gutter instead. jsdom
+  // does no layout, so the compiled declarations are the seam; --space-lg's
+  // own value is asserted so the 24px section rhythm cannot silently drift.
+  it('presents the KPI ledger as a shared card whose rows carry the 1rem gutter', async () => {
     await renderWithData();
 
     const tokens = readFileSync('src/styles.scss', 'utf-8');
     expect(tokens).toMatch(/--space-lg:\s*1\.5rem/);
 
     const css = compiledComponentCss();
-    expect(css).toMatch(/\.kpi-card[^{]*\{[^}]*margin:\s*0;[^}]*background:\s*var\(--surface-lowest\)/);
-    expect(css).toMatch(/@media[^{]*\{[^}]*\.kpi-row[^{]*\{[^}]*row-gap:\s*var\(--space-lg\)/);
+    expect(css).toMatch(/\.card[^{]*\{[^}]*margin-bottom:\s*var\(--space-lg\)/);
+    expect(css).toMatch(/\.card\.kpi-card[^{]*\{[^}]*padding:\s*0/);
+    expect(css).toMatch(/\.kpi-line[^{]*\{[^}]*padding:\s*var\(--space-sm\)\s+var\(--space-md\)/);
   });
 
   it('renders every mono figure on Stats at the data spec weight (500, no faux bold)', async () => {
     await renderWithData();
 
     const figures = [
-      '.kpi-card.kpi-income .value',
-      '.kpi-card.kpi-expense .value',
-      '.kpi-card.kpi-net .value',
-      '.kpi-card .secondary',
-      '.kpi-card .savings-rate',
+      '.kpi-line.kpi-income .value',
+      '.kpi-line.kpi-expense .value',
+      '.kpi-line.kpi-net .value',
+      '.kpi-line .secondary',
+      '.kpi-line.kpi-savings .savings-rate',
       '.stat .value',
       '.category-bar-row .cat-amount',
       '.net-strip-caption .value',
@@ -1715,7 +1705,7 @@ describe('DashboardComponent - conversion degradation warnings', () => {
 
     const dashboard = fixture.nativeElement.querySelector('.dashboard');
     const children = Array.from(dashboard.children) as HTMLElement[];
-    const kpiIndex = children.findIndex(el => el.classList.contains('kpi-row'));
+    const kpiIndex = children.findIndex(el => el.classList.contains('kpi-card'));
     const warningIndex = children.findIndex(el => el.classList.contains('conversion-warning'));
 
     expect(warningIndex).toBeGreaterThan(-1);
@@ -1803,9 +1793,11 @@ describe('DashboardComponent - Stats design-spec conformance', () => {
   }
 
   // DESIGN.md Cards & Containers: white surface, 1px hard border, 1rem
-  // horizontal padding. jsdom does no layout, so the compiled declaration is
-  // the seam; the token's own value is asserted so the var cannot silently
-  // drift away from the spec.
+  // horizontal padding. The KPI ledger is the one exception: the card's own
+  // padding drops to 0 so the direction stripes touch its edge, and the rows
+  // carry the 1rem horizontal gutter instead. jsdom does no layout, so the
+  // compiled declaration is the seam; the token's own value is asserted so
+  // the var cannot silently drift away from the spec.
   it('pads every Stats card to the 1rem design-spec padding', async () => {
     await component.ngOnInit();
     fixture.detectChanges();
@@ -1814,7 +1806,8 @@ describe('DashboardComponent - Stats design-spec conformance', () => {
     expect(tokens).toMatch(/--space-md:\s*1rem/);
 
     const css = compiledComponentCss();
-    expect(css).toMatch(/\.kpi-card[^{]*\{[^}]*padding:\s*var\(--space-md\)/);
+    expect(css).toMatch(/\.card\.kpi-card[^{]*\{[^}]*padding:\s*0/);
+    expect(css).toMatch(/\.kpi-line[^{]*\{[^}]*padding:\s*var\(--space-sm\)\s+var\(--space-md\)/);
     expect(css).toMatch(/\.card[^{]*\{[^}]*padding:\s*var\(--space-md\)/);
   });
 

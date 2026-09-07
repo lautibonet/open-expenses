@@ -24,6 +24,7 @@ import { Transfer } from '../../core/models/transfer.model';
 import { Account } from '../../core/models/account.model';
 import { Category, isIncomeCategory } from '../../core/models/category.model';
 import { DismissibleAlertComponent } from '../../shared/components/dismissible-alert/dismissible-alert.component';
+import { FitTextDirective } from '../../shared/directives/fit-text.directive';
 import {
   ConversionDegradation,
   noDegradation,
@@ -38,7 +39,7 @@ import { PeriodNet, netByPeriod } from '../../core/stats/year-nets';
 
 @Component({
   selector: 'app-dashboard',
-  imports: [FormsModule, DismissibleAlertComponent],
+  imports: [FormsModule, DismissibleAlertComponent, FitTextDirective],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss',
 })

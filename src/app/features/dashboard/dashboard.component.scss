@@ -16,44 +16,62 @@
   @extend %scope-selects;
 }
 
-/* KPI row: the design's three summary cards. The year total is the headline
-   figure with the monthly average demoted to a secondary line beneath it.
-   Income keeps a green stripe, expense an error-red stripe, and net is the
-   inverted solid-ink card.
-   Tracks are minmax(0, 1fr), not bare 1fr: a 1fr track's minimum is
-   min-content, so an unbreakable mono figure ("29.087,62 EUR") can blow the
-   row out past the page column. Clamping the minimum to 0 keeps the row
-   edges aligned with the cards above and below at any figure size. */
-.kpi-row {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-md);
-  margin-bottom: var(--space-lg);
+/* KPI ledger summary: one card, three striped lines — income, expenses, net —
+   with the year totals right-aligned into a single tabular ledger column and
+   the monthly average demoted beneath each figure. The card gives every figure
+   the full column width, so no realistic amount in any locale can blow the
+   line out. Stripes touch the card edge like the movement rows they mirror,
+   so the card's 1rem padding moves to the rows; the 1px hairlines between
+   rows are the table-row grammar: this is data structure. */
+.card.kpi-card {
+  padding: 0;
+
+  .kpi-scope {
+    @extend %caps-label-muted;
+
+    margin: 0;
+    padding: var(--space-md) var(--space-md) var(--space-sm);
+  }
+
+  .empty-state {
+    margin: var(--space-md);
+  }
 }
 
-.kpi-card {
-  /* The cards are dl elements: without this reset the UA's 1em block margin
-     stacks on top of the grid gap, doubling the mobile KPI-to-KPI gap to 48px
-     while the page's section cards sit 24px apart (#111). */
+.kpi-ledger {
   margin: 0;
-  background: var(--surface-lowest);
-  border: var(--border-hard);
-  padding: var(--space-md);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-sm);
 
   dt,
   dd {
     margin: 0;
   }
+}
 
-  .label {
+.kpi-line {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-md);
+  /* When the figure outgrows the label's line (narrow viewports, extreme
+     amounts), the whole right-aligned block drops to its own full-width
+     line instead of breaking mid-number at the wrap floor. */
+  flex-wrap: wrap;
+  padding: var(--space-sm) var(--space-md);
+
+  & + .kpi-line {
+    border-top: 1px solid var(--surface-container-low);
+  }
+
+  .metric {
     @extend %caps-label-muted;
+  }
 
+  .figures {
+    margin-left: auto;
     display: flex;
     flex-direction: column;
+    align-items: flex-end;
     gap: var(--space-xs);
+    text-align: right;
   }
 
   .value {
@@ -64,45 +82,38 @@
        faux bold with wider glyphs, worsening the grid blowout. */
     font-weight: 500;
     color: var(--on-surface);
+    /* Last-resort floor: when fit-text has shrunk to its minimum and the
+       figure still doesn't fit, break it across lines rather than clipping
+       digits out of the card. */
+    overflow-wrap: anywhere;
   }
 
   .secondary {
     @extend %mono-data;
 
-    font-size: var(--type-caption);
     font-weight: 500;
     color: var(--on-surface-variant);
+    overflow-wrap: anywhere;
   }
 
   &.kpi-income {
-    border-left: var(--stripe-income);
+    @extend %stripe-income;
   }
 
   &.kpi-expense {
-    border-left: var(--stripe-expense);
+    @extend %stripe-expense;
   }
 
   &.kpi-net {
-    background: var(--on-surface);
-    border-color: var(--on-surface);
+    @extend %stripe-transfer;
+  }
 
-    .label {
-      color: var(--surface-dim);
-    }
-
-    .value {
-      color: var(--surface-lowest);
-    }
-
-    .secondary {
-      color: var(--surface-container-highest);
-    }
-
+  &.kpi-savings {
     .savings-rate {
       @extend %mono-data;
 
       font-weight: 500;
-      color: var(--surface-container-highest);
+      color: var(--on-surface);
     }
   }
 }
@@ -238,14 +249,10 @@
 }
 
 /* The shared empty-state pattern (same as Movements): dashed border on a flat
-   surface, centered muted ink. In the KPI row's grid the empty state spans
-   all three tracks so it keeps the full column width. */
+   surface, centered muted ink. Inside the KPI card it insets by the card's
+   own 1rem gutter, since the card itself carries no padding. */
 .empty-state {
   @extend %empty-state;
-}
-
-.kpi-row .empty-state {
-  grid-column: 1 / -1;
 }
 
 /* Accessible equivalent: announces month + Net per Period. */
@@ -375,13 +382,4 @@
   }
 }
 
-@media (max-width: 768px) {
 
-  .kpi-row {
-    grid-template-columns: minmax(0, 1fr);
-    /* Stacked KPI cards follow the page's 1.5rem section rhythm (--space-lg),
-       matching the .card margin-bottom (#111). Only the row gap changes: the
-       desktop column gap stays --space-md. */
-    row-gap: var(--space-lg);
-  }
-}
