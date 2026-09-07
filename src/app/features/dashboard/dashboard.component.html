@@ -38,33 +38,38 @@
     [message]="conversionWarningMessage()"
   />
 
-  <section class="kpi-row" [attr.aria-label]="language.t('stats.title')">
+  <section class="card kpi-card" [attr.aria-label]="language.t('stats.title')">
     @if (yearHasData()) {
-      <dl class="kpi-card kpi-income">
-        <dt class="label">
-          <span class="metric">{{ language.t('stats.income') }}</span>
-          <span class="scope">{{ kpiScopeLabel() }}</span>
-        </dt>
-        <dd class="value">{{ formatMoney(yearTotalIncome()) }}</dd>
-        <dd class="secondary">{{ avgCaption(avgMonthlyIncome()) }}</dd>
-      </dl>
-      <dl class="kpi-card kpi-expense">
-        <dt class="label">
-          <span class="metric">{{ language.t('stats.expenses') }}</span>
-          <span class="scope">{{ kpiScopeLabel() }}</span>
-        </dt>
-        <dd class="value">{{ formatMoney(yearTotalExpenses()) }}</dd>
-        <dd class="secondary">{{ avgCaption(avgMonthlyExpenses()) }}</dd>
-      </dl>
-      <dl class="kpi-card kpi-net">
-        <dt class="label">
-          <span class="metric">{{ language.t('stats.net') }}</span>
-          <span class="scope">{{ kpiScopeLabel() }}</span>
-        </dt>
-        <dd class="value">{{ formatMoney(yearTotalNet()) }}</dd>
-        <dd class="secondary">{{ avgCaption(avgMonthlyNet()) }}</dd>
+      <p class="kpi-scope">{{ kpiScopeLabel() }}</p>
+      <dl class="kpi-ledger">
+        <div class="kpi-line kpi-income">
+          <dt class="metric">{{ language.t('stats.income') }}</dt>
+          <dd class="figures">
+            <span class="value" appFitText>{{ formatMoney(yearTotalIncome()) }}</span>
+            <span class="secondary" appFitText>{{ avgCaption(avgMonthlyIncome()) }}</span>
+          </dd>
+        </div>
+        <div class="kpi-line kpi-expense">
+          <dt class="metric">{{ language.t('stats.expenses') }}</dt>
+          <dd class="figures">
+            <span class="value" appFitText>{{ formatMoney(yearTotalExpenses()) }}</span>
+            <span class="secondary" appFitText>{{ avgCaption(avgMonthlyExpenses()) }}</span>
+          </dd>
+        </div>
+        <div class="kpi-line kpi-net">
+          <dt class="metric">{{ language.t('stats.net') }}</dt>
+          <dd class="figures">
+            <span class="value" appFitText>{{ formatMoney(yearTotalNet()) }}</span>
+            <span class="secondary" appFitText>{{ avgCaption(avgMonthlyNet()) }}</span>
+          </dd>
+        </div>
         @if (savingsRate(); as rate) {
-          <dd class="savings-rate">{{ language.t('stats.savingsRate', { rate }) }}</dd>
+          <div class="kpi-line kpi-savings">
+            <dt class="metric">{{ language.t('stats.savingsRate') }}</dt>
+            <dd class="figures">
+              <span class="savings-rate" appFitText>{{ rate }}%</span>
+            </dd>
+          </div>
         }
       </dl>
     } @else {
