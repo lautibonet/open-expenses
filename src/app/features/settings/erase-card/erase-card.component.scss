@@ -1,0 +1,55 @@
+@use '../../../shared/styles/patterns' as *;
+
+.card {
+  @extend %card-surface;
+
+  h2 {
+    @extend %card-header-icon;
+  }
+}
+
+.description {
+  @extend %card-description;
+}
+
+.erase-actions {
+  display: flex;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.btn {
+  @extend %btn-base;
+
+  &.danger {
+    @extend %btn-danger;
+  }
+
+  &.danger.filled {
+    @extend %btn-danger-filled;
+  }
+}
+
+/* Matches the Restore confirmation treatment: error-container panel with a
+   red confirm and a plain cancel. */
+.erase-confirm {
+  margin-top: var(--space-md);
+  padding: var(--space-md);
+  border: 1px solid var(--on-error-container);
+  background: var(--error-container);
+
+  p {
+    margin: 0 0 var(--space-sm);
+  }
+}
+
+.warning {
+  color: var(--on-error-container);
+  font-weight: 600;
+}
+
+.erase-confirm-actions {
+  display: flex;
+  gap: var(--space-sm);
+}

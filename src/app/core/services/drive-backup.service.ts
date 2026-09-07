@@ -100,6 +100,13 @@ export class DriveBackupService {
     });
   }
 
+  /** Local-only token removal for Erase: no server revoke, just forget the sign-in. */
+  clearStoredToken(): void {
+    this.accessToken = null;
+    localStorage.removeItem(this.TOKEN_KEY);
+    this.isConnected.set(false);
+  }
+
   async disconnect(): Promise<void> {
     if (this.accessToken) {
       try {

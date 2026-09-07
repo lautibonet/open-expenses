@@ -1,1 +1,1 @@
-export { db, AppDatabase } from './database';
+export { db, AppDatabase, eraseAllLocalData } from './database';
