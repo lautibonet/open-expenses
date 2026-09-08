@@ -423,44 +423,28 @@ export class DashboardComponent implements OnInit {
     return Math.round((Math.abs(value) / max) * 50 * 100) / 100;
   }
 
-  /* The Accumulated line runs January through the Scope's Period on its own
-     scale (a running balance dwarfs the monthly columns), plotted as
-     percentages of the track area and centered on each month's column. */
-  linePoints(): { x: number; y: number }[] {
-    const values = this.accumulated().slice(0, this.scope().period);
-    if (values.length === 0) return [];
-    const min = Math.min(...values);
-    const max = Math.max(...values);
-    return values.map((value, index) => ({
-      x: ((index + 0.5) / 12) * 100,
-      y: max === min ? 50 : 90 - ((value - min) / (max - min)) * 80,
-    }));
-  }
-
-  linePointsString(): string {
-    return this.linePoints().map(p => `${p.x},${p.y}`).join(' ');
-  }
-
   /* Net of the scope's Period: the one figure the graph hides behind its
      relative columns, promoted to a visible caption on the card. */
   selectedPeriodNet(): number {
     return this.yearOverviewData().find(o => o.period === this.scope().period)?.net ?? 0;
   }
 
-  /* The accessible figure list: Income, Expenses, and Net for all twelve
-     Periods; Accumulated joins in once the line has a value there. */
+  /* Balance strip fills scale against the year's max |balance|; the fill
+     reaches at most half the track so an overdrawn month can grow down from
+     the same midline. */
+  balanceFillHeight(balance: number): number {
+    const max = Math.max(...this.accumulated().map(Math.abs), 0);
+    if (max <= 0 || balance === 0) return 0;
+    return Math.round((Math.abs(balance) / max) * 50 * 100) / 100;
+  }
+
+  /* The accessible figure list: Income, Expenses, and Net per Period. */
   overviewFigures(item: PeriodOverview): string {
-    const parts = [
+    return [
       `${this.language.t('stats.income')} ${this.formatMoney(item.income)}`,
       `${this.language.t('stats.expenses')} ${this.formatMoney(item.expenses)}`,
       `${this.language.t('stats.net')} ${this.formatMoney(item.net)}`,
-    ];
-    if (item.period <= this.scope().period) {
-      parts.push(
-        `${this.language.t('stats.accumulated')} ${this.formatMoney(this.accumulated()[item.period - 1])}`,
-      );
-    }
-    return parts.join(', ');
+    ].join(', ');
   }
 
   formatMoney(amount: number): string {

@@ -1328,7 +1328,7 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     expect(tracks().length).toBe(12);
   });
 
-  it('renders three diverging columns per Period: income up, expenses down, net by sign', async () => {
+  it('renders three columns rising from the midline, only net crossing it', async () => {
     const acc = await accountService.create('Cash', 'EUR', 0);
     const incomeCat = await categoryService.create('Payroll', 'income');
     const expenseCat = await categoryService.create('Food', 'expense');
@@ -1400,7 +1400,7 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     expect(css).toMatch(/\.income[^{]*\.cell-fill[^{]*\{[^}]*background:\s*var\(--income\)/);
     expect(css).toMatch(/\.expense[^{]*\.cell-fill[^{]*\{[^}]*background:\s*var\(--error\)/);
     expect(css).toMatch(/\.net[^{]*\.cell-fill[^{]*\{[^}]*background:\s*var\(--on-surface\)/);
-    expect(css).toMatch(/\.overview-line[^{]*polyline[^{]*\{[^}]*stroke:\s*var\(--primary\)/);
+    expect(css).toMatch(/\.balance-fill[^{]*\{[^}]*background:\s*var\(--on-surface\)/);
   });
 
   it('heads the year overview with the year scope, not the month scope', async () => {
@@ -1438,31 +1438,92 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     expect(zero.textContent).toContain(String(getCurrentYear()));
   });
 
-  it('draws the Accumulated line through the Scope Period and no further', async () => {
-    const acc = await accountService.create('Cash', 'EUR', 0);
-    const incomeCat = await categoryService.create('Payroll', 'income');
-    const expenseCat = await categoryService.create('Food', 'expense');
-    const year = getCurrentYear();
+  function balanceTracks(): NodeListOf<HTMLElement> {
+    return fixture.nativeElement.querySelectorAll('.balance-track');
+  }
 
-    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(`${year}-01-15`), 1, null, null, year);
-    await transactionService.create(acc.id!, expenseCat.id!, 500, new Date(`${year}-02-15`), 2, null, null, year);
-
+  it('renders the balance strip inside the total balance card when the scope year has movements', async () => {
+    await seedMovement(getCurrentPeriod());
     await component.ngOnInit();
-    await component.onScopeMonthChange(2);
     fixture.detectChanges();
 
-    const points = component.linePoints();
-    expect(points.length).toBe(2);
+    const card = fixture.nativeElement.querySelector('.total-balance-card');
+    expect(card.querySelector('.balance-strip')).toBeTruthy();
+    expect(balanceTracks().length).toBe(12);
+    expect(card.querySelector('.balance-initials .balance-initial')).toBeTruthy();
 
-    const polyline = fixture.nativeElement.querySelector('.overview-line polyline');
-    expect(polyline).toBeTruthy();
-    expect((polyline as SVGElement).getAttribute('points')!.trim().split(/\s+/).length).toBe(2);
+    const list = card.querySelector('.balance-figures');
+    expect(list).toBeTruthy();
+    expect(list.classList).toContain('visually-hidden');
 
-    const markers = fixture.nativeElement.querySelectorAll('.overview-marker');
-    expect(markers.length).toBe(2);
+    const items = Array.from(list.querySelectorAll('li') as NodeListOf<HTMLLIElement>);
+    expect(items.length).toBe(12);
+    expect(items[getCurrentPeriod() - 1].textContent).toContain(
+      languageService.monthName(getCurrentPeriod()),
+    );
+    expect(items[getCurrentPeriod() - 1].textContent).toContain(component.formatMoney(3000));
   });
 
-  it('ends the Accumulated line at the total balance figure', async () => {
+  it('marks the scope Period on the strip and freezes the tail at the last known balance', async () => {
+    const acc = await accountService.create('Cash', 'EUR', 1000);
+    const incomeCat = await categoryService.create('Payroll', 'income');
+    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(), getCurrentPeriod());
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const currentPeriod = getCurrentPeriod();
+    const all = Array.from(balanceTracks());
+    expect(all[currentPeriod - 1].classList).toContain('current');
+    expect(all[11].classList).not.toContain('current');
+
+    // No movements after the seed Period: every later track freezes at the
+    // same balance — same fill height as the current month.
+    const currentFill = all[currentPeriod - 1].querySelector('.balance-fill') as HTMLElement;
+    const decemberFill = all[11].querySelector('.balance-fill') as HTMLElement;
+    expect(decemberFill).toBeTruthy();
+    expect(decemberFill.style.height).toBe(currentFill.style.height);
+  });
+
+  it('grows an overdrawn month down from the midline, in ink', async () => {
+    const acc = await accountService.create('Cash', 'EUR', 0);
+    const expenseCat = await categoryService.create('Food', 'expense');
+    await transactionService.create(acc.id!, expenseCat.id!, 500, new Date(), 2);
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    // January: zero balance, bare track. February: overdrawn, fills downward.
+    const [january, february] = Array.from(balanceTracks());
+    expect(january.querySelector('.balance-fill')).toBeNull();
+    const down = february.querySelector('.balance-fill.down') as HTMLElement;
+    expect(down).toBeTruthy();
+    expect(down.style.height).toBe('50%');
+  });
+
+  it('shows no balance strip, legend or figures when the scope year has no movements', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.balance-strip')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.balance-legend')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.balance-figures')).toBeNull();
+  });
+
+  it('explains the strip convention with a one-line caps legend', async () => {
+    await seedMovement(getCurrentPeriod());
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const legend = fixture.nativeElement.querySelector('.balance-legend');
+    expect(legend).toBeTruthy();
+    expect(legend.textContent).toContain('balance');
+
+    const css = compiledComponentCss();
+    expect(css).toMatch(/\.balance-legend[^{]*\{[^}]*text-transform:\s*uppercase/);
+  });
+
+  it('keeps the balance strip matching the total balance figure at the Scope Period', async () => {
     const acc = await accountService.create('Cash', 'EUR', 1000);
     const incomeCat = await categoryService.create('Payroll', 'income');
     await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(), getCurrentPeriod());
@@ -1475,29 +1536,7 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     );
   });
 
-  it('scales the line on its own range, independent of the columns', async () => {
-    const acc = await accountService.create('Cash', 'EUR', 1000000);
-    const incomeCat = await categoryService.create('Payroll', 'income');
-    const expenseCat = await categoryService.create('Food', 'expense');
-    const year = getCurrentYear();
-
-    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(`${year}-01-15`), 1, null, null, year);
-    await transactionService.create(acc.id!, expenseCat.id!, 1500, new Date(`${year}-02-15`), 2, null, null, year);
-
-    await component.ngOnInit();
-    await component.onScopeMonthChange(2);
-    fixture.detectChanges();
-
-    // The line spans its own min/max over Jan–Feb, untouched by the
-    // million-strong balance; the columns keep their bar-scale heights.
-    const points = component.linePoints();
-    expect(points[0].y).toBe(10);
-    expect(points[1].y).toBe(90);
-    expect((tracks()[0].querySelector('.income .cell-fill') as HTMLElement).style.height).toBe('50%');
-    expect((tracks()[1].querySelector('.expense .cell-fill') as HTMLElement).style.height).toBe('25%');
-  });
-
-  it('degrades the line to base-currency accounts when offline, still matching the card', async () => {
+  it('degrades the balance series to base-currency accounts when offline, still matching the card', async () => {
     await accountService.create('Cash', 'EUR', 100000);
     await accountService.create('USD Account', 'USD', 50000);
     TestBed.inject(NetworkService).isOnline.set(false);
@@ -1533,8 +1572,6 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     expect(items[0].textContent).toContain(component.formatMoney(3000));
     expect(items[1].textContent).toContain('February');
     expect(items[1].textContent).toContain(component.formatMoney(-500));
-    expect(items[0].textContent).toContain('Accumulated');
-    expect(items[11].textContent).not.toContain('Accumulated');
   });
 
   it('shows the scope Period\'s Net figure as a visible mono caption on the card', async () => {
