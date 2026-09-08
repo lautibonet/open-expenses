@@ -170,7 +170,9 @@
   border: 1px solid var(--outline-variant);
   overflow: hidden;
 
-  /* The midline the fills diverge from. */
+  /* The midline the fills diverge from, painted above the fills — the zero
+     line is the chart's datum, so it stays legible across the months whose
+     fills cover it. */
   &::before {
     content: '';
     position: absolute;
@@ -179,10 +181,14 @@
     right: 0;
     height: 1px;
     background: var(--outline-variant);
+    z-index: 2;
   }
 
+  /* Emphasis ring without layout: see the year overview's current track. */
   &.current {
-    border: var(--border-hard-thick);
+    border-color: var(--on-surface);
+    outline: 1px solid var(--on-surface);
+    outline-offset: -2px;
     z-index: 1;
   }
 }
@@ -192,6 +198,8 @@
   left: 0;
   right: 0;
   background: var(--on-surface);
+  /* A nonzero balance against a much larger year peak still draws. */
+  min-height: 1px;
 
   &.up {
     bottom: 50%;
@@ -267,7 +275,8 @@
     border-left: 1px solid var(--outline-variant);
   }
 
-  /* The midline the diverging columns grow from. */
+  /* The midline the diverging columns grow from, painted above the fills —
+     same datum rule as the balance strip. */
   &::before {
     content: '';
     position: absolute;
@@ -276,11 +285,17 @@
     right: 0;
     height: 1px;
     background: var(--outline-variant);
+    z-index: 2;
   }
 
+  /* The scope Period's emphasis ring is drawn without layout: a 1px ink
+     border plus a 1px inset outline. A literal 2px border would grow the
+     track 2px taller than its eleven neighbours and step the shared zero
+     line by a pixel at exactly the month the reader is looking at. */
   &.current {
-    border: var(--border-hard-thick);
-    border-left: var(--border-hard-thick);
+    border: 1px solid var(--on-surface);
+    outline: 1px solid var(--on-surface);
+    outline-offset: -2px;
     z-index: 1;
   }
 }
@@ -299,6 +314,8 @@
   position: absolute;
   left: 0;
   right: 0;
+  /* A nonzero figure against a much larger year peak still draws. */
+  min-height: 1px;
 
   .income & {
     background: var(--income);
