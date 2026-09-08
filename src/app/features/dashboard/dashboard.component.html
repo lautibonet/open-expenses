@@ -77,40 +77,70 @@
     }
   </section>
 
-  <section class="card net-strip-card">
-    <h2>{{ language.t('stats.netByPeriod', { scope: scope().year }) }}</h2>
+  <section class="card year-overview-card">
+    <h2>{{ language.t('stats.yearOverview', { scope: scope().year }) }}</h2>
     @if (yearHasMovements()) {
-      <div class="net-strip" aria-hidden="true">
-        @for (item of yearNets(); track item.period) {
-          <div class="net-strip-month" [class.current]="item.period === scope().period">
-            <div class="net-track">
-              @if (item.net > 0) {
-                <div class="net-fill up" [style.height.%]="periodFillHeight(item.net)"></div>
-              } @else if (item.net < 0) {
-                <div class="net-fill down" [style.height.%]="periodFillHeight(item.net)"></div>
-              }
+      <div class="year-overview" aria-hidden="true">
+        <div class="overview-tracks">
+          @for (item of yearOverviewData(); track item.period) {
+            <div class="overview-track" [class.current]="item.period === scope().period">
+              <div class="overview-cell income">
+                @if (item.income > 0) {
+                  <div class="cell-fill" [style.height.%]="barHeight(item.income)"></div>
+                }
+              </div>
+              <div class="overview-cell expense">
+                @if (item.expenses > 0) {
+                  <div class="cell-fill" [style.height.%]="barHeight(item.expenses)"></div>
+                }
+              </div>
+              <div class="overview-cell net">
+                @if (item.net > 0) {
+                  <div class="cell-fill up" [style.height.%]="barHeight(item.net)"></div>
+                } @else if (item.net < 0) {
+                  <div class="cell-fill down" [style.height.%]="barHeight(item.net)"></div>
+                }
+              </div>
             </div>
-            <span class="net-initial">{{ language.monthInitial(item.period) }}</span>
-          </div>
-        }
+          }
+          @if (linePoints().length > 1) {
+            <svg class="overview-line" viewBox="0 0 100 100" preserveAspectRatio="none">
+              <polyline [attr.points]="linePointsString()" />
+            </svg>
+          }
+          @for (point of linePoints(); track $index) {
+            <span
+              class="overview-marker"
+              [style.left.%]="point.x"
+              [style.top.%]="point.y"
+            ></span>
+          }
+        </div>
+        <div class="overview-initials">
+          @for (item of yearOverviewData(); track item.period) {
+            <span class="overview-initial" [class.current]="item.period === scope().period">
+              {{ language.monthInitial(item.period) }}
+            </span>
+          }
+        </div>
       </div>
-      <dl class="net-strip-caption">
+      <dl class="overview-caption">
         <dt class="label">
-          {{ language.t('stats.netStripCaption', { month: language.monthName(scope().period) }) }}
+          {{ language.t('stats.overviewCaption', { month: language.monthName(scope().period) }) }}
         </dt>
         <dd class="value">{{ formatMoney(selectedPeriodNet()) }}</dd>
       </dl>
-      <p class="net-strip-legend">{{ language.t('stats.netStripLegend') }}</p>
-      <ul class="net-strip-figures visually-hidden">
-        @for (item of yearNets(); track item.period) {
+      <p class="overview-legend">{{ language.t('stats.overviewLegend') }}</p>
+      <ul class="overview-figures visually-hidden">
+        @for (item of yearOverviewData(); track item.period) {
           <li>
             {{ language.monthName(item.period) }} {{ scope().year }}:
-            {{ formatMoney(item.net) }}
+            {{ overviewFigures(item) }}
           </li>
         }
       </ul>
     } @else {
-      <p class="net-strip-zero">{{ language.t('stats.netStripZero', { year: scope().year }) }}</p>
+      <p class="overview-zero">{{ language.t('stats.yearOverviewZero', { year: scope().year }) }}</p>
     }
   </section>
 

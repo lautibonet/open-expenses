@@ -147,37 +147,85 @@
   }
 }
 
-/* Year spine: the 12-month Net strip. Pure CSS — ink fills on gray tracks,
-   one column per Period of the scope's year. Positive Net grows up from the
-   baseline, negative Net grows down; negative months stay ink (red marks
-   movement direction and warnings only). Zero-Net months show the bare track.
-   Month initials are the Language service's, set in mono. */
-.net-strip {
-  display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: var(--space-xs);
+/* Year overview: the year-at-a-glance graph. Each Period carries three
+   diverging columns — Income grows up from the midline (green, money in),
+   Expenses grows down (red, money out), Net stays ink and grows toward its
+   sign (the Negative-Stays-Ink Rule: a minus is a fact, not an alarm). The
+   Accumulated line — money held at each Period end, the total-balance formula
+   evaluated monthly — rides on its own scale in primary blue: it is a
+   balance, not money moving, so green/red stay reserved for the columns and
+   blue carries the derived running figure. Pure CSS/SVG, no chart lib. */
+.year-overview {
   margin-bottom: var(--space-md);
 }
 
-.net-strip-month {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-xs);
+.overview-tracks {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  /* Contiguous tracks: month centers land on exact twelfths of the plot, so
+     the Accumulated line and its markers align without measuring gaps. */
+  gap: 0;
+}
 
-  .net-track {
-    position: relative;
-    width: 100%;
-    height: 4.5rem;
-    background: var(--surface-container-high);
-    border: 1px solid var(--outline-variant);
-    overflow: hidden;
+.overview-track {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  height: 7rem;
+  background: var(--surface-container-high);
+  border: 1px solid var(--outline-variant);
+  border-left: 0;
+  overflow: hidden;
+
+  &:first-child {
+    border-left: 1px solid var(--outline-variant);
   }
 
-  .net-fill {
+  /* The midline the diverging columns grow from. */
+  &::before {
+    content: '';
     position: absolute;
+    top: 50%;
     left: 0;
     right: 0;
+    height: 1px;
+    background: var(--outline-variant);
+  }
+
+  &.current {
+    border: var(--border-hard-thick);
+    border-left: var(--border-hard-thick);
+    z-index: 1;
+  }
+}
+
+.overview-cell {
+  position: relative;
+  z-index: 1;
+
+  & + .overview-cell {
+    /* A hair of daylight between the three columns of a month. */
+    margin-left: 1px;
+  }
+}
+
+.cell-fill {
+  position: absolute;
+  left: 0;
+  right: 0;
+
+  .income & {
+    background: var(--income);
+    bottom: 50%;
+  }
+
+  .expense & {
+    background: var(--error);
+    top: 50%;
+  }
+
+  .net & {
     background: var(--on-surface);
 
     &.up {
@@ -188,36 +236,76 @@
       top: 50%;
     }
   }
+}
 
-  .net-initial {
-    @extend %mono-data;
+.overview-line {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+  pointer-events: none;
 
-    font-weight: 500;
-    color: var(--on-surface-variant);
-  }
-
-  &.current {
-    .net-track {
-      border: var(--border-hard-thick);
-    }
-
-    .net-initial {
-      color: var(--on-surface);
-    }
+  polyline {
+    fill: none;
+    stroke: var(--primary);
+    stroke-width: 2;
+    vector-effect: non-scaling-stroke;
   }
 }
 
-.net-strip-zero {
+.overview-marker {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  transform: translate(-50%, -50%);
+  background: var(--primary);
+  z-index: 3;
+  pointer-events: none;
+}
+
+.overview-initials {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  margin-top: var(--space-xs);
+}
+
+.overview-initial {
+  @extend %mono-data;
+
+  font-weight: 500;
+  color: var(--on-surface-variant);
+  text-align: center;
+
+  &.current {
+    color: var(--on-surface);
+  }
+}
+
+@media (max-width: 768px) {
+  .overview-track {
+    height: 5.5rem;
+  }
+}
+
+.overview-zero {
   @extend %empty-state;
 
   margin: 0;
 }
 
+/* The shared empty-state pattern (same as Movements): dashed border on a flat
+   surface, centered muted ink. Inside the KPI card it insets by the card's
+   own 1rem gutter, since the card itself carries no padding. */
+.empty-state {
+  @extend %empty-state;
+}
+
 /* Caption and legend: the scope Period's Net figure — previously visible only
-   to screen readers — promoted to the visible card footer, and the strip's
-   above/below-midline convention stated once in the caps-label voice. Both sit
-   under the strip on their own lines, so no bar track gives up width. */
-.net-strip-caption {
+   to screen readers — promoted to the visible card footer, and the column
+   color grammar stated once in the caps-label voice. Both sit under the graph
+   on their own lines, so no track gives up width. */
+.overview-caption {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -242,21 +330,15 @@
   }
 }
 
-.net-strip-legend {
+.overview-legend {
   @extend %caps-label-muted;
 
   margin: 0;
 }
 
-/* The shared empty-state pattern (same as Movements): dashed border on a flat
-   surface, centered muted ink. Inside the KPI card it insets by the card's
-   own 1rem gutter, since the card itself carries no padding. */
-.empty-state {
-  @extend %empty-state;
-}
-
-/* Accessible equivalent: announces month + Net per Period. */
-.net-strip-figures {
+/* Accessible equivalent: announces Income, Expenses, Net — and Accumulated
+   through the Scope's Period — per Period. */
+.overview-figures {
   margin: 0;
   padding: 0;
   list-style: none;

@@ -35,7 +35,11 @@ import {
   periodEndBaseAmount,
   storedBaseAmount,
 } from '../../core/balances/period-end-balances';
-import { PeriodNet, netByPeriod } from '../../core/stats/year-nets';
+import {
+  PeriodOverview,
+  yearOverview,
+  accumulatedByPeriod,
+} from '../../core/stats/year-overview';
 
 @Component({
   selector: 'app-dashboard',
@@ -78,7 +82,8 @@ export class DashboardComponent implements OnInit {
   avgMonthlyIncome = signal(0);
   avgMonthlyExpenses = signal(0);
   avgMonthlyNet = signal(0);
-  yearNets = signal<PeriodNet[]>([]);
+  yearOverviewData = signal<PeriodOverview[]>([]);
+  accumulated = signal<number[]>([]);
 
   async ngOnInit(): Promise<void> {
     await this.loadAll();
@@ -166,11 +171,17 @@ export class DashboardComponent implements OnInit {
 
     if (nonBaseCurrencies.length === 0) {
       this.totalBalanceBaseCurrency.set(this.sumBalances(balances));
+      this.setAccumulated(
+        allTxns,
+        allTransfers,
+        isIncome,
+        new Map(this.accounts().map(a => [a.id!, a.initialBalance])),
+      );
       return;
     }
 
     if (!this.networkService.isOnline()) {
-      this.excludeForeignAccounts(balances, base);
+      this.excludeForeignAccounts(balances, base, allTxns, allTransfers, isIncome);
       return;
     }
 
@@ -180,25 +191,33 @@ export class DashboardComponent implements OnInit {
         b => b.account.currency !== base && !rates.rates.has(b.account.currency),
       );
       if (missingRate) {
-        this.excludeForeignAccounts(balances, base);
+        this.excludeForeignAccounts(balances, base, allTxns, allTransfers, isIncome);
         return;
       }
 
-      let total = 0;
+      const initialsInBase = new Map<number, number>();
       for (const b of balances) {
         const acc = b.account;
-        const initialInBase = acc.currency === base
-          ? acc.initialBalance
-          : Math.round(acc.initialBalance / rates.rates.get(acc.currency)! * 100) / 100;
+        initialsInBase.set(
+          acc.id!,
+          acc.currency === base
+            ? acc.initialBalance
+            : Math.round(acc.initialBalance / rates.rates.get(acc.currency)! * 100) / 100,
+        );
+      }
+      this.setAccumulated(allTxns, allTransfers, isIncome, initialsInBase);
+
+      let total = 0;
+      for (const b of balances) {
         total += periodEndBaseAmount(
-          { account: acc, transactions: allTxns, transfers: allTransfers, isIncome },
+          { account: b.account, transactions: allTxns, transfers: allTransfers, isIncome },
           scope,
-          initialInBase,
+          initialsInBase.get(b.account.id!)!,
         );
       }
       this.totalBalanceBaseCurrency.set(Math.round(total * 100) / 100);
     } catch {
-      this.excludeForeignAccounts(balances, base);
+      this.excludeForeignAccounts(balances, base, allTxns, allTransfers, isIncome);
     }
   }
 
@@ -207,9 +226,47 @@ export class DashboardComponent implements OnInit {
   private excludeForeignAccounts(
     balances: { account: Account; balance: number }[],
     base: string,
+    allTxns: Transaction[],
+    allTransfers: Transfer[],
+    isIncome: (transaction: Transaction) => boolean,
   ): void {
     this.conversionDegraded.update(d => ({ ...d, accountsExcluded: true }));
     this.totalBalanceBaseCurrency.set(this.sumBalances(balances, base));
+    /* Degraded Accumulated: Base Currency accounts only, at face amounts. */
+    this.setAccumulated(
+      allTxns,
+      allTransfers,
+      isIncome,
+      new Map(
+        this.accounts()
+          .filter(a => a.currency === base)
+          .map(a => [a.id!, a.initialBalance]),
+      ),
+      true,
+    );
+  }
+
+  /* Accumulated: the total-balance formula evaluated at every Period of the
+     scope's year, so the line's value at the Scope's Period equals the total
+     balance card. */
+  private setAccumulated(
+    allTxns: Transaction[],
+    allTransfers: Transfer[],
+    isIncome: (transaction: Transaction) => boolean,
+    initialInBase: Map<number, number>,
+    nativeAmounts = false,
+  ): void {
+    this.accumulated.set(
+      accumulatedByPeriod({
+        accounts: this.accounts(),
+        transactions: allTxns,
+        transfers: allTransfers,
+        isIncome,
+        year: this.scope().year,
+        initialInBase,
+        nativeAmounts,
+      }),
+    );
   }
 
   async onScopeYearChange(value: number): Promise<void> {
@@ -315,7 +372,7 @@ export class DashboardComponent implements OnInit {
     const yearTxns = allTxns.filter(t => String(getPeriodYear(t)) === selectedYear);
     const filteredTxns = yearTxns.filter(t => t.period <= scope.period);
 
-    this.yearNets.set(netByPeriod(allTxns, this.incomeClassifier(catMap), scope.year));
+    this.yearOverviewData.set(yearOverview(allTxns, this.incomeClassifier(catMap), scope.year));
     this.yearHasMovements.set(yearTxns.length > 0);
 
     const monthsWithData = new Set(filteredTxns.map(t => t.period));
@@ -354,19 +411,56 @@ export class DashboardComponent implements OnInit {
     this.avgMonthlyNet.set(Math.round((totalIncome - totalExpenses) / months * 100) / 100);
   }
 
-  /* Bars scale against the year's max Net magnitude; the fill reaches at most
-     half the track so positive Net can grow up and negative Net down from the
-     same baseline. */
-  periodFillHeight(net: number): number {
-    const max = Math.max(...this.yearNets().map(n => Math.abs(n.net)), 0);
-    if (max <= 0) return 0;
-    return Math.round((Math.abs(net) / max) * 50 * 100) / 100;
+  /* Columns share one scale: the year's largest figure among Income, Expenses
+     and |Net|; each fill reaches at most half the track so Income can grow up
+     and Expenses down from the same midline. */
+  barHeight(value: number): number {
+    const max = Math.max(
+      ...this.yearOverviewData().map(o => Math.max(o.income, o.expenses, Math.abs(o.net))),
+      0,
+    );
+    if (max <= 0 || value === 0) return 0;
+    return Math.round((Math.abs(value) / max) * 50 * 100) / 100;
   }
 
-  /* Net of the scope's Period: the one figure the strip hides behind its
-     relative bars, promoted to a visible caption on the card. */
+  /* The Accumulated line runs January through the Scope's Period on its own
+     scale (a running balance dwarfs the monthly columns), plotted as
+     percentages of the track area and centered on each month's column. */
+  linePoints(): { x: number; y: number }[] {
+    const values = this.accumulated().slice(0, this.scope().period);
+    if (values.length === 0) return [];
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    return values.map((value, index) => ({
+      x: ((index + 0.5) / 12) * 100,
+      y: max === min ? 50 : 90 - ((value - min) / (max - min)) * 80,
+    }));
+  }
+
+  linePointsString(): string {
+    return this.linePoints().map(p => `${p.x},${p.y}`).join(' ');
+  }
+
+  /* Net of the scope's Period: the one figure the graph hides behind its
+     relative columns, promoted to a visible caption on the card. */
   selectedPeriodNet(): number {
-    return this.yearNets().find(n => n.period === this.scope().period)?.net ?? 0;
+    return this.yearOverviewData().find(o => o.period === this.scope().period)?.net ?? 0;
+  }
+
+  /* The accessible figure list: Income, Expenses, and Net for all twelve
+     Periods; Accumulated joins in once the line has a value there. */
+  overviewFigures(item: PeriodOverview): string {
+    const parts = [
+      `${this.language.t('stats.income')} ${this.formatMoney(item.income)}`,
+      `${this.language.t('stats.expenses')} ${this.formatMoney(item.expenses)}`,
+      `${this.language.t('stats.net')} ${this.formatMoney(item.net)}`,
+    ];
+    if (item.period <= this.scope().period) {
+      parts.push(
+        `${this.language.t('stats.accumulated')} ${this.formatMoney(this.accumulated()[item.period - 1])}`,
+      );
+    }
+    return parts.join(', ');
   }
 
   formatMoney(amount: number): string {
