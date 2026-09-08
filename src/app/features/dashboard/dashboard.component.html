@@ -103,18 +103,6 @@
               </div>
             </div>
           }
-          @if (linePoints().length > 1) {
-            <svg class="overview-line" viewBox="0 0 100 100" preserveAspectRatio="none">
-              <polyline [attr.points]="linePointsString()" />
-            </svg>
-          }
-          @for (point of linePoints(); track $index) {
-            <span
-              class="overview-marker"
-              [style.left.%]="point.x"
-              [style.top.%]="point.y"
-            ></span>
-          }
         </div>
         <div class="overview-initials">
           @for (item of yearOverviewData(); track item.period) {
@@ -165,12 +153,40 @@
     }
   </section>
 
-  <section class="card">
+  <section class="card total-balance-card">
     <h2>{{ language.t('stats.totalBalance', { scope: scopeLabelText() }) }}</h2>
     <div class="stat">
       <span class="label">{{ language.t('stats.allAccounts', { currency: baseCurrency() }) }}</span>
       <span class="value">{{ formatMoney(totalBalanceBaseCurrency()) }}</span>
     </div>
+    @if (yearHasMovements()) {
+      <div class="balance-strip" aria-hidden="true">
+        <div class="balance-tracks">
+          @for (balance of accumulated(); track $index) {
+            <div class="balance-track" [class.current]="$index + 1 === scope().period">
+              @if (balance > 0) {
+                <div class="balance-fill up" [style.height.%]="balanceFillHeight(balance)"></div>
+              } @else if (balance < 0) {
+                <div class="balance-fill down" [style.height.%]="balanceFillHeight(balance)"></div>
+              }
+            </div>
+          }
+        </div>
+        <div class="balance-initials">
+          @for (balance of accumulated(); track $index) {
+            <span class="balance-initial" [class.current]="$index + 1 === scope().period">
+              {{ language.monthInitial($index + 1) }}
+            </span>
+          }
+        </div>
+      </div>
+      <p class="balance-legend">{{ language.t('stats.balanceStripLegend') }}</p>
+      <ul class="balance-figures visually-hidden">
+        @for (balance of accumulated(); track $index) {
+          <li>{{ language.monthName($index + 1) }} {{ scope().year }}: {{ formatMoney(balance) }}</li>
+        }
+      </ul>
+    }
   </section>
 
   <section class="card">

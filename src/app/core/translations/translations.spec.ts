@@ -314,7 +314,7 @@ describe('translations', () => {
       'stats.yearOverviewZero',
       'stats.overviewCaption',
       'stats.overviewLegend',
-      'stats.accumulated',
+      'stats.balanceStripLegend',
       'stats.kpiZero',
       'stats.categoryZero',
       'stats.noAccounts',

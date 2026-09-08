@@ -147,14 +147,99 @@
   }
 }
 
+/* Balance strip: the year progression inside the total balance card — the
+   old net-strip grammar applied to money held. Ink fills diverge around the
+   midline: up = balance, down = overdrawn (ink, not red — a sign is a fact
+   in a chart; the warning voice stays with the balance rows). Fills scale to
+   the year's max |balance|, capped at half the track. Months beyond the last
+   movement freeze at the last known balance, matching the card figure. */
+.balance-strip {
+  margin-top: var(--space-md);
+}
+
+.balance-tracks {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: var(--space-xs);
+}
+
+.balance-track {
+  position: relative;
+  height: 4.5rem;
+  background: var(--surface-container-high);
+  border: 1px solid var(--outline-variant);
+  overflow: hidden;
+
+  /* The midline the fills diverge from. */
+  &::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: var(--outline-variant);
+  }
+
+  &.current {
+    border: var(--border-hard-thick);
+    z-index: 1;
+  }
+}
+
+.balance-fill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  background: var(--on-surface);
+
+  &.up {
+    bottom: 50%;
+  }
+
+  &.down {
+    top: 50%;
+  }
+}
+
+.balance-initials {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: var(--space-xs);
+  margin-top: var(--space-xs);
+}
+
+.balance-initial {
+  @extend %mono-data;
+
+  font-weight: 500;
+  color: var(--on-surface-variant);
+  text-align: center;
+
+  &.current {
+    color: var(--on-surface);
+  }
+}
+
+.balance-legend {
+  @extend %caps-label-muted;
+
+  margin: var(--space-sm) 0 0;
+}
+
+/* Accessible equivalent: announces the balance per Period. */
+.balance-figures {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
 /* Year overview: the year-at-a-glance graph. Each Period carries three
-   diverging columns — Income grows up from the midline (green, money in),
-   Expenses grows down (red, money out), Net stays ink and grows toward its
-   sign (the Negative-Stays-Ink Rule: a minus is a fact, not an alarm). The
-   Accumulated line — money held at each Period end, the total-balance formula
-   evaluated monthly — rides on its own scale in primary blue: it is a
-   balance, not money moving, so green/red stay reserved for the columns and
-   blue carries the derived running figure. Pure CSS/SVG, no chart lib. */
+   columns rising from the midline — Income green, Expenses red, Net ink.
+   The midline is the zero line: only Net may cross it, growing down when a
+   month overspends (the Negative-Stays-Ink Rule: a minus is a fact, not an
+   alarm). Income and Expenses are magnitudes; they never dip below zero.
+   Pure CSS, no chart lib. */
 .year-overview {
   margin-bottom: var(--space-md);
 }
@@ -222,7 +307,7 @@
 
   .expense & {
     background: var(--error);
-    top: 50%;
+    bottom: 50%;
   }
 
   .net & {
@@ -236,32 +321,6 @@
       top: 50%;
     }
   }
-}
-
-.overview-line {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 2;
-  pointer-events: none;
-
-  polyline {
-    fill: none;
-    stroke: var(--primary);
-    stroke-width: 2;
-    vector-effect: non-scaling-stroke;
-  }
-}
-
-.overview-marker {
-  position: absolute;
-  width: 6px;
-  height: 6px;
-  transform: translate(-50%, -50%);
-  background: var(--primary);
-  z-index: 3;
-  pointer-events: none;
 }
 
 .overview-initials {
