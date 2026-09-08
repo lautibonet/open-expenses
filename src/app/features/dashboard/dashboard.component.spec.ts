@@ -298,9 +298,11 @@ describe('DashboardComponent', () => {
       expect(empty).toBeTruthy();
       expect(empty.textContent).toContain('February');
 
-      expect(fixture.nativeElement.querySelector('.net-strip')).toBeTruthy();
-      expect(fixture.nativeElement.querySelector('.net-strip-zero')).toBeNull();
-      expect(component.yearNets().find(n => n.period === getCurrentPeriod())!.net).toBe(3000);
+      expect(fixture.nativeElement.querySelector('.year-overview .overview-tracks')).toBeTruthy();
+      expect(fixture.nativeElement.querySelector('.overview-zero')).toBeNull();
+      expect(
+        component.yearOverviewData().find(o => o.period === getCurrentPeriod())!.net,
+      ).toBe(3000);
     });
   });
 
@@ -719,7 +721,7 @@ describe('DashboardComponent - shared scope', () => {
     const expectedLabel = `${MONTH_NAMES[getCurrentPeriod() - 1]} ${getCurrentYear()}`;
     const monthHeadings = Array.from(
       fixture.nativeElement.querySelectorAll(
-        'section.card:not(.net-strip-card) h2',
+        'section.card:not(.year-overview-card) h2',
       ) as NodeListOf<HTMLElement>,
     );
     expect(monthHeadings.length).toBeGreaterThan(0);
@@ -727,9 +729,9 @@ describe('DashboardComponent - shared scope', () => {
       expect(h.textContent).toContain(expectedLabel);
     }
 
-    // The year spine covers the whole scope year, so its heading states the
-    // year scope instead of the month scope.
-    const stripHeading = fixture.nativeElement.querySelector('.net-strip-card h2');
+    // The year overview covers the whole scope year, so its heading states
+    // the year scope instead of the month scope.
+    const stripHeading = fixture.nativeElement.querySelector('.year-overview-card h2');
     expect(stripHeading.textContent).toContain(String(getCurrentYear()));
   });
 
@@ -1260,7 +1262,7 @@ describe('DashboardComponent - KPI row layout and mono weights', () => {
       '.kpi-line.kpi-savings .savings-rate',
       '.stat .value',
       '.category-bar-row .cat-amount',
-      '.net-strip-caption .value',
+      '.overview-caption .value',
       '.balance-tile',
       '.balance-amount',
     ] as const;
@@ -1273,7 +1275,7 @@ describe('DashboardComponent - KPI row layout and mono weights', () => {
   });
 });
 
-describe('DashboardComponent - year spine (12-month Net strip)', () => {
+describe('DashboardComponent - year overview (12-month graph)', () => {
   let fixture: ComponentFixture<DashboardComponent>;
   let component: DashboardComponent;
   let accountService: AccountService;
@@ -1314,16 +1316,19 @@ describe('DashboardComponent - year spine (12-month Net strip)', () => {
     );
   }
 
+  function tracks(): NodeListOf<HTMLElement> {
+    return fixture.nativeElement.querySelectorAll('.overview-track');
+  }
+
   it('renders one track for each of the 12 Periods of the scope year', async () => {
     await seedMovement(getCurrentPeriod());
     await component.ngOnInit();
     fixture.detectChanges();
 
-    const months = fixture.nativeElement.querySelectorAll('.net-strip .net-strip-month');
-    expect(months.length).toBe(12);
+    expect(tracks().length).toBe(12);
   });
 
-  it('scales both fills against the year max magnitude, positive up and negative down', async () => {
+  it('renders three diverging columns per Period: income up, expenses down, net by sign', async () => {
     const acc = await accountService.create('Cash', 'EUR', 0);
     const incomeCat = await categoryService.create('Payroll', 'income');
     const expenseCat = await categoryService.create('Food', 'expense');
@@ -1331,22 +1336,47 @@ describe('DashboardComponent - year spine (12-month Net strip)', () => {
 
     await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(`${year}-01-15`), 1, null, null, year);
     await transactionService.create(acc.id!, expenseCat.id!, 1500, new Date(`${year}-02-15`), 2, null, null, year);
+    await transactionService.create(acc.id!, incomeCat.id!, 1000, new Date(`${year}-03-15`), 3, null, null, year);
+    await transactionService.create(acc.id!, expenseCat.id!, 3000, new Date(`${year}-03-15`), 3, null, null, year);
 
     await component.ngOnInit();
     fixture.detectChanges();
 
-    const january = fixture.nativeElement.querySelector('.net-strip-month:nth-child(1)');
-    const janFill = january.querySelector('.net-fill.up');
-    expect(janFill).toBeTruthy();
-    expect(janFill.style.height).toBe('50%');
+    const [january, february, march] = Array.from(tracks());
 
-    const february = fixture.nativeElement.querySelector('.net-strip-month:nth-child(2)');
-    const febFill = february.querySelector('.net-fill.down');
-    expect(febFill).toBeTruthy();
-    expect(febFill.style.height).toBe('25%');
+    expect(january.querySelector('.income .cell-fill')).toBeTruthy();
+    expect(january.querySelector('.expense .cell-fill')).toBeNull();
+    expect(january.querySelector('.net .cell-fill.up')).toBeTruthy();
+
+    expect(february.querySelector('.expense .cell-fill')).toBeTruthy();
+    expect(february.querySelector('.net .cell-fill.down')).toBeTruthy();
+
+    expect(march.querySelector('.net .cell-fill.down')).toBeTruthy();
   });
 
-  it('leaves zero-Net Periods visible as empty tracks', async () => {
+  it('scales all columns against the year max figure, at most half the track each way', async () => {
+    const acc = await accountService.create('Cash', 'EUR', 0);
+    const incomeCat = await categoryService.create('Payroll', 'income');
+    const expenseCat = await categoryService.create('Food', 'expense');
+    const year = getCurrentYear();
+
+    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(`${year}-01-15`), 1, null, null, year);
+    await transactionService.create(acc.id!, expenseCat.id!, 1500, new Date(`${year}-02-15`), 2, null, null, year);
+    await transactionService.create(acc.id!, incomeCat.id!, 1000, new Date(`${year}-03-15`), 3, null, null, year);
+    await transactionService.create(acc.id!, expenseCat.id!, 3000, new Date(`${year}-03-15`), 3, null, null, year);
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const [january, february, march] = Array.from(tracks());
+
+    // Year max figure is 3000: it reaches the full half-track (50%).
+    expect((january.querySelector('.income .cell-fill') as HTMLElement).style.height).toBe('50%');
+    expect((february.querySelector('.expense .cell-fill') as HTMLElement).style.height).toBe('25%');
+    expect((march.querySelector('.net .cell-fill.down') as HTMLElement).style.height).toBe('33.33%');
+  });
+
+  it('leaves zero-figure Periods visible as empty tracks', async () => {
     const acc = await accountService.create('Cash', 'EUR', 0);
     const incomeCat = await categoryService.create('Payroll', 'income');
     const year = getCurrentYear();
@@ -1356,31 +1386,29 @@ describe('DashboardComponent - year spine (12-month Net strip)', () => {
     await component.ngOnInit();
     fixture.detectChanges();
 
-    const emptyTrack = fixture.nativeElement.querySelector(
-      '.net-strip-month:nth-child(7) .net-track',
-    );
+    const emptyTrack = tracks()[6];
     expect(emptyTrack).toBeTruthy();
-    expect(emptyTrack.querySelector('.net-fill')).toBeNull();
+    expect(emptyTrack.querySelector('.cell-fill')).toBeNull();
   });
 
-  it('keeps negative Periods in ink — the strip never reaches for the error ramp', async () => {
+  it('colors the columns by direction and keeps Net ink at every sign', async () => {
     await seedMovement(getCurrentPeriod());
     await component.ngOnInit();
     fixture.detectChanges();
 
     const css = compiledComponentCss();
-    expect(css).toMatch(/\.net-fill[^{]*\{[^}]*background:\s*var\(--on-surface\)/);
-
-    const stripRules = css.match(/\.net-strip[^{]*\{[^}]*\}/g)?.join('\n') ?? '';
-    expect(stripRules).not.toContain('--error');
+    expect(css).toMatch(/\.income[^{]*\.cell-fill[^{]*\{[^}]*background:\s*var\(--income\)/);
+    expect(css).toMatch(/\.expense[^{]*\.cell-fill[^{]*\{[^}]*background:\s*var\(--error\)/);
+    expect(css).toMatch(/\.net[^{]*\.cell-fill[^{]*\{[^}]*background:\s*var\(--on-surface\)/);
+    expect(css).toMatch(/\.overview-line[^{]*polyline[^{]*\{[^}]*stroke:\s*var\(--primary\)/);
   });
 
-  it('heads the year spine with the year scope, not the month scope', async () => {
+  it('heads the year overview with the year scope, not the month scope', async () => {
     await seedMovement(getCurrentPeriod());
     await component.ngOnInit();
     fixture.detectChanges();
 
-    const heading = fixture.nativeElement.querySelector('.net-strip-card h2');
+    const heading = fixture.nativeElement.querySelector('.year-overview-card h2');
     expect(heading.textContent).toContain(String(getCurrentYear()));
     expect(heading.textContent).not.toContain(MONTH_NAMES[getCurrentPeriod() - 1]);
   });
@@ -1391,30 +1419,99 @@ describe('DashboardComponent - year spine (12-month Net strip)', () => {
     fixture.detectChanges();
 
     const currentPeriod = getCurrentPeriod();
-    const current = fixture.nativeElement.querySelector(
-      `.net-strip .net-strip-month:nth-child(${currentPeriod})`,
-    );
-    expect(current.classList).toContain('current');
-
-    const others = fixture.nativeElement.querySelectorAll(
-      '.net-strip .net-strip-month:not(:nth-child(' + currentPeriod + '))',
-    );
-    for (const other of others) {
-      expect(other.classList).not.toContain('current');
+    const all = Array.from(tracks());
+    expect(all[currentPeriod - 1].classList).toContain('current');
+    for (const [index, other] of all.entries()) {
+      if (index !== currentPeriod - 1) {
+        expect(other.classList).not.toContain('current');
+      }
     }
   });
 
-  it('shows the strip zero state, not an empty block, when the scope year has no movements', async () => {
+  it('shows the zero state, not an empty block, when the scope year has no movements', async () => {
     await component.ngOnInit();
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('.net-strip')).toBeNull();
-    const zero = fixture.nativeElement.querySelector('.net-strip-zero');
+    expect(fixture.nativeElement.querySelector('.overview-tracks')).toBeNull();
+    const zero = fixture.nativeElement.querySelector('.overview-zero');
     expect(zero).toBeTruthy();
     expect(zero.textContent).toContain(String(getCurrentYear()));
   });
 
-  it('announces month + Net per Period in an accessible equivalent', async () => {
+  it('draws the Accumulated line through the Scope Period and no further', async () => {
+    const acc = await accountService.create('Cash', 'EUR', 0);
+    const incomeCat = await categoryService.create('Payroll', 'income');
+    const expenseCat = await categoryService.create('Food', 'expense');
+    const year = getCurrentYear();
+
+    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(`${year}-01-15`), 1, null, null, year);
+    await transactionService.create(acc.id!, expenseCat.id!, 500, new Date(`${year}-02-15`), 2, null, null, year);
+
+    await component.ngOnInit();
+    await component.onScopeMonthChange(2);
+    fixture.detectChanges();
+
+    const points = component.linePoints();
+    expect(points.length).toBe(2);
+
+    const polyline = fixture.nativeElement.querySelector('.overview-line polyline');
+    expect(polyline).toBeTruthy();
+    expect((polyline as SVGElement).getAttribute('points')!.trim().split(/\s+/).length).toBe(2);
+
+    const markers = fixture.nativeElement.querySelectorAll('.overview-marker');
+    expect(markers.length).toBe(2);
+  });
+
+  it('ends the Accumulated line at the total balance figure', async () => {
+    const acc = await accountService.create('Cash', 'EUR', 1000);
+    const incomeCat = await categoryService.create('Payroll', 'income');
+    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(), getCurrentPeriod());
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    expect(component.accumulated()[getCurrentPeriod() - 1]).toBe(
+      component.totalBalanceBaseCurrency(),
+    );
+  });
+
+  it('scales the line on its own range, independent of the columns', async () => {
+    const acc = await accountService.create('Cash', 'EUR', 1000000);
+    const incomeCat = await categoryService.create('Payroll', 'income');
+    const expenseCat = await categoryService.create('Food', 'expense');
+    const year = getCurrentYear();
+
+    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(`${year}-01-15`), 1, null, null, year);
+    await transactionService.create(acc.id!, expenseCat.id!, 1500, new Date(`${year}-02-15`), 2, null, null, year);
+
+    await component.ngOnInit();
+    await component.onScopeMonthChange(2);
+    fixture.detectChanges();
+
+    // The line spans its own min/max over Jan–Feb, untouched by the
+    // million-strong balance; the columns keep their bar-scale heights.
+    const points = component.linePoints();
+    expect(points[0].y).toBe(10);
+    expect(points[1].y).toBe(90);
+    expect((tracks()[0].querySelector('.income .cell-fill') as HTMLElement).style.height).toBe('50%');
+    expect((tracks()[1].querySelector('.expense .cell-fill') as HTMLElement).style.height).toBe('25%');
+  });
+
+  it('degrades the line to base-currency accounts when offline, still matching the card', async () => {
+    await accountService.create('Cash', 'EUR', 100000);
+    await accountService.create('USD Account', 'USD', 50000);
+    TestBed.inject(NetworkService).isOnline.set(false);
+
+    await component.ngOnInit();
+
+    expect(component.conversionDegraded().accountsExcluded).toBe(true);
+    expect(component.accumulated()[getCurrentPeriod() - 1]).toBe(
+      component.totalBalanceBaseCurrency(),
+    );
+    expect(component.accumulated()[getCurrentPeriod() - 1]).toBe(100000);
+  });
+
+  it('announces Income, Expenses and Net per Period in an accessible equivalent', async () => {
     const acc = await accountService.create('Cash', 'EUR', 0);
     const incomeCat = await categoryService.create('Payroll', 'income');
     const expenseCat = await categoryService.create('Food', 'expense');
@@ -1426,7 +1523,7 @@ describe('DashboardComponent - year spine (12-month Net strip)', () => {
     await component.ngOnInit();
     fixture.detectChanges();
 
-    const list = fixture.nativeElement.querySelector('.net-strip-figures');
+    const list = fixture.nativeElement.querySelector('.overview-figures');
     expect(list).toBeTruthy();
     expect(list.classList).toContain('visually-hidden');
 
@@ -1436,6 +1533,8 @@ describe('DashboardComponent - year spine (12-month Net strip)', () => {
     expect(items[0].textContent).toContain(component.formatMoney(3000));
     expect(items[1].textContent).toContain('February');
     expect(items[1].textContent).toContain(component.formatMoney(-500));
+    expect(items[0].textContent).toContain('Accumulated');
+    expect(items[11].textContent).not.toContain('Accumulated');
   });
 
   it('shows the scope Period\'s Net figure as a visible mono caption on the card', async () => {
@@ -1443,13 +1542,15 @@ describe('DashboardComponent - year spine (12-month Net strip)', () => {
     await component.ngOnInit();
     fixture.detectChanges();
 
-    const caption = fixture.nativeElement.querySelector('.net-strip-caption');
+    const caption = fixture.nativeElement.querySelector('.overview-caption');
     expect(caption).toBeTruthy();
 
     const value = caption.querySelector('.value');
     expect(value).toBeTruthy();
     expect(value.textContent).toContain(
-      component.formatMoney(component.yearNets().find(n => n.period === getCurrentPeriod())!.net),
+      component.formatMoney(
+        component.yearOverviewData().find(o => o.period === getCurrentPeriod())!.net,
+      ),
     );
 
     const label = caption.querySelector('.label');
@@ -1463,32 +1564,32 @@ describe('DashboardComponent - year spine (12-month Net strip)', () => {
     fixture.detectChanges();
 
     const css = compiledComponentCss();
-    expect(css).toMatch(/\.net-strip-caption[^{]*\.value[^{]*\{[^}]*font-family:\s*var\(--font-data\)/);
-    expect(css).toMatch(/\.net-strip-caption[^{]*\.value[^{]*\{[^}]*font-variant-numeric:\s*tabular-nums/);
+    expect(css).toMatch(/\.overview-caption[^{]*\.value[^{]*\{[^}]*font-family:\s*var\(--font-data\)/);
+    expect(css).toMatch(/\.overview-caption[^{]*\.value[^{]*\{[^}]*font-variant-numeric:\s*tabular-nums/);
   });
 
-  it('explains the above/below-midline convention with a one-line caps legend', async () => {
+  it('explains the color grammar with a one-line caps legend', async () => {
     await seedMovement(getCurrentPeriod());
     await component.ngOnInit();
     fixture.detectChanges();
 
-    const legend = fixture.nativeElement.querySelector('.net-strip-legend');
+    const legend = fixture.nativeElement.querySelector('.overview-legend');
     expect(legend).toBeTruthy();
 
     const css = compiledComponentCss();
-    expect(css).toMatch(/\.net-strip-legend[^{]*\{[^}]*text-transform:\s*uppercase/);
+    expect(css).toMatch(/\.overview-legend[^{]*\{[^}]*text-transform:\s*uppercase/);
   });
 
-  it('keeps the decorative bars aria-hidden and the screen-reader figure list beside the caption', async () => {
+  it('keeps the decorative graph aria-hidden and the screen-reader figure list beside the caption', async () => {
     await seedMovement(getCurrentPeriod());
     await component.ngOnInit();
     fixture.detectChanges();
 
-    const strip = fixture.nativeElement.querySelector('.net-strip');
-    expect(strip).toBeTruthy();
-    expect(strip.getAttribute('aria-hidden')).toBe('true');
+    const graph = fixture.nativeElement.querySelector('.year-overview');
+    expect(graph).toBeTruthy();
+    expect(graph.getAttribute('aria-hidden')).toBe('true');
 
-    const list = fixture.nativeElement.querySelector('.net-strip-figures');
+    const list = fixture.nativeElement.querySelector('.overview-figures');
     expect(list).toBeTruthy();
     expect(list.classList).toContain('visually-hidden');
     expect(list.querySelectorAll('li').length).toBe(12);
@@ -1507,27 +1608,27 @@ describe('DashboardComponent - year spine (12-month Net strip)', () => {
     await component.onScopeMonthChange(1);
     fixture.detectChanges();
 
-    let value = fixture.nativeElement.querySelector('.net-strip-caption .value');
+    let value = fixture.nativeElement.querySelector('.overview-caption .value');
     expect(value.textContent).toContain(component.formatMoney(3000));
-    expect(fixture.nativeElement.querySelector('.net-strip-caption .label').textContent)
+    expect(fixture.nativeElement.querySelector('.overview-caption .label').textContent)
       .toContain(languageService.monthName(1));
 
     await component.onScopeMonthChange(2);
     fixture.detectChanges();
 
-    value = fixture.nativeElement.querySelector('.net-strip-caption .value');
+    value = fixture.nativeElement.querySelector('.overview-caption .value');
     expect(value.textContent).toContain(component.formatMoney(-500));
-    expect(fixture.nativeElement.querySelector('.net-strip-caption .label').textContent)
+    expect(fixture.nativeElement.querySelector('.overview-caption .label').textContent)
       .toContain(languageService.monthName(2));
   });
 
-  it('shows no caption or legend in the strip zero state', async () => {
+  it('shows no caption or legend in the zero state', async () => {
     await component.ngOnInit();
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('.net-strip')).toBeNull();
-    expect(fixture.nativeElement.querySelector('.net-strip-caption')).toBeNull();
-    expect(fixture.nativeElement.querySelector('.net-strip-legend')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.overview-tracks')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.overview-caption')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.overview-legend')).toBeNull();
   });
 
   it('takes month initials from the Language service, correct in both Languages', async () => {
@@ -1535,18 +1636,17 @@ describe('DashboardComponent - year spine (12-month Net strip)', () => {
     await component.ngOnInit();
     fixture.detectChanges();
 
-    let initials = Array.from(
-      fixture.nativeElement.querySelectorAll('.net-strip .net-initial') as NodeListOf<HTMLElement>,
-    ).map(el => el.textContent?.trim());
-    expect(initials).toEqual(['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D']);
+    const readInitials = () =>
+      Array.from(
+        fixture.nativeElement.querySelectorAll('.overview-initial') as NodeListOf<HTMLElement>,
+      ).map(el => el.textContent?.trim());
+
+    expect(readInitials()).toEqual(['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D']);
 
     await languageService.setLanguage('es');
     fixture.detectChanges();
 
-    initials = Array.from(
-      fixture.nativeElement.querySelectorAll('.net-strip .net-initial') as NodeListOf<HTMLElement>,
-    ).map(el => el.textContent?.trim());
-    expect(initials).toEqual(['E', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D']);
+    expect(readInitials()).toEqual(['E', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D']);
   });
 
   it('follows the scope year when the Scope changes', async () => {
@@ -1561,8 +1661,8 @@ describe('DashboardComponent - year spine (12-month Net strip)', () => {
     await component.onScopeYearChange(2012);
     await component.onScopeMonthChange(3);
 
-    expect(component.yearNets().find(n => n.period === 3)!.net).toBe(4000);
-    expect(component.yearNets().find(n => n.period === 1)!.net).toBe(0);
+    expect(component.yearOverviewData().find(o => o.period === 3)!.net).toBe(4000);
+    expect(component.yearOverviewData().find(o => o.period === 1)!.net).toBe(0);
   });
 });
 
