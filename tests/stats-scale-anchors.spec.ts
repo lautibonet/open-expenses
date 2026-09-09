@@ -88,6 +88,12 @@ for (const viewport of [
           balanceScale: row('.balance-scale .scale-line'),
           overviewGap: gap('.year-overview', '.overview-caption'),
           balanceGap: gap('.balance-strip', '.balance-caption'),
+          overviewCaptionGap: gap('.overview-caption', '.overview-scale .scale-line'),
+          overviewLegendGap: gap(
+            '.overview-scale .scale-line:nth-child(2)',
+            '.overview-legend',
+          ),
+          balanceLegendGap: gap('.balance-scale .scale-line', '.balance-legend'),
         };
       });
       for (const [caption, scale] of [
@@ -101,6 +107,14 @@ for (const viewport of [
       }
       expect(Math.abs(geo.overviewGap - geo.balanceGap), 'one shared graph-to-caption gap')
         .toBeLessThanOrEqual(2);
+      // Every footer gap is the same small step: caption→scale, scale→scale,
+      // and scale→legend on both cards.
+      for (const footerGap of [geo.overviewCaptionGap, geo.overviewLegendGap, geo.balanceLegendGap]) {
+        expect(
+          Math.abs(footerGap - geo.balanceGap * 0.25),
+          `footer gap ${footerGap} must be a quarter of the graph gap`,
+        ).toBeLessThanOrEqual(2);
+      }
 
       await expectNoHorizontalOverflow(page);
     });

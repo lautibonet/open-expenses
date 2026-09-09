@@ -275,7 +275,9 @@
 .balance-legend {
   @extend %caps-label-muted;
 
-  margin: var(--space-sm) 0 0;
+  /* No margin of its own: the legend sits one shared small step below the
+     footer line above it, like every other footer gap. */
+  margin: 0;
 }
 
 /* Accessible equivalent: announces the balance per Period. */
