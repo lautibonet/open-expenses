@@ -164,7 +164,7 @@
   </section>
 
   <section class="card total-balance-card">
-    <h2>{{ language.t('stats.totalBalance', { scope: scopeLabelText() }) }}</h2>
+    <h2>{{ language.t('stats.totalBalance', { scope: scope().year }) }}</h2>
     <div class="stat">
       <span class="label">{{ language.t('stats.allAccounts', { currency: baseCurrency() }) }}</span>
       <span class="value">{{ formatMoney(totalBalanceBaseCurrency()) }}</span>

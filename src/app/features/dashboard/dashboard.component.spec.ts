@@ -721,7 +721,7 @@ describe('DashboardComponent - shared scope', () => {
     const expectedLabel = `${MONTH_NAMES[getCurrentPeriod() - 1]} ${getCurrentYear()}`;
     const monthHeadings = Array.from(
       fixture.nativeElement.querySelectorAll(
-        'section.card:not(.year-overview-card) h2',
+        'section.card:not(.year-overview-card):not(.total-balance-card) h2',
       ) as NodeListOf<HTMLElement>,
     );
     expect(monthHeadings.length).toBeGreaterThan(0);
@@ -733,6 +733,11 @@ describe('DashboardComponent - shared scope', () => {
     // the year scope instead of the month scope.
     const stripHeading = fixture.nativeElement.querySelector('.year-overview-card h2');
     expect(stripHeading.textContent).toContain(String(getCurrentYear()));
+
+    // The total balance card spans every month of the scope year (the balance
+    // strip), so its heading states the year scope too.
+    const balanceHeading = fixture.nativeElement.querySelector('.total-balance-card h2');
+    expect(balanceHeading.textContent).toContain(String(getCurrentYear()));
   });
 
   it('should render the page heading as an h1', async () => {
