@@ -384,11 +384,13 @@
   @extend %empty-state;
 }
 
-/* Caption and legend: the scope Period's Net figure — previously visible only
-   to screen readers — promoted to the visible card footer, and the column
-   color grammar stated once in the caps-label voice. Both sit under the graph
-   on their own lines, so no track gives up width. */
-.overview-caption {
+/* Caption and legend: the scope Period's figure — previously visible only to
+   screen readers — promoted to the visible card footer, and the color grammar
+   stated once in the caps-label voice. Both cards' footers pair: a caption
+   (caps label left, mono figure right), a scale anchor, then the legend.
+   The caption sits under the graph on its own line, so no track gives up
+   width. */
+%graph-caption {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -411,6 +413,40 @@
     color: var(--on-surface);
     white-space: nowrap;
   }
+}
+
+.overview-caption {
+  @extend %graph-caption;
+}
+
+.balance-caption {
+  @extend %graph-caption;
+}
+
+/* Scale anchor: the caps-voice line that gives the relative columns absolute
+   meaning — what the graph's extreme (and, on the overview, the zero line the
+   fills grow from) is worth. The figures read in the mono data voice, the
+   labels in the shared caps voice, on their own line under the caption. */
+%scale-anchor {
+  @extend %caps-label-muted;
+
+  margin: 0 0 var(--space-xs);
+
+  .value {
+    @extend %mono-data;
+
+    font-weight: 500;
+    color: var(--on-surface);
+    white-space: nowrap;
+  }
+}
+
+.overview-scale {
+  @extend %scale-anchor;
+}
+
+.balance-scale {
+  @extend %scale-anchor;
 }
 
 .overview-legend {

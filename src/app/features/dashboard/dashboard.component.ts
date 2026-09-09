@@ -490,6 +490,31 @@ export class DashboardComponent implements OnInit {
     return this.yearOverviewData().find(o => o.period === this.scope().period)?.net ?? 0;
   }
 
+  /* Scale anchor: the figure the overview's tallest column is worth — the
+     year's largest magnitude (Income and Expenses magnitudes always dominate
+     any negative Net), stated so the relative heights get absolute meaning.
+     The zero line it grows from is worth 0. */
+  overviewScalePeak(): number {
+    return this.yearOverviewExtremes().up;
+  }
+
+  /* Scale anchor: what the strip's track top is worth — the year's highest
+     balance — unless the year's max magnitude is an overdrawn balance, in
+     which case the anchor names that magnitude with its sign instead of
+     letting the deepest fill sit unanchored. */
+  stripScaleAnchor(): { label: string; amount: number } {
+    const { up, down } = this.balanceExtremes();
+    return down > up
+      ? { label: this.language.t('stats.stripScaleCap'), amount: -down }
+      : { label: this.language.t('stats.stripScaleTop'), amount: up };
+  }
+
+  /* The strip's Scope-Period column: the balance the caption promotes — the
+     figure that equals the total balance headline on the card. */
+  scopePeriodBalance(): number {
+    return this.accumulated()[this.scope().period - 1] ?? 0;
+  }
+
   /* Balance strip fills scale against the year's extremes around the
      data-driven zero line, so an overdrawn month grows down from it. */
   balanceFillHeight(balance: number): number {
