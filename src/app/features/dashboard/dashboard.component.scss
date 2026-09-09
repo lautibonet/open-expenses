@@ -292,6 +292,10 @@
 .balance-legend {
   @extend %caps-label-muted;
 
+  /* Caps labels are single-line at leading 1, but the legend wraps to two
+     lines at 375px — it carries the caption ramp's leading instead (#158). */
+  line-height: var(--leading-caption);
+
   margin: var(--space-sm) 0 0 0;
 }
 
@@ -468,6 +472,9 @@
 
 .overview-legend {
   @extend %caps-label-muted;
+
+  /* Wrapped to two lines at 375px: readable leading, not the caps 1.0. */
+  line-height: var(--leading-caption);
 
   margin: var(--space-sm) 0 0 0;
 }

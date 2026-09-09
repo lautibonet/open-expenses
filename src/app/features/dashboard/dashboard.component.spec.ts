@@ -1715,6 +1715,26 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     expect(css).toMatch(/\.balance-legend[^{]*\{[^}]*text-transform:\s*uppercase/);
   });
 
+  it('gives both legends readable leading for the wrapped two-line mobile render', async () => {
+    await seedMovement(getCurrentPeriod());
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    // Caps labels are single-line at leading 1, but the legends wrap to two
+    // lines at 375px — 1.0 leading fuses the rows into unreadable ink.
+    // They carry the caption ramp's leading instead (asserted so the value
+    // cannot silently drift to a tighter step).
+    const tokens = readFileSync('src/styles.scss', 'utf-8');
+    expect(tokens).toMatch(/--leading-caption:\s*1\.4/);
+
+    const css = compiledComponentCss();
+    for (const selector of ['overview-legend', 'balance-legend']) {
+      expect(css).toMatch(
+        new RegExp(`\\.${selector}[^{]*\\{[^}]*line-height:\\s*var\\(--leading-caption\\)`),
+      );
+    }
+  });
+
   it('keeps the balance strip matching the total balance figure at the Scope Period', async () => {
     const acc = await accountService.create('Cash', 'EUR', 1000);
     const incomeCat = await categoryService.create('Payroll', 'income');
