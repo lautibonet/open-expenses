@@ -12,7 +12,7 @@ import { DataVersionService } from '../../core/services/data-version.service';
 import {
   MONTH_NUMBERS,
   MonthNumber,
-  PeriodScope,
+  MonthScope,
   defaultScope,
   getCurrentPeriod,
   getPeriodYear,
@@ -66,7 +66,7 @@ export class DashboardComponent implements OnInit {
   private dataVersion = inject(DataVersionService);
   language = inject(LanguageService);
 
-  scope = signal<PeriodScope>(defaultScope());
+  scope = signal<MonthScope>(defaultScope());
   scopeYears = signal<number[]>([]);
   scopeMonths = signal<MonthNumber[]>([]);
   scopeAnnouncement = signal('');
@@ -291,7 +291,7 @@ export class DashboardComponent implements OnInit {
     await this.setScope({ ...current, period: period as MonthNumber });
   }
 
-  private async setScope(scope: PeriodScope): Promise<void> {
+  private async setScope(scope: MonthScope): Promise<void> {
     this.scope.set(scope);
     this.scopeAnnouncement.set(this.language.scopeLabel(scope));
     await Promise.all([this.refresh(), this.refreshAverages()]);
