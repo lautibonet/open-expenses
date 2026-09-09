@@ -1953,6 +1953,11 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     // no card carries its own spacing.
     expect(css).toMatch(/\.year-overview[^{]*\{[^}]*margin-bottom:\s*var\(--space-md\)/);
     expect(css).toMatch(/\.balance-strip[^{]*\{[^}]*margin-bottom:\s*var\(--space-md\)/);
+
+    // The legends carry no margin of their own: every footer gap is the one
+    // small step the preceding line hands down.
+    expect(css).toMatch(/\.overview-legend[^{]*\{[^}]*margin:\s*0/);
+    expect(css).toMatch(/\.balance-legend[^{]*\{[^}]*margin:\s*0/);
   });
 
   it('takes month initials from the Language service, correct in both Languages', async () => {
