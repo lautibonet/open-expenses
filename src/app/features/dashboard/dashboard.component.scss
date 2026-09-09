@@ -275,9 +275,7 @@
 .balance-legend {
   @extend %caps-label-muted;
 
-  /* No margin of its own: the legend sits one shared small step below the
-     footer line above it, like every other footer gap. */
-  margin: 0;
+  margin: var(--space-sm) 0 0 0;
 }
 
 /* Accessible equivalent: announces the balance per Period. */
@@ -454,7 +452,7 @@
 .overview-legend {
   @extend %caps-label-muted;
 
-  margin: 0;
+  margin: var(--space-sm) 0 0 0;
 }
 
 /* Accessible equivalent: announces Income, Expenses, Net — and Accumulated
