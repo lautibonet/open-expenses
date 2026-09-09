@@ -122,8 +122,8 @@
         {{ language.t('stats.overviewScalePeak') }}
         <span class="value">{{ formatMoney(overviewScalePeak()) }}</span>
         ·
-        {{ language.t('stats.overviewScaleZero') }}
-        <span class="value">{{ formatMoney(0) }}</span>
+        {{ language.t('stats.scaleOverdrawn') }}
+        <span class="value">{{ formatMoney(overviewScaleOverdrawn()) }}</span>
       </p>
       <p class="overview-legend">{{ language.t('stats.overviewLegend') }}</p>
       <ul class="overview-figures visually-hidden">

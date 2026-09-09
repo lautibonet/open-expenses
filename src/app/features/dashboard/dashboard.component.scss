@@ -424,9 +424,11 @@
 }
 
 /* Scale anchor: the caps-voice line that gives the relative columns absolute
-   meaning — what the graph's extreme (and, on the overview, the zero line the
-   fills grow from) is worth. The figures read in the mono data voice, the
-   labels in the shared caps voice, on their own line under the caption. */
+   meaning — what the graph's scale edges are worth (the overview names its
+   tallest column and its deepest overdrawn Net; the strip names its track
+   top, or the overdrawn cap when that is the year's max magnitude). The
+   figures read in the mono data voice, the labels in the shared caps voice,
+   on their own line under the caption. */
 %scale-anchor {
   @extend %caps-label-muted;
 
