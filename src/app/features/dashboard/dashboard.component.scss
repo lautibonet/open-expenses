@@ -207,6 +207,23 @@
   }
 }
 
+/* Mobile emphasis (#157): below 480px a track is roughly 22px wide and the
+   desktop ring (1px ink border + 1px inset outline) eats about 18% of it,
+   visually fusing with the ink fills — the emphasized month read as a blob,
+   or as an empty input when its fills were thin. The treatment that shipped:
+   emphasis stays on the track but the ring drops to a 2px ink border only —
+   the inset outline goes, so the fills stay visible inside the emphasized
+   month. The ring still closes over the shared seam: the shorthand re-opens
+   the collapsed left border in ink (and wins over `:first-child` by order).
+   Desktop keeps the full ring unchanged. */
+@media (max-width: 480px) {
+  .overview-track.current,
+  .balance-track.current {
+    border: 2px solid var(--on-surface);
+    outline: none;
+  }
+}
+
 .balance-strip {
   /* The year overview carries the same gap down to its caption; the strip
      hands its footer the identical spacing, so the two cards' footers pair. */
