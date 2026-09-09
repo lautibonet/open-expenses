@@ -9,10 +9,11 @@
       <span class="scope-label" aria-hidden="true">{{ language.t('scope.label') }}</span>
       <div class="scope-selects">
         <select
-          [ngModel]="scopePeriod()"
+          [ngModel]="scopeMonthSelectValue()"
           (ngModelChange)="onScopeMonthChange($event)"
           [attr.aria-label]="language.t('scope.monthAria')"
         >
+          <option [ngValue]="'all'">{{ language.t('scope.allOption') }}</option>
           @for (month of scopeMonths(); track month) {
             <option [ngValue]="month">{{ language.monthName(month) }}</option>
           }

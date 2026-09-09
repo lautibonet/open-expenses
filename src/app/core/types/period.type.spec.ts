@@ -188,6 +188,20 @@ describe('period.type - scope helpers', () => {
       expect(movementIsAtOrBeforePeriod({ period: 'Enero', year: 2026, date: '2026-01-05' }, scope)).toBe(false);
       expect(movementIsAtOrBeforePeriod({ period: 13, year: 2026, date: '2026-01-05' }, scope)).toBe(false);
     });
+
+    describe('with a year scope', () => {
+      const yearScope = { kind: 'year', year: 2026 } as const;
+
+      it('should include every movement of the scope year', () => {
+        expect(movementIsAtOrBeforePeriod({ period: 1, year: 2026, date: '2026-01-05' }, yearScope)).toBe(true);
+        expect(movementIsAtOrBeforePeriod({ period: 12, year: 2026, date: '2026-12-05' }, yearScope)).toBe(true);
+      });
+
+      it('should include earlier years and exclude later years', () => {
+        expect(movementIsAtOrBeforePeriod({ period: 12, year: 2025, date: '2025-12-05' }, yearScope)).toBe(true);
+        expect(movementIsAtOrBeforePeriod({ period: 1, year: 2027, date: '2027-01-05' }, yearScope)).toBe(false);
+      });
+    });
   });
 
   describe('yearsFromData', () => {

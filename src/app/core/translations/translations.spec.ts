@@ -149,7 +149,7 @@ describe('translations', () => {
   });
 
   it('covers the scope keys', () => {
-    for (const key of ['scope.yearAria', 'scope.monthAria', 'scope.groupAria', 'scope.label']) {
+    for (const key of ['scope.yearAria', 'scope.monthAria', 'scope.allOption', 'scope.allYear', 'scope.groupAria', 'scope.label']) {
       expect(TRANSLATIONS.en[key]).toBeTruthy();
       expect(TRANSLATIONS.es[key]).toBeTruthy();
     }
