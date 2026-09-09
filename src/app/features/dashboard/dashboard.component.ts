@@ -490,12 +490,17 @@ export class DashboardComponent implements OnInit {
     return this.yearOverviewData().find(o => o.period === this.scope().period)?.net ?? 0;
   }
 
-  /* Scale anchor: the figure the overview's tallest column is worth — the
-     year's largest magnitude (Income and Expenses magnitudes always dominate
-     any negative Net), stated so the relative heights get absolute meaning.
-     The zero line it grows from is worth 0. */
+  /* Scale anchor: the figures the overview's scale edges are worth — the
+     tallest column above the line (the year's largest magnitude: Income and
+     Expenses magnitudes always dominate any negative Net) and the deepest
+     overdrawn Net below it, signed. Stated so the relative heights get
+     absolute meaning. */
   overviewScalePeak(): number {
     return this.yearOverviewExtremes().up;
+  }
+
+  overviewScaleOverdrawn(): number {
+    return -this.yearOverviewExtremes().down;
   }
 
   /* Scale anchor: what the strip's track top is worth — the year's highest
@@ -505,7 +510,7 @@ export class DashboardComponent implements OnInit {
   stripScaleAnchor(): { label: string; amount: number } {
     const { up, down } = this.balanceExtremes();
     return down > up
-      ? { label: this.language.t('stats.stripScaleCap'), amount: -down }
+      ? { label: this.language.t('stats.scaleOverdrawn'), amount: -down }
       : { label: this.language.t('stats.stripScaleTop'), amount: up };
   }
 

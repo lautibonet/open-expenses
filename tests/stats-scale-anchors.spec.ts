@@ -30,12 +30,14 @@ for (const viewport of [
 
       await page.goto('/stats');
 
-      // Overview anchor: tallest column figure + zero line worth 0.
+      // Overview anchor: tallest column figure; both transactions land in
+      // the current Period, so nothing dips below the line and the floor
+      // figure is 0.
       const overviewScale = page.locator('.overview-scale');
       await expect(overviewScale).toBeVisible();
       await expect(overviewScale).toContainText('Tallest column');
       await expect(overviewScale).toContainText('3,000.00');
-      await expect(overviewScale).toContainText('Zero line');
+      await expect(overviewScale).toContainText('Deepest overdrawn');
       await expect(overviewScale).toContainText('0.00');
 
       // Strip caption mirrors the overview caption's grammar.

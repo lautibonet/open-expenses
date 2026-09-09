@@ -1825,7 +1825,7 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     expect(fixture.nativeElement.querySelector('.overview-legend')).toBeNull();
   });
 
-  it('anchors the overview scale: the tallest column and the zero line are worth their figures', async () => {
+  it('anchors the overview scale: the tallest column and the deepest overdrawn figure are worth their figures', async () => {
     const acc = await accountService.create('Cash', 'EUR', 0);
     const incomeCat = await categoryService.create('Payroll', 'income');
     const expenseCat = await categoryService.create('Food', 'expense');
@@ -1837,18 +1837,29 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     await component.ngOnInit();
     fixture.detectChanges();
 
-    // Year extremes: up 3000 (the tallest column), zero line worth 0.
+    // Year extremes: up 3000 (the tallest column), down 500 (February's
+    // overdrawn net) — the anchor names both signed.
     const scale = fixture.nativeElement.querySelector('.overview-scale');
     expect(scale).toBeTruthy();
     expect(scale.textContent).toContain('Tallest column');
     expect(scale.textContent).toContain(component.formatMoney(3000));
-    expect(scale.textContent).toContain('Zero line');
-    expect(scale.textContent).toContain(component.formatMoney(0));
+    expect(scale.textContent).toContain('Deepest overdrawn');
+    expect(scale.textContent).toContain(component.formatMoney(-500));
 
     const css = compiledComponentCss();
     expect(css).toMatch(/\.overview-scale[^{]*\{[^}]*text-transform:\s*uppercase/);
     expect(css).toMatch(/\.overview-scale[^{]*\.value[^{]*\{[^}]*font-family:\s*var\(--font-data\)/);
     expect(css).toMatch(/\.overview-scale[^{]*\.value[^{]*\{[^}]*font-variant-numeric:\s*tabular-nums/);
+  });
+
+  it('anchors the overview scale floor at zero when no Period dips below the line', async () => {
+    await seedMovement(getCurrentPeriod());
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const scale = fixture.nativeElement.querySelector('.overview-scale');
+    expect(scale.textContent).toContain('Deepest overdrawn');
+    expect(scale.textContent).toContain(component.formatMoney(0));
   });
 
   it('anchors the strip scale at the track top when the positive peak is the year max magnitude', async () => {
