@@ -81,3 +81,46 @@ describe('Pages deploy pipeline contract', () => {
     expect(guards ?? []).toContain("if: ${{ env.CLOUDFLARE_API_TOKEN == ''");
   });
 });
+
+describe('strict asset 404 contract', () => {
+  // Loaded with a runtime import: the Function is a worker-runtime ES module
+  // outside the TypeScript compilation, and the contract is behavioral, not
+  // merely textual.
+  let onRequest: (context: { request: Request; env: unknown }) => Promise<Response>;
+
+  beforeAll(async () => {
+    // @ts-expect-error worker ES module outside the TS program
+    ({ onRequest } = await import('../functions/[[path]].js'));
+  });
+
+  const env = {
+    ASSETS: {
+      fetch: async (req: Request) =>
+        new Response('SPA index', { status: 200, headers: { 'content-type': 'text/html' } }),
+    },
+  };
+
+  it('falls back to the SPA index for route requests that miss an asset', async () => {
+    for (const path of ['/movements', '/stats', '/settings/erase', '/deep/route/path']) {
+      const res = await onRequest({ request: new Request(`https://openexpenses.app${path}`), env });
+      expect(res.status).toBe(200);
+      expect(res.headers.get('content-type')).toContain('text/html');
+    }
+  });
+
+  it('returns a real 404 for asset-shaped paths that miss the deployment', async () => {
+    for (const path of ['/main-OLDHASH.js', '/chunk-BKVAR53M.js', '/missing.css', '/media/ghost.png']) {
+      const res = await onRequest({ request: new Request(`https://openexpenses.app${path}`), env });
+      expect(res.status).toBe(404);
+      expect(res.headers.get('content-type')).toContain('text/plain');
+    }
+  });
+
+  it('never caches the 404, so a future deployment carrying the asset cannot be shadowed', async () => {
+    const res = await onRequest({
+      request: new Request('https://openexpenses.app/main-OLDHASH.js'),
+      env,
+    });
+    expect(res.headers.get('cache-control')).toContain('no-store');
+  });
+});
