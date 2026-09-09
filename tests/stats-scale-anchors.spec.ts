@@ -107,14 +107,20 @@ for (const viewport of [
       }
       expect(Math.abs(geo.overviewGap - geo.balanceGap), 'one shared graph-to-caption gap')
         .toBeLessThanOrEqual(2);
-      // Every footer gap is the same small step: caption→scale, scale→scale,
-      // and scale→legend on both cards.
-      for (const footerGap of [geo.overviewCaptionGap, geo.overviewLegendGap, geo.balanceLegendGap]) {
-        expect(
-          Math.abs(footerGap - geo.balanceGap * 0.25),
-          `footer gap ${footerGap} must be a quarter of the graph gap`,
-        ).toBeLessThanOrEqual(2);
-      }
+      // Footer rhythm: caption→scale rides the small step; the legends sit
+      // one bigger shared step below, alike on both cards.
+      expect(
+        Math.abs(geo.overviewCaptionGap - geo.balanceGap * 0.25),
+        `caption gap ${geo.overviewCaptionGap} must be a quarter of the graph gap`,
+      ).toBeLessThanOrEqual(2);
+      expect(
+        Math.abs(geo.overviewLegendGap - geo.balanceGap * 0.5),
+        `overview legend gap ${geo.overviewLegendGap} must be half the graph gap`,
+      ).toBeLessThanOrEqual(2);
+      expect(
+        Math.abs(geo.balanceLegendGap - geo.balanceGap * 0.5),
+        `balance legend gap ${geo.balanceLegendGap} must be half the graph gap`,
+      ).toBeLessThanOrEqual(2);
 
       await expectNoHorizontalOverflow(page);
     });

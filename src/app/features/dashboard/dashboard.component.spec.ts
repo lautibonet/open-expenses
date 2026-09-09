@@ -1954,10 +1954,10 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     expect(css).toMatch(/\.year-overview[^{]*\{[^}]*margin-bottom:\s*var\(--space-md\)/);
     expect(css).toMatch(/\.balance-strip[^{]*\{[^}]*margin-bottom:\s*var\(--space-md\)/);
 
-    // The legends carry no margin of their own: every footer gap is the one
-    // small step the preceding line hands down.
-    expect(css).toMatch(/\.overview-legend[^{]*\{[^}]*margin:\s*0/);
-    expect(css).toMatch(/\.balance-legend[^{]*\{[^}]*margin:\s*0/);
+    // The legends carry their own shared step below the footer lines — the
+    // same margin on both cards, so the footers still pair.
+    expect(css).toMatch(/\.overview-legend[^{]*\{[^}]*margin:\s*var\(--space-sm\)/);
+    expect(css).toMatch(/\.balance-legend[^{]*\{[^}]*margin:\s*var\(--space-sm\)/);
   });
 
   it('takes month initials from the Language service, correct in both Languages', async () => {
