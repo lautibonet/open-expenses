@@ -118,13 +118,16 @@
         </dt>
         <dd class="value">{{ formatMoney(selectedPeriodNet()) }}</dd>
       </dl>
-      <p class="overview-scale">
-        {{ language.t('stats.overviewScalePeak') }}
-        <span class="value">{{ formatMoney(overviewScalePeak()) }}</span>
-        ·
-        {{ language.t('stats.scaleOverdrawn') }}
-        <span class="value">{{ formatMoney(overviewScaleOverdrawn()) }}</span>
-      </p>
+      <div class="overview-scale">
+        <p class="scale-line">
+          <span class="label">{{ language.t('stats.overviewScalePeak') }}</span>
+          <span class="value">{{ formatMoney(overviewScalePeak()) }}</span>
+        </p>
+        <p class="scale-line">
+          <span class="label">{{ language.t('stats.scaleOverdrawn') }}</span>
+          <span class="value">{{ formatMoney(overviewScaleOverdrawn()) }}</span>
+        </p>
+      </div>
       <p class="overview-legend">{{ language.t('stats.overviewLegend') }}</p>
       <ul class="overview-figures visually-hidden">
         @for (item of yearOverviewData(); track item.period) {
@@ -198,10 +201,12 @@
         <dd class="value">{{ formatMoney(scopePeriodBalance()) }}</dd>
       </dl>
       @let scaleAnchor = stripScaleAnchor();
-      <p class="balance-scale">
-        {{ scaleAnchor.label }}
-        <span class="value">{{ formatMoney(scaleAnchor.amount) }}</span>
-      </p>
+      <div class="balance-scale">
+        <p class="scale-line">
+          <span class="label">{{ scaleAnchor.label }}</span>
+          <span class="value">{{ formatMoney(scaleAnchor.amount) }}</span>
+        </p>
+      </div>
       <p class="balance-legend">{{ language.t('stats.balanceStripLegend') }}</p>
       <ul class="balance-figures visually-hidden">
         @for (balance of accumulated(); track $index) {
