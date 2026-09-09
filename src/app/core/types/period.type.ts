@@ -60,7 +60,16 @@ export interface MonthScope {
   year: number;
 }
 
-export type PeriodScope = MonthScope;
+export interface YearScope {
+  kind: 'year';
+  year: number;
+}
+
+export type PeriodScope = MonthScope | YearScope;
+
+export function isYearScope(scope: PeriodScope): scope is YearScope {
+  return scope.kind === 'year';
+}
 
 export type ScopeAwareMovement = {
   period: number | string;
@@ -68,7 +77,7 @@ export type ScopeAwareMovement = {
   date: Date | string;
 };
 
-export function defaultScope(): PeriodScope {
+export function defaultScope(): MonthScope {
   return { kind: 'month', period: getCurrentPeriod(), year: getCurrentYear() };
 }
 
@@ -117,5 +126,8 @@ export function movementIsAtOrBeforePeriod(
     return false;
   }
   const year = getPeriodYear(movement);
+  if (scope.kind === 'year') {
+    return year <= scope.year;
+  }
   return year < scope.year || (year === scope.year && movement.period <= scope.period);
 }

@@ -1066,6 +1066,63 @@ describe('MovementsComponent - shared scope', () => {
     expect(component.movements().length).toBe(1);
   });
 
+  it('shows the whole selected year when the All option is chosen', async () => {
+    const year = getCurrentYear();
+    await transactionService.create(
+      accountId,
+      categoryId,
+      100,
+      new Date(`${year}-01-15`),
+      1,
+      null,
+      null,
+      year,
+    );
+    await transactionService.create(
+      accountId,
+      categoryId,
+      200,
+      new Date(`${year}-02-15`),
+      2,
+      null,
+      null,
+      year,
+    );
+    await component.ngOnInit();
+    await component.onScopeMonthChange(1);
+    expect(component.movements().length).toBe(1);
+
+    await component.onScopeMonthChange('all');
+    expect(component.scope()).toEqual({ kind: 'year', year });
+    expect(component.movements().length).toBe(2);
+  });
+
+  it('keeps the All scope when the year changes', async () => {
+    await component.ngOnInit();
+
+    await component.onScopeMonthChange('all');
+    await component.onScopeYearChange(getCurrentYear() - 1);
+
+    expect(component.scope()).toEqual({ kind: 'year', year: getCurrentYear() - 1 });
+  });
+
+  it('selects the All option in the month select while the year scope is active', async () => {
+    await component.ngOnInit();
+    expect(component.scopeMonthSelectValue()).toBe(getCurrentPeriod());
+
+    await component.onScopeMonthChange('all');
+
+    expect(component.scopeMonthSelectValue()).toBe('all');
+  });
+
+  it('announces the All scope with the year label', async () => {
+    await component.ngOnInit();
+
+    await component.onScopeMonthChange('all');
+
+    expect(component.scopeAnnouncement()).toBe(`All ${getCurrentYear()}`);
+  });
+
   it('should announce the scope to assistive tech on change', async () => {
     await component.ngOnInit();
     expect(component.scopeAnnouncement()).toBe('');
@@ -3348,6 +3405,24 @@ describe('MovementsComponent - scope URL state', () => {
     const url = TestBed.inject(Location).path(true);
     expect(url).toContain(`period=${getCurrentPeriod()}`);
     expect(url).toContain(`year=${lastYear}`);
+  });
+
+  it('restores the All scope from a period=all deep link', async () => {
+    TestBed.inject(Location).replaceState('/movements?period=all&year=2025');
+
+    await component.ngOnInit();
+
+    expect(component.scope()).toEqual({ kind: 'year', year: 2025 });
+  });
+
+  it('reflects the All scope in the URL as period=all', async () => {
+    await component.ngOnInit();
+
+    await component.onScopeMonthChange('all');
+
+    const url = TestBed.inject(Location).path(true);
+    expect(url).toContain('period=all');
+    expect(url).toContain(`year=${getCurrentYear()}`);
   });
 });
 

@@ -72,6 +72,9 @@ export class LanguageService {
   }
 
   scopeLabel(scope: PeriodScope): string {
+    if (scope.kind === 'year') {
+      return this.t('scope.allYear', { year: scope.year });
+    }
     return `${this.monthName(scope.period)} ${scope.year}`;
   }
 
