@@ -20,7 +20,16 @@ Every push to `main` builds the app and deploys it to Cloudflare Pages; every pu
 - Hashed assets (`*.js`, `*.css`, plus `/media/*` for future media assets) get `Cache-Control: public, max-age=31536000, immutable`.
 - `index.html`, `ngsw.json`, and the Angular service worker scripts keep the Pages defaults so the service worker's update check picks up redeploys immediately. The worker scripts explicitly reset `Cache-Control` with `! Cache-Control` so they never inherit the immutable rule.
 
-SPA fallback needs no configuration: the build output has no top-level `404.html`, so Pages serves `index.html` for unmatched routes and Angular's router takes over.
+## Fallback contract
+
+`functions/[[path]].js` handles every request that does not match a static asset (static assets always win over Functions):
+
+- Route paths (`/movements`, `/settings/erase`, …) fall through to the SPA's `index.html`, so Angular's router keeps taking over deep links.
+- Asset-shaped paths (`*.js`, `*.css`, `*.png`, …) that the current deployment does not have get a real **404** with `cache-control: no-store`.
+
+The 404 is load-bearing. Without it, a missing hashed chunk would hit Pages' SPA fallback, which answers `index.html` with a 200 — and because `_headers` rules match by request path, that HTML body would be stamped `Cache-Control: immutable` by the `/*.js` rule and cached at the edge for a year. A stale service worker or a deploy-swap window can produce exactly those missing-chunk requests, and the poisoned edge entry then serves HTML as a module script to every fresh visitor on the affected hostname (strict MIME check → blank page). This happened in September 2026 on the apex domain; the fix that followed is this Function plus a Purge Everything. For the same reason, never re-add a broad SPA rewrite for asset paths.
+
+SPA fallback for routes needs no configuration: the build output has no top-level `404.html`, and the Function serves `index.html` for unmatched routes.
 
 This contract is enforced by `src/deploy.spec.ts`.
 
