@@ -1825,6 +1825,104 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     expect(fixture.nativeElement.querySelector('.overview-legend')).toBeNull();
   });
 
+  it('anchors the overview scale: the tallest column and the zero line are worth their figures', async () => {
+    const acc = await accountService.create('Cash', 'EUR', 0);
+    const incomeCat = await categoryService.create('Payroll', 'income');
+    const expenseCat = await categoryService.create('Food', 'expense');
+    const year = getCurrentYear();
+
+    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(`${year}-01-15`), 1, null, null, year);
+    await transactionService.create(acc.id!, expenseCat.id!, 500, new Date(`${year}-02-15`), 2, null, null, year);
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    // Year extremes: up 3000 (the tallest column), zero line worth 0.
+    const scale = fixture.nativeElement.querySelector('.overview-scale');
+    expect(scale).toBeTruthy();
+    expect(scale.textContent).toContain('Tallest column');
+    expect(scale.textContent).toContain(component.formatMoney(3000));
+    expect(scale.textContent).toContain('Zero line');
+    expect(scale.textContent).toContain(component.formatMoney(0));
+
+    const css = compiledComponentCss();
+    expect(css).toMatch(/\.overview-scale[^{]*\{[^}]*text-transform:\s*uppercase/);
+    expect(css).toMatch(/\.overview-scale[^{]*\.value[^{]*\{[^}]*font-family:\s*var\(--font-data\)/);
+    expect(css).toMatch(/\.overview-scale[^{]*\.value[^{]*\{[^}]*font-variant-numeric:\s*tabular-nums/);
+  });
+
+  it('anchors the strip scale at the track top when the positive peak is the year max magnitude', async () => {
+    await seedMovement(getCurrentPeriod());
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const scale = fixture.nativeElement.querySelector('.balance-scale');
+    expect(scale).toBeTruthy();
+    expect(scale.textContent).toContain('Track top');
+    expect(scale.textContent).toContain(component.formatMoney(3000));
+
+    const css = compiledComponentCss();
+    expect(css).toMatch(/\.balance-scale[^{]*\{[^}]*text-transform:\s*uppercase/);
+    expect(css).toMatch(/\.balance-scale[^{]*\.value[^{]*\{[^}]*font-family:\s*var\(--font-data\)/);
+  });
+
+  it('anchors the strip scale at the overdrawn cap, naming the max magnitude whatever its sign', async () => {
+    const acc = await accountService.create('Cash', 'EUR', 1000);
+    const expenseCat = await categoryService.create('Food', 'expense');
+    await transactionService.create(acc.id!, expenseCat.id!, 3000, new Date(), 2);
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    // January 1000, February -2000, tail frozen at -2000: the year's max
+    // magnitude is the overdrawn balance, so the anchor names it.
+    const scale = fixture.nativeElement.querySelector('.balance-scale');
+    expect(scale.textContent).toContain('Deepest overdrawn');
+    expect(scale.textContent).toContain(component.formatMoney(-2000));
+  });
+
+  it('mirrors the overview caption under the strip: the Scope Period\'s Balance', async () => {
+    const acc = await accountService.create('Cash', 'EUR', 0);
+    const incomeCat = await categoryService.create('Payroll', 'income');
+    const expenseCat = await categoryService.create('Food', 'expense');
+    const year = getCurrentYear();
+
+    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(`${year}-01-15`), 1, null, null, year);
+    await transactionService.create(acc.id!, expenseCat.id!, 500, new Date(`${year}-02-15`), 2, null, null, year);
+
+    await component.ngOnInit();
+    await component.onScopeMonthChange(2);
+    fixture.detectChanges();
+
+    const caption = fixture.nativeElement.querySelector('.balance-caption');
+    expect(caption).toBeTruthy();
+    expect(caption.querySelector('.label').textContent).toContain('February Balance');
+    expect(caption.querySelector('.value').textContent).toContain(component.formatMoney(2500));
+
+    await component.onScopeMonthChange(1);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.balance-caption .label').textContent)
+      .toContain('January Balance');
+    expect(fixture.nativeElement.querySelector('.balance-caption .value').textContent)
+      .toContain(component.formatMoney(3000));
+
+    // The mirrored caption pairs with the overview caption's grammar: caps
+    // label left, mono figure right.
+    const css = compiledComponentCss();
+    expect(css).toMatch(/\.balance-caption[^{]*\{[^}]*text-transform:\s*uppercase/);
+    expect(css).toMatch(/\.balance-caption[^{]*\.value[^{]*\{[^}]*font-family:\s*var\(--font-data\)/);
+    expect(css).toMatch(/\.balance-caption[^{]*\.value[^{]*\{[^}]*font-variant-numeric:\s*tabular-nums/);
+  });
+
+  it('shows no scale anchors or strip caption in the zero state', async () => {
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.overview-scale')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.balance-scale')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.balance-caption')).toBeNull();
+  });
+
   it('takes month initials from the Language service, correct in both Languages', async () => {
     await seedMovement(getCurrentPeriod());
     await component.ngOnInit();
