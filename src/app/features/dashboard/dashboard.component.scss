@@ -153,33 +153,25 @@
    in a chart; the warning voice stays with the balance rows). The line sits
    at the year's negative share of its extremes — bottom edge when every
    balance is positive, rising when one is overdrawn. The tracks share the
-   year overview's construction — contiguous, shared-border, one plot — so
-    both graphs read as one grammar; only the size differs, the strip staying
-    the quieter register. Months beyond the last movement freeze at the last
-    known balance, matching the card figure, but render hollow: they are not
-    recorded data. */
-/* The one track grammar both graph cards share: contiguous shared-border
-   tracks — a single plot, not a strip of tiles — with the zero line painted
-   inside each track at the data-driven --zero-pct datum, above the fills.
-   Height and inner layout stay per-graph; the construction does not. */
+   year overview's construction — twelve gap-separated columns, one plot —
+   so both graphs read as one grammar; only the size differs, the strip
+   staying the quieter register. Months beyond the last movement freeze at
+   the last known balance, matching the card figure, but render absent: they
+   are not recorded data. */
+/* The one track grammar both graph cards share: twelve equal columns set
+   apart by the shared gap — a single plot each, its month tiles separated
+   by daylight — with the zero line painted inside each track at the
+   data-driven --zero-pct datum, above the fills. Height and inner layout
+   stay per-graph; the construction does not. */
 %twelve-column-plot {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
-  /* Contiguous columns: track centers land on exact twelfths of the plot, so
-     fills and initials align without measuring gaps. */
-  gap: 0;
+  gap: var(--space-xs);
 }
 
 %graph-track {
   position: relative;
-  background: var(--surface-container-high);
-  border: 1px solid var(--outline-variant);
-  border-left: 0;
   overflow: hidden;
-
-  &:first-child {
-    border-left: 1px solid var(--outline-variant);
-  }
 
   /* The zero line the fills diverge from, positioned by the data-driven
      --zero-pct datum and painted above the fills — the line is the chart's
@@ -195,31 +187,25 @@
     z-index: 2;
   }
 
-  /* The scope Period's emphasis ring is drawn without layout: the 1px
-     borders recolor to ink and a 1px inset outline closes the ring. No
-     border width changes, so no neighbour seam doubles and the zero line
-     keeps its length at exactly the month the reader is looking at. */
+  /* The scope Period's emphasis ring is drawn without layout: a 1px ink
+     outline at the track's edge. No border widths change, so the fills keep
+     their full width and the zero line keeps its length at exactly the
+     month the reader is looking at. */
   &.current {
-    border-color: var(--on-surface);
     outline: 1px solid var(--on-surface);
-    outline-offset: -2px;
     z-index: 1;
   }
 }
 
-/* Mobile emphasis (#157): below 480px a track is roughly 22px wide and the
-   desktop ring (1px ink border + 1px inset outline) eats about 18% of it,
-   visually fusing with the ink fills — the emphasized month read as a blob,
-   or as an empty input when its fills were thin. The treatment that shipped:
-   emphasis stays on the track but the ring drops to a 2px ink border only —
-   the inset outline goes, so the fills stay visible inside the emphasized
-   month. The ring still closes over the shared seam: the shorthand re-opens
-   the collapsed left border in ink (and wins over `:first-child` by order).
-   Desktop keeps the full ring unchanged. */
+/* Mobile emphasis (#157): below 480px a track is roughly 22px wide — too
+   little room for a ring to close around without visually fusing with the
+   ink fills (the desktop outline read as a blob, or as an empty input when
+   its fills were thin). The treatment that shipped: the ring drops
+   entirely and emphasis moves to the month label, which reads bold ink
+   instead of the muted register. Desktop keeps the outline unchanged. */
 @media (max-width: 480px) {
   .overview-track.current,
   .balance-track.current {
-    border: 2px solid var(--on-surface);
     outline: none;
   }
 }
@@ -259,16 +245,12 @@
 }
 
 /* Frozen months: every Period after the last Movement carries the last known
-   balance, but no recorded data yet — so their fill renders hollow: the same
-   frozen shape drawn as a 1px ink outline on transparent (zero radius, no
-   invented tint), while months with real Accumulated data keep the solid ink
-   fill. The outline draws inside the fill's box (same technique as the
-   current ring), so the frozen shape keeps the solid fill's exact size. The
-   frozen value stays in the hidden figure list. */
+   balance, but no recorded data yet — so their fill renders absent: no ink
+   at all (transparent background, no outline), while months with real
+   Accumulated data keep the solid ink fill. The frozen value stays
+   readable — it lives in the hidden figure list. */
 .balance-track.frozen .balance-fill {
   background: transparent;
-  outline: 1px solid var(--on-surface);
-  outline-offset: -1px;
 }
 
 .balance-initials {
@@ -285,6 +267,7 @@
   text-align: center;
 
   &.current {
+    font-weight: bold;
     color: var(--on-surface);
   }
 }
@@ -385,6 +368,7 @@
   text-align: center;
 
   &.current {
+    font-weight: bold;
     color: var(--on-surface);
   }
 }
