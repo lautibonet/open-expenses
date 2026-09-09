@@ -1452,27 +1452,25 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     expect(css).toMatch(/\.cell-fill[^{]*\{[^}]*bottom:\s*var\(--zero-pct/);
   });
 
-  it('builds both graphs from the same contiguous shared-border track grammar', async () => {
+  it('builds both graphs from the same twelve-column track grammar', async () => {
     await seedMovement(getCurrentPeriod());
     await component.ngOnInit();
     fixture.detectChanges();
 
     const css = compiledComponentCss();
 
-    // One construction for both graphs: twelve equal columns, contiguous —
-    // a single plot each, not a strip of separated tiles.
+    // One construction for both graphs: twelve equal columns with the same
+    // shared gap — a single plot each, not a strip of ad-hoc tiles.
     for (const selector of ['overview-tracks', 'balance-tracks', 'overview-initials', 'balance-initials']) {
       const rule = css.match(new RegExp(`\\.${selector}[^{]*\\{([^}]*)\\}`))!;
       expect(rule[1]).toContain('repeat(12, minmax(0, 1fr))');
-      // A declared gap must be zero; separated tiles are the other grammar.
-      expect(rule[1]).not.toMatch(/gap:(?!\s*0)/);
+      expect(rule[1]).toContain('gap: var(--space-xs)');
     }
 
-    // Shared borders: every track drops its left border, the first keeps one,
-    // so adjacent tracks collapse to a single hairline.
-    expect(css).toMatch(/\.overview-track[^{]*\{[^}]*border-left:\s*0/);
-    expect(css).toMatch(/\.balance-track[^{]*\{[^}]*border-left:\s*0/);
-    expect(css).toMatch(/\.balance-track[^{]*:first-child\s*\{[^}]*border-left:\s*1px/);
+    // The tracks carry no borders: the month cells read as tiles separated
+    // by the gap, not as one bordered plot.
+    expect(css).not.toMatch(/\.overview-track[^{]*\{[^}]*border/);
+    expect(css).not.toMatch(/\.balance-track[^{]*\{[^}]*border/);
   });
 
   it('keeps the size hierarchy between the two graphs', async () => {
@@ -1485,7 +1483,7 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     expect(css).toMatch(/\.balance-track[^{]*\{[^}]*height:\s*4\.5rem/);
   });
 
-  it('draws the current-month ring as ink borders closed by an inset outline on both graphs', async () => {
+  it('draws the current-month ring as a layoutless ink outline on both graphs', async () => {
     await seedMovement(getCurrentPeriod());
     await component.ngOnInit();
     fixture.detectChanges();
@@ -1495,28 +1493,31 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
       // Sass hoists the placeholder's `&.current` to the front of the
       // compiled compound selector.
       const rule = css.match(new RegExp(`\\.current\\.${selector}[^{]*\\{([^}]*)\\}`))!;
-      expect(rule[1]).toContain('border-color: var(--on-surface)');
+      // The ring paints at the track's edge without layout: no borders, the
+      // outline at its default offset, so the fills keep their full width.
       expect(rule[1]).toContain('outline: 1px solid var(--on-surface)');
-      expect(rule[1]).toContain('outline-offset: -2px');
+      expect(rule[1]).not.toMatch(/outline-offset/);
+      expect(rule[1]).not.toMatch(/border/);
     }
   });
 
-  it('drops the ring to a 2px ink border below 480px so the emphasized month keeps its fills visible', async () => {
+  it('drops the ring below 480px so the emphasized month keeps its fills visible, and emphasizes the label instead', async () => {
     await seedMovement(getCurrentPeriod());
     await component.ngOnInit();
     fixture.detectChanges();
 
     const css = compiledComponentCss();
     for (const selector of ['overview-track', 'balance-track']) {
-      // The inset outline goes: on a ~22px track its second stroke fused
-      // with the ink fills. Emphasis stays on the track as a 2px ink
-      // border, closed over the shared seam by a re-opened left border.
-      expect(css).toMatch(
-        new RegExp(`@media \\(max-width: 480px\\)[\\s\\S]*?\\.${selector}\\.current[^{]*\\{[^}]*border:\\s*2px solid var\\(--on-surface\\)`),
-      );
+      // On a ~22px track the ring leaves nothing to close around: the
+      // outline goes and emphasis moves to the month label.
       expect(css).toMatch(
         new RegExp(`@media \\(max-width: 480px\\)[\\s\\S]*?\\.${selector}\\.current[^{]*\\{[^}]*outline:\\s*none`),
       );
+    }
+    // The label carries the mobile emphasis: bold ink.
+    for (const selector of ['balance-initial', 'overview-initial']) {
+      const rule = css.match(new RegExp(`\\.${selector}\\.current[^{]*\\{([^}]*)\\}`))!;
+      expect(rule[1]).toContain('font-weight: bold');
     }
   });
 
@@ -1602,7 +1603,7 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     expect(decemberFill.style.height).toBe(currentFill.style.height);
   });
 
-  it('renders the months after the last Movement hollow, not solid black', async () => {
+  it('renders the months after the last Movement absent, not solid black', async () => {
     await seedMovement(2);
     await component.ngOnInit();
     fixture.detectChanges();
@@ -1612,7 +1613,7 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     for (const track of all.slice(0, 2)) {
       expect(track.classList).not.toContain('frozen');
     }
-    // Months 3-12 are the frozen tail: hollow, same frozen shape.
+    // Months 3-12 are the frozen tail: absent, no ink at all.
     for (const track of all.slice(2)) {
       expect(track.classList).toContain('frozen');
     }
@@ -1621,14 +1622,15 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     expect(frozenFill).toBeTruthy();
     expect(frozenFill.style.height).toBe(lastSolid.style.height);
 
-    // The frozen shape renders as a 1px ink outline on transparent — the
-    // solid fill stays the recorded-data treatment.
+    // The frozen fill renders with no ink at all: transparent, no outline —
+    // the month reads as absent, its frozen value stays in the hidden
+    // figure list.
     const css = compiledComponentCss();
     expect(css).toMatch(
       /\.balance-track\.frozen[^{]*\.balance-fill[^{]*\{[^}]*background:\s*transparent/,
     );
-    expect(css).toMatch(
-      /\.balance-track\.frozen[^{]*\.balance-fill[^{]*\{[^}]*outline:\s*1px solid var\(--on-surface\)/,
+    expect(css).not.toMatch(
+      /\.balance-track\.frozen[^{]*\.balance-fill[^{]*\{[^}]*outline/,
     );
   });
 
