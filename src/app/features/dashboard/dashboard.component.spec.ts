@@ -1485,6 +1485,41 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     expect(css).toMatch(/\.balance-track[^{]*\{[^}]*height:\s*4\.5rem/);
   });
 
+  it('draws the current-month ring as ink borders closed by an inset outline on both graphs', async () => {
+    await seedMovement(getCurrentPeriod());
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const css = compiledComponentCss();
+    for (const selector of ['overview-track', 'balance-track']) {
+      // Sass hoists the placeholder's `&.current` to the front of the
+      // compiled compound selector.
+      const rule = css.match(new RegExp(`\\.current\\.${selector}[^{]*\\{([^}]*)\\}`))!;
+      expect(rule[1]).toContain('border-color: var(--on-surface)');
+      expect(rule[1]).toContain('outline: 1px solid var(--on-surface)');
+      expect(rule[1]).toContain('outline-offset: -2px');
+    }
+  });
+
+  it('drops the ring to a 2px ink border below 480px so the emphasized month keeps its fills visible', async () => {
+    await seedMovement(getCurrentPeriod());
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const css = compiledComponentCss();
+    for (const selector of ['overview-track', 'balance-track']) {
+      // The inset outline goes: on a ~22px track its second stroke fused
+      // with the ink fills. Emphasis stays on the track as a 2px ink
+      // border, closed over the shared seam by a re-opened left border.
+      expect(css).toMatch(
+        new RegExp(`@media \\(max-width: 480px\\)[\\s\\S]*?\\.${selector}\\.current[^{]*\\{[^}]*border:\\s*2px solid var\\(--on-surface\\)`),
+      );
+      expect(css).toMatch(
+        new RegExp(`@media \\(max-width: 480px\\)[\\s\\S]*?\\.${selector}\\.current[^{]*\\{[^}]*outline:\\s*none`),
+      );
+    }
+  });
+
   it('heads the year overview with the year scope, not the month scope', async () => {
     await seedMovement(getCurrentPeriod());
     await component.ngOnInit();
