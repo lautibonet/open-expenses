@@ -93,12 +93,39 @@ describe('strict asset 404 contract', () => {
     ({ onRequest } = await import('../functions/[[path]].js'));
   });
 
+  /* A catch-all Function is invoked for every request, so the fake mimics
+     Pages' asset pipeline: known deployment files resolve, everything else
+     404s. */
+  const deployed = new Set([
+    '/index.html',
+    '/main-33S5YQ4A.js',
+    '/chunk-BKVAR53M.js',
+    '/ngsw.json',
+    '/styles-A5FP4VKE.css',
+  ]);
   const env = {
     ASSETS: {
-      fetch: async (req: Request) =>
-        new Response('SPA index', { status: 200, headers: { 'content-type': 'text/html' } }),
+      fetch: async (req: Request) => {
+        const path = new URL(req.url).pathname;
+        if (deployed.has(path)) {
+          const type = path.endsWith('.js')
+            ? 'application/javascript'
+            : path.endsWith('.css')
+              ? 'text/css'
+              : 'text/html';
+          return new Response('asset body', { status: 200, headers: { 'content-type': type } });
+        }
+        return new Response('no such asset', { status: 404 });
+      },
     },
   };
+
+  it('serves real assets through the asset pipeline', async () => {
+    for (const path of ['/main-33S5YQ4A.js', '/chunk-BKVAR53M.js', '/ngsw.json']) {
+      const res = await onRequest({ request: new Request(`https://openexpenses.app${path}`), env });
+      expect(res.status).toBe(200);
+    }
+  });
 
   it('falls back to the SPA index for route requests that miss an asset', async () => {
     for (const path of ['/movements', '/stats', '/settings/erase', '/deep/route/path']) {
@@ -109,7 +136,7 @@ describe('strict asset 404 contract', () => {
   });
 
   it('returns a real 404 for asset-shaped paths that miss the deployment', async () => {
-    for (const path of ['/main-OLDHASH.js', '/chunk-BKVAR53M.js', '/missing.css', '/media/ghost.png']) {
+    for (const path of ['/main-OLDHASH.js', '/missing.css', '/media/ghost.png']) {
       const res = await onRequest({ request: new Request(`https://openexpenses.app${path}`), env });
       expect(res.status).toBe(404);
       expect(res.headers.get('content-type')).toContain('text/plain');
