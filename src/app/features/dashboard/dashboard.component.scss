@@ -152,24 +152,33 @@
    zero line: up = balance, down = overdrawn (ink, not red — a sign is a fact
    in a chart; the warning voice stays with the balance rows). The line sits
    at the year's negative share of its extremes — bottom edge when every
-   balance is positive, rising when one is overdrawn. Months beyond the last
-   movement freeze at the last known balance, matching the card figure. */
-.balance-strip {
-  margin-top: var(--space-md);
-}
-
-.balance-tracks {
+   balance is positive, rising when one is overdrawn. The tracks share the
+   year overview's construction — contiguous, shared-border, one plot — so
+   both graphs read as one grammar; only the size differs, the strip staying
+   the quieter register. Months beyond the last movement freeze at the last
+   known balance, matching the card figure. */
+/* The one track grammar both graph cards share: contiguous shared-border
+   tracks — a single plot, not a strip of tiles — with the zero line painted
+   inside each track at the data-driven --zero-pct datum, above the fills.
+   Height and inner layout stay per-graph; the construction does not. */
+%twelve-column-plot {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: var(--space-xs);
+  /* Contiguous columns: track centers land on exact twelfths of the plot, so
+     fills and initials align without measuring gaps. */
+  gap: 0;
 }
 
-.balance-track {
+%graph-track {
   position: relative;
-  height: 4.5rem;
   background: var(--surface-container-high);
   border: 1px solid var(--outline-variant);
+  border-left: 0;
   overflow: hidden;
+
+  &:first-child {
+    border-left: 1px solid var(--outline-variant);
+  }
 
   /* The zero line the fills diverge from, positioned by the data-driven
      --zero-pct datum and painted above the fills — the line is the chart's
@@ -185,13 +194,30 @@
     z-index: 2;
   }
 
-  /* Emphasis ring without layout: see the year overview's current track. */
+  /* The scope Period's emphasis ring is drawn without layout: the 1px
+     borders recolor to ink and a 1px inset outline closes the ring. No
+     border width changes, so no neighbour seam doubles and the zero line
+     keeps its length at exactly the month the reader is looking at. */
   &.current {
     border-color: var(--on-surface);
     outline: 1px solid var(--on-surface);
     outline-offset: -2px;
     z-index: 1;
   }
+}
+
+.balance-strip {
+  margin-top: var(--space-md);
+}
+
+.balance-tracks {
+  @extend %twelve-column-plot;
+}
+
+.balance-track {
+  @extend %graph-track;
+
+  height: 4.5rem;
 }
 
 .balance-fill {
@@ -212,9 +238,8 @@
 }
 
 .balance-initials {
-  display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: var(--space-xs);
+  @extend %twelve-column-plot;
+
   margin-top: var(--space-xs);
 }
 
@@ -257,51 +282,15 @@
 
 .overview-tracks {
   position: relative;
-  display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  /* Contiguous tracks: month centers land on exact twelfths of the plot, so
-     the Accumulated line and its markers align without measuring gaps. */
-  gap: 0;
+  @extend %twelve-column-plot;
 }
 
 .overview-track {
-  position: relative;
+  @extend %graph-track;
+
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   height: 7rem;
-  background: var(--surface-container-high);
-  border: 1px solid var(--outline-variant);
-  border-left: 0;
-  overflow: hidden;
-
-  &:first-child {
-    border-left: 1px solid var(--outline-variant);
-  }
-
-  /* The zero line the diverging columns grow from, positioned by the
-     data-driven --zero-pct datum and painted above the fills — same datum
-     rule as the balance strip. */
-  &::before {
-    content: '';
-    position: absolute;
-    bottom: var(--zero-pct, 0%);
-    left: 0;
-    right: 0;
-    height: 1px;
-    background: var(--outline-variant);
-    z-index: 2;
-  }
-
-  /* The scope Period's emphasis ring is drawn without layout: a 1px ink
-     border plus a 1px inset outline. A literal 2px border would grow the
-     track 2px taller than its eleven neighbours and step the shared zero
-     line by a pixel at exactly the month the reader is looking at. */
-  &.current {
-    border: 1px solid var(--on-surface);
-    outline: 1px solid var(--on-surface);
-    outline-offset: -2px;
-    z-index: 1;
-  }
 }
 
 .overview-cell {
@@ -345,8 +334,8 @@
 }
 
 .overview-initials {
-  display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
+  @extend %twelve-column-plot;
+
   margin-top: var(--space-xs);
 }
 
