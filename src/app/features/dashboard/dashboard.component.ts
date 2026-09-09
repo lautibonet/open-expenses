@@ -35,7 +35,19 @@ import {
   periodEndBaseAmount,
   storedBaseAmount,
 } from '../../core/balances/period-end-balances';
-import { PeriodNet, netByPeriod } from '../../core/stats/year-nets';
+import {
+  PeriodOverview,
+  yearOverview,
+  accumulatedByPeriod,
+  lastMovementPeriod,
+} from '../../core/stats/year-overview';
+
+/* A graph track's two extremes around the zero line: the largest figure that
+   grows up from it and the largest magnitude that grows below it. */
+interface Extremes {
+  up: number;
+  down: number;
+}
 
 @Component({
   selector: 'app-dashboard',
@@ -78,8 +90,11 @@ export class DashboardComponent implements OnInit {
   avgMonthlyIncome = signal(0);
   avgMonthlyExpenses = signal(0);
   avgMonthlyNet = signal(0);
-  yearNets = signal<PeriodNet[]>([]);
-
+  yearOverviewData = signal<PeriodOverview[]>([]);
+  accumulated = signal<number[]>([]);
+  /* The last Period of the scope year carrying a Movement; the strip's
+     frozen tail starts after it. */
+  frozenFromPeriod = signal(0);
   async ngOnInit(): Promise<void> {
     await this.loadAll();
   }
@@ -166,11 +181,17 @@ export class DashboardComponent implements OnInit {
 
     if (nonBaseCurrencies.length === 0) {
       this.totalBalanceBaseCurrency.set(this.sumBalances(balances));
+      this.setAccumulated(
+        allTxns,
+        allTransfers,
+        isIncome,
+        new Map(this.accounts().map(a => [a.id!, a.initialBalance])),
+      );
       return;
     }
 
     if (!this.networkService.isOnline()) {
-      this.excludeForeignAccounts(balances, base);
+      this.excludeForeignAccounts(balances, base, allTxns, allTransfers, isIncome);
       return;
     }
 
@@ -180,25 +201,33 @@ export class DashboardComponent implements OnInit {
         b => b.account.currency !== base && !rates.rates.has(b.account.currency),
       );
       if (missingRate) {
-        this.excludeForeignAccounts(balances, base);
+        this.excludeForeignAccounts(balances, base, allTxns, allTransfers, isIncome);
         return;
       }
 
-      let total = 0;
+      const initialsInBase = new Map<number, number>();
       for (const b of balances) {
         const acc = b.account;
-        const initialInBase = acc.currency === base
-          ? acc.initialBalance
-          : Math.round(acc.initialBalance / rates.rates.get(acc.currency)! * 100) / 100;
+        initialsInBase.set(
+          acc.id!,
+          acc.currency === base
+            ? acc.initialBalance
+            : Math.round(acc.initialBalance / rates.rates.get(acc.currency)! * 100) / 100,
+        );
+      }
+      this.setAccumulated(allTxns, allTransfers, isIncome, initialsInBase);
+
+      let total = 0;
+      for (const b of balances) {
         total += periodEndBaseAmount(
-          { account: acc, transactions: allTxns, transfers: allTransfers, isIncome },
+          { account: b.account, transactions: allTxns, transfers: allTransfers, isIncome },
           scope,
-          initialInBase,
+          initialsInBase.get(b.account.id!)!,
         );
       }
       this.totalBalanceBaseCurrency.set(Math.round(total * 100) / 100);
     } catch {
-      this.excludeForeignAccounts(balances, base);
+      this.excludeForeignAccounts(balances, base, allTxns, allTransfers, isIncome);
     }
   }
 
@@ -207,9 +236,48 @@ export class DashboardComponent implements OnInit {
   private excludeForeignAccounts(
     balances: { account: Account; balance: number }[],
     base: string,
+    allTxns: Transaction[],
+    allTransfers: Transfer[],
+    isIncome: (transaction: Transaction) => boolean,
   ): void {
     this.conversionDegraded.update(d => ({ ...d, accountsExcluded: true }));
     this.totalBalanceBaseCurrency.set(this.sumBalances(balances, base));
+    /* Degraded Accumulated: Base Currency accounts only, at face amounts. */
+    this.setAccumulated(
+      allTxns,
+      allTransfers,
+      isIncome,
+      new Map(
+        this.accounts()
+          .filter(a => a.currency === base)
+          .map(a => [a.id!, a.initialBalance]),
+      ),
+      true,
+    );
+  }
+
+  /* Accumulated: the total-balance formula evaluated at every Period of the
+     scope's year, so the line's value at the Scope's Period equals the total
+     balance card. */
+  private setAccumulated(
+    allTxns: Transaction[],
+    allTransfers: Transfer[],
+    isIncome: (transaction: Transaction) => boolean,
+    initialInBase: Map<number, number>,
+    nativeAmounts = false,
+  ): void {
+    this.frozenFromPeriod.set(lastMovementPeriod(allTxns, allTransfers, this.scope().year));
+    this.accumulated.set(
+      accumulatedByPeriod({
+        accounts: this.accounts(),
+        transactions: allTxns,
+        transfers: allTransfers,
+        isIncome,
+        year: this.scope().year,
+        initialInBase,
+        nativeAmounts,
+      }),
+    );
   }
 
   async onScopeYearChange(value: number): Promise<void> {
@@ -315,7 +383,7 @@ export class DashboardComponent implements OnInit {
     const yearTxns = allTxns.filter(t => String(getPeriodYear(t)) === selectedYear);
     const filteredTxns = yearTxns.filter(t => t.period <= scope.period);
 
-    this.yearNets.set(netByPeriod(allTxns, this.incomeClassifier(catMap), scope.year));
+    this.yearOverviewData.set(yearOverview(allTxns, this.incomeClassifier(catMap), scope.year));
     this.yearHasMovements.set(yearTxns.length > 0);
 
     const monthsWithData = new Set(filteredTxns.map(t => t.period));
@@ -354,19 +422,117 @@ export class DashboardComponent implements OnInit {
     this.avgMonthlyNet.set(Math.round((totalIncome - totalExpenses) / months * 100) / 100);
   }
 
-  /* Bars scale against the year's max Net magnitude; the fill reaches at most
-     half the track so positive Net can grow up and negative Net down from the
-     same baseline. */
-  periodFillHeight(net: number): number {
-    const max = Math.max(...this.yearNets().map(n => Math.abs(n.net)), 0);
-    if (max <= 0) return 0;
-    return Math.round((Math.abs(net) / max) * 50 * 100) / 100;
+  /* The zero line both graphs share positions itself from the Scope year's
+     data: its height in the track equals the year's negative share of its
+     extremes. An all-positive year pins the line to the bottom edge and gives
+     the fills the full height; an overdrawn year raises it in proportion, so
+     the tallest figure above reaches the top edge and the deepest below
+     reaches the bottom edge. */
+  private static zeroPct({ up, down }: Extremes): number {
+    if (up + down <= 0) return 0;
+    return Math.round((down / (up + down)) * 10000) / 100;
   }
 
-  /* Net of the scope's Period: the one figure the strip hides behind its
-     relative bars, promoted to a visible caption on the card. */
+  private static fillPct(value: number, { up, down }: Extremes): number {
+    const zero = DashboardComponent.zeroPct({ up, down });
+    if (value > 0 && up > 0) {
+      return Math.round((value / up) * (100 - zero) * 100) / 100;
+    }
+    if (value < 0 && down > 0) {
+      return Math.round((-value / down) * zero * 100) / 100;
+    }
+    return 0;
+  }
+
+  /* Year overview extremes: up is the largest figure among Income, Expenses
+     and positive Net; down is the deepest overdrawn Net. Income and Expenses
+     are magnitudes and never grow below the line — only a negative Net does. */
+  private yearOverviewExtremes(): Extremes {
+    let up = 0;
+    let down = 0;
+    for (const o of this.yearOverviewData()) {
+      up = Math.max(up, o.income, o.expenses, o.net);
+      down = Math.max(down, -o.net);
+    }
+    return { up, down };
+  }
+
+  /* Balance strip extremes: the year's highest balance above the line and the
+     deepest overdrawn balance below it. */
+  private balanceExtremes(): Extremes {
+    let up = 0;
+    let down = 0;
+    for (const balance of this.accumulated()) {
+      if (balance > 0) {
+        up = Math.max(up, balance);
+      } else {
+        down = Math.max(down, -balance);
+      }
+    }
+    return { up, down };
+  }
+
+  yearOverviewZeroPct(): number {
+    return DashboardComponent.zeroPct(this.yearOverviewExtremes());
+  }
+
+  balanceZeroPct(): number {
+    return DashboardComponent.zeroPct(this.balanceExtremes());
+  }
+
+  barHeight(value: number): number {
+    return DashboardComponent.fillPct(value, this.yearOverviewExtremes());
+  }
+
+  /* Net of the scope's Period: the one figure the graph hides behind its
+     relative columns, promoted to a visible caption on the card. */
   selectedPeriodNet(): number {
-    return this.yearNets().find(n => n.period === this.scope().period)?.net ?? 0;
+    return this.yearOverviewData().find(o => o.period === this.scope().period)?.net ?? 0;
+  }
+
+  /* Scale anchor: the figures the overview's scale edges are worth — the
+     tallest column above the line (the year's largest magnitude: Income and
+     Expenses magnitudes always dominate any negative Net) and the deepest
+     overdrawn Net below it, signed. Stated so the relative heights get
+     absolute meaning. */
+  overviewScalePeak(): number {
+    return this.yearOverviewExtremes().up;
+  }
+
+  overviewScaleOverdrawn(): number {
+    return -this.yearOverviewExtremes().down;
+  }
+
+  /* Scale anchor: what the strip's track top is worth — the year's highest
+     balance — unless the year's max magnitude is an overdrawn balance, in
+     which case the anchor names that magnitude with its sign instead of
+     letting the deepest fill sit unanchored. */
+  stripScaleAnchor(): { label: string; amount: number } {
+    const { up, down } = this.balanceExtremes();
+    return down > up
+      ? { label: this.language.t('stats.scaleOverdrawn'), amount: -down }
+      : { label: this.language.t('stats.stripScaleTop'), amount: up };
+  }
+
+  /* The strip's Scope-Period column: the balance the caption promotes — the
+     figure that equals the total balance headline on the card. */
+  scopePeriodBalance(): number {
+    return this.accumulated()[this.scope().period - 1] ?? 0;
+  }
+
+  /* Balance strip fills scale against the year's extremes around the
+     data-driven zero line, so an overdrawn month grows down from it. */
+  balanceFillHeight(balance: number): number {
+    return DashboardComponent.fillPct(balance, this.balanceExtremes());
+  }
+
+  /* The accessible figure list: Income, Expenses, and Net per Period. */
+  overviewFigures(item: PeriodOverview): string {
+    return [
+      `${this.language.t('stats.income')} ${this.formatMoney(item.income)}`,
+      `${this.language.t('stats.expenses')} ${this.formatMoney(item.expenses)}`,
+      `${this.language.t('stats.net')} ${this.formatMoney(item.net)}`,
+    ].join(', ');
   }
 
   formatMoney(amount: number): string {

@@ -147,77 +147,259 @@
   }
 }
 
-/* Year spine: the 12-month Net strip. Pure CSS — ink fills on gray tracks,
-   one column per Period of the scope's year. Positive Net grows up from the
-   baseline, negative Net grows down; negative months stay ink (red marks
-   movement direction and warnings only). Zero-Net months show the bare track.
-   Month initials are the Language service's, set in mono. */
-.net-strip {
+/* Balance strip: the year progression inside the total balance card — the
+   old net-strip grammar applied to money held. Ink fills diverge around the
+   zero line: up = balance, down = overdrawn (ink, not red — a sign is a fact
+   in a chart; the warning voice stays with the balance rows). The line sits
+   at the year's negative share of its extremes — bottom edge when every
+   balance is positive, rising when one is overdrawn. The tracks share the
+   year overview's construction — twelve gap-separated columns, one plot —
+   so both graphs read as one grammar; only the size differs, the strip
+   staying the quieter register. Months beyond the last movement freeze at
+   the last known balance, matching the card figure, but render absent: they
+   are not recorded data. */
+/* The one track grammar both graph cards share: twelve equal columns set
+   apart by the shared gap — a single plot each, its month tiles separated
+   by daylight — with the zero line painted inside each track at the
+   data-driven --zero-pct datum, above the fills. Height and inner layout
+   stay per-graph; the construction does not. */
+%twelve-column-plot {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
   gap: var(--space-xs);
+}
+
+%graph-track {
+  position: relative;
+  overflow: hidden;
+
+  /* The zero line the fills diverge from, positioned by the data-driven
+     --zero-pct datum and painted above the fills — the line is the chart's
+     datum, so it stays legible across the months whose fills cover it. */
+  &::before {
+    content: '';
+    position: absolute;
+    bottom: var(--zero-pct, 0%);
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: var(--outline-variant);
+    z-index: 2;
+  }
+
+  /* The scope Period's emphasis ring is drawn without layout: a 1px ink
+     outline at the track's edge. No border widths change, so the fills keep
+     their full width and the zero line keeps its length at exactly the
+     month the reader is looking at. */
+  &.current {
+    outline: 1px solid var(--on-surface);
+    z-index: 1;
+  }
+}
+
+/* Mobile emphasis (#157): below 480px a track is roughly 22px wide — too
+   little room for a ring to close around without visually fusing with the
+   ink fills (the desktop outline read as a blob, or as an empty input when
+   its fills were thin). The treatment that shipped: the ring drops
+   entirely and emphasis moves to the month label, which reads bold ink
+   instead of the muted register. Desktop keeps the outline unchanged. */
+@media (max-width: 480px) {
+  .overview-track.current,
+  .balance-track.current {
+    outline: none;
+  }
+}
+
+.balance-strip {
+  /* The year overview carries the same gap down to its caption; the strip
+     hands its footer the identical spacing, so the two cards' footers pair. */
+  margin-top: var(--space-md);
   margin-bottom: var(--space-md);
 }
 
-.net-strip-month {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-xs);
+.balance-tracks {
+  @extend %twelve-column-plot;
+}
 
-  .net-track {
-    position: relative;
-    width: 100%;
-    height: 4.5rem;
-    background: var(--surface-container-high);
-    border: 1px solid var(--outline-variant);
-    overflow: hidden;
+.balance-track {
+  @extend %graph-track;
+
+  height: 4.5rem;
+}
+
+.balance-fill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  background: var(--on-surface);
+  /* A nonzero balance against a much larger year peak still draws. */
+  min-height: 1px;
+
+  &.up {
+    bottom: var(--zero-pct, 0%);
   }
 
-  .net-fill {
-    position: absolute;
-    left: 0;
-    right: 0;
+  &.down {
+    top: calc(100% - var(--zero-pct, 0%));
+  }
+}
+
+/* Frozen months: every Period after the last Movement carries the last known
+   balance, but no recorded data yet — so their fill renders absent: no ink
+   at all (transparent background, no outline), while months with real
+   Accumulated data keep the solid ink fill. The frozen value stays
+   readable — it lives in the hidden figure list. */
+.balance-track.frozen .balance-fill {
+  background: transparent;
+}
+
+.balance-initials {
+  @extend %twelve-column-plot;
+
+  margin-top: var(--space-xs);
+}
+
+.balance-initial {
+  @extend %mono-data;
+
+  font-weight: 500;
+  color: var(--on-surface-variant);
+  text-align: center;
+
+  &.current {
+    font-weight: bold;
+    color: var(--on-surface);
+  }
+}
+
+.balance-legend {
+  @extend %caps-label-muted;
+
+  /* Caps labels are single-line at leading 1, but the legend wraps to two
+     lines at 375px — it carries the caption ramp's leading instead (#158). */
+  line-height: var(--leading-caption);
+
+  margin: var(--space-sm) 0 0 0;
+}
+
+/* Accessible equivalent: announces the balance per Period. */
+.balance-figures {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Year overview: the year-at-a-glance graph. Each Period carries three
+   columns rising from the zero line — Income green, Expenses red, Net ink.
+   The line sits at the year's negative share of its extremes, positioned by
+   the --zero-pct datum inherited from the graph container: bottom edge when
+   every month is positive, rising when a month overspends. Only Net may
+   cross it, growing down (the Negative-Stays-Ink Rule: a minus is a fact,
+   not an alarm). Income and Expenses are magnitudes; they never dip below
+   zero. Pure CSS, no chart lib. */
+.year-overview {
+  margin-bottom: var(--space-md);
+}
+
+.overview-tracks {
+  position: relative;
+  @extend %twelve-column-plot;
+}
+
+.overview-track {
+  @extend %graph-track;
+
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  height: 7rem;
+}
+
+.overview-cell {
+  position: relative;
+  z-index: 1;
+
+  & + .overview-cell {
+    /* A hair of daylight between the three columns of a month. */
+    margin-left: 1px;
+  }
+}
+
+.cell-fill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  /* A nonzero figure against a much larger year peak still draws. */
+  min-height: 1px;
+
+  .income & {
+    background: var(--income);
+    bottom: var(--zero-pct, 0%);
+  }
+
+  .expense & {
+    background: var(--error);
+    bottom: var(--zero-pct, 0%);
+  }
+
+  .net & {
     background: var(--on-surface);
 
     &.up {
-      bottom: 50%;
+      bottom: var(--zero-pct, 0%);
     }
 
     &.down {
-      top: 50%;
-    }
-  }
-
-  .net-initial {
-    @extend %mono-data;
-
-    font-weight: 500;
-    color: var(--on-surface-variant);
-  }
-
-  &.current {
-    .net-track {
-      border: var(--border-hard-thick);
-    }
-
-    .net-initial {
-      color: var(--on-surface);
+      top: calc(100% - var(--zero-pct, 0%));
     }
   }
 }
 
-.net-strip-zero {
+.overview-initials {
+  @extend %twelve-column-plot;
+
+  margin-top: var(--space-xs);
+}
+
+.overview-initial {
+  @extend %mono-data;
+
+  font-weight: 500;
+  color: var(--on-surface-variant);
+  text-align: center;
+
+  &.current {
+    font-weight: bold;
+    color: var(--on-surface);
+  }
+}
+
+@media (max-width: 768px) {
+  .overview-track {
+    height: 5.5rem;
+  }
+}
+
+.overview-zero {
   @extend %empty-state;
 
   margin: 0;
 }
 
-/* Caption and legend: the scope Period's Net figure — previously visible only
-   to screen readers — promoted to the visible card footer, and the strip's
-   above/below-midline convention stated once in the caps-label voice. Both sit
-   under the strip on their own lines, so no bar track gives up width. */
-.net-strip-caption {
+/* The shared empty-state pattern (same as Movements): dashed border on a flat
+   surface, centered muted ink. Inside the KPI card it insets by the card's
+   own 1rem gutter, since the card itself carries no padding. */
+.empty-state {
+  @extend %empty-state;
+}
+
+/* Caption and legend: the scope Period's figure — previously visible only to
+   screen readers — promoted to the visible card footer, and the color grammar
+   stated once in the caps-label voice. Both cards' footers pair: a caption
+   (caps label left, mono figure right), a scale anchor, then the legend —
+   every line the same justified row, every gap the same small step. The
+   graph-to-caption gap is carried by the graphs themselves, so both cards
+   hand their footer the identical spacing. */
+%graph-caption {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -242,21 +424,48 @@
   }
 }
 
-.net-strip-legend {
+.overview-caption {
+  @extend %graph-caption;
+}
+
+.balance-caption {
+  @extend %graph-caption;
+}
+
+/* Scale anchor: the caps-voice lines that give the relative columns absolute
+   meaning — what the graph's scale edges are worth (the overview names its
+   tallest column and its deepest overdrawn Net; the strip names its track
+   top, or the overdrawn cap when that is the year's max magnitude). Each
+   figure rides a row of the caption grammar, so labels align left and
+   figures right across the whole footer. */
+%scale-anchor {
+  margin: 0 0 var(--space-xs);
+
+  .scale-line {
+    @extend %graph-caption;
+  }
+}
+
+.overview-scale {
+  @extend %scale-anchor;
+}
+
+.balance-scale {
+  @extend %scale-anchor;
+}
+
+.overview-legend {
   @extend %caps-label-muted;
 
-  margin: 0;
+  /* Wrapped to two lines at 375px: readable leading, not the caps 1.0. */
+  line-height: var(--leading-caption);
+
+  margin: var(--space-sm) 0 0 0;
 }
 
-/* The shared empty-state pattern (same as Movements): dashed border on a flat
-   surface, centered muted ink. Inside the KPI card it insets by the card's
-   own 1rem gutter, since the card itself carries no padding. */
-.empty-state {
-  @extend %empty-state;
-}
-
-/* Accessible equivalent: announces month + Net per Period. */
-.net-strip-figures {
+/* Accessible equivalent: announces Income, Expenses, Net — and Accumulated
+   through the Scope's Period — per Period. */
+.overview-figures {
   margin: 0;
   padding: 0;
   list-style: none;
