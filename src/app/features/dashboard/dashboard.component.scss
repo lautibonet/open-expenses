@@ -149,9 +149,10 @@
 
 /* Balance strip: the year progression inside the total balance card — the
    old net-strip grammar applied to money held. Ink fills diverge around the
-   midline: up = balance, down = overdrawn (ink, not red — a sign is a fact
-   in a chart; the warning voice stays with the balance rows). Fills scale to
-   the year's max |balance|, capped at half the track. Months beyond the last
+   zero line: up = balance, down = overdrawn (ink, not red — a sign is a fact
+   in a chart; the warning voice stays with the balance rows). The line sits
+   at the year's negative share of its extremes — bottom edge when every
+   balance is positive, rising when one is overdrawn. Months beyond the last
    movement freeze at the last known balance, matching the card figure. */
 .balance-strip {
   margin-top: var(--space-md);
@@ -170,13 +171,13 @@
   border: 1px solid var(--outline-variant);
   overflow: hidden;
 
-  /* The midline the fills diverge from, painted above the fills — the zero
-     line is the chart's datum, so it stays legible across the months whose
-     fills cover it. */
+  /* The zero line the fills diverge from, positioned by the data-driven
+     --zero-pct datum and painted above the fills — the line is the chart's
+     datum, so it stays legible across the months whose fills cover it. */
   &::before {
     content: '';
     position: absolute;
-    top: 50%;
+    bottom: var(--zero-pct, 0%);
     left: 0;
     right: 0;
     height: 1px;
@@ -202,11 +203,11 @@
   min-height: 1px;
 
   &.up {
-    bottom: 50%;
+    bottom: var(--zero-pct, 0%);
   }
 
   &.down {
-    top: 50%;
+    top: calc(100% - var(--zero-pct, 0%));
   }
 }
 
@@ -243,11 +244,13 @@
 }
 
 /* Year overview: the year-at-a-glance graph. Each Period carries three
-   columns rising from the midline — Income green, Expenses red, Net ink.
-   The midline is the zero line: only Net may cross it, growing down when a
-   month overspends (the Negative-Stays-Ink Rule: a minus is a fact, not an
-   alarm). Income and Expenses are magnitudes; they never dip below zero.
-   Pure CSS, no chart lib. */
+   columns rising from the zero line — Income green, Expenses red, Net ink.
+   The line sits at the year's negative share of its extremes, positioned by
+   the --zero-pct datum inherited from the graph container: bottom edge when
+   every month is positive, rising when a month overspends. Only Net may
+   cross it, growing down (the Negative-Stays-Ink Rule: a minus is a fact,
+   not an alarm). Income and Expenses are magnitudes; they never dip below
+   zero. Pure CSS, no chart lib. */
 .year-overview {
   margin-bottom: var(--space-md);
 }
@@ -275,12 +278,13 @@
     border-left: 1px solid var(--outline-variant);
   }
 
-  /* The midline the diverging columns grow from, painted above the fills —
-     same datum rule as the balance strip. */
+  /* The zero line the diverging columns grow from, positioned by the
+     data-driven --zero-pct datum and painted above the fills — same datum
+     rule as the balance strip. */
   &::before {
     content: '';
     position: absolute;
-    top: 50%;
+    bottom: var(--zero-pct, 0%);
     left: 0;
     right: 0;
     height: 1px;
@@ -319,23 +323,23 @@
 
   .income & {
     background: var(--income);
-    bottom: 50%;
+    bottom: var(--zero-pct, 0%);
   }
 
   .expense & {
     background: var(--error);
-    bottom: 50%;
+    bottom: var(--zero-pct, 0%);
   }
 
   .net & {
     background: var(--on-surface);
 
     &.up {
-      bottom: 50%;
+      bottom: var(--zero-pct, 0%);
     }
 
     &.down {
-      top: 50%;
+      top: calc(100% - var(--zero-pct, 0%));
     }
   }
 }

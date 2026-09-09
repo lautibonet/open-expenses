@@ -41,6 +41,13 @@ import {
   accumulatedByPeriod,
 } from '../../core/stats/year-overview';
 
+/* A graph track's two extremes around the zero line: the largest figure that
+   grows up from it and the largest magnitude that grows below it. */
+interface Extremes {
+  up: number;
+  down: number;
+}
+
 @Component({
   selector: 'app-dashboard',
   imports: [FormsModule, DismissibleAlertComponent, FitTextDirective],
@@ -84,7 +91,6 @@ export class DashboardComponent implements OnInit {
   avgMonthlyNet = signal(0);
   yearOverviewData = signal<PeriodOverview[]>([]);
   accumulated = signal<number[]>([]);
-
   async ngOnInit(): Promise<void> {
     await this.loadAll();
   }
@@ -411,16 +417,66 @@ export class DashboardComponent implements OnInit {
     this.avgMonthlyNet.set(Math.round((totalIncome - totalExpenses) / months * 100) / 100);
   }
 
-  /* Columns share one scale: the year's largest figure among Income, Expenses
-     and |Net|; each fill reaches at most half the track so Income can grow up
-     and Expenses down from the same midline. */
+  /* The zero line both graphs share positions itself from the Scope year's
+     data: its height in the track equals the year's negative share of its
+     extremes. An all-positive year pins the line to the bottom edge and gives
+     the fills the full height; an overdrawn year raises it in proportion, so
+     the tallest figure above reaches the top edge and the deepest below
+     reaches the bottom edge. */
+  private static zeroPct({ up, down }: Extremes): number {
+    if (up + down <= 0) return 0;
+    return Math.round((down / (up + down)) * 10000) / 100;
+  }
+
+  private static fillPct(value: number, { up, down }: Extremes): number {
+    const zero = DashboardComponent.zeroPct({ up, down });
+    if (value > 0 && up > 0) {
+      return Math.round((value / up) * (100 - zero) * 100) / 100;
+    }
+    if (value < 0 && down > 0) {
+      return Math.round((-value / down) * zero * 100) / 100;
+    }
+    return 0;
+  }
+
+  /* Year overview extremes: up is the largest figure among Income, Expenses
+     and positive Net; down is the deepest overdrawn Net. Income and Expenses
+     are magnitudes and never grow below the line — only a negative Net does. */
+  private yearOverviewExtremes(): Extremes {
+    let up = 0;
+    let down = 0;
+    for (const o of this.yearOverviewData()) {
+      up = Math.max(up, o.income, o.expenses, o.net);
+      down = Math.max(down, -o.net);
+    }
+    return { up, down };
+  }
+
+  /* Balance strip extremes: the year's highest balance above the line and the
+     deepest overdrawn balance below it. */
+  private balanceExtremes(): Extremes {
+    let up = 0;
+    let down = 0;
+    for (const balance of this.accumulated()) {
+      if (balance > 0) {
+        up = Math.max(up, balance);
+      } else {
+        down = Math.max(down, -balance);
+      }
+    }
+    return { up, down };
+  }
+
+  yearOverviewZeroPct(): number {
+    return DashboardComponent.zeroPct(this.yearOverviewExtremes());
+  }
+
+  balanceZeroPct(): number {
+    return DashboardComponent.zeroPct(this.balanceExtremes());
+  }
+
   barHeight(value: number): number {
-    const max = Math.max(
-      ...this.yearOverviewData().map(o => Math.max(o.income, o.expenses, Math.abs(o.net))),
-      0,
-    );
-    if (max <= 0 || value === 0) return 0;
-    return Math.round((Math.abs(value) / max) * 50 * 100) / 100;
+    return DashboardComponent.fillPct(value, this.yearOverviewExtremes());
   }
 
   /* Net of the scope's Period: the one figure the graph hides behind its
@@ -429,13 +485,10 @@ export class DashboardComponent implements OnInit {
     return this.yearOverviewData().find(o => o.period === this.scope().period)?.net ?? 0;
   }
 
-  /* Balance strip fills scale against the year's max |balance|; the fill
-     reaches at most half the track so an overdrawn month can grow down from
-     the same midline. */
+  /* Balance strip fills scale against the year's extremes around the
+     data-driven zero line, so an overdrawn month grows down from it. */
   balanceFillHeight(balance: number): number {
-    const max = Math.max(...this.accumulated().map(Math.abs), 0);
-    if (max <= 0 || balance === 0) return 0;
-    return Math.round((Math.abs(balance) / max) * 50 * 100) / 100;
+    return DashboardComponent.fillPct(balance, this.balanceExtremes());
   }
 
   /* The accessible figure list: Income, Expenses, and Net per Period. */

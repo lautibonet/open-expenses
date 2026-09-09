@@ -1354,7 +1354,7 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     expect(march.querySelector('.net .cell-fill.down')).toBeTruthy();
   });
 
-  it('scales all columns against the year max figure, at most half the track each way', async () => {
+  it('scales columns against the year extremes with the zero line raised by the negative share', async () => {
     const acc = await accountService.create('Cash', 'EUR', 0);
     const incomeCat = await categoryService.create('Payroll', 'income');
     const expenseCat = await categoryService.create('Food', 'expense');
@@ -1368,12 +1368,50 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     await component.ngOnInit();
     fixture.detectChanges();
 
+    // Year extremes: up 3000 (peak income), down 2000 (March's overdrawn net).
+    // The zero line rises to 40% of the track; up fills share the 60% above it,
+    // the down fill takes the 40% below it.
+    expect(component.yearOverviewZeroPct()).toBe(40);
     const [january, february, march] = Array.from(tracks());
+    expect((january.querySelector('.income .cell-fill') as HTMLElement).style.height).toBe('60%');
+    expect((february.querySelector('.expense .cell-fill') as HTMLElement).style.height).toBe('30%');
+    expect((march.querySelector('.net .cell-fill.down') as HTMLElement).style.height).toBe('40%');
+  });
 
-    // Year max figure is 3000: it reaches the full half-track (50%).
-    expect((january.querySelector('.income .cell-fill') as HTMLElement).style.height).toBe('50%');
-    expect((february.querySelector('.expense .cell-fill') as HTMLElement).style.height).toBe('25%');
-    expect((march.querySelector('.net .cell-fill.down') as HTMLElement).style.height).toBe('33.33%');
+  it('pins the zero line to the bottom edge when every month is positive, giving the fills the full track', async () => {
+    const acc = await accountService.create('Cash', 'EUR', 0);
+    const incomeCat = await categoryService.create('Payroll', 'income');
+    const year = getCurrentYear();
+
+    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(`${year}-01-15`), 1, null, null, year);
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    expect(component.yearOverviewZeroPct()).toBe(0);
+    const overview = fixture.nativeElement.querySelector('.year-overview') as HTMLElement;
+    expect(overview.style.getPropertyValue('--zero-pct')).toBe('0%');
+    const january = tracks()[0];
+    expect((january.querySelector('.income .cell-fill') as HTMLElement).style.height).toBe('100%');
+  });
+
+  it('never grows Income or Expense columns below the zero line; only Net does', async () => {
+    const acc = await accountService.create('Cash', 'EUR', 0);
+    const incomeCat = await categoryService.create('Payroll', 'income');
+    const expenseCat = await categoryService.create('Food', 'expense');
+    const year = getCurrentYear();
+
+    await transactionService.create(acc.id!, incomeCat.id!, 1000, new Date(`${year}-01-15`), 1, null, null, year);
+    await transactionService.create(acc.id!, expenseCat.id!, 3000, new Date(`${year}-02-15`), 2, null, null, year);
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const [january, february] = Array.from(tracks());
+    expect(january.querySelector('.income .cell-fill.down')).toBeNull();
+    expect(january.querySelector('.expense .cell-fill.down')).toBeNull();
+    expect(february.querySelector('.expense .cell-fill.down')).toBeNull();
+    expect(february.querySelector('.net .cell-fill.down')).toBeTruthy();
   });
 
   it('leaves zero-figure Periods visible as empty tracks', async () => {
@@ -1401,6 +1439,17 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     expect(css).toMatch(/\.expense[^{]*\.cell-fill[^{]*\{[^}]*background:\s*var\(--error\)/);
     expect(css).toMatch(/\.net[^{]*\.cell-fill[^{]*\{[^}]*background:\s*var\(--on-surface\)/);
     expect(css).toMatch(/\.balance-fill[^{]*\{[^}]*background:\s*var\(--on-surface\)/);
+  });
+
+  it('paints the midline above the fills at the data-driven zero position in both graphs', async () => {
+    await seedMovement(getCurrentPeriod());
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const css = compiledComponentCss();
+    expect(css).toMatch(/\.overview-track[^{]*::before\s*\{[^}]*bottom:\s*var\(--zero-pct/);
+    expect(css).toMatch(/\.balance-track[^{]*::before\s*\{[^}]*bottom:\s*var\(--zero-pct/);
+    expect(css).toMatch(/\.cell-fill[^{]*\{[^}]*bottom:\s*var\(--zero-pct/);
   });
 
   it('heads the year overview with the year scope, not the month scope', async () => {
@@ -1485,7 +1534,7 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     expect(decemberFill.style.height).toBe(currentFill.style.height);
   });
 
-  it('grows an overdrawn month down from the midline, in ink', async () => {
+  it('grows an overdrawn month down from the zero line, in ink', async () => {
     const acc = await accountService.create('Cash', 'EUR', 0);
     const expenseCat = await categoryService.create('Food', 'expense');
     await transactionService.create(acc.id!, expenseCat.id!, 500, new Date(), 2);
@@ -1494,11 +1543,43 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     fixture.detectChanges();
 
     // January: zero balance, bare track. February: overdrawn, fills downward.
+    // A never-positive year raises the line to the top edge: the negative
+    // share is the whole track.
     const [january, february] = Array.from(balanceTracks());
     expect(january.querySelector('.balance-fill')).toBeNull();
+    expect(component.balanceZeroPct()).toBe(100);
     const down = february.querySelector('.balance-fill.down') as HTMLElement;
     expect(down).toBeTruthy();
-    expect(down.style.height).toBe('50%');
+    expect(down.style.height).toBe('100%');
+  });
+
+  it('pins the strip zero line to the bottom edge when the year never goes negative', async () => {
+    await seedMovement(getCurrentPeriod());
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    expect(component.balanceZeroPct()).toBe(0);
+    const strip = fixture.nativeElement.querySelector('.balance-strip') as HTMLElement;
+    expect(strip.style.getPropertyValue('--zero-pct')).toBe('0%');
+    const fill = balanceTracks()[getCurrentPeriod() - 1].querySelector('.balance-fill.up') as HTMLElement;
+    expect(fill.style.height).toBe('100%');
+  });
+
+  it('raises the strip zero line in proportion to the negative share of the year extremes', async () => {
+    const acc = await accountService.create('Cash', 'EUR', 1000);
+    const expenseCat = await categoryService.create('Food', 'expense');
+    await transactionService.create(acc.id!, expenseCat.id!, 3000, new Date(), 2);
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    // January 1000, February -2000, tail frozen at -2000: up extreme 1000,
+    // down extreme 2000 — the line sits at two thirds of the track, the
+    // positive fill shares the third above it.
+    expect(component.balanceZeroPct()).toBe(66.67);
+    const [january, february] = Array.from(balanceTracks());
+    expect((january.querySelector('.balance-fill.up') as HTMLElement).style.height).toBe('33.33%');
+    expect((february.querySelector('.balance-fill.down') as HTMLElement).style.height).toBe('66.67%');
   });
 
   it('shows no balance strip, legend or figures when the scope year has no movements', async () => {
