@@ -1452,6 +1452,39 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     expect(css).toMatch(/\.cell-fill[^{]*\{[^}]*bottom:\s*var\(--zero-pct/);
   });
 
+  it('builds both graphs from the same contiguous shared-border track grammar', async () => {
+    await seedMovement(getCurrentPeriod());
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const css = compiledComponentCss();
+
+    // One construction for both graphs: twelve equal columns, contiguous —
+    // a single plot each, not a strip of separated tiles.
+    for (const selector of ['overview-tracks', 'balance-tracks', 'overview-initials', 'balance-initials']) {
+      const rule = css.match(new RegExp(`\\.${selector}[^{]*\\{([^}]*)\\}`))!;
+      expect(rule[1]).toContain('repeat(12, minmax(0, 1fr))');
+      // A declared gap must be zero; separated tiles are the other grammar.
+      expect(rule[1]).not.toMatch(/gap:(?!\s*0)/);
+    }
+
+    // Shared borders: every track drops its left border, the first keeps one,
+    // so adjacent tracks collapse to a single hairline.
+    expect(css).toMatch(/\.overview-track[^{]*\{[^}]*border-left:\s*0/);
+    expect(css).toMatch(/\.balance-track[^{]*\{[^}]*border-left:\s*0/);
+    expect(css).toMatch(/\.balance-track[^{]*:first-child\s*\{[^}]*border-left:\s*1px/);
+  });
+
+  it('keeps the size hierarchy between the two graphs', async () => {
+    await seedMovement(getCurrentPeriod());
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const css = compiledComponentCss();
+    expect(css).toMatch(/\.overview-track[^{]*\{[^}]*height:\s*7rem/);
+    expect(css).toMatch(/\.balance-track[^{]*\{[^}]*height:\s*4\.5rem/);
+  });
+
   it('heads the year overview with the year scope, not the month scope', async () => {
     await seedMovement(getCurrentPeriod());
     await component.ngOnInit();
