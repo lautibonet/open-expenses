@@ -154,9 +154,10 @@
    at the year's negative share of its extremes — bottom edge when every
    balance is positive, rising when one is overdrawn. The tracks share the
    year overview's construction — contiguous, shared-border, one plot — so
-   both graphs read as one grammar; only the size differs, the strip staying
-   the quieter register. Months beyond the last movement freeze at the last
-   known balance, matching the card figure. */
+    both graphs read as one grammar; only the size differs, the strip staying
+    the quieter register. Months beyond the last movement freeze at the last
+    known balance, matching the card figure, but render hollow: they are not
+    recorded data. */
 /* The one track grammar both graph cards share: contiguous shared-border
    tracks — a single plot, not a strip of tiles — with the zero line painted
    inside each track at the data-driven --zero-pct datum, above the fills.
@@ -235,6 +236,19 @@
   &.down {
     top: calc(100% - var(--zero-pct, 0%));
   }
+}
+
+/* Frozen months: every Period after the last Movement carries the last known
+   balance, but no recorded data yet — so their fill renders hollow: the same
+   frozen shape drawn as a 1px ink outline on transparent (zero radius, no
+   invented tint), while months with real Accumulated data keep the solid ink
+   fill. The outline draws inside the fill's box (same technique as the
+   current ring), so the frozen shape keeps the solid fill's exact size. The
+   frozen value stays in the hidden figure list. */
+.balance-track.frozen .balance-fill {
+  background: transparent;
+  outline: 1px solid var(--on-surface);
+  outline-offset: -1px;
 }
 
 .balance-initials {

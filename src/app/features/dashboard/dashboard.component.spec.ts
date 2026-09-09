@@ -1567,6 +1567,49 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     expect(decemberFill.style.height).toBe(currentFill.style.height);
   });
 
+  it('renders the months after the last Movement hollow, not solid black', async () => {
+    await seedMovement(2);
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const all = Array.from(balanceTracks());
+    // Months 1-2 carry real Accumulated data: solid ink, no frozen mark.
+    for (const track of all.slice(0, 2)) {
+      expect(track.classList).not.toContain('frozen');
+    }
+    // Months 3-12 are the frozen tail: hollow, same frozen shape.
+    for (const track of all.slice(2)) {
+      expect(track.classList).toContain('frozen');
+    }
+    const lastSolid = all[1].querySelector('.balance-fill') as HTMLElement;
+    const frozenFill = all[11].querySelector('.balance-fill') as HTMLElement;
+    expect(frozenFill).toBeTruthy();
+    expect(frozenFill.style.height).toBe(lastSolid.style.height);
+
+    // The frozen shape renders as a 1px ink outline on transparent — the
+    // solid fill stays the recorded-data treatment.
+    const css = compiledComponentCss();
+    expect(css).toMatch(
+      /\.balance-track\.frozen[^{]*\.balance-fill[^{]*\{[^}]*background:\s*transparent/,
+    );
+    expect(css).toMatch(
+      /\.balance-track\.frozen[^{]*\.balance-fill[^{]*\{[^}]*outline:\s*1px solid var\(--on-surface\)/,
+    );
+  });
+
+  it('still announces the frozen balance per Period in the hidden figure list', async () => {
+    await seedMovement(2);
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const items = Array.from(
+      fixture.nativeElement.querySelectorAll('.balance-figures li'),
+    ) as unknown as HTMLLIElement[];
+    expect(items.length).toBe(12);
+    expect(items[11].textContent).toContain(languageService.monthName(12));
+    expect(items[11].textContent).toContain(component.formatMoney(3000));
+  });
+
   it('grows an overdrawn month down from the zero line, in ink', async () => {
     const acc = await accountService.create('Cash', 'EUR', 0);
     const expenseCat = await categoryService.create('Food', 'expense');

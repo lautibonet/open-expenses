@@ -163,7 +163,11 @@
       <div class="balance-strip" aria-hidden="true" [style.--zero-pct]="balanceZeroPct() + '%'">
         <div class="balance-tracks">
           @for (balance of accumulated(); track $index) {
-            <div class="balance-track" [class.current]="$index + 1 === scope().period">
+            <div
+              class="balance-track"
+              [class.current]="$index + 1 === scope().period"
+              [class.frozen]="$index + 1 > frozenFromPeriod()"
+            >
               @if (balance > 0) {
                 <div class="balance-fill up" [style.height.%]="balanceFillHeight(balance)"></div>
               } @else if (balance < 0) {

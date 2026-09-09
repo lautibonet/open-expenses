@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { yearOverview, accumulatedByPeriod } from './year-overview';
+import { yearOverview, accumulatedByPeriod, lastMovementPeriod } from './year-overview';
 import { Transaction } from '../models/transaction.model';
 import { Transfer } from '../models/transfer.model';
 import { Account } from '../models/account.model';
@@ -252,5 +252,39 @@ describe('accumulatedByPeriod', () => {
     });
 
     expect(series[1]).toBe(3300);
+  });
+});
+
+describe('lastMovementPeriod', () => {
+  it('returns 0 when the year carries no movements', () => {
+    expect(lastMovementPeriod([], [], 2026)).toBe(0);
+  });
+
+  it('returns the latest Period carrying a Transaction', () => {
+    const transactions = [
+      txn({ id: 1, period: 2 }),
+      txn({ id: 2, period: 5 }),
+    ];
+    expect(lastMovementPeriod(transactions, [], 2026)).toBe(5);
+  });
+
+  it('counts Transfers as movements', () => {
+    expect(lastMovementPeriod([], [transfer({ period: 7 })], 2026)).toBe(7);
+  });
+
+  it('takes the latest across Transactions and Transfers', () => {
+    expect(lastMovementPeriod([txn({ period: 3 })], [transfer({ period: 9 })], 2026)).toBe(9);
+  });
+
+  it('ignores movements of other years', () => {
+    const transactions = [
+      txn({ id: 1, period: 12, year: 2025 }),
+      txn({ id: 2, period: 4 }),
+    ];
+    expect(lastMovementPeriod(transactions, [transfer({ period: 8, year: 2025 })], 2026)).toBe(4);
+  });
+
+  it('returns 12 when December carries a movement', () => {
+    expect(lastMovementPeriod([txn({ period: 12 })], [], 2026)).toBe(12);
   });
 });

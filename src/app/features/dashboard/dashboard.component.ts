@@ -39,6 +39,7 @@ import {
   PeriodOverview,
   yearOverview,
   accumulatedByPeriod,
+  lastMovementPeriod,
 } from '../../core/stats/year-overview';
 
 /* A graph track's two extremes around the zero line: the largest figure that
@@ -91,6 +92,9 @@ export class DashboardComponent implements OnInit {
   avgMonthlyNet = signal(0);
   yearOverviewData = signal<PeriodOverview[]>([]);
   accumulated = signal<number[]>([]);
+  /* The last Period of the scope year carrying a Movement; the strip's
+     frozen tail starts after it. */
+  frozenFromPeriod = signal(0);
   async ngOnInit(): Promise<void> {
     await this.loadAll();
   }
@@ -262,6 +266,7 @@ export class DashboardComponent implements OnInit {
     initialInBase: Map<number, number>,
     nativeAmounts = false,
   ): void {
+    this.frozenFromPeriod.set(lastMovementPeriod(allTxns, allTransfers, this.scope().year));
     this.accumulated.set(
       accumulatedByPeriod({
         accounts: this.accounts(),
