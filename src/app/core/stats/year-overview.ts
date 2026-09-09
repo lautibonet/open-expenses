@@ -1,4 +1,10 @@
-import { MONTH_NUMBERS, MonthNumber, PeriodScope, getPeriodYear } from '../types/period.type';
+import {
+  MONTH_NUMBERS,
+  MonthNumber,
+  PeriodScope,
+  getPeriodYear,
+  isMonthNumber,
+} from '../types/period.type';
 import { Transaction } from '../models/transaction.model';
 import { Transfer } from '../models/transfer.model';
 import { Account } from '../models/account.model';
@@ -84,4 +90,21 @@ export function accumulatedByPeriod(input: AccumulatedInput): number[] {
     }
     return Math.round(total * 100) / 100;
   });
+}
+
+/* The latest Period of the year carrying a recorded Movement — Transaction or
+   Transfer. 0 when the year carries none. Accumulated Periods after it are
+   frozen at the last known balance rather than recorded data. */
+export function lastMovementPeriod(
+  transactions: Transaction[],
+  transfers: Transfer[],
+  year: number,
+): number {
+  let last = 0;
+  for (const movement of [...transactions, ...transfers]) {
+    if (getPeriodYear(movement) === year && isMonthNumber(movement.period)) {
+      last = Math.max(last, movement.period);
+    }
+  }
+  return last;
 }
