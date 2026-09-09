@@ -119,6 +119,10 @@ export class TransactionService {
   }
 
   async getByScope(scope: PeriodScope): Promise<Transaction[]> {
+    if (scope.kind === 'year') {
+      const transactions = await db.transactions.toArray();
+      return transactions.filter(t => getPeriodYear(t) === scope.year);
+    }
     return this.getByPeriod(scope.period, scope.year);
   }
 

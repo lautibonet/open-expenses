@@ -161,6 +161,10 @@ export class TransferService {
   }
 
   async getByScope(scope: PeriodScope): Promise<Transfer[]> {
+    if (scope.kind === 'year') {
+      const transfers = await db.transfers.toArray();
+      return transfers.filter(t => getPeriodYear(t) === scope.year);
+    }
     return this.getByPeriod(scope.period, scope.year);
   }
 
