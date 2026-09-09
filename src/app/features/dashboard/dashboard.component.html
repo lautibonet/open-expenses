@@ -80,7 +80,7 @@
   <section class="card year-overview-card">
     <h2>{{ language.t('stats.yearOverview', { scope: scope().year }) }}</h2>
     @if (yearHasMovements()) {
-      <div class="year-overview" aria-hidden="true">
+      <div class="year-overview" aria-hidden="true" [style.--zero-pct]="yearOverviewZeroPct() + '%'">
         <div class="overview-tracks">
           @for (item of yearOverviewData(); track item.period) {
             <div class="overview-track" [class.current]="item.period === scope().period">
@@ -160,7 +160,7 @@
       <span class="value">{{ formatMoney(totalBalanceBaseCurrency()) }}</span>
     </div>
     @if (yearHasMovements()) {
-      <div class="balance-strip" aria-hidden="true">
+      <div class="balance-strip" aria-hidden="true" [style.--zero-pct]="balanceZeroPct() + '%'">
         <div class="balance-tracks">
           @for (balance of accumulated(); track $index) {
             <div class="balance-track" [class.current]="$index + 1 === scope().period">
