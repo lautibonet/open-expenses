@@ -7,6 +7,7 @@ const workflowSource = readFileSync(
   resolve(process.cwd(), '.github/workflows/deploy.yml'),
   'utf8',
 );
+const indexSource = readFileSync(resolve(process.cwd(), 'src/index.html'), 'utf8');
 
 const effectiveRules = headersSource
   .split('\n')
@@ -79,6 +80,30 @@ describe('Pages deploy pipeline contract', () => {
     );
     expect(guards ?? []).toContain("if: ${{ env.CLOUDFLARE_API_TOKEN != ''");
     expect(guards ?? []).toContain("if: ${{ env.CLOUDFLARE_API_TOKEN == ''");
+  });
+});
+
+describe('boot guard contract', () => {
+  it('ships a one-shot boot guard inline in index.html', () => {
+    expect(indexSource).toContain("var FLAG = 'oe-boot-recovery'");
+    expect(indexSource).toContain("addEventListener('error', function (event)");
+    expect(indexSource.match(/}, true\)/)).toBeTruthy();
+  });
+
+  it('heals past the browser cache by force-refreshing the failed resource before reloading', () => {
+    expect(indexSource).toContain("fetch(failedSrc, { cache: 'reload' })");
+    expect(indexSource).toContain('location.reload()');
+  });
+
+  it('unregisters stale service workers and drops their caches before recovering', () => {
+    expect(indexSource).toContain('getRegistrations()');
+    expect(indexSource).toContain('r.unregister()');
+    expect(indexSource).toContain('caches.delete(k)');
+  });
+
+  it('guards against recovery loops with a per-tab flag', () => {
+    expect(indexSource).toContain('sessionStorage.setItem(FLAG');
+    expect(indexSource).toContain('sessionStorage.getItem(FLAG)');
   });
 });
 

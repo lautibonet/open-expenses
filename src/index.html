@@ -17,6 +17,46 @@
   <link rel="preload" href="/fonts/inter-variable-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/fonts/jetbrains-mono-500-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="apple-touch-icon" href="icons/icon.svg">
+  <script>
+    /* Boot guard: once per tab, if a module script fails to load (a stale
+       service worker or a cache entry serving HTML as JS), unregister the
+       worker, drop its caches, force-refresh the failed resource past the
+       cache, and reload. The sessionStorage flag keeps it from looping. */
+    (function () {
+      var FLAG = 'oe-boot-recovery';
+      var recover = function (failedSrc) {
+        if (sessionStorage.getItem(FLAG)) return;
+        sessionStorage.setItem(FLAG, '1');
+        var sw = navigator.serviceWorker || { getRegistrations: function () { return Promise.resolve([]); } };
+        sw.getRegistrations()
+          .then(function (regs) { return Promise.all(regs.map(function (r) { return r.unregister(); })); })
+          .then(function () {
+            if (!window.caches) return;
+            return caches.keys().then(function (keys) {
+              return Promise.all(keys.map(function (k) { return caches.delete(k); }));
+            });
+          })
+          .then(function () {
+            if (!failedSrc) return;
+            return fetch(failedSrc, { cache: 'reload' }).catch(function () {});
+          })
+          .then(function () { location.reload(); }, function () { location.reload(); });
+      };
+      window.addEventListener('error', function (event) {
+        var el = event.target;
+        if (!el || el.tagName !== 'SCRIPT' || !el.src) return;
+        if (el.src.indexOf(location.origin) !== 0) return;
+        recover(el.src);
+      }, true);
+      window.addEventListener('unhandledrejection', function (event) {
+        var message = event.reason && event.reason.message;
+        if (!message) return;
+        var match = message.match(/dynamically imported module: (\S+)/);
+        if (!match || match[1].indexOf(location.origin) !== 0) return;
+        recover(match[1]);
+      });
+    })();
+  </script>
 </head>
 <body>
   <app-root></app-root>
