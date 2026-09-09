@@ -1934,6 +1934,27 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     expect(fixture.nativeElement.querySelector('.balance-caption')).toBeNull();
   });
 
+  it('aligns the scale anchors with the caption grammar: label left, value right, one spacing rhythm', async () => {
+    await seedMovement(getCurrentPeriod());
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const css = compiledComponentCss();
+
+    // Each scale figure sits on a justified row: label left, value right —
+    // the caption's own grammar.
+    for (const selector of ['overview-scale', 'balance-scale']) {
+      expect(css).toMatch(
+        new RegExp(`\\.${selector}[^{]*\\.scale-line[^{]*\\{[^}]*justify-content:\\s*space-between`),
+      );
+    }
+
+    // The graph-to-caption gap is one shared rhythm both graphs hand down;
+    // no card carries its own spacing.
+    expect(css).toMatch(/\.year-overview[^{]*\{[^}]*margin-bottom:\s*var\(--space-md\)/);
+    expect(css).toMatch(/\.balance-strip[^{]*\{[^}]*margin-bottom:\s*var\(--space-md\)/);
+  });
+
   it('takes month initials from the Language service, correct in both Languages', async () => {
     await seedMovement(getCurrentPeriod());
     await component.ngOnInit();

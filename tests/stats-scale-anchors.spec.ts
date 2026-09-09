@@ -66,6 +66,42 @@ for (const viewport of [
       expect(mono.family).toContain('JetBrains Mono');
       expect(mono.numeric).toContain('tabular-nums');
 
+      // Footer alignment: every line is a justified row — labels share the
+      // left edge, figures share the right edge — and both graphs hand
+      // their caption the same vertical gap.
+      const geo = await page.evaluate(() => {
+        const row = (sel: string) => {
+          const el = document.querySelector(sel) as HTMLElement;
+          const label = el.querySelector('.label')!.getBoundingClientRect();
+          const value = el.querySelector('.value')!.getBoundingClientRect();
+          return { labelLeft: label.left, valueRight: value.right };
+        };
+        const gap = (graph: string, caption: string) => {
+          const g = document.querySelector(graph)!.getBoundingClientRect();
+          const c = document.querySelector(caption)!.getBoundingClientRect();
+          return c.top - g.bottom;
+        };
+        return {
+          overviewCaption: row('.overview-caption'),
+          overviewScale: row('.overview-scale .scale-line'),
+          balanceCaption: row('.balance-caption'),
+          balanceScale: row('.balance-scale .scale-line'),
+          overviewGap: gap('.year-overview', '.overview-caption'),
+          balanceGap: gap('.balance-strip', '.balance-caption'),
+        };
+      });
+      for (const [caption, scale] of [
+        [geo.overviewCaption, geo.overviewScale],
+        [geo.balanceCaption, geo.balanceScale],
+      ]) {
+        expect(Math.abs(scale.labelLeft - caption.labelLeft), 'labels share the left edge')
+          .toBeLessThanOrEqual(2);
+        expect(Math.abs(scale.valueRight - caption.valueRight), 'figures share the right edge')
+          .toBeLessThanOrEqual(2);
+      }
+      expect(Math.abs(geo.overviewGap - geo.balanceGap), 'one shared graph-to-caption gap')
+        .toBeLessThanOrEqual(2);
+
       await expectNoHorizontalOverflow(page);
     });
   });

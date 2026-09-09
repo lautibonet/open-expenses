@@ -208,7 +208,10 @@
 }
 
 .balance-strip {
+  /* The year overview carries the same gap down to its caption; the strip
+     hands its footer the identical spacing, so the two cards' footers pair. */
   margin-top: var(--space-md);
+  margin-bottom: var(--space-md);
 }
 
 .balance-tracks {
@@ -387,9 +390,10 @@
 /* Caption and legend: the scope Period's figure — previously visible only to
    screen readers — promoted to the visible card footer, and the color grammar
    stated once in the caps-label voice. Both cards' footers pair: a caption
-   (caps label left, mono figure right), a scale anchor, then the legend.
-   The caption sits under the graph on its own line, so no track gives up
-   width. */
+   (caps label left, mono figure right), a scale anchor, then the legend —
+   every line the same justified row, every gap the same small step. The
+   graph-to-caption gap is carried by the graphs themselves, so both cards
+   hand their footer the identical spacing. */
 %graph-caption {
   display: flex;
   align-items: baseline;
@@ -423,23 +427,17 @@
   @extend %graph-caption;
 }
 
-/* Scale anchor: the caps-voice line that gives the relative columns absolute
+/* Scale anchor: the caps-voice lines that give the relative columns absolute
    meaning — what the graph's scale edges are worth (the overview names its
    tallest column and its deepest overdrawn Net; the strip names its track
-   top, or the overdrawn cap when that is the year's max magnitude). The
-   figures read in the mono data voice, the labels in the shared caps voice,
-   on their own line under the caption. */
+   top, or the overdrawn cap when that is the year's max magnitude). Each
+   figure rides a row of the caption grammar, so labels align left and
+   figures right across the whole footer. */
 %scale-anchor {
-  @extend %caps-label-muted;
-
   margin: 0 0 var(--space-xs);
 
-  .value {
-    @extend %mono-data;
-
-    font-weight: 500;
-    color: var(--on-surface);
-    white-space: nowrap;
+  .scale-line {
+    @extend %graph-caption;
   }
 }
 
