@@ -94,8 +94,10 @@ describe('strict asset 404 contract', () => {
   });
 
   /* A catch-all Function is invoked for every request, so the fake mimics
-     Pages' asset pipeline: known deployment files resolve, everything else
-     404s. */
+     the Pages asset pipeline as observed in production: deployed files
+     resolve with their real type; a missing asset-shaped path is answered
+     with the SPA's HTML (the fallback masquerade the Function must catch);
+     a missing route path comes back as a genuine 404. */
   const deployed = new Set([
     '/index.html',
     '/main-33S5YQ4A.js',
@@ -112,8 +114,16 @@ describe('strict asset 404 contract', () => {
             ? 'application/javascript'
             : path.endsWith('.css')
               ? 'text/css'
-              : 'text/html';
+              : path.endsWith('.json')
+                ? 'application/json'
+                : 'text/html';
           return new Response('asset body', { status: 200, headers: { 'content-type': type } });
+        }
+        if (/\.[a-z0-9]+$/i.test(path)) {
+          return new Response('index.html fallback', {
+            status: 200,
+            headers: { 'content-type': 'text/html' },
+          });
         }
         return new Response('no such asset', { status: 404 });
       },
@@ -135,7 +145,7 @@ describe('strict asset 404 contract', () => {
     }
   });
 
-  it('returns a real 404 for asset-shaped paths that miss the deployment', async () => {
+  it('returns a real 404 when an asset-shaped path is answered with the SPA fallback HTML', async () => {
     for (const path of ['/main-OLDHASH.js', '/missing.css', '/media/ghost.png']) {
       const res = await onRequest({ request: new Request(`https://openexpenses.app${path}`), env });
       expect(res.status).toBe(404);

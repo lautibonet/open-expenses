@@ -22,7 +22,7 @@ Every push to `main` builds the app and deploys it to Cloudflare Pages; every pu
 
 ## Fallback contract
 
-`functions/[[path]].js` handles every request that does not match a static asset (static assets always win over Functions):
+`functions/[[path]].js` is invoked for every request (a catch-all Function runs on all routes, no asset pre-filtering). It asks the asset pipeline for the path first and passes real assets through untouched; when an asset-shaped path comes back as the SPA's HTML — the asset pipeline papers over a miss with its own fallback — it answers a real **404** with `cache-control: no-store` instead.
 
 - Route paths (`/movements`, `/settings/erase`, …) fall through to the SPA's `index.html`, so Angular's router keeps taking over deep links.
 - Asset-shaped paths (`*.js`, `*.css`, `*.png`, …) that the current deployment does not have get a real **404** with `cache-control: no-store`.
