@@ -461,10 +461,8 @@
             [ngModel]="newCardCreateCategory()"
             (ngModelChange)="newCardCreateCategory.set($event)"
           />
-          <span class="consent-body">
-            {{ language.t('settings.createPaymentCategory') }}
-            <small class="consent-hint">{{ language.t('settings.createPaymentCategoryHint') }}</small>
-          </span>
+          <span class="consent-label">{{ language.t('settings.createPaymentCategory') }}</span>
+          <small class="consent-hint">{{ language.t('settings.createPaymentCategoryHint') }}</small>
         </label>
         <div class="form-actions">
           <button type="button" class="btn dashed" (click)="addCard()">
@@ -591,13 +589,25 @@
           } @else {
             <div class="account-main">
               <span class="account-name">{{ card.name }}</span>
-              <span class="account-meta">
-                <span>{{ card.currency }}</span>
-                <span>{{ accountNameFor(card.linkedAccountId) }}</span>
+              <span class="account-meta card-meta">
+                <span class="card-meta-field">
+                  <span class="card-meta-label">{{ language.t('settings.currency') }}</span>
+                  <span class="card-meta-value">{{ card.currency }}</span>
+                </span>
+                <span class="card-meta-field">
+                  <span class="card-meta-label">{{ language.t('settings.linkedAccount') }}</span>
+                  <span class="card-meta-value is-name">{{ accountNameFor(card.linkedAccountId) }}</span>
+                </span>
                 @if (card.limit != null) {
-                  <span>{{ language.t('settings.limit') }} {{ card.limit }}</span>
+                  <span class="card-meta-field">
+                    <span class="card-meta-label">{{ language.t('settings.limit') }}</span>
+                    <span class="card-meta-value">{{ card.limit }}</span>
+                  </span>
                 }
-                <span>{{ card.initialBalance }}</span>
+                <span class="card-meta-field">
+                  <span class="card-meta-label">{{ language.t('settings.startingDebt') }}</span>
+                  <span class="card-meta-value">{{ card.initialBalance }}</span>
+                </span>
               </span>
             </div>
             <div class="account-side">
