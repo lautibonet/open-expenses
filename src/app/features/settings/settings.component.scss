@@ -222,9 +222,28 @@ app-erase-card {
 .consent {
   grid-column: 1 / -1;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--space-xs);
   font-size: var(--type-caption);
+  color: var(--on-surface-variant);
+}
+
+/* The checkbox sits against the first line of the label; the explanation
+   hangs beneath it as a quieter caption, tied to the control it explains. */
+.consent input {
+  flex: none;
+  margin-top: 0.1rem;
+}
+
+.consent-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.consent-hint {
+  font-size: var(--type-label);
+  line-height: var(--leading-label);
   color: var(--on-surface-variant);
 }
 
