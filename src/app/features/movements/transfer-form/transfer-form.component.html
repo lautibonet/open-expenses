@@ -46,7 +46,7 @@
         [ngModel]="form().sourceAmount"
         (ngModelChange)="onSourceAmountChange($event)"
         name="sourceAmount"
-        [attr.aria-label]="language.t('movements.amount')"
+        [attr.aria-label]="language.t('movements.amountWithCurrency', { currency: sourceCurrency() })"
       />
     </label>
     <label>
@@ -95,7 +95,32 @@
         [attr.aria-label]="language.t('movements.note')"
       />
     </label>
+    @if (cardDestination()) {
+      <label>
+        {{ language.t('movements.paymentCategory') }}
+        <select
+          [ngModel]="form().categoryId"
+          (ngModelChange)="onPaymentCategoryChange($event)"
+          name="paymentCategory"
+          [attr.aria-label]="language.t('movements.paymentCategory')"
+        >
+          <option [ngValue]="null">{{ language.t('movements.choosePaymentCategory') }}</option>
+          @for (cat of paymentCategories(); track cat.id) {
+            <option [ngValue]="cat.id">{{ cat.name }}</option>
+          }
+        </select>
+      </label>
+    }
   </div>
+
+  @if (cardDestination(); as card) {
+    @if (cardBalance(); as balance) {
+      <p class="card-balance-hint" role="note">
+        {{ language.t('movements.cardOutstanding') }}
+        <span class="amount">{{ formatMoney(balance, card.currency) }}</span>
+      </p>
+    }
+  }
 
   <app-exchange-rate-well
     [from]="sourceCurrency()"

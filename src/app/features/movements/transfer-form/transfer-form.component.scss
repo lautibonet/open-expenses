@@ -55,6 +55,19 @@
   @extend %save-hint;
 }
 
+/* ADR 0022: on a Card Payment, show the destination card's outstanding debt
+   while the user types the amount themselves. A persistent rule note; the
+   amount itself follows the Numbers-Are-Mono rule (DESIGN.md). */
+.card-balance-hint {
+  margin: 0 0 0.5rem;
+  font-size: var(--type-label);
+  color: var(--on-surface-variant);
+
+  .amount {
+    @extend %mono-data;
+  }
+}
+
 /* Inline form error; the exchange-rate well's own error styling lives in
    the shared well component (#108). */
 .error {

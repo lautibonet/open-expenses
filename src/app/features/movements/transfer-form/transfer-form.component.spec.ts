@@ -604,6 +604,7 @@ describe('TransferFormComponent', () => {
           period: 8,
           year: 2026,
           note: 'bus pass',
+          categoryId: null,
         },
         editingId: null,
         rateState: { loading: false, error: '', rate: null, date: '' },
@@ -639,6 +640,7 @@ describe('TransferFormComponent', () => {
           period: 1,
           year: 2026,
           note: 'savings',
+          categoryId: null,
         },
         editingId: t.id!,
         rateState: { loading: false, error: '', rate: 1, date: 'stored' },
@@ -675,6 +677,138 @@ describe('TransferFormComponent', () => {
 
       const heading = fixture.nativeElement.querySelector('h3');
       expect(document.activeElement).toBe(heading);
+    });
+  });
+
+  describe('Card Payment mode (ADR 0022)', () => {
+    let cardAccountId: number;
+    let paymentCategoryId: number;
+    let otherExpenseId: number;
+
+    beforeEach(async () => {
+      cardAccountId = await db.accounts.add({
+        name: 'Visa',
+        currency: 'EUR',
+        initialBalance: -200,
+        active: true,
+        kind: 'credit-card',
+        linkedAccountId: eurAccountId,
+        createdAt: new Date(),
+      });
+      paymentCategoryId = await db.categories.add({
+        name: 'Visa payment',
+        type: 'expense',
+        active: true,
+        createdAt: new Date(),
+      });
+      otherExpenseId = await db.categories.add({
+        name: 'Groceries',
+        type: 'expense',
+        active: true,
+        createdAt: new Date(),
+      });
+      await db.categories.add({
+        name: 'Payroll',
+        type: 'income',
+        active: true,
+        createdAt: new Date(),
+      });
+      fixture.componentRef.setInput('accounts', await db.accounts.toArray());
+      fixture.componentRef.setInput('categories', await db.categories.toArray());
+    });
+
+    it('shows a pre-filled Expense category field when the destination is a card', async () => {
+      await component.ngOnInit();
+      fixture.detectChanges();
+      component.onSourceChange(eurAccountId);
+      component.onDestChange(cardAccountId);
+      fixture.detectChanges();
+
+      expect(component.cardDestination()?.id).toBe(cardAccountId);
+      expect(component.form().categoryId).toBe(paymentCategoryId);
+      expect(fixture.nativeElement.querySelector('select[name="paymentCategory"]')).toBeTruthy();
+    });
+
+    it('pre-fills from the stored category link even after the category is renamed', async () => {
+      await db.accounts.update(cardAccountId, { paymentCategoryId: otherExpenseId });
+      await db.categories.update(otherExpenseId, { name: 'Tarjeta de crédito' });
+      fixture.componentRef.setInput('accounts', await db.accounts.toArray());
+      fixture.componentRef.setInput('categories', await db.categories.toArray());
+
+      await component.ngOnInit();
+      component.onSourceChange(eurAccountId);
+      component.onDestChange(cardAccountId);
+
+      expect(component.form().categoryId).toBe(otherExpenseId);
+    });
+
+    it('shows no category field when the destination is a cash account', async () => {
+      await component.ngOnInit();
+      fixture.detectChanges();
+      component.onSourceChange(eurAccountId);
+      component.onDestChange(eur2AccountId);
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.querySelector('select[name="paymentCategory"]')).toBeNull();
+      expect(component.form().categoryId).toBeNull();
+    });
+
+    it('offers Expense categories only', async () => {
+      await component.ngOnInit();
+      fixture.detectChanges();
+      component.onSourceChange(eurAccountId);
+      component.onDestChange(cardAccountId);
+      fixture.detectChanges();
+
+      const options = Array.from(
+        fixture.nativeElement.querySelectorAll(
+          'select[name="paymentCategory"] option',
+        ) as NodeListOf<HTMLOptionElement>,
+      ).map((o) => o.textContent?.trim());
+      expect(options).toContain('Visa payment');
+      expect(options).toContain('Groceries');
+      expect(options).not.toContain('Payroll');
+    });
+
+    it('requires a category before saving a card payment', async () => {
+      await component.ngOnInit();
+      component.onSourceChange(eurAccountId);
+      component.onDestChange(cardAccountId);
+      component.form.update((f) => ({ ...f, sourceAmount: 100, categoryId: null }));
+
+      expect(component.canSubmit()).toBe(false);
+      expect(component.disabledReason()).toBe('Choose a payment category.');
+    });
+
+    it('shows the destination card outstanding balance without pre-filling the amount', async () => {
+      await component.ngOnInit();
+      fixture.detectChanges();
+      component.onSourceChange(eurAccountId);
+      component.onDestChange(cardAccountId);
+      await flush();
+      fixture.detectChanges();
+
+      const hint = fixture.nativeElement.querySelector('.card-balance-hint');
+      expect(hint).toBeTruthy();
+      expect(hint.textContent).toContain('Outstanding balance');
+      expect(hint.textContent).toContain('200.00');
+      expect(hint.textContent).toContain('-');
+      expect(component.form().sourceAmount).toBeNull();
+    });
+
+    it('saves the card payment with its chosen category', async () => {
+      await component.ngOnInit();
+      fixture.detectChanges();
+      component.onSourceChange(eurAccountId);
+      component.onDestChange(cardAccountId);
+      component.form.update((f) => ({ ...f, sourceAmount: 150, categoryId: otherExpenseId }));
+
+      await component.onSubmit();
+
+      const transfers = await transferService.getAll();
+      expect(transfers).toHaveLength(1);
+      expect(transfers[0].destinationAccountId).toBe(cardAccountId);
+      expect(transfers[0].categoryId).toBe(otherExpenseId);
     });
   });
 });

@@ -22,13 +22,15 @@ export interface PeriodOverview {
 }
 
 /* Income, Expenses, and Net (Income minus Expenses) per Period of a year,
-   reported in Base Currency. Transfers never count toward Net, so only
-   Transactions come in. Months without movements stay at 0; aggregation
-   follows the stored Period year, never the movement's date. */
+   reported in Base Currency. Cash to Cash, Card to Cash, and Card to Card
+   Transfers never count; the Cash-to-Card Card Payments passed in do, as
+   Expenses in their stored Period (ADR 0022). Months without movements stay at
+   0; aggregation follows the stored Period year, never the movement's date. */
 export function yearOverview(
   transactions: Transaction[],
   isIncome: (transaction: Transaction) => boolean,
   year: number,
+  cardPayments: Transfer[] = [],
 ): PeriodOverview[] {
   const incomes = new Map<MonthNumber, number>(MONTH_NUMBERS.map(m => [m, 0]));
   const expenses = new Map<MonthNumber, number>(MONTH_NUMBERS.map(m => [m, 0]));
@@ -38,6 +40,14 @@ export function yearOverview(
     const amount = storedBaseAmount(t);
     const bucket = isIncome(t) ? incomes : expenses;
     bucket.set(t.period, Math.round((bucket.get(t.period)! + amount) * 100) / 100);
+  }
+
+  for (const payment of cardPayments) {
+    if (getPeriodYear(payment) !== year) continue;
+    expenses.set(
+      payment.period,
+      Math.round((expenses.get(payment.period)! + payment.baseCurrencyAmount) * 100) / 100,
+    );
   }
 
   return MONTH_NUMBERS.map(period => {

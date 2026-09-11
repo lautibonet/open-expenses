@@ -12,10 +12,15 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { TransferService } from '../../../core/services/transfer.service';
+import { TransactionService } from '../../../core/services/transaction.service';
+import { CategoryService } from '../../../core/services/category.service';
 import { LanguageService } from '../../../core/services/language.service';
 import { TranslationError, errorCopy } from '../../../core/models/translation-error';
 import { Transfer } from '../../../core/models/transfer.model';
-import { Account } from '../../../core/models/account.model';
+import { Transaction } from '../../../core/models/transaction.model';
+import { Account, isCreditCard } from '../../../core/models/account.model';
+import { Category, isIncomeCategory } from '../../../core/models/category.model';
+import { periodEndBalance } from '../../../core/balances/period-end-balances';
 import {
   ExchangeRateWellComponent,
   ExchangeRateWellLabels,
@@ -25,6 +30,7 @@ import {
 import {
   MONTH_NUMBERS,
   MonthNumber,
+  defaultScope,
   getCurrentYear,
   getPeriodYear,
   periodYearFromDate,
@@ -46,6 +52,8 @@ export interface TransferFormState {
   period: MonthNumber;
   year: number;
   note: string;
+  /* The Card Payment's Expense category; null on every other Transfer kind. */
+  categoryId: number | null;
 }
 
 export interface TransferDraft {
@@ -82,6 +90,7 @@ function defaultFormState(accounts: Account[]): TransferFormState {
     date,
     ...periodYearFromDate(date),
     note: '',
+    categoryId: null,
   };
 }
 
@@ -94,10 +103,13 @@ function defaultFormState(accounts: Account[]): TransferFormState {
 export class TransferFormComponent implements AfterViewInit {
   language = inject(LanguageService);
   private transferService = inject(TransferService);
+  private transactionService = inject(TransactionService);
+  private categoryService = inject(CategoryService);
 
   private editApplyEffect = effect(() => this.handleEditInput(this.editTransfer()));
 
   accounts = input<Account[]>([]);
+  categories = input<Category[]>([]);
   editTransfer = input<Transfer | null>(null);
   initialDraft = input<TransferDraft | null>(null);
   /* Hosted inside the mobile capture bottom sheet (#104): the sheet already
@@ -115,6 +127,8 @@ export class TransferFormComponent implements AfterViewInit {
 
   editingId = signal<number | null>(null);
   form = signal<TransferFormState>(defaultFormState([]));
+  /* The selected card's outstanding debt, shown as a Card Payment hint. */
+  cardBalance = signal<number | null>(null);
 
   rateState = signal<RateState>({ loading: false, error: '', rate: null, date: '' });
   rateSeed = signal<RateSeed | null>(null);
@@ -130,6 +144,19 @@ export class TransferFormComponent implements AfterViewInit {
       dst: this.accounts().find((a) => a.id === f.destAccountId),
     };
   });
+
+  /* The destination Credit Card when the Transfer is into a card — the Card
+     Payment capture — otherwise null. */
+  cardDestination = computed(() => {
+    const dst = this.selectedAccounts().dst;
+    return dst && isCreditCard(dst) ? dst : null;
+  });
+
+  /* Expense categories only: a Card Payment's category is an Expense by
+     definition (ADR 0022). */
+  paymentCategories = computed(() =>
+    this.categories().filter((c) => c.type === 'expense'),
+  );
 
   isForeignCurrency = computed(() => {
     const { src, dst } = this.selectedAccounts();
@@ -150,6 +177,7 @@ export class TransferFormComponent implements AfterViewInit {
     const f = this.form();
     if (!f.sourceAccountId || !f.destAccountId) return false;
     if (f.sourceAccountId === f.destAccountId) return false;
+    if (this.cardDestination() && !f.categoryId) return false;
     if (!((f.sourceAmount ?? 0) > 0)) return false;
     if (this.isForeignCurrency() && this.rateState().loading) return false;
     return !this.saving();
@@ -163,6 +191,9 @@ export class TransferFormComponent implements AfterViewInit {
     }
     if (f.sourceAccountId === f.destAccountId) {
       return this.language.t('movements.saveDisabled.distinct');
+    }
+    if (this.cardDestination() && !f.categoryId) {
+      return this.language.t('movements.saveDisabled.paymentCategory');
     }
     if (!((f.sourceAmount ?? 0) > 0)) return this.language.t('movements.saveDisabled.amount');
     if (this.isForeignCurrency() && this.rateState().loading) {
@@ -181,9 +212,16 @@ export class TransferFormComponent implements AfterViewInit {
         date: draft.rateState.date,
         error: draft.rateState.error || undefined,
       });
+      void this.refreshCardBalance();
       return;
     }
-    this.form.set(defaultFormState(this.accounts()));
+    const form = defaultFormState(this.accounts());
+    const dest = this.accounts().find((a) => a.id === form.destAccountId);
+    if (dest && isCreditCard(dest)) {
+      form.categoryId = this.paymentCategoryIdFor(dest);
+    }
+    this.form.set(form);
+    void this.refreshCardBalance();
   }
 
   ngAfterViewInit(): void {
@@ -207,13 +245,65 @@ export class TransferFormComponent implements AfterViewInit {
 
   onSourceChange(sourceId: number): void {
     this.form.update((f) => {
-      const destAccountId = f.destAccountId === sourceId ? 0 : f.destAccountId;
-      return { ...f, sourceAccountId: sourceId, destAccountId };
+      const destChanged = f.destAccountId === sourceId;
+      return {
+        ...f,
+        sourceAccountId: sourceId,
+        destAccountId: destChanged ? 0 : f.destAccountId,
+        categoryId: destChanged ? null : f.categoryId,
+      };
     });
+    void this.refreshCardBalance();
   }
 
   onDestChange(destId: number): void {
-    this.form.update((f) => ({ ...f, destAccountId: destId }));
+    const dest = this.accounts().find((a) => a.id === destId);
+    const categoryId = dest && isCreditCard(dest) ? this.paymentCategoryIdFor(dest) : null;
+    this.form.update((f) => ({ ...f, destAccountId: destId, categoryId }));
+    void this.refreshCardBalance();
+  }
+
+  onPaymentCategoryChange(value: number | null): void {
+    this.form.update((f) => ({ ...f, categoryId: value == null ? null : Number(value) }));
+  }
+
+  formatMoney(amount: number, currency: string): string {
+    return this.language.formatMoney(amount, currency);
+  }
+
+  /* The card's payment category. Prefer the stored link so the pre-fill
+     survives a rename or a Language change; fall back to the category named
+     after the card for cards created before the link was stored. */
+  private paymentCategoryIdFor(card: Account): number | null {
+    if (card.paymentCategoryId != null && this.paymentCategories().some((c) => c.id === card.paymentCategoryId)) {
+      return card.paymentCategoryId;
+    }
+    const name = this.language.t('category.cardPayment', { name: card.name });
+    const match = this.paymentCategories().find((c) => c.name === name);
+    return match?.id ?? null;
+  }
+
+  /* The destination card's outstanding debt: its balance accumulated over
+     every recorded movement through the current Period. */
+  private async refreshCardBalance(): Promise<void> {
+    const card = this.cardDestination();
+    if (!card) {
+      this.cardBalance.set(null);
+      return;
+    }
+    const [transactions, transfers, categories] = await Promise.all([
+      this.transactionService.getAll(),
+      this.transferService.getAll(),
+      this.categoryService.getAll(),
+    ]);
+    const isIncome = (t: Transaction): boolean =>
+      isIncomeCategory(categories.find((c) => c.id === t.categoryId)?.type);
+    this.cardBalance.set(
+      periodEndBalance(
+        { account: card, transactions, transfers, isIncome },
+        defaultScope(),
+      ),
+    );
   }
 
   onSourceAmountChange(value: number | null): void {
@@ -263,6 +353,7 @@ export class TransferFormComponent implements AfterViewInit {
           period: f.period,
           year: f.year,
           note: f.note,
+          categoryId: f.categoryId ?? undefined,
         });
       } else {
         await this.transferService.create(
@@ -274,6 +365,7 @@ export class TransferFormComponent implements AfterViewInit {
           f.note,
           f.exchangeRate,
           f.year,
+          f.categoryId,
         );
       }
       this.saving.set(false);
@@ -303,6 +395,7 @@ export class TransferFormComponent implements AfterViewInit {
       period: t.period,
       year: getPeriodYear(t),
       note: t.note,
+      categoryId: t.categoryId ?? null,
     });
     const src = this.accounts().find((a) => a.id === t.sourceAccountId);
     const dst = this.accounts().find((a) => a.id === t.destinationAccountId);
@@ -312,6 +405,7 @@ export class TransferFormComponent implements AfterViewInit {
     this.rateState.set({ loading: false, error: '', rate: null, date: '' });
     this.errorMessage.set('');
     this.errorDetail.set('');
+    void this.refreshCardBalance();
   }
 
   private prefersReducedMotion(): boolean {

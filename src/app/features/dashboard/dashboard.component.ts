@@ -41,7 +41,7 @@ import {
   accumulatedByPeriod,
   lastMovementPeriod,
 } from '../../core/stats/year-overview';
-import { cashBasisTransactions } from '../../core/stats/cash-basis';
+import { cashBasisTransactions, cardPaymentTransfers } from '../../core/stats/cash-basis';
 
 /* A graph track's two extremes around the zero line: the largest figure that
    grows up from it and the largest magnitude that grows below it. */
@@ -375,6 +375,7 @@ export class DashboardComponent implements OnInit {
 
   async refreshAverages(): Promise<void> {
     const allTxns = await this.transactionService.getAll();
+    const allTransfers = await this.transferService.getAll();
     const allCategories = await this.categoryService.getAll();
     const accountsById = new Map((await this.accountService.getAll()).map(a => [a.id!, a]));
     const catMap = new Map(allCategories.map(c => [c.id!, c]));
@@ -383,19 +384,35 @@ export class DashboardComponent implements OnInit {
     const selectedYear = String(scope.year);
 
     /* ADR 0022: the year-to-period totals, averages, and overview are
-       cash-basis — Card Purchases never reach them. The balance strip keeps
-       every movement, so `yearHasMovements` stays on the full set. */
+       cash-basis — Card Purchases never reach them, and a Cash-to-Card Card
+       Payment reaches them as an Expense in its stored Period. The balance
+       strip keeps every movement, so `yearHasMovements` stays on the full
+       set. */
     const cashTxns = cashBasisTransactions(allTxns, accountsById);
+    const cardPayments = cardPaymentTransfers(allTransfers, accountsById);
 
     const yearTxns = allTxns.filter(t => String(getPeriodYear(t)) === selectedYear);
     const filteredTxns = cashTxns.filter(
       t => String(getPeriodYear(t)) === selectedYear && t.period <= scope.period,
     );
+    const filteredCardPayments = cardPayments.filter(
+      t => String(getPeriodYear(t)) === selectedYear && t.period <= scope.period,
+    );
 
-    this.yearOverviewData.set(yearOverview(cashTxns, this.incomeClassifier(catMap), scope.year));
-    this.yearHasMovements.set(yearTxns.length > 0);
+    this.yearOverviewData.set(
+      yearOverview(cashTxns, this.incomeClassifier(catMap), scope.year, cardPayments),
+    );
+    /* The balance strip keeps every movement — Transaction or Transfer — so a
+       year whose only movement is a Card Payment still renders the strip. */
+    this.yearHasMovements.set(
+      yearTxns.length > 0 ||
+        allTransfers.some(t => String(getPeriodYear(t)) === selectedYear),
+    );
 
-    const monthsWithData = new Set(filteredTxns.map(t => t.period));
+    const monthsWithData = new Set([
+      ...filteredTxns.map(t => t.period),
+      ...filteredCardPayments.map(t => t.period),
+    ]);
 
     if (monthsWithData.size === 0) {
       this.yearTotalIncome.set(0);
@@ -419,6 +436,10 @@ export class DashboardComponent implements OnInit {
       } else {
         totalExpenses += amount;
       }
+    }
+
+    for (const payment of filteredCardPayments) {
+      totalExpenses += payment.baseCurrencyAmount;
     }
 
     const months = monthsWithData.size;

@@ -151,6 +151,35 @@ describe('NetFlowCardComponent', () => {
     expect(component.netTotal()).toBe(-100);
   });
 
+  it('counts a Cash-to-Card Card Payment as an Expense in the flow', async () => {
+    const card = await accountService.createCard({
+      name: 'Visa',
+      linkedAccountId: eurAccountId,
+    });
+    const period = getCurrentPeriod();
+    await transferService.create(
+      eurAccountId, card.id!, 400, new Date(), period, '', 1, defaultScope().year, expenseCategoryId,
+    );
+    await render();
+
+    expect(component.expenseTotal()).toBe(400);
+    expect(component.incomeTotal()).toBe(0);
+    expect(component.netTotal()).toBe(-400);
+  });
+
+  it('excludes Card-to-Cash and Card-to-Card Transfers from the flow', async () => {
+    const card = await accountService.createCard({ name: 'Visa', linkedAccountId: eurAccountId });
+    const card2 = await accountService.createCard({ name: 'Master', linkedAccountId: eurAccountId });
+    const period = getCurrentPeriod();
+    const year = defaultScope().year;
+    await transferService.create(card.id!, eurAccountId, 100, new Date(), period, '', 1, year);
+    await transferService.create(card.id!, card2.id!, 100, new Date(), period, '', 1, year, expenseCategoryId);
+    await render();
+
+    expect(component.expenseTotal()).toBe(0);
+    expect(component.netTotal()).toBe(0);
+  });
+
   it('renders a plus-signed mono net amount with IN/OUT sub-lines', async () => {
     const period = getCurrentPeriod();
     await transactionService.create(eurAccountId, incomeCategoryId, 5200, new Date(), period);

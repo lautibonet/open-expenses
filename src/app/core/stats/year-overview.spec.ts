@@ -123,6 +123,41 @@ describe('yearOverview', () => {
 
     expect(overview.find(o => o.period === 6)!.income).toBe(60.6);
   });
+
+  it('counts a Card Payment as an Expense in its Period (ADR 0022)', () => {
+    const payment = transfer({ period: 3, baseCurrencyAmount: 500 });
+
+    const overview = yearOverview([], () => true, 2026, [payment]);
+
+    expect(overview.find(o => o.period === 3)).toEqual({
+      period: 3,
+      income: 0,
+      expenses: 500,
+      net: -500,
+    });
+  });
+
+  it('nets Card Payments against Income for the Period net', () => {
+    const income = txn({ period: 3, amount: 3000 });
+    const payment = transfer({ period: 3, baseCurrencyAmount: 500 });
+
+    const overview = yearOverview([income], () => true, 2026, [payment]);
+
+    expect(overview.find(o => o.period === 3)!.net).toBe(2500);
+  });
+
+  it('aggregates Card Payments by the stored Period year, never the date', () => {
+    const payment = transfer({ period: 1, date: new Date('2025-12-22'), year: 2026, baseCurrencyAmount: 500 });
+
+    expect(yearOverview([], () => true, 2026, [payment]).find(o => o.period === 1)!.expenses).toBe(500);
+    expect(yearOverview([], () => true, 2025, [payment]).every(o => o.expenses === 0)).toBe(true);
+  });
+
+  it('counts Card Payments at their stored base amount', () => {
+    const payment = transfer({ period: 4, baseCurrencyAmount: 108 });
+
+    expect(yearOverview([], () => true, 2026, [payment]).find(o => o.period === 4)!.expenses).toBe(108);
+  });
 });
 
 describe('accumulatedByPeriod', () => {

@@ -80,6 +80,9 @@ export class AccountService {
     }
 
     return db.transaction('rw', db.accounts, db.categories, async () => {
+      const paymentCategory = paymentCategoryName
+        ? await createCategory(paymentCategoryName, 'expense')
+        : null;
       const card: Account = {
         name: trimmedName,
         currency: linked.currency,
@@ -92,11 +95,11 @@ export class AccountService {
       if (input.limit != null) {
         card.limit = input.limit;
       }
+      if (paymentCategory) {
+        card.paymentCategoryId = paymentCategory.id;
+      }
 
       const id = await db.accounts.add(card);
-      if (paymentCategoryName) {
-        await createCategory(paymentCategoryName, 'expense');
-      }
       return { ...card, id };
     });
   }
@@ -210,12 +213,6 @@ export class AccountService {
      Credit Cards. */
   async getActive(): Promise<Account[]> {
     return db.accounts.filter(a => a.active).toArray();
-  }
-
-  /* Cash Accounts only, for captures that cannot yet land on a Credit Card
-     (the Transfer Form's Card Payment mode is a later Ticket). */
-  async getActiveCash(): Promise<Account[]> {
-    return db.accounts.filter(a => a.active && isCashAccount(a)).toArray();
   }
 
   async getById(id: number): Promise<Account | undefined> {

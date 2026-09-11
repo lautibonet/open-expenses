@@ -83,7 +83,8 @@
 
   <ng-template #transferForm>
     <app-transfer-form
-      [accounts]="cashAccounts()"
+      [accounts]="accounts()"
+      [categories]="categories()"
       [editTransfer]="editTransfer()"
       [initialDraft]="transferRestore()"
       [inSheet]="isMobileLayout()"

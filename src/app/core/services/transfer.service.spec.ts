@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { TransferService } from './transfer.service';
 import { AccountService } from './account.service';
+import { CategoryService } from './category.service';
 import { db } from '../db/database';
 import { getCurrentYear } from '../types/period.type';
 
@@ -234,5 +235,81 @@ describe('TransferService', () => {
     await expect(
       transferService.update(t.id!, { year: 22 }),
     ).rejects.toThrow('errors.yearInvalid');
+  });
+
+  describe('Card Payments (ADR 0022)', () => {
+    let categoryService: CategoryService;
+    let cardId: number;
+    let expenseId: number;
+    let incomeId: number;
+
+    beforeEach(async () => {
+      categoryService = TestBed.inject(CategoryService);
+      const card = await accountService.createCard({
+        name: 'Visa',
+        linkedAccountId: cashId,
+      });
+      cardId = card.id!;
+      const expense = await categoryService.create('Visa payment', 'expense');
+      expenseId = expense.id!;
+      const income = await categoryService.create('Salary', 'income');
+      incomeId = income.id!;
+    });
+
+    it('stores the Expense category on a Cash-to-Card Transfer', async () => {
+      const t = await transferService.create(
+        cashId, cardId, 500, new Date(), 1, '', 1, getCurrentYear(), expenseId,
+      );
+      expect(t.categoryId).toBe(expenseId);
+    });
+
+    it('requires a category when the destination is a Card', async () => {
+      await expect(
+        transferService.create(cashId, cardId, 500, new Date(), 1),
+      ).rejects.toThrow('errors.cardPaymentCategoryRequired');
+    });
+
+    it('rejects an Income-type category on a Card Transfer', async () => {
+      await expect(
+        transferService.create(cashId, cardId, 500, new Date(), 1, '', 1, getCurrentYear(), incomeId),
+      ).rejects.toThrow('errors.cardPaymentCategoryExpenseOnly');
+    });
+
+    it('rejects an unknown category on a Card Transfer', async () => {
+      await expect(
+        transferService.create(cashId, cardId, 500, new Date(), 1, '', 1, getCurrentYear(), 9999),
+      ).rejects.toThrow('errors.categoryNotFound');
+    });
+
+    it('carries no category on a Cash-to-Cash Transfer', async () => {
+      const t = await transferService.create(
+        cashId, savingsId, 500, new Date(), 1, '', 1, getCurrentYear(), expenseId,
+      );
+      expect(t.categoryId).toBeUndefined();
+    });
+
+    it('requires a category when updating a Transfer into a Card', async () => {
+      const t = await transferService.create(cashId, savingsId, 500, new Date(), 1);
+      await expect(
+        transferService.update(t.id!, { destinationAccountId: cardId }),
+      ).rejects.toThrow('errors.cardPaymentCategoryRequired');
+    });
+
+    it('stores the category when updating a Transfer into a Card', async () => {
+      const t = await transferService.create(cashId, savingsId, 500, new Date(), 1);
+      const updated = await transferService.update(t.id!, {
+        destinationAccountId: cardId,
+        categoryId: expenseId,
+      });
+      expect(updated.categoryId).toBe(expenseId);
+    });
+
+    it('clears the category when a Card Payment is redirected to Cash', async () => {
+      const t = await transferService.create(
+        cashId, cardId, 500, new Date(), 1, '', 1, getCurrentYear(), expenseId,
+      );
+      const updated = await transferService.update(t.id!, { destinationAccountId: savingsId });
+      expect(updated.categoryId).toBeUndefined();
+    });
   });
 });

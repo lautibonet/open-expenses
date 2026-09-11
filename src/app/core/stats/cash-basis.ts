@@ -1,5 +1,6 @@
-import { Account, isCashAccount } from '../models/account.model';
+import { Account, isCashAccount, isCreditCard } from '../models/account.model';
 import { Transaction } from '../models/transaction.model';
+import { Transfer } from '../models/transfer.model';
 
 /* ADR 0022: the Income, Expenses, and Net figures are cash-basis. A Transaction
    on a Credit Card (a Card Purchase or a card refund) never counts in them —
@@ -20,4 +21,25 @@ export function cashBasisTransactions(
   accountsById: Map<number, Account>,
 ): Transaction[] {
   return transactions.filter(transaction => countsTowardCashBasis(transaction, accountsById));
+}
+
+/* ADR 0022: the one Transfer kind that reaches the cash-basis KPIs is the Card
+   Payment — money leaving a Cash Account to settle a Credit Card. Every other
+   kind (Cash to Cash, Card to Cash, Card to Card) never counts. A Transfer
+   whose accounts cannot both be resolved is not a Card Payment. */
+export function isCardPayment(
+  transfer: Transfer,
+  accountsById: Map<number, Account>,
+): boolean {
+  const source = accountsById.get(transfer.sourceAccountId);
+  const destination = accountsById.get(transfer.destinationAccountId);
+  return !!source && !!destination && isCashAccount(source) && isCreditCard(destination);
+}
+
+/* The Transfers that count in the cash-basis KPIs: the Card Payments. */
+export function cardPaymentTransfers(
+  transfers: Transfer[],
+  accountsById: Map<number, Account>,
+): Transfer[] {
+  return transfers.filter(transfer => isCardPayment(transfer, accountsById));
 }

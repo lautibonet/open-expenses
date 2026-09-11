@@ -14,6 +14,10 @@ export interface Account {
   linkedAccountId?: number;
   /* Optional ceiling on a Credit Card's debt. Never blocks. */
   limit?: number;
+  /* The Expense category the card's Card Payments are captured under — the
+     "Visa payment" category created with the card (ADR 0022). Locale-neutral:
+     the link survives renaming or a Language change. */
+  paymentCategoryId?: number;
   createdAt: Date;
 }
 

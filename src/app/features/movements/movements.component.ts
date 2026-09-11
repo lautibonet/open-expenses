@@ -95,9 +95,6 @@ export class MovementsComponent implements OnInit, OnDestroy {
      cash-basis KPI classification: a Deactivated Credit Card keeps its past
      purchases, which must still stay out of Income, Expenses, and Net. */
   allAccounts = signal<Account[]>([]);
-  /* Active Cash Accounts only: the Transaction Form may pick a Credit Card,
-     but the Transfer Form's Card Payment mode is a later Ticket. */
-  cashAccounts = signal<Account[]>([]);
   categories = signal<Category[]>([]);
   allCategoriesForNameResolution = signal<Category[]>([]);
   movements = signal<MovementItem[]>([]);
@@ -366,7 +363,6 @@ export class MovementsComponent implements OnInit, OnDestroy {
       this.baseCurrency.set(await this.profileService.getBaseCurrency());
       this.accounts.set(await this.accountService.getActive());
       this.allAccounts.set(await this.accountService.getAll());
-      this.cashAccounts.set(await this.accountService.getActiveCash());
       this.categories.set(await this.categoryService.getActive());
       this.allCategoriesForNameResolution.set(await this.categoryService.getAll());
       await this.refresh();
