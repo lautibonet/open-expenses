@@ -6,9 +6,11 @@ import { getPeriodYear, monthNumberFromName } from '../core/types/period.type';
  * Schema version of Backup snapshots. Version 1 snapshots predate the field
  * and store locale-sensitive values (English month names, `Income`/`Expense`
  * category types); version 2 stores locale-neutral values (month numbers
- * 1-12, `income`/`expense` codes). See ADR 0009.
+ * 1-12, `income`/`expense` codes). Version 3 carries the account kind and the
+ * Credit Card fields (Linked Account, Limit, payment category), plus the
+ * Card Payment category on a Transfer. See ADR 0009 and ADR 0022.
  */
-export const BACKUP_SCHEMA_VERSION = 2;
+export const BACKUP_SCHEMA_VERSION = 3;
 
 export interface BackupSnapshot {
   schemaVersion?: number;
@@ -99,6 +101,12 @@ function migrateLegacyCategory(category: any): any {
   };
 }
 
+/* ADR 0022: accounts persisted before the kind field existed are Cash
+   Accounts. Mirrors the v7 upgrade in database.ts. */
+function migrateLegacyAccount(account: any): any {
+  return { ...account, kind: account?.kind ?? 'cash' };
+}
+
 /**
  * Migrates a snapshot to the current schema version. Legacy snapshots are
  * converted in memory (never rejected); snapshots from a newer schema version
@@ -116,6 +124,7 @@ export function migrateSnapshotToCurrent(snapshot: BackupSnapshot): BackupSnapsh
   return {
     ...snapshot,
     schemaVersion: BACKUP_SCHEMA_VERSION,
+    accounts: snapshot.accounts.map(migrateLegacyAccount),
     categories: snapshot.categories.map(migrateLegacyCategory),
     transactions: snapshot.transactions.map(migrateLegacyMovement),
     transfers: snapshot.transfers.map(migrateLegacyMovement),
