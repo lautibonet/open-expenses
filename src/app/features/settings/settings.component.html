@@ -120,26 +120,31 @@
 
     @if (addingAccount()) {
       <div class="inline-form">
-        <input
-          #newAccountNameInput
-          type="text"
-          [ngModel]="newAccountName()"
-          (ngModelChange)="newAccountName.set($event)"
-          [placeholder]="language.t('settings.name')"
-          class="input"
-          [attr.aria-label]="language.t('settings.name')"
-        />
-        <select
-          [ngModel]="newAccountCurrency()"
-          (ngModelChange)="newAccountCurrency.set($event)"
-          class="input"
-          [attr.aria-label]="language.t('settings.accountCurrencyAria')"
-        >
-          @for (currency of supportedCurrencies; track currency) {
-            <option [value]="currency">{{ currency }}</option>
-          }
-        </select>
-        <div class="field">
+        <label class="field">
+          <span class="field-label">{{ language.t('settings.name') }}</span>
+          <input
+            #newAccountNameInput
+            type="text"
+            [ngModel]="newAccountName()"
+            (ngModelChange)="newAccountName.set($event)"
+            class="input"
+            [attr.aria-label]="language.t('settings.name')"
+          />
+        </label>
+        <label class="field">
+          <span class="field-label">{{ language.t('settings.currency') }}</span>
+          <select
+            [ngModel]="newAccountCurrency()"
+            (ngModelChange)="newAccountCurrency.set($event)"
+            class="input"
+            [attr.aria-label]="language.t('settings.accountCurrencyAria')"
+          >
+            @for (currency of supportedCurrencies; track currency) {
+              <option [value]="currency">{{ currency }}</option>
+            }
+          </select>
+        </label>
+        <label class="field">
           <span class="field-label">{{ language.t('settings.initialBalance') }}</span>
           <input
             type="number"
@@ -148,13 +153,15 @@
             class="input"
             [attr.aria-label]="language.t('settings.initialBalance')"
           />
+        </label>
+        <div class="form-actions">
+          <button type="button" class="btn dashed" (click)="addAccount()">
+            + {{ language.t('settings.addAccount') }}
+          </button>
+          <button type="button" class="btn" (click)="cancelAddAccount()">
+            {{ language.t('settings.cancel') }}
+          </button>
         </div>
-        <button class="btn dashed" (click)="addAccount()">
-          + {{ language.t('settings.addAccount') }}
-        </button>
-        <button type="button" class="btn" (click)="cancelAddAccount()">
-          {{ language.t('settings.cancel') }}
-        </button>
       </div>
     } @else {
       <button type="button" class="btn dashed add-toggle" (click)="startAddAccount()">
@@ -167,27 +174,38 @@
         <li class="account-row" [class.inactive]="!acc.active">
           @if (editingAccount()?.id === acc.id) {
             <div class="edit-state">
-              <div class="edit-line">
-                <input
-                  #accountNameInput
-                  type="text"
-                  [ngModel]="editingAccount()!.name"
-                  (ngModelChange)="editAccountName($event)"
-                  (keydown.enter)="saveAccountEdit()"
-                  (keydown.escape)="cancelEditAccount()"
-                  class="input"
-                  [attr.aria-label]="language.t('settings.name')"
-                />
-                <input
-                  type="number"
-                  [ngModel]="editingAccount()!.initialBalance"
-                  (ngModelChange)="editAccountBalance($event)"
-                  (keydown.enter)="saveAccountEdit()"
-                  (keydown.escape)="cancelEditAccount()"
-                  class="input small"
-                  [attr.aria-label]="language.t('settings.initialBalance')"
-                />
-                <span class="edit-static">{{ acc.currency }}</span>
+              <div class="edit-grid">
+                <label class="field">
+                  <span class="field-label">{{ language.t('settings.name') }}</span>
+                  <input
+                    #accountNameInput
+                    type="text"
+                    [ngModel]="editingAccount()!.name"
+                    (ngModelChange)="editAccountName($event)"
+                    (keydown.enter)="saveAccountEdit()"
+                    (keydown.escape)="cancelEditAccount()"
+                    class="input"
+                    [attr.aria-label]="language.t('settings.name')"
+                  />
+                </label>
+                <label class="field">
+                  <span class="field-label">{{ language.t('settings.initialBalance') }}</span>
+                  <input
+                    type="number"
+                    [ngModel]="editingAccount()!.initialBalance"
+                    (ngModelChange)="editAccountBalance($event)"
+                    (keydown.enter)="saveAccountEdit()"
+                    (keydown.escape)="cancelEditAccount()"
+                    class="input"
+                    [attr.aria-label]="language.t('settings.initialBalance')"
+                  />
+                </label>
+                <div class="field">
+                  <span class="field-label">{{ language.t('settings.currency') }}</span>
+                  <span class="field-static">{{ acc.currency }}</span>
+                </div>
+              </div>
+              <div class="edit-actions">
                 <button
                   type="button"
                   class="btn small primary icon-btn"
@@ -388,16 +406,18 @@
 
     @if (addingCard()) {
       <div class="inline-form">
-        <input
-          #newCardNameInput
-          type="text"
-          [ngModel]="newCardName()"
-          (ngModelChange)="newCardName.set($event)"
-          [placeholder]="language.t('settings.name')"
-          class="input"
-          [attr.aria-label]="language.t('settings.name')"
-        />
-        <div class="field">
+        <label class="field">
+          <span class="field-label">{{ language.t('settings.name') }}</span>
+          <input
+            #newCardNameInput
+            type="text"
+            [ngModel]="newCardName()"
+            (ngModelChange)="newCardName.set($event)"
+            class="input"
+            [attr.aria-label]="language.t('settings.name')"
+          />
+        </label>
+        <label class="field">
           <span class="field-label">{{ language.t('settings.linkedAccount') }}</span>
           <select
             [ngModel]="newCardLinkedAccountId()"
@@ -410,8 +430,8 @@
               <option [ngValue]="acc.id">{{ acc.name }}</option>
             }
           </select>
-        </div>
-        <div class="field">
+        </label>
+        <label class="field">
           <span class="field-label">{{ language.t('settings.startingDebt') }}</span>
           <input
             type="number"
@@ -420,8 +440,8 @@
             class="input"
             [attr.aria-label]="language.t('settings.startingDebt')"
           />
-        </div>
-        <div class="field">
+        </label>
+        <label class="field">
           <span class="field-label">{{ language.t('settings.limit') }}</span>
           <input
             type="number"
@@ -430,6 +450,10 @@
             class="input"
             [attr.aria-label]="language.t('settings.limit')"
           />
+        </label>
+        <div class="field">
+          <span class="field-label">{{ language.t('settings.currency') }}</span>
+          <span class="field-static">{{ currencyForAccount(newCardLinkedAccountId()) || '—' }}</span>
         </div>
         <label class="consent">
           <input
@@ -439,13 +463,14 @@
           />
           {{ language.t('settings.createPaymentCategory') }}
         </label>
-        <span class="edit-static">{{ currencyForAccount(newCardLinkedAccountId()) }}</span>
-        <button class="btn dashed" (click)="addCard()">
-          + {{ language.t('settings.addCard') }}
-        </button>
-        <button type="button" class="btn" (click)="cancelAddCard()">
-          {{ language.t('settings.cancel') }}
-        </button>
+        <div class="form-actions">
+          <button type="button" class="btn dashed" (click)="addCard()">
+            + {{ language.t('settings.addCard') }}
+          </button>
+          <button type="button" class="btn" (click)="cancelAddCard()">
+            {{ language.t('settings.cancel') }}
+          </button>
+        </div>
       </div>
     } @else {
       <button type="button" class="btn dashed add-toggle" (click)="startAddCard()">
@@ -458,42 +483,21 @@
         <li class="account-row" [class.inactive]="!card.active">
           @if (editingCard()?.id === card.id) {
             <div class="edit-state">
-              <div class="edit-line">
-                <input
-                  #cardNameInput
-                  type="text"
-                  [ngModel]="editingCard()!.name"
-                  (ngModelChange)="editCardName($event)"
-                  (keydown.enter)="saveCardEdit()"
-                  (keydown.escape)="cancelEditCard()"
-                  class="input"
-                  [attr.aria-label]="language.t('settings.name')"
-                />
-                <div class="field">
-                  <span class="field-label">{{ language.t('settings.startingDebt') }}</span>
+              <div class="edit-grid">
+                <label class="field">
+                  <span class="field-label">{{ language.t('settings.name') }}</span>
                   <input
-                    type="number"
-                    [ngModel]="editingCard()!.initialBalance"
-                    (ngModelChange)="editCardBalance($event)"
+                    #cardNameInput
+                    type="text"
+                    [ngModel]="editingCard()!.name"
+                    (ngModelChange)="editCardName($event)"
                     (keydown.enter)="saveCardEdit()"
                     (keydown.escape)="cancelEditCard()"
-                    class="input small"
-                    [attr.aria-label]="language.t('settings.startingDebt')"
+                    class="input"
+                    [attr.aria-label]="language.t('settings.name')"
                   />
-                </div>
-                <div class="field">
-                  <span class="field-label">{{ language.t('settings.limit') }}</span>
-                  <input
-                    type="number"
-                    [ngModel]="editingCard()!.limit"
-                    (ngModelChange)="editCardLimit($event)"
-                    (keydown.enter)="saveCardEdit()"
-                    (keydown.escape)="cancelEditCard()"
-                    class="input small"
-                    [attr.aria-label]="language.t('settings.limit')"
-                  />
-                </div>
-                <div class="field">
+                </label>
+                <label class="field">
                   <span class="field-label">{{ language.t('settings.linkedAccount') }}</span>
                   <select
                     [ngModel]="editingCard()!.linkedAccountId"
@@ -507,8 +511,39 @@
                       <option [ngValue]="acc.id">{{ acc.name }}</option>
                     }
                   </select>
+                </label>
+                <label class="field">
+                  <span class="field-label">{{ language.t('settings.startingDebt') }}</span>
+                  <input
+                    type="number"
+                    [ngModel]="editingCard()!.initialBalance"
+                    (ngModelChange)="editCardBalance($event)"
+                    (keydown.enter)="saveCardEdit()"
+                    (keydown.escape)="cancelEditCard()"
+                    class="input"
+                    [attr.aria-label]="language.t('settings.startingDebt')"
+                  />
+                </label>
+                <label class="field">
+                  <span class="field-label">{{ language.t('settings.limit') }}</span>
+                  <input
+                    type="number"
+                    [ngModel]="editingCard()!.limit"
+                    (ngModelChange)="editCardLimit($event)"
+                    (keydown.enter)="saveCardEdit()"
+                    (keydown.escape)="cancelEditCard()"
+                    class="input"
+                    [attr.aria-label]="language.t('settings.limit')"
+                  />
+                </label>
+                <div class="field">
+                  <span class="field-label">{{ language.t('settings.currency') }}</span>
+                  <span class="field-static">{{
+                    currencyForAccount(editingCard()!.linkedAccountId)
+                  }}</span>
                 </div>
-                <span class="edit-static">{{ currencyForAccount(editingCard()!.linkedAccountId) }}</span>
+              </div>
+              <div class="edit-actions">
                 <button
                   type="button"
                   class="btn small primary icon-btn"
@@ -701,28 +736,37 @@
 
     @if (addingCategory()) {
       <div class="inline-form">
-        <input
-          #newCategoryNameInput
-          type="text"
-          [ngModel]="newCategoryName()"
-          (ngModelChange)="newCategoryName.set($event)"
-          [placeholder]="language.t('settings.name')"
-          class="input"
-          [attr.aria-label]="language.t('settings.name')"
-        />
-        <select
-          [ngModel]="newCategoryType()"
-          (ngModelChange)="newCategoryType.set($event)"
-          class="input"
-          [attr.aria-label]="language.t('settings.categoryTypeAria')"
-        >
-          <option value="expense">{{ language.t('type.expense') }}</option>
-          <option value="income">{{ language.t('type.income') }}</option>
-        </select>
-        <button class="btn dashed" (click)="addCategory()">+ {{ language.t('settings.add') }}</button>
-        <button type="button" class="btn" (click)="cancelAddCategory()">
-          {{ language.t('settings.cancel') }}
-        </button>
+        <label class="field">
+          <span class="field-label">{{ language.t('settings.name') }}</span>
+          <input
+            #newCategoryNameInput
+            type="text"
+            [ngModel]="newCategoryName()"
+            (ngModelChange)="newCategoryName.set($event)"
+            class="input"
+            [attr.aria-label]="language.t('settings.name')"
+          />
+        </label>
+        <label class="field">
+          <span class="field-label">{{ language.t('settings.type') }}</span>
+          <select
+            [ngModel]="newCategoryType()"
+            (ngModelChange)="newCategoryType.set($event)"
+            class="input"
+            [attr.aria-label]="language.t('settings.categoryTypeAria')"
+          >
+            <option value="expense">{{ language.t('type.expense') }}</option>
+            <option value="income">{{ language.t('type.income') }}</option>
+          </select>
+        </label>
+        <div class="form-actions">
+          <button type="button" class="btn dashed" (click)="addCategory()">
+            + {{ language.t('settings.add') }}
+          </button>
+          <button type="button" class="btn" (click)="cancelAddCategory()">
+            {{ language.t('settings.cancel') }}
+          </button>
+        </div>
       </div>
     } @else {
       <button type="button" class="btn dashed add-toggle" (click)="startAddCategory()">
@@ -740,17 +784,22 @@
         >
           @if (editingCategory()?.id === cat.id) {
             <div class="edit-state">
-              <div class="edit-line">
-                <input
-                  #categoryNameInput
-                  type="text"
-                  [ngModel]="editingCategory()!.name"
-                  (ngModelChange)="editCategoryName($event)"
-                  (keydown.enter)="saveCategoryEdit()"
-                  (keydown.escape)="cancelEditCategory()"
-                  class="input"
-                  [attr.aria-label]="language.t('settings.name')"
-                />
+              <div class="edit-grid">
+                <label class="field">
+                  <span class="field-label">{{ language.t('settings.name') }}</span>
+                  <input
+                    #categoryNameInput
+                    type="text"
+                    [ngModel]="editingCategory()!.name"
+                    (ngModelChange)="editCategoryName($event)"
+                    (keydown.enter)="saveCategoryEdit()"
+                    (keydown.escape)="cancelEditCategory()"
+                    class="input"
+                    [attr.aria-label]="language.t('settings.name')"
+                  />
+                </label>
+              </div>
+              <div class="edit-actions">
                 <button
                   type="button"
                   class="btn small primary icon-btn"
