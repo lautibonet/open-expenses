@@ -339,6 +339,29 @@
     color: var(--on-surface);
   }
 
+  /* Card purchases wear the category chip plus a Card badge (#168, ADR 0023):
+     the chip names what was bought, the outline badge marks that it was paid
+     with credit and so stays out of the cash-basis Expenses. The red expense
+     stripe is untouched, which keeps the stripe conventions intact. An outline
+     tag, never Primary: a marker is metadata, not an affordance (Blue Acts). */
+  .card-badge {
+    @extend %caps-label;
+
+    display: inline-block;
+    margin-left: var(--space-xs);
+    padding: 2px var(--space-xs);
+    border: 1px solid var(--outline);
+    background: var(--surface-lowest);
+    color: var(--on-surface-variant);
+    vertical-align: middle;
+  }
+
+  /* A Card Payment's route is context beneath its category chip (#168). */
+  .route {
+    font-size: var(--type-caption);
+    color: var(--on-surface-variant);
+  }
+
   tr.transfer-row td {
     background: var(--background);
   }

@@ -6,7 +6,7 @@ import { Category, isIncomeCategory } from '../../../core/models/category.model'
 import { LanguageService } from '../../../core/services/language.service';
 import { PeriodScope } from '../../../core/types/period.type';
 import { unconvertedTransactionsAffecting } from '../../../core/balances/conversion-degradation';
-import { countsTowardCashBasis, isCardPayment } from '../../../core/stats/cash-basis';
+import { buildAccountsById, countsTowardCashBasis, isCardPayment } from '../../../core/stats/cash-basis';
 import { DismissibleAlertComponent } from '../../../shared/components/dismissible-alert/dismissible-alert.component';
 
 export interface MovementItem {
@@ -29,7 +29,7 @@ export class NetFlowCardComponent {
   baseCurrency = input.required<string>();
   scope = input.required<PeriodScope>();
 
-  private accountsById = computed(() => new Map(this.accounts().map((a) => [a.id!, a])));
+  private accountsById = computed(() => buildAccountsById(this.accounts()));
 
   private baseAmount(txn: Transaction): number {
     const account = this.accounts().find((a) => a.id === txn.accountId);
@@ -83,7 +83,7 @@ export class NetFlowCardComponent {
     const transactions = this.movements()
       .filter((item) => item.type === 'transaction')
       .map((item) => item.data as Transaction);
-    const accountsById = new Map(this.accounts().map((a) => [a.id!, a]));
+    const accountsById = buildAccountsById(this.accounts());
     const unconverted = unconvertedTransactionsAffecting(
       transactions,
       accountsById,

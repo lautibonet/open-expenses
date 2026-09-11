@@ -4025,3 +4025,166 @@ describe('MovementsComponent - cash-basis KPIs (ADR 0022)', () => {
     expect(netFlow.expenseTotal()).toBe(100);
   });
 });
+
+describe('MovementsComponent - card movement display treatment (#168)', () => {
+  let fixture: ComponentFixture<MovementsComponent>;
+  let component: MovementsComponent;
+  let accountService: AccountService;
+  let categoryService: CategoryService;
+  let transactionService: TransactionService;
+  let transferService: TransferService;
+  let cashId: number;
+  let cardId: number;
+  let paymentCategoryId: number;
+  let foodCategoryId: number;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    await TestBed.configureTestingModule({
+      imports: [MovementsComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(MovementsComponent);
+    component = fixture.componentInstance;
+    accountService = TestBed.inject(AccountService);
+    categoryService = TestBed.inject(CategoryService);
+    transactionService = TestBed.inject(TransactionService);
+    transferService = TestBed.inject(TransferService);
+
+    const cash = await accountService.create('Checking', 'EUR', 100000);
+    cashId = cash.id!;
+    const card = await accountService.createCard(
+      { name: 'Visa', linkedAccountId: cashId },
+      'Visa payment',
+    );
+    cardId = card.id!;
+    paymentCategoryId = card.paymentCategoryId!;
+    const food = await categoryService.create('Food', 'expense');
+    foodCategoryId = food.id!;
+  });
+
+  afterEach(async () => {
+    await db.delete();
+  });
+
+  it('marks a card purchase with a Card badge beside its category', async () => {
+    const period = getCurrentPeriod();
+    await transactionService.create(cardId, foodCategoryId, 300, new Date(), period);
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const row = fixture.nativeElement.querySelector('tr.row-expense');
+    expect(row).toBeTruthy();
+    expect(row.querySelector('.cat-chip')!.textContent.trim()).toBe('Food');
+    const badge = row.querySelector('.card-badge');
+    expect(badge).toBeTruthy();
+    expect(badge.textContent.trim()).toBe('Card');
+  });
+
+  it('leaves a cash expense unbadged', async () => {
+    const period = getCurrentPeriod();
+    await transactionService.create(cashId, foodCategoryId, 100, new Date(), period);
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const row = fixture.nativeElement.querySelector('tr.row-expense');
+    expect(row.querySelector('.card-badge')).toBeNull();
+  });
+
+  it('shows the payment category on a Card Payment row', async () => {
+    const period = getCurrentPeriod();
+    await transferService.create(
+      cashId,
+      cardId,
+      300,
+      new Date(),
+      period,
+      '',
+      1,
+      undefined,
+      paymentCategoryId,
+    );
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const row = fixture.nativeElement.querySelector('tr.transfer-row');
+    const chip = row.querySelector('.cat-chip');
+    expect(chip).toBeTruthy();
+    expect(chip.textContent.trim()).toBe('Visa payment');
+    // The route survives as context beside the category.
+    expect(row.textContent).toContain('Checking');
+    expect(row.textContent).toContain('Visa');
+  });
+
+  it('leaves an ordinary transfer without a category chip', async () => {
+    const savings = await accountService.create('Savings', 'EUR', 0);
+    const period = getCurrentPeriod();
+    await transferService.create(cashId, savings.id!, 100, new Date(), period, '');
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const row = fixture.nativeElement.querySelector('tr.transfer-row');
+    expect(row.querySelector('.cat-chip')).toBeNull();
+  });
+
+  it('classifies a card-account transaction as a card transaction', async () => {
+    const period = getCurrentPeriod();
+    const purchase = await transactionService.create(
+      cardId,
+      foodCategoryId,
+      300,
+      new Date(),
+      period,
+    );
+    const cash = await transactionService.create(cashId, foodCategoryId, 100, new Date(), period);
+    await component.ngOnInit();
+
+    expect(component.isCardTransaction(purchase)).toBe(true);
+    expect(component.isCardTransaction(cash)).toBe(false);
+  });
+
+  it('returns the payment category name only for a Card Payment', async () => {
+    const savings = await accountService.create('Savings', 'EUR', 0);
+    const period = getCurrentPeriod();
+    const payment = await transferService.create(
+      cashId,
+      cardId,
+      300,
+      new Date(),
+      period,
+      '',
+      1,
+      undefined,
+      paymentCategoryId,
+    );
+    const move = await transferService.create(savings.id!, cashId, 100, new Date(), period, '');
+    await component.ngOnInit();
+
+    expect(component.cardPaymentCategoryName(payment)).toBe('Visa payment');
+    expect(component.cardPaymentCategoryName(move)).toBeNull();
+  });
+
+  it('marks a card refund with the same badge on its income stripe', async () => {
+    const refundCategory = await categoryService.create('Refund', 'income');
+    const period = getCurrentPeriod();
+    await transactionService.create(cardId, refundCategory.id!, 50, new Date(), period);
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const row = fixture.nativeElement.querySelector('tr.row-income');
+    expect(row.querySelector('.card-badge')).toBeTruthy();
+    const hidden = row.querySelector('.visually-hidden');
+    expect(hidden.textContent.trim()).toBe('Card refund');
+  });
+
+  it('announces a card purchase as a card purchase, not an expense', async () => {
+    const period = getCurrentPeriod();
+    await transactionService.create(cardId, foodCategoryId, 300, new Date(), period);
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const hidden = fixture.nativeElement.querySelector('tr.row-expense .visually-hidden');
+    expect(hidden.textContent.trim()).toBe('Card purchase');
+  });
+});

@@ -2,6 +2,14 @@ import { Account, isCashAccount, isCreditCard } from '../models/account.model';
 import { Transaction } from '../models/transaction.model';
 import { Transfer } from '../models/transfer.model';
 
+/* The id-keyed Account lookup every cash-basis predicate expects. Shared so
+   each caller builds it the same way (an Account without an id is skipped). */
+export function buildAccountsById(accounts: Account[]): Map<number, Account> {
+  return new Map(
+    accounts.filter(account => account.id != null).map(account => [account.id!, account]),
+  );
+}
+
 /* ADR 0022: whether a Transaction's spending was paid with credit — it sits on
    a Credit Card. A missing account is treated as cash, the orphan rule the
    cash-basis seam and the spending split share. */

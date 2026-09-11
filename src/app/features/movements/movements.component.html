@@ -232,6 +232,9 @@
                 </td>
                 <td [attr.data-label]="language.t('movements.colCategoryTransfer')">
                   <span class="cat-chip">{{ getCategoryName(txn.categoryId) }}</span>
+                  @if (isCardTransaction(txn)) {
+                    <span class="card-badge">{{ language.t('movements.cardBadge') }}</span>
+                  }
                   @if (txn.note) {
                     <div class="note">{{ txn.note }}</div>
                   }
@@ -329,8 +332,12 @@
                   {{ tr.date | date: 'mediumDate' }}
                 </td>
                 <td [attr.data-label]="language.t('movements.colCategoryTransfer')">
-                  {{ getAccountName(tr.sourceAccountId) }} →
-                  {{ getAccountName(tr.destinationAccountId) }}
+                  @if (cardPaymentCategoryName(tr); as categoryName) {
+                    <span class="cat-chip">{{ categoryName }}</span>
+                    <div class="route">{{ transferRoute(tr) }}</div>
+                  } @else {
+                    {{ transferRoute(tr) }}
+                  }
                   @if (tr.note) {
                     <div class="note">{{ tr.note }}</div>
                   }

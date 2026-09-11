@@ -20,5 +20,5 @@ The category graph counts spending, not cash: every purchase — cash or credit 
 - A refund recorded on a card counts nowhere: it cancels debt, and the smaller later statement carries the correction into Expenses through a smaller Card Payment.
 - Interest and fees are never recorded separately — they ride inside the Statement total and reach Expenses through the Card Payment.
 - A card purchase can exceed the Limit: that warns inline, never blocks.
-- The movements list shows card purchases with their real category even though they do not count as Expenses; their stripe treatment, the two-tone graph bars, the form hints, and the used-of-limit caption are settled in the UI pass.
+- The movements list shows card purchases with their real category even though they do not count as Expenses; their stripe treatment, the two-tone graph bars, the form hints, and the used-of-limit caption are settled in the UI pass (stripe treatment settled by ADR 0023: the red stripe stays, a Card badge is added).
 - Backup schema version bumps to carry the account kind and the card's extra fields; Erase and Backup/Restore need no other changes.
