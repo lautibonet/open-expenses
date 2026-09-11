@@ -205,6 +205,7 @@ describe('translations', () => {
       'movements.saveDisabled.distinct',
       'movements.saveDisabled.amount',
       'movements.saveDisabled.rate',
+      'movements.saveDisabled.paymentCategory',
       'movements.shortcutsHint',
       'movements.sortByDateAria',
       'movements.editTransferTitle',
@@ -218,6 +219,9 @@ describe('translations', () => {
       'movements.period',
       'movements.year',
       'movements.note',
+      'movements.paymentCategory',
+      'movements.choosePaymentCategory',
+      'movements.cardOutstanding',
       'movements.exchangeRate',
       'movements.fetchingRate',
       'movements.destAmount',
@@ -441,6 +445,8 @@ describe('translations', () => {
       'errors.linkedAccountRequired',
       'errors.linkedAccountMustBeCash',
       'errors.cardLimitNegative',
+      'errors.cardPaymentCategoryRequired',
+      'errors.cardPaymentCategoryExpenseOnly',
       'category.cardPayment',
     ]) {
       expect(TRANSLATIONS.en[key]).toBeTruthy();

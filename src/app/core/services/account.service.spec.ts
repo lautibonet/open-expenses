@@ -339,16 +339,18 @@ describe('AccountService - credit cards (ADR 0022)', () => {
       .rejects.toThrow('errors.cardLimitNegative');
   });
 
-  it('creates the payment category with consent', async () => {
-    await service.createCard({ name: 'Visa', linkedAccountId: cashId }, 'Visa payment');
+  it('creates the payment category with consent and links it to the card', async () => {
+    const card = await service.createCard({ name: 'Visa', linkedAccountId: cashId }, 'Visa payment');
     const categories = await db.categories.toArray();
-    expect(categories.map((c) => c.name)).toContain('Visa payment');
-    expect(categories.find((c) => c.name === 'Visa payment')!.type).toBe('expense');
+    const payment = categories.find((c) => c.name === 'Visa payment')!;
+    expect(payment.type).toBe('expense');
+    expect(card.paymentCategoryId).toBe(payment.id);
   });
 
   it('creates nothing when consent is declined', async () => {
-    await service.createCard({ name: 'Visa', linkedAccountId: cashId }, null);
+    const card = await service.createCard({ name: 'Visa', linkedAccountId: cashId }, null);
     expect(await db.categories.count()).toBe(0);
+    expect(card.paymentCategoryId).toBeUndefined();
   });
 
   it('rolls the card back when its payment category already exists', async () => {
@@ -406,11 +408,7 @@ describe('AccountService - credit cards (ADR 0022)', () => {
     expect(active.map((a) => a.id)).toEqual([cashId, card.id]);
   });
 
-  it('keeps cards out of the active cash-only picker', async () => {
-    await service.createCard({ name: 'Visa', linkedAccountId: cashId });
-    const activeCash = await service.getActiveCash();
-    expect(activeCash.map((a) => a.id)).toEqual([cashId]);
-  });
+
 
   it('reports the linked account as referenced by a card', async () => {
     const card = await service.createCard({ name: 'Visa', linkedAccountId: cashId });

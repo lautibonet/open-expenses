@@ -101,6 +101,66 @@ describe('DashboardComponent', () => {
     expect(component.accountBalances().find(b => b.account.id === card.id)!.balance).toBe(-500);
   });
 
+  it('counts a Cash-to-Card Card Payment as an Expense in the payment Period, but no other Transfer kind', async () => {
+    const cash = await accountService.create('Cash', 'EUR', 100000);
+    const savings = await accountService.create('Savings', 'EUR', 0);
+    const card = await accountService.createCard({ name: 'Visa', linkedAccountId: cash.id! });
+    const card2 = await accountService.createCard({ name: 'Master', linkedAccountId: cash.id! });
+    const expenseCat = await categoryService.create('Groceries', 'expense');
+    const transferService = TestBed.inject(TransferService);
+    const period = getCurrentPeriod();
+    const year = getCurrentYear();
+
+    // Cash -> Card: a Card Payment, counts as an Expense.
+    await transferService.create(cash.id!, card.id!, 300, new Date(), period, '', 1, year, expenseCat.id!);
+    // Cash -> Cash, Card -> Cash, Card -> Card: never count.
+    await transferService.create(cash.id!, savings.id!, 100, new Date(), period, '', 1, year);
+    await transferService.create(card.id!, cash.id!, 50, new Date(), period, '', 1, year);
+    await transferService.create(card.id!, card2.id!, 25, new Date(), period, '', 1, year, expenseCat.id!);
+
+    await component.ngOnInit();
+
+    expect(component.yearTotalExpenses()).toBe(300);
+    expect(component.avgMonthlyExpenses()).toBe(300);
+    expect(component.yearOverviewData().find(o => o.period === period)!.expenses).toBe(300);
+    expect(component.categoryBreakdown().find(b => b.name === 'Groceries')).toBeUndefined();
+  });
+
+  it('excludes a Card Payment from Periods after the payment', async () => {
+    const cash = await accountService.create('Cash', 'EUR', 100000);
+    const card = await accountService.createCard({ name: 'Visa', linkedAccountId: cash.id! });
+    const expenseCat = await categoryService.create('Groceries', 'expense');
+    const transferService = TestBed.inject(TransferService);
+    const year = getCurrentYear();
+
+    await transferService.create(cash.id!, card.id!, 300, new Date(), 9, '', 1, year, expenseCat.id!);
+
+    await component.ngOnInit();
+    await component.onScopeYearChange(year);
+    await component.onScopeMonthChange(8);
+
+    expect(component.yearTotalExpenses()).toBe(0);
+
+    await component.onScopeMonthChange(9);
+    expect(component.yearTotalExpenses()).toBe(300);
+  });
+
+  it('renders the year overview when the only movement is a Card Payment', async () => {
+    const cash = await accountService.create('Cash', 'EUR', 100000);
+    const card = await accountService.createCard({ name: 'Visa', linkedAccountId: cash.id! });
+    const expenseCat = await categoryService.create('Groceries', 'expense');
+    const transferService = TestBed.inject(TransferService);
+    const period = getCurrentPeriod();
+    const year = getCurrentYear();
+
+    await transferService.create(cash.id!, card.id!, 300, new Date(), period, '', 1, year, expenseCat.id!);
+
+    await component.ngOnInit();
+
+    expect(component.yearHasMovements()).toBe(true);
+    expect(component.yearTotalExpenses()).toBe(300);
+  });
+
   it('should include a Dec-dated movement in the selected year report of its period year', async () => {
     const acc = await accountService.create('Cash', 'EUR', 0);
     const incomeCat = await categoryService.create('Payroll', 'income');

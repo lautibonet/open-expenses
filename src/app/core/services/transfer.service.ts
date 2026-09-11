@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { db } from '../db/database';
 import { Transfer } from '../models/transfer.model';
+import { Account, isCreditCard } from '../models/account.model';
 import { TranslationError } from '../models/translation-error';
 import {
   PeriodScope,
@@ -21,6 +22,7 @@ export class TransferService {
     note: string = '',
     exchangeRate: number = 1,
     year: number = getCurrentYear(),
+    categoryId: number | null = null,
   ): Promise<Transfer> {
     if (sourceAccountId === destinationAccountId) {
       throw new TranslationError('errors.accountsMustDiffer');
@@ -48,6 +50,8 @@ export class TransferService {
       throw new TranslationError('errors.destinationAccountNotFound');
     }
 
+    const paymentCategoryId = await this.resolvePaymentCategory(destAccount, categoryId);
+
     const sourceAmount = amount;
     const destinationAmount = Math.round(amount * exchangeRate * 100) / 100;
     const baseCurrencyAmount = sourceAccount.currency !== destAccount.currency
@@ -66,6 +70,7 @@ export class TransferService {
       year,
       note,
       createdAt: new Date(),
+      ...(paymentCategoryId !== undefined ? { categoryId: paymentCategoryId } : {}),
     };
 
     const id = await db.transfers.add(transfer);
@@ -115,16 +120,43 @@ export class TransferService {
     const newDestinationAmount = Math.round(newSourceAmount * newExchangeRate * 100) / 100;
     const newBaseCurrencyAmount = isCrossCurrency ? newDestinationAmount : newSourceAmount;
 
+    const effectiveCategoryId =
+      changes.categoryId !== undefined ? changes.categoryId : existing.categoryId;
+    const paymentCategoryId = await this.resolvePaymentCategory(destAccount, effectiveCategoryId);
+
     const mergedChanges = {
       ...changes,
       sourceAmount: newSourceAmount,
       destinationAmount: newDestinationAmount,
       exchangeRate: newExchangeRate,
       baseCurrencyAmount: newBaseCurrencyAmount,
+      categoryId: paymentCategoryId,
     };
 
     await db.transfers.update(id, mergedChanges);
     return (await db.transfers.get(id))!;
+  }
+
+  /* ADR 0022: a Transfer into a Credit Card (any source) carries a required
+     Expense category; every other Transfer carries none. */
+  private async resolvePaymentCategory(
+    destination: Account | undefined,
+    categoryId: number | null | undefined,
+  ): Promise<number | undefined> {
+    if (!destination || !isCreditCard(destination)) {
+      return undefined;
+    }
+    if (categoryId == null) {
+      throw new TranslationError('errors.cardPaymentCategoryRequired');
+    }
+    const category = await db.categories.get(categoryId);
+    if (!category) {
+      throw new TranslationError('errors.categoryNotFound');
+    }
+    if (category.type !== 'expense') {
+      throw new TranslationError('errors.cardPaymentCategoryExpenseOnly');
+    }
+    return categoryId;
   }
 
   async delete(id: number): Promise<void> {
