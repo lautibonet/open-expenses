@@ -42,6 +42,11 @@ import {
   lastMovementPeriod,
 } from '../../core/stats/year-overview';
 import { cashBasisTransactions, cardPaymentTransfers } from '../../core/stats/cash-basis';
+import {
+  CategorySpending,
+  categorySpending,
+  spendingShare,
+} from '../../core/stats/category-spending';
 
 /* A graph track's two extremes around the zero line: the largest figure that
    grows up from it and the largest magnitude that grows below it. */
@@ -89,7 +94,7 @@ export class DashboardComponent implements OnInit {
   yearTotalNet = signal(0);
   yearHasData = signal(false);
   yearHasMovements = signal(false);
-  categoryBreakdown = signal<{ name: string; total: number }[]>([]);
+  categoryBreakdown = signal<CategorySpending[]>([]);
   accountBalances = signal<AccountBalance[]>([]);
   readonly isCreditCard = isCreditCard;
   totalBalanceBaseCurrency = signal(0);
@@ -133,31 +138,12 @@ export class DashboardComponent implements OnInit {
     const allCategories = await this.categoryService.getAll();
     this.categories.set(allCategories);
     const catMap = new Map(allCategories.map(c => [c.id!, c]));
+    const accountsById = new Map(this.accounts().map(a => [a.id!, a]));
     const base = this.baseCurrency();
 
-    let income = 0;
-    let expenses = 0;
-    const catTotals = new Map<number, number>();
-
-    for (const t of txns) {
-      const amount = storedBaseAmount(t);
-      const cat = catMap.get(t.categoryId);
-      if (isIncomeCategory(cat?.type)) {
-        income += amount;
-      } else {
-        expenses += amount;
-        catTotals.set(t.categoryId, (catTotals.get(t.categoryId) ?? 0) + amount);
-      }
-    }
-
-    const breakdown: { name: string; total: number }[] = [];
-    for (const [catId, total] of catTotals) {
-      const cat = catMap.get(catId);
-      if (cat) {
-        breakdown.push({ name: cat.name, total });
-      }
-    }
-    this.categoryBreakdown.set(breakdown.sort((a, b) => b.total - a.total));
+    this.categoryBreakdown.set(
+      categorySpending(txns, catMap, accountsById, this.paymentCategoryIds()),
+    );
 
     const isIncome = this.incomeClassifier(catMap);
     const [allTxns, allTransfers] = await Promise.all([
@@ -176,12 +162,7 @@ export class DashboardComponent implements OnInit {
     }
     this.accountBalances.set(this.cashAccountsFirst(balances));
 
-    const unconverted = unconvertedTransactionsAffecting(
-      allTxns,
-      new Map(this.accounts().map(a => [a.id!, a])),
-      base,
-      scope,
-    );
+    const unconverted = unconvertedTransactionsAffecting(allTxns, accountsById, base, scope);
     if (unconverted.length > 0) {
       this.conversionDegraded.update(d => ({ ...d, unconvertedTransactions: true }));
     }
@@ -355,6 +336,16 @@ export class DashboardComponent implements OnInit {
     return Math.round((total / max) * 10000) / 100;
   }
 
+  /* The two tones inside a category bar: the cash-paid and credit-paid
+     portions as shares of the category's own total. */
+  categoryCashShare(item: CategorySpending): number {
+    return spendingShare(item.cash, item.total);
+  }
+
+  categoryCreditShare(item: CategorySpending): number {
+    return spendingShare(item.credit, item.total);
+  }
+
   conversionWarningMessage(): string {
     const degraded = this.conversionDegraded();
     const parts: string[] = [];
@@ -381,6 +372,19 @@ export class DashboardComponent implements OnInit {
     catMap: Map<number, Category>,
   ): (transaction: Transaction) => boolean {
     return (t: Transaction) => isIncomeCategory(catMap.get(t.categoryId)?.type);
+  }
+
+  /* ADR 0022: a Card Payment's category labels the payment but never reaches
+     the spending graph — the settled purchases already report that spending.
+     Collected from the cards' locale-neutral payment-category links. */
+  private paymentCategoryIds(): Set<number> {
+    const ids = new Set<number>();
+    for (const account of this.accounts()) {
+      if (isCreditCard(account) && account.paymentCategoryId != null) {
+        ids.add(account.paymentCategoryId);
+      }
+    }
+    return ids;
   }
 
   private sumBalances(balances: AccountBalance[], currency?: string): number {

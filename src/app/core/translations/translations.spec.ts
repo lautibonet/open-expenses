@@ -320,7 +320,8 @@ describe('translations', () => {
     for (const key of [
       'stats.title',
       'stats.subtitle',
-      'stats.expensesByCategory',
+      'stats.spendingByCategory',
+      'stats.spendingLegend',
       'stats.totalBalance',
       'stats.allAccounts',
       'stats.conversionWarning',
@@ -338,7 +339,7 @@ describe('translations', () => {
       'stats.balanceCaption',
       'stats.balanceStripLegend',
       'stats.kpiZero',
-      'stats.categoryZero',
+      'stats.spendingZero',
       'stats.noAccounts',
       'stats.avgCaption',
       'stats.savingsRate',

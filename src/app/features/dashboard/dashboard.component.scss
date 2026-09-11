@@ -546,15 +546,51 @@
   }
 
   .bar-track {
+    display: flex;
     height: 0.75rem;
     background: var(--surface-container-high);
     border: 1px solid var(--outline-variant);
   }
 
+  /* The bar is the category's spending; the two segments inside it split by
+     how it was paid — solid ink for cash, striped ink for credit — so the
+     bar's length is the total and its texture tells the cash/credit story.
+     The credit stripes are a hard-edged pattern like the onboarding grid
+     paper, not a depth gradient (DESIGN.md). */
   .bar-fill {
+    display: flex;
     height: 100%;
-    background: var(--on-surface);
+    min-width: 1px;
   }
+
+  .bar-segment {
+    height: 100%;
+
+    &.cash {
+      background: var(--on-surface);
+    }
+
+    &.credit {
+      background: repeating-linear-gradient(
+        45deg,
+        var(--on-surface),
+        var(--on-surface) 2px,
+        var(--surface-lowest) 2px,
+        var(--surface-lowest) 4px
+      );
+    }
+  }
+}
+
+/* The two-tone key: solid ink = cash-paid, striped ink = credit-paid. */
+.spending-legend {
+  @extend %caps-label-muted;
+
+  /* Caps labels are single-line at leading 1, but the legend wraps to two
+     lines at 375px — it carries the caption ramp's leading instead (#158). */
+  line-height: var(--leading-caption);
+
+  margin: var(--space-sm) 0 0 0;
 }
 
 /* The conversion-warning strip is the shared dismissible alert, positioned

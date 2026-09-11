@@ -1095,19 +1095,73 @@ describe('DashboardComponent - page header, scope control and restyled cards', (
 
   it('computes category bar widths relative to the largest category', async () => {
     await component.categoryBreakdown.set([
-      { name: 'Rent', total: 1500 },
-      { name: 'Food', total: 500 },
+      { categoryId: 1, name: 'Rent', cash: 1500, credit: 0, total: 1500 },
+      { categoryId: 2, name: 'Food', cash: 500, credit: 0, total: 500 },
     ]);
 
     expect(component.categoryBarWidth(1500)).toBe(100);
     expect(component.categoryBarWidth(500)).toBeCloseTo(33.33, 2);
   });
 
+  it('splits a category bar into cash-paid and credit-paid segments', async () => {
+    const cash = await accountService.create('Cash', 'EUR', 0);
+    const card = await accountService.createCard({ name: 'Visa', linkedAccountId: cash.id! });
+    const food = await categoryService.create('Food', 'expense');
+    const period = getCurrentPeriod();
+    await transactionService.create(cash.id!, food.id!, 200, new Date(), period);
+    await transactionService.create(card.id!, food.id!, 600, new Date(), period);
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const cashSegment = fixture.nativeElement.querySelector(
+      '.category-bar-row .bar-segment.cash',
+    ) as HTMLElement;
+    const creditSegment = fixture.nativeElement.querySelector(
+      '.category-bar-row .bar-segment.credit',
+    ) as HTMLElement;
+    expect(cashSegment).toBeTruthy();
+    expect(creditSegment).toBeTruthy();
+    expect(cashSegment.style.width).toBe('25%');
+    expect(creditSegment.style.width).toBe('75%');
+
+    const legend = fixture.nativeElement.querySelector('.spending-legend');
+    expect(legend).toBeTruthy();
+    expect(legend.textContent).toContain('cash');
+    expect(legend.textContent).toContain('credit');
+  });
+
+  it('renders no credit segment for cash-only spending', async () => {
+    const cash = await accountService.create('Cash', 'EUR', 0);
+    const food = await categoryService.create('Food', 'expense');
+    await transactionService.create(cash.id!, food.id!, 200, new Date(), getCurrentPeriod());
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.category-bar-row .bar-segment.cash')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.category-bar-row .bar-segment.credit')).toBeNull();
+  });
+
+  it('excludes a card payment category from the spending graph', async () => {
+    const cash = await accountService.create('Cash', 'EUR', 0);
+    await accountService.createCard({ name: 'Visa', linkedAccountId: cash.id! }, 'Visa payment');
+    const payment = (await categoryService.getAll()).find(c => c.name === 'Visa payment')!;
+    const food = await categoryService.create('Food', 'expense');
+    const period = getCurrentPeriod();
+    await transactionService.create(cash.id!, payment.id!, 500, new Date(), period);
+    await transactionService.create(cash.id!, food.id!, 200, new Date(), period);
+
+    await component.ngOnInit();
+
+    expect(component.categoryBreakdown().map(b => b.name)).toEqual(['Food']);
+  });
+
   it('keeps the category card, showing the empty state, when the Period has no expenses', async () => {
     await component.ngOnInit();
     fixture.detectChanges();
 
-    const card = cardByHeading('Expenses by Category');
+    const card = cardByHeading('Spending by Category');
     expect(card).toBeTruthy();
     expect(card!.querySelector('.category-bars')).toBeNull();
     const empty = card!.querySelector('.empty-state');
@@ -1238,7 +1292,7 @@ describe('DashboardComponent - translations', () => {
     const text = fixture.nativeElement.textContent;
     expect(text).toContain('Estadísticas');
     expect(text).toContain('Tus totales, medias y saldos de un vistazo.');
-    expect(text).toContain('Gastos de');
+    expect(text).toContain('Gasto de');
     expect(text).toContain('Ingresos');
     expect(text).toContain('Gastos');
     expect(text).toContain('Neto');
@@ -2227,7 +2281,9 @@ describe('DashboardComponent - conversion degradation warnings', () => {
 
     await component.ngOnInit();
 
-    expect(component.categoryBreakdown()).toEqual([{ name: 'Food', total: 108 }]);
+    expect(component.categoryBreakdown()).toEqual([
+      { categoryId: food.id!, name: 'Food', cash: 108, credit: 0, total: 108 },
+    ]);
   });
 
   it('covers Period-end balances when the unconverted transaction predates the scope', async () => {
