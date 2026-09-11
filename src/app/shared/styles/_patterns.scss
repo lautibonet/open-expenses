@@ -371,6 +371,11 @@
      note and date fields past the bottom sheet's edge on mobile — and
      latently overflowed the movements filter search input (#107). */
   box-sizing: border-box;
+  /* One field height for every control. Native selects ignore line-height in
+     Chromium, so a select renders ~2px shorter than a text input at the same
+     padding; the floor pins select and input to the input's line-box height
+     (body × leading + padding + border) wherever they sit side by side. */
+  min-height: calc(var(--type-body) * var(--leading-body) + 1rem + 2px);
   padding: 0.5rem;
   border: var(--border-hard);
   border-radius: var(--radius-sm);

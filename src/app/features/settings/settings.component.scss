@@ -37,41 +37,61 @@ app-erase-card {
   }
 }
 
-/* Add forms: name input, currency/type select and Add button share the
-   same width and height — uniform fields, uniformly aligned. Creation is
-   revealed by a New button that occupies the same slot when hidden. */
+/* Add and edit forms share one grammar: every field carries its caps label
+   above it, fields lay out in a responsive grid whose tracks collapse under
+   the card width, and the commit/cancel pair owns a full-width row beneath
+   them. Creation is revealed by a New button that occupies the same slot
+   when hidden. */
+.inline-form,
+.edit-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: var(--space-md);
+  min-width: 0;
+}
+
 .inline-form {
-  /* Bottom-aligned rather than stretched: the labeled balance field is
-     taller than a bare input and must not stretch its row-mates. */
-  display: flex;
-  gap: var(--space-sm);
-  align-items: flex-end;
   margin-bottom: var(--space-md);
+}
+
+.inline-form .field,
+.edit-grid .field {
+  @extend %labeled-field;
+
+  min-width: 0;
+}
+
+.inline-form .field-label,
+.edit-grid .field-label {
+  @extend %labeled-field-label;
+}
+
+.inline-form .input,
+.edit-grid .input {
+  @extend %field;
+
+  width: 100%;
+}
+
+/* Derived, non-editable values (a card's currency) read as a labeled field
+   but carry no control chrome; the height pins them level with the inputs. */
+.field-static {
+  @extend %mono-data;
+
+  display: flex;
+  align-items: center;
+  min-height: calc(var(--type-body) * var(--leading-body) + 1rem + 2px);
+  color: var(--on-surface-variant);
+}
+
+/* The commit/cancel pair owns its own full-width row, so the short dashed
+   submit never sits short and low beside the taller fields. */
+.form-actions,
+.edit-actions {
+  grid-column: 1 / -1;
+  display: flex;
   flex-wrap: wrap;
-
-  .input {
-    @extend %field;
-
-    width: 10rem;
-  }
-
-  /* Visible label over the one field a placeholder cannot explain (the
-     initial balance), matching the uniform field width. */
-  .field {
-    @extend %labeled-field;
-
-    .input {
-      width: 10rem;
-    }
-  }
-
-  .field-label {
-    @extend %labeled-field-label;
-  }
-
-  .btn.dashed {
-    width: 10rem;
-  }
+  gap: var(--space-sm);
 }
 
 .btn.add-toggle {
@@ -80,10 +100,6 @@ app-erase-card {
 
 .input {
   @extend %field;
-
-  &.small {
-    width: 100px;
-  }
 }
 
 .btn {
@@ -179,13 +195,16 @@ app-erase-card {
   color: var(--on-surface-variant);
 }
 
-/* Expanded edit state: fields plus tick/X confirm grammar, with the
-   validation error rendered inline. */
+/* Expanded edit state: the same labeled field grid as the add forms, with
+   the tick/X confirm grammar on its own row and the validation error
+   rendered inline. */
 .edit-state {
   flex: 1 1 100%;
   min-width: 0;
 }
 
+/* Single-line edit rows outside the CRUD grids (the base-currency card):
+   the field and its tick/X confirmations sit side by side, centered. */
 .edit-line {
   display: flex;
   align-items: center;
@@ -193,27 +212,11 @@ app-erase-card {
   flex-wrap: wrap;
 }
 
-.edit-static {
-  @extend %mono-data;
-
-  color: var(--on-surface-variant);
-}
-
-/* Credit-card rows reuse the account-row grammar; labels appear where a
-   placeholder cannot explain the field (starting debt, limit, linked account). */
-.edit-line .field {
-  @extend %labeled-field;
-
-  .field-label {
-    @extend %labeled-field-label;
-  }
-}
-
 .consent {
+  grid-column: 1 / -1;
   display: flex;
   align-items: center;
   gap: var(--space-xs);
-  min-height: 2.75rem;
   font-size: var(--type-caption);
   color: var(--on-surface-variant);
 }
@@ -288,6 +291,15 @@ app-erase-card {
   }
 }
 
+/* Under one thumb-width the labeled field grid drops to a single column, the
+   same collapse the capture forms take (#100). */
+@media (max-width: 480px) {
+  .inline-form,
+  .edit-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 /* Touch ergonomics, mirrored from the movement ledger: the card row actions
    go ghost at the 44px thumb minimum — no border, no press shadow, muted
    ink with red danger glyphs — and the text buttons reach the same height.
@@ -306,6 +318,10 @@ app-erase-card {
 
   .settings .btn.small,
   .inline-form .btn {
+    min-height: 2.75rem;
+  }
+
+  .settings .consent {
     min-height: 2.75rem;
   }
 }
