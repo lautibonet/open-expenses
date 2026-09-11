@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  buildAccountsById,
   cardPaymentTransfers,
   cashBasisTransactions,
   countsTowardCashBasis,
@@ -127,5 +128,17 @@ describe('card-payment classification (ADR 0022)', () => {
     ];
 
     expect(cardPaymentTransfers(transfers, accountsById).map(t => t.id)).toEqual([1]);
+  });
+});
+
+describe('buildAccountsById', () => {
+  it('keys accounts by id and skips accounts without one', () => {
+    const withId = account({ id: 7, name: 'Checking' });
+    const withoutId = account({ id: undefined, name: 'Draft' });
+
+    const map = buildAccountsById([withId, withoutId]);
+
+    expect(map.get(7)).toBe(withId);
+    expect(map.size).toBe(1);
   });
 });

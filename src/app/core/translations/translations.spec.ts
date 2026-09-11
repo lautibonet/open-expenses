@@ -222,6 +222,7 @@ describe('translations', () => {
       'movements.paymentCategory',
       'movements.choosePaymentCategory',
       'movements.cardOutstanding',
+      'movements.cardBadge',
       'movements.exchangeRate',
       'movements.fetchingRate',
       'movements.destAmount',
@@ -273,7 +274,7 @@ describe('translations', () => {
   });
 
   it('covers the movement row kind keys', () => {
-    for (const key of ['type.income', 'type.expense', 'type.transfer']) {
+    for (const key of ['type.income', 'type.expense', 'type.cardPurchase', 'type.cardRefund', 'type.transfer']) {
       expect(TRANSLATIONS.en[key]).toBeTruthy();
       expect(TRANSLATIONS.es[key]).toBeTruthy();
     }
