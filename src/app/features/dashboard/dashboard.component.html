@@ -165,10 +165,31 @@
 
   <section class="card total-balance-card">
     <h2>{{ language.t('stats.totalBalance', { scope: scope().year }) }}</h2>
-    <div class="stat">
-      <span class="label">{{ language.t('stats.allAccounts', { currency: baseCurrency() }) }}</span>
-      <span class="value">{{ formatMoney(totalBalanceBaseCurrency()) }}</span>
-    </div>
+    @if (hasCardDebt()) {
+      <dl class="balance-ledger">
+        <div class="balance-line without-debt">
+          <dt class="label">
+            {{ language.t('stats.totalWithoutDebt', { currency: baseCurrency() }) }}
+          </dt>
+          <dd class="value">{{ formatMoney(totalBalanceWithoutDebt()) }}</dd>
+        </div>
+        <div class="balance-line debt">
+          <dt class="label">{{ language.t('stats.debt') }}</dt>
+          <dd class="value">{{ formatMoney(cardDebt()) }}</dd>
+        </div>
+        <div class="balance-line with-debt">
+          <dt class="label">
+            {{ language.t('stats.totalWithDebt', { currency: baseCurrency() }) }}
+          </dt>
+          <dd class="value">{{ formatMoney(totalBalanceBaseCurrency()) }}</dd>
+        </div>
+      </dl>
+    } @else {
+      <div class="stat">
+        <span class="label">{{ language.t('stats.allAccounts', { currency: baseCurrency() }) }}</span>
+        <span class="value">{{ formatMoney(totalBalanceBaseCurrency()) }}</span>
+      </div>
+    }
     @if (yearHasMovements()) {
       <div class="balance-strip" aria-hidden="true" [style.--zero-pct]="balanceZeroPct() + '%'">
         <div class="balance-tracks">
@@ -225,6 +246,9 @@
             <span class="balance-tile" aria-hidden="true">{{ item.account.currency }}</span>
             <div class="balance-meta">
               <span class="account-name">{{ item.account.name }}</span>
+              @if (isCreditCard(item.account) && item.account.limit != null) {
+                <span class="account-caption">{{ usedOfLimitText(item) }}</span>
+              }
             </div>
             <span class="balance-amount">{{ formatAccountBalance(item.balance, item.account.currency) }}</span>
           </li>
