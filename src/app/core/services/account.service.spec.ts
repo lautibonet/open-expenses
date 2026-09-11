@@ -255,3 +255,198 @@ describe('AccountService - delete-if-unused (ADR 0018)', () => {
     await expect(service.delete(999)).rejects.toThrow('errors.accountNotFound');
   });
 });
+
+describe('AccountService - credit cards (ADR 0022)', () => {
+  let service: AccountService;
+  let cashId: number;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    TestBed.configureTestingModule({});
+    service = TestBed.inject(AccountService);
+    const cash = await service.create('Cash', 'eur', 10000);
+    cashId = cash.id!;
+  });
+
+  afterEach(async () => {
+    await db.delete();
+  });
+
+  it('creates a card as an account of kind credit-card linked to a cash account', async () => {
+    const card = await service.createCard({ name: 'Visa', linkedAccountId: cashId });
+    expect(card.id).toBeDefined();
+    expect(card.kind).toBe('credit-card');
+    expect(card.linkedAccountId).toBe(cashId);
+    expect(card.currency).toBe('EUR');
+    expect(card.initialBalance).toBe(0);
+    expect(card.active).toBe(true);
+  });
+
+  it('seeds the card currency from the linked account and keeps it after edits', async () => {
+    const card = await service.createCard({ name: 'Visa', linkedAccountId: cashId });
+    const other = await service.create('Savings', 'usd', 0);
+    const updated = await service.update(card.id!, { linkedAccountId: other.id! });
+    expect(updated.currency).toBe('EUR');
+    expect(updated.linkedAccountId).toBe(other.id);
+  });
+
+  it('keeps an explicit cash account created with kind cash', async () => {
+    const cash = await service.getById(cashId);
+    expect(cash!.kind).toBe('cash');
+  });
+
+  it('allows a negative initial balance as the starting debt', async () => {
+    const card = await service.createCard({
+      name: 'Visa',
+      linkedAccountId: cashId,
+      initialBalance: -50000,
+    });
+    expect(card.initialBalance).toBe(-50000);
+  });
+
+  it('stores an optional limit', async () => {
+    const card = await service.createCard({ name: 'Visa', linkedAccountId: cashId, limit: 100000 });
+    expect(card.limit).toBe(100000);
+  });
+
+  it('rejects a blank card name', async () => {
+    await expect(service.createCard({ name: '  ', linkedAccountId: cashId }))
+      .rejects.toThrow('errors.accountNameRequired');
+  });
+
+  it('rejects a duplicate card name', async () => {
+    await expect(service.createCard({ name: 'Cash', linkedAccountId: cashId }))
+      .rejects.toMatchObject({
+        key: 'errors.accountNameTaken',
+        params: { name: 'Cash' },
+      });
+  });
+
+  it('rejects a missing linked account', async () => {
+    await expect(service.createCard({ name: 'Visa', linkedAccountId: 0 }))
+      .rejects.toThrow('errors.linkedAccountMustBeCash');
+  });
+
+  it('rejects a linked account that is itself a card', async () => {
+    const card = await service.createCard({ name: 'Visa', linkedAccountId: cashId });
+    await expect(service.createCard({ name: 'Mastercard', linkedAccountId: card.id! }))
+      .rejects.toThrow('errors.linkedAccountMustBeCash');
+  });
+
+  it('rejects a negative limit', async () => {
+    await expect(service.createCard({ name: 'Visa', linkedAccountId: cashId, limit: -1 }))
+      .rejects.toThrow('errors.cardLimitNegative');
+  });
+
+  it('creates the payment category with consent', async () => {
+    await service.createCard({ name: 'Visa', linkedAccountId: cashId }, 'Visa payment');
+    const categories = await db.categories.toArray();
+    expect(categories.map((c) => c.name)).toContain('Visa payment');
+    expect(categories.find((c) => c.name === 'Visa payment')!.type).toBe('expense');
+  });
+
+  it('creates nothing when consent is declined', async () => {
+    await service.createCard({ name: 'Visa', linkedAccountId: cashId }, null);
+    expect(await db.categories.count()).toBe(0);
+  });
+
+  it('rolls the card back when its payment category already exists', async () => {
+    await db.categories.add({
+      name: 'Visa payment',
+      type: 'expense',
+      active: true,
+      createdAt: new Date(),
+    });
+    await expect(
+      service.createCard({ name: 'Visa', linkedAccountId: cashId }, 'Visa payment'),
+    ).rejects.toThrow('errors.categoryNameTaken');
+    expect(await db.accounts.where('kind').equals('credit-card').count()).toBe(0);
+  });
+
+  it('edits a card name, starting debt, limit and linked account', async () => {
+    const card = await service.createCard({ name: 'Visa', linkedAccountId: cashId });
+    const other = await service.create('Savings', 'EUR', 0);
+
+    const updated = await service.update(card.id!, {
+      name: 'Mastercard',
+      initialBalance: -12300,
+      limit: 250000,
+      linkedAccountId: other.id!,
+    });
+
+    expect(updated.name).toBe('Mastercard');
+    expect(updated.initialBalance).toBe(-12300);
+    expect(updated.limit).toBe(250000);
+    expect(updated.linkedAccountId).toBe(other.id);
+  });
+
+  it('clears the limit when edited to null', async () => {
+    const card = await service.createCard({ name: 'Visa', linkedAccountId: cashId, limit: 5000 });
+    const updated = await service.update(card.id!, { limit: null });
+    expect(updated.limit).toBeUndefined();
+  });
+
+  it('still refuses a negative initial balance on a cash account', async () => {
+    await expect(service.update(cashId, { initialBalance: -1 }))
+      .rejects.toThrow('errors.initialBalanceNegative');
+  });
+
+  it('lists cards and cash accounts separately', async () => {
+    const card = await service.createCard({ name: 'Visa', linkedAccountId: cashId });
+    const cash = await service.getCashAccounts();
+    const cards = await service.getCards();
+    expect(cash.map((a) => a.id)).toEqual([cashId]);
+    expect(cards.map((a) => a.id)).toEqual([card.id]);
+  });
+
+  it('keeps cards out of the active capture picker', async () => {
+    await service.createCard({ name: 'Visa', linkedAccountId: cashId });
+    const active = await service.getActive();
+    expect(active.map((a) => a.id)).toEqual([cashId]);
+  });
+
+  it('reports the linked account as referenced by a card', async () => {
+    const card = await service.createCard({ name: 'Visa', linkedAccountId: cashId });
+    expect(await service.hasCardReference(cashId)).toBe(true);
+    expect(await service.hasCardReference(card.id!)).toBe(false);
+  });
+
+  it('refuses to delete a linked account and offers the refusal reason', async () => {
+    await service.createCard({ name: 'Visa', linkedAccountId: cashId });
+    expect(await service.getDeleteRefusal(cashId)).toBe('linked-card');
+    await expect(service.delete(cashId)).rejects.toThrow('errors.accountLinkedToCard');
+    expect(await service.getById(cashId)).toBeDefined();
+  });
+
+  it('deletes an unused card', async () => {
+    const card = await service.createCard({ name: 'Visa', linkedAccountId: cashId });
+    await service.delete(card.id!);
+    expect(await service.getById(card.id!)).toBeUndefined();
+  });
+
+  it('refuses to delete a card that has movements', async () => {
+    const card = await service.createCard({ name: 'Visa', linkedAccountId: cashId });
+    const category = await db.categories.add({
+      name: 'Food',
+      type: 'expense',
+      active: true,
+      createdAt: new Date(),
+    });
+    await db.transactions.add({
+      accountId: card.id!,
+      categoryId: category,
+      amount: 1000,
+      date: new Date(),
+      period: 1,
+      year: 2026,
+      exchangeRate: null,
+      baseCurrencyAmount: null,
+      note: '',
+      createdAt: new Date(),
+    });
+
+    expect(await service.getDeleteRefusal(card.id!)).toBe('movements');
+    await expect(service.delete(card.id!)).rejects.toThrow('errors.accountHasMovements');
+  });
+});

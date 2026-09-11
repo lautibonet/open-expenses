@@ -343,13 +343,338 @@
             </div>
             @if (refusedAccount() === acc.id) {
               <div class="delete-refusal" role="alert">
-                <p>{{ language.t('errors.accountHasMovements') }}</p>
+                <p>
+                  {{
+                    language.t(
+                      refusedAccountReason() === 'linked-card'
+                        ? 'errors.accountLinkedToCard'
+                        : 'errors.accountHasMovements'
+                    )
+                  }}
+                </p>
                 @if (acc.active) {
                   <button type="button" class="btn small" (click)="deactivateInstead(acc.id!)">
                     {{ language.t('settings.deactivateInstead') }}
                   </button>
                 }
                 <button type="button" class="btn small" (click)="cancelRefuseAccount()">
+                  {{ language.t('settings.cancel') }}
+                </button>
+              </div>
+            }
+          }
+        </li>
+      }
+    </ul>
+  </section>
+
+  <section class="card">
+    <h2>
+      <svg aria-hidden="true" viewBox="0 0 16 16" focusable="false">
+        <rect
+          x="1.5"
+          y="3.5"
+          width="13"
+          height="9"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+        />
+        <path d="M1.5 6.5h13" fill="none" stroke="currentColor" stroke-width="1.5" />
+        <circle cx="4.5" cy="9.5" r="1" fill="currentColor" />
+      </svg>
+      {{ language.t('settings.creditCards') }}
+    </h2>
+
+    @if (addingCard()) {
+      <div class="inline-form">
+        <input
+          #newCardNameInput
+          type="text"
+          [ngModel]="newCardName()"
+          (ngModelChange)="newCardName.set($event)"
+          [placeholder]="language.t('settings.name')"
+          class="input"
+          [attr.aria-label]="language.t('settings.name')"
+        />
+        <div class="field">
+          <span class="field-label">{{ language.t('settings.linkedAccount') }}</span>
+          <select
+            [ngModel]="newCardLinkedAccountId()"
+            (ngModelChange)="newCardLinkedAccountId.set($event)"
+            class="input"
+            [attr.aria-label]="language.t('settings.linkedAccountAria')"
+          >
+            <option [ngValue]="null">{{ language.t('settings.noLinkedAccountOption') }}</option>
+            @for (acc of accounts(); track acc.id) {
+              <option [ngValue]="acc.id">{{ acc.name }}</option>
+            }
+          </select>
+        </div>
+        <div class="field">
+          <span class="field-label">{{ language.t('settings.startingDebt') }}</span>
+          <input
+            type="number"
+            [ngModel]="newCardBalance()"
+            (ngModelChange)="newCardBalance.set($event)"
+            class="input"
+            [attr.aria-label]="language.t('settings.startingDebt')"
+          />
+        </div>
+        <div class="field">
+          <span class="field-label">{{ language.t('settings.limit') }}</span>
+          <input
+            type="number"
+            [ngModel]="newCardLimit()"
+            (ngModelChange)="newCardLimit.set($event)"
+            class="input"
+            [attr.aria-label]="language.t('settings.limit')"
+          />
+        </div>
+        <label class="consent">
+          <input
+            type="checkbox"
+            [ngModel]="newCardCreateCategory()"
+            (ngModelChange)="newCardCreateCategory.set($event)"
+          />
+          {{ language.t('settings.createPaymentCategory') }}
+        </label>
+        <span class="edit-static">{{ currencyForAccount(newCardLinkedAccountId()) }}</span>
+        <button class="btn dashed" (click)="addCard()">
+          + {{ language.t('settings.addCard') }}
+        </button>
+        <button type="button" class="btn" (click)="cancelAddCard()">
+          {{ language.t('settings.cancel') }}
+        </button>
+      </div>
+    } @else {
+      <button type="button" class="btn dashed add-toggle" (click)="startAddCard()">
+        {{ language.t('settings.newCard') }}
+      </button>
+    }
+
+    <ul class="account-list">
+      @for (card of cards(); track card.id) {
+        <li class="account-row" [class.inactive]="!card.active">
+          @if (editingCard()?.id === card.id) {
+            <div class="edit-state">
+              <div class="edit-line">
+                <input
+                  #cardNameInput
+                  type="text"
+                  [ngModel]="editingCard()!.name"
+                  (ngModelChange)="editCardName($event)"
+                  (keydown.enter)="saveCardEdit()"
+                  (keydown.escape)="cancelEditCard()"
+                  class="input"
+                  [attr.aria-label]="language.t('settings.name')"
+                />
+                <div class="field">
+                  <span class="field-label">{{ language.t('settings.startingDebt') }}</span>
+                  <input
+                    type="number"
+                    [ngModel]="editingCard()!.initialBalance"
+                    (ngModelChange)="editCardBalance($event)"
+                    (keydown.enter)="saveCardEdit()"
+                    (keydown.escape)="cancelEditCard()"
+                    class="input small"
+                    [attr.aria-label]="language.t('settings.startingDebt')"
+                  />
+                </div>
+                <div class="field">
+                  <span class="field-label">{{ language.t('settings.limit') }}</span>
+                  <input
+                    type="number"
+                    [ngModel]="editingCard()!.limit"
+                    (ngModelChange)="editCardLimit($event)"
+                    (keydown.enter)="saveCardEdit()"
+                    (keydown.escape)="cancelEditCard()"
+                    class="input small"
+                    [attr.aria-label]="language.t('settings.limit')"
+                  />
+                </div>
+                <div class="field">
+                  <span class="field-label">{{ language.t('settings.linkedAccount') }}</span>
+                  <select
+                    [ngModel]="editingCard()!.linkedAccountId"
+                    (ngModelChange)="editCardLinkedAccount($event)"
+                    (keydown.enter)="saveCardEdit()"
+                    (keydown.escape)="cancelEditCard()"
+                    class="input"
+                    [attr.aria-label]="language.t('settings.linkedAccountAria')"
+                  >
+                    @for (acc of accounts(); track acc.id) {
+                      <option [ngValue]="acc.id">{{ acc.name }}</option>
+                    }
+                  </select>
+                </div>
+                <span class="edit-static">{{ currencyForAccount(editingCard()!.linkedAccountId) }}</span>
+                <button
+                  type="button"
+                  class="btn small primary icon-btn"
+                  (click)="saveCardEdit()"
+                  [attr.aria-label]="language.t('settings.confirmEditAria')"
+                  [title]="language.t('settings.confirmEditAria')"
+                >
+                  <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                    <path
+                      d="M20 6 9 17l-5-5"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  class="btn small icon-btn"
+                  (click)="cancelEditCard()"
+                  [attr.aria-label]="language.t('settings.cancelEditAria')"
+                  [title]="language.t('settings.cancelEditAria')"
+                >
+                  <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                    <path
+                      d="M18 6 6 18M6 6l12 12"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </button>
+              </div>
+              @if (editError()) {
+                <p class="edit-error" role="alert">{{ editError() }}</p>
+              }
+            </div>
+          } @else {
+            <div class="account-main">
+              <span class="account-name">{{ card.name }}</span>
+              <span class="account-meta">
+                <span>{{ card.currency }}</span>
+                <span>{{ accountNameFor(card.linkedAccountId) }}</span>
+                @if (card.limit != null) {
+                  <span>{{ language.t('settings.limit') }} {{ card.limit }}</span>
+                }
+                <span>{{ card.initialBalance }}</span>
+              </span>
+            </div>
+            <div class="account-side">
+              <span class="account-status">
+                {{ card.active ? language.t('settings.active') : language.t('settings.inactive') }}
+              </span>
+              @if (card.active) {
+                <button
+                  type="button"
+                  class="btn small icon-btn"
+                  [attr.data-edit-pencil]="'card-' + card.id"
+                  (click)="startEditCard(card.id!)"
+                  [attr.aria-label]="language.t('settings.editCardAria')"
+                  [title]="language.t('settings.editCardAria')"
+                >
+                  <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                    <path
+                      d="M3 17.25V21h3.75L17.8 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"
+                      fill="currentColor"
+                    />
+                  </svg>
+                </button>
+                @if (confirmingCardDelete() === card.id) {
+                  <span class="visually-hidden" aria-live="polite">
+                    {{ language.t('settings.cardDeletePrompt') }}
+                  </span>
+                  <button
+                    type="button"
+                    class="btn small danger icon-btn"
+                    (click)="confirmDeleteCard()"
+                    [attr.aria-label]="language.t('settings.confirmDeletionAria')"
+                    [title]="language.t('settings.confirmDeletionAria')"
+                  >
+                    <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                      <path
+                        d="M20 6 9 17l-5-5"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    class="btn small icon-btn"
+                    (click)="cancelDeleteCard()"
+                    [attr.aria-label]="language.t('settings.cancelDeletionAria')"
+                    [title]="language.t('settings.cancelDeletionAria')"
+                  >
+                    <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                      <path
+                        d="M18 6 6 18M6 6l12 12"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                  </button>
+                } @else {
+                  <button
+                    type="button"
+                    class="btn small icon-btn"
+                    (click)="requestDeleteCard(card.id!)"
+                    [attr.aria-label]="language.t('settings.deleteCardAria')"
+                    [title]="language.t('settings.deleteCardAria')"
+                  >
+                    <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                      <path
+                        d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                  </button>
+                }
+              } @else {
+                <button class="btn small" (click)="reactivateCard(card.id!)">
+                  {{ language.t('settings.reactivate') }}
+                </button>
+                <button
+                  type="button"
+                  class="btn small icon-btn"
+                  (click)="requestDeleteCard(card.id!)"
+                  [attr.aria-label]="language.t('settings.deleteCardAria')"
+                  [title]="language.t('settings.deleteCardAria')"
+                >
+                  <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                    <path
+                      d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                </button>
+              }
+            </div>
+            @if (refusedCard() === card.id) {
+              <div class="delete-refusal" role="alert">
+                <p>{{ language.t('errors.accountHasMovements') }}</p>
+                @if (card.active) {
+                  <button type="button" class="btn small" (click)="deactivateCardInstead(card.id!)">
+                    {{ language.t('settings.deactivateInstead') }}
+                  </button>
+                }
+                <button type="button" class="btn small" (click)="cancelRefuseCard()">
                   {{ language.t('settings.cancel') }}
                 </button>
               </div>

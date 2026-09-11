@@ -152,6 +152,7 @@ describe('CategoryService - delete-if-unused (ADR 0018)', () => {
       currency: 'EUR',
       initialBalance: 0,
       active: true,
+      kind: 'cash',
       createdAt: new Date(),
     });
     return db.transactions.add({

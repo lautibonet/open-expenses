@@ -153,6 +153,22 @@ export class AppDatabase extends Dexie {
         }
       }
     });
+    /* ADR 0022: every existing account becomes a Cash Account. A Credit Card
+       adds the kind, its Linked Account and an optional Limit. */
+    this.version(7).stores({
+      accounts: '++id, name, currency, active, kind, linkedAccountId',
+      categories: '++id, name, type, active',
+      transactions: '++id, accountId, categoryId, date, period, year',
+      transfers: '++id, sourceAccountId, destinationAccountId, date, period, year',
+      profile: 'id',
+    }).upgrade(async tx => {
+      const accounts = await tx.table('accounts').toArray();
+      for (const account of accounts) {
+        if (account.kind == null) {
+          await tx.table('accounts').update(account.id!, { kind: 'cash' });
+        }
+      }
+    });
   }
 }
 

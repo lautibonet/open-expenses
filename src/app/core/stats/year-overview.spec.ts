@@ -46,6 +46,7 @@ function account(overrides: Partial<Account>): Account {
     currency: 'EUR',
     initialBalance: 0,
     active: true,
+    kind: 'cash',
     createdAt: new Date('2026-01-01'),
     ...overrides,
   };

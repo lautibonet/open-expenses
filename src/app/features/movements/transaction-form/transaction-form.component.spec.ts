@@ -18,7 +18,7 @@ function flush(ms = 10): Promise<void> {
 }
 
 function makeAccount(id: number, name: string, currency: string): Account {
-  return { id, name, currency, initialBalance: 0, active: true, createdAt: new Date() };
+  return { id, name, currency, initialBalance: 0, active: true, kind: 'cash', createdAt: new Date() };
 }
 
 function makeCategory(id: number, name: string, type: 'income' | 'expense'): Category {
@@ -540,7 +540,7 @@ describe('TransactionFormComponent - translations', () => {
   it('renders the full form in Spanish when the active Language is Spanish', async () => {
     const now = new Date();
     const accounts: Account[] = [
-      { id: 1, name: 'Cash', currency: 'EUR', initialBalance: 0, active: true, createdAt: now },
+      { id: 1, name: 'Cash', currency: 'EUR', initialBalance: 0, active: true, kind: 'cash', createdAt: now },
     ];
     const categories: Category[] = [
       { id: 10, name: 'Food', type: 'expense', active: true, createdAt: now },
@@ -563,7 +563,7 @@ describe('TransactionFormComponent - translations', () => {
   it('re-renders in Spanish immediately when the Language changes after render', async () => {
     const now = new Date();
     fixture.componentRef.setInput('accounts', [
-      { id: 1, name: 'Cash', currency: 'EUR', initialBalance: 0, active: true, createdAt: now } as Account,
+      { id: 1, name: 'Cash', currency: 'EUR', initialBalance: 0, active: true, kind: 'cash', createdAt: now } as Account,
     ]);
     fixture.componentRef.setInput('categories', [
       { id: 10, name: 'Food', type: 'expense', active: true, createdAt: now } as Category,

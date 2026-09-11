@@ -27,6 +27,31 @@ function categoryName(key: string, language: Language): string {
   return translate(language, `category.${key}`);
 }
 
+/* Category creation as a plain function so callers that are not DI-injected
+   (and the AccountService's card transaction) can reuse the same rules. */
+export async function createCategory(name: string, type: CategoryType): Promise<Category> {
+  assertCategoryType(type);
+  const trimmedName = name.trim();
+  if (!trimmedName) {
+    throw new TranslationError('errors.categoryNameRequired');
+  }
+
+  const existing = await db.categories.where('name').equals(trimmedName).first();
+  if (existing) {
+    throw new TranslationError('errors.categoryNameTaken', { name: trimmedName });
+  }
+
+  const category: Category = {
+    name: trimmedName,
+    type,
+    active: true,
+    createdAt: new Date(),
+  };
+
+  const id = await db.categories.add(category);
+  return { ...category, id };
+}
+
 @Injectable({ providedIn: 'root' })
 export class CategoryService {
   static defaultCategories(language: Language): { key: string; name: string; type: CategoryType }[] {
@@ -42,26 +67,7 @@ export class CategoryService {
   }
 
   async create(name: string, type: CategoryType): Promise<Category> {
-    assertCategoryType(type);
-    const trimmedName = name.trim();
-    if (!trimmedName) {
-      throw new TranslationError('errors.categoryNameRequired');
-    }
-
-    const existing = await db.categories.where('name').equals(trimmedName).first();
-    if (existing) {
-      throw new TranslationError('errors.categoryNameTaken', { name: trimmedName });
-    }
-
-    const category: Category = {
-      name: trimmedName,
-      type,
-      active: true,
-      createdAt: new Date(),
-    };
-
-    const id = await db.categories.add(category);
-    return { ...category, id };
+    return createCategory(name, type);
   }
 
   async update(id: number, changes: { name?: string; type?: CategoryType }): Promise<Category> {

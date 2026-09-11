@@ -72,6 +72,19 @@ describe('translations', () => {
       'settings.editLanguageAria',
       'settings.confirmEditAria',
       'settings.cancelEditAria',
+      'settings.creditCards',
+      'settings.newCard',
+      'settings.addCard',
+      'settings.startingDebt',
+      'settings.linkedAccount',
+      'settings.linkedAccountAria',
+      'settings.limit',
+      'settings.createPaymentCategory',
+      'settings.editCardAria',
+      'settings.deleteCardAria',
+      'settings.cardDeletePrompt',
+      'settings.failedAddCard',
+      'settings.failedSaveCard',
     ]) {
       expect(TRANSLATIONS.en[key]).toBeTruthy();
       expect(TRANSLATIONS.es[key]).toBeTruthy();
@@ -423,6 +436,11 @@ describe('translations', () => {
       'errors.noRatesReturned',
       'errors.accountHasMovements',
       'errors.categoryHasMovements',
+      'errors.accountLinkedToCard',
+      'errors.linkedAccountRequired',
+      'errors.linkedAccountMustBeCash',
+      'errors.cardLimitNegative',
+      'category.cardPayment',
     ]) {
       expect(TRANSLATIONS.en[key]).toBeTruthy();
       expect(TRANSLATIONS.es[key]).toBeTruthy();

@@ -103,7 +103,7 @@ describe('backup-snapshot', () => {
 
   describe('createSnapshot', () => {
     it('captures every table plus an exportedAt timestamp', async () => {
-      await db.accounts.add({ name: 'Cash', currency: 'EUR', initialBalance: 0, active: true, createdAt: new Date() });
+      await db.accounts.add({ name: 'Cash', currency: 'EUR', initialBalance: 0, active: true, kind: 'cash', createdAt: new Date() });
       await db.categories.add({ name: 'Food', type: 'expense', active: true, createdAt: new Date() });
       await db.profile.add({ id: 1, baseCurrency: 'EUR', language: 'en', onboardingCompleted: true, lastBackupAt: null });
 
@@ -131,7 +131,7 @@ describe('backup-snapshot', () => {
 
   describe('overwriteLocalDb', () => {
     it('replaces all local data with the snapshot', async () => {
-      await db.accounts.add({ name: 'Old', currency: 'EUR', initialBalance: 0, active: true, createdAt: new Date() });
+      await db.accounts.add({ name: 'Old', currency: 'EUR', initialBalance: 0, active: true, kind: 'cash', createdAt: new Date() });
 
       const snapshot: BackupSnapshot = {
         accounts: [{ name: 'New', currency: 'USD', initialBalance: 500, active: true, createdAt: '2026-01-01T00:00:00.000Z' }],
@@ -151,7 +151,7 @@ describe('backup-snapshot', () => {
     });
 
     it('clears tables when the snapshot has no data for them', async () => {
-      await db.accounts.add({ name: 'Cash', currency: 'EUR', initialBalance: 0, active: true, createdAt: new Date() });
+      await db.accounts.add({ name: 'Cash', currency: 'EUR', initialBalance: 0, active: true, kind: 'cash', createdAt: new Date() });
 
       const snapshot: BackupSnapshot = {
         accounts: [],
