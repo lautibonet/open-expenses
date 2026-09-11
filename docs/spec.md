@@ -205,7 +205,7 @@ Exchange rate lookups happen directly from the client against a free, key-less p
 - Broad public distribution of the app — designed for the author's personal use and as a portfolio piece.
 - Automated data migration/import tooling from the original spreadsheet.
 - Recurring transactions, search across transactions, CSV/PDF export — potential post-MVP features.
-- Account type field (bank, cash, credit card, etc.) — accounts have name, currency, and initial balance only.
+- Account type field (bank, cash, credit card, etc.) — superseded by ADR 0022: Credit Cards exist as a second kind of Account.
 - Charts or visualizations on the Dashboard — table layout for period-end balances.
 
 ## Further Notes
