@@ -94,6 +94,13 @@ app-erase-card {
   gap: var(--space-sm);
 }
 
+/* The inline-form is a grid, so its gap already clears the action row from
+   the fields above. The edit state stacks grid then actions as blocks, so
+   the tick/X pair needs its own clearance. */
+.edit-actions {
+  margin-top: var(--space-md);
+}
+
 .btn.add-toggle {
   margin-bottom: var(--space-md);
 }
