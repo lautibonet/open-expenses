@@ -202,6 +202,48 @@ app-erase-card {
   color: var(--on-surface-variant);
 }
 
+/* A card row carries more metadata than a plain account row — the linked
+   account, an optional limit, and the starting debt — so it renders as
+   labeled pairs instead of one mono run. The label takes the caps-metadata
+   register, the value the data register: mono for the figures, Inter for
+   the linked-account name, which is prose and never belonged in the mono
+   face. Pairs wrap as units, so a long linked-account name can neither
+   crush itself into a ragged column nor shove the rest of the line. */
+.account-meta.card-meta {
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-xs) var(--space-md);
+  font-family: var(--font-ui);
+  font-variant-numeric: normal;
+}
+
+.card-meta-field {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-xs);
+}
+
+.card-meta-label {
+  @extend %caps-label-muted;
+
+  white-space: nowrap;
+}
+
+.card-meta-value {
+  @extend %mono-data;
+
+  color: var(--on-surface);
+}
+
+/* The linked-account value is a name, not a figure — interface prose in
+   the UI face, held to the muted secondary ink. */
+.card-meta-value.is-name {
+  font-family: var(--font-ui);
+  font-size: var(--type-caption);
+  line-height: var(--leading-caption);
+  color: var(--on-surface-variant);
+}
+
 /* Expanded edit state: the same labeled field grid as the add forms, with
    the tick/X confirm grammar on its own row and the validation error
    rendered inline. */
@@ -219,31 +261,31 @@ app-erase-card {
   flex-wrap: wrap;
 }
 
+/* Consent: the box, the label and the explanation below share a two-column
+   grid. The grid centers the box against the label's first line (native
+   checkbox margins would otherwise offset it), and the hint's column starts
+   exactly where the label text does, so it hangs under the control it
+   explains rather than under the box. */
 .consent {
   grid-column: 1 / -1;
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-xs);
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: var(--space-xs);
+  row-gap: 2px;
+  align-items: center;
+  align-content: start;
   font-size: var(--type-caption);
   color: var(--on-surface-variant);
 }
 
-/* The checkbox sits against the first line of the label; the explanation
-   hangs beneath it as a quieter caption, tied to the control it explains. */
 .consent input {
-  flex: none;
-  margin-top: 0.1rem;
-}
-
-.consent-body {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+  margin: 0;
 }
 
 .consent-hint {
+  grid-column: 2;
   font-size: var(--type-label);
-  line-height: var(--leading-label);
+  line-height: var(--leading-caption);
   color: var(--on-surface-variant);
 }
 
@@ -290,6 +332,10 @@ app-erase-card {
   gap: var(--space-sm);
   flex-wrap: wrap;
   justify-content: flex-end;
+  /* Keeps the row actions pinned right when a long card row wraps them
+     onto their own line (a lone wrapped item falls to flex-start under
+     the row's space-between otherwise). */
+  margin-left: auto;
 }
 
 .account-status,
