@@ -43,6 +43,7 @@ describe('TransferFormComponent', () => {
       currency: 'EUR',
       initialBalance: 100000,
       active: true,
+      kind: 'cash',
       createdAt: new Date(),
     });
     eurAccountId = eur;
@@ -51,6 +52,7 @@ describe('TransferFormComponent', () => {
       currency: 'EUR',
       initialBalance: 50000,
       active: true,
+      kind: 'cash',
       createdAt: new Date(),
     });
     eur2AccountId = eur2;
@@ -59,6 +61,7 @@ describe('TransferFormComponent', () => {
       currency: 'USD',
       initialBalance: 1000,
       active: true,
+      kind: 'cash',
       createdAt: new Date(),
     });
     usdAccountId = usd;

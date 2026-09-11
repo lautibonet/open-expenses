@@ -199,6 +199,25 @@ app-erase-card {
   color: var(--on-surface-variant);
 }
 
+/* Credit-card rows reuse the account-row grammar; labels appear where a
+   placeholder cannot explain the field (starting debt, limit, linked account). */
+.edit-line .field {
+  @extend %labeled-field;
+
+  .field-label {
+    @extend %labeled-field-label;
+  }
+}
+
+.consent {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  min-height: 2.75rem;
+  font-size: var(--type-caption);
+  color: var(--on-surface-variant);
+}
+
 .edit-error {
   margin: var(--space-xs) 0 0;
   font-size: var(--type-caption);
