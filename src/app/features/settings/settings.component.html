@@ -461,7 +461,10 @@
             [ngModel]="newCardCreateCategory()"
             (ngModelChange)="newCardCreateCategory.set($event)"
           />
-          {{ language.t('settings.createPaymentCategory') }}
+          <span class="consent-body">
+            {{ language.t('settings.createPaymentCategory') }}
+            <small class="consent-hint">{{ language.t('settings.createPaymentCategoryHint') }}</small>
+          </span>
         </label>
         <div class="form-actions">
           <button type="button" class="btn dashed" (click)="addCard()">
