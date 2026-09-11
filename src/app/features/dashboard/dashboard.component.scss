@@ -147,6 +147,50 @@
   }
 }
 
+/* Conditional debt total: when a Credit Card is in debt the single Total
+   becomes three figures — without debt, the Debt, and the total with debt —
+   read down one right-aligned tabular column, mirroring the Income/Expenses/
+   Net ledger. A figure outgrowing its line drops whole to its own full-width
+   right-aligned line, never breaking mid-number. */
+.balance-ledger {
+  margin: 0;
+
+  dt,
+  dd {
+    margin: 0;
+  }
+}
+
+.balance-line {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: var(--space-xs) 0;
+
+  & + .balance-line {
+    border-top: 1px solid var(--surface-container-low);
+  }
+
+  .label {
+    @extend %caps-label-muted;
+  }
+
+  .value {
+    @extend %mono-data;
+
+    font-weight: 500;
+    color: var(--on-surface);
+    text-align: right;
+    overflow-wrap: anywhere;
+  }
+
+  &.with-debt .value {
+    font-size: var(--type-title);
+  }
+}
+
 /* Balance strip: the year progression inside the total balance card — the
    old net-strip grammar applied to money held. Ink fills diverge around the
    zero line: up = balance, down = overdrawn (ink, not red — a sign is a fact
@@ -567,6 +611,14 @@
     font-size: var(--type-body);
     font-weight: 600;
     color: var(--on-surface);
+  }
+
+  /* The card's used-of-limit caption: the outstanding debt against the
+     optional Limit, in the muted caps register. */
+  .account-caption {
+    @extend %caps-label-muted;
+
+    line-height: var(--leading-caption);
   }
 }
 

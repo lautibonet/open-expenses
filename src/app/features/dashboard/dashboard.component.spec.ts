@@ -2398,3 +2398,225 @@ describe('DashboardComponent - Stats design-spec conformance', () => {
     }
   });
 });
+
+/* Issue #166 — Stats: conditional debt total + card rows (ADR 0022). */
+describe('DashboardComponent - conditional debt total and card rows', () => {
+  let fixture: ComponentFixture<DashboardComponent>;
+  let component: DashboardComponent;
+  let accountService: AccountService;
+  let categoryService: CategoryService;
+  let transactionService: TransactionService;
+  let transferService: TransferService;
+
+  beforeEach(async () => {
+    await resetDb();
+    await TestBed.configureTestingModule({
+      imports: [DashboardComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(DashboardComponent);
+    component = fixture.componentInstance;
+    accountService = TestBed.inject(AccountService);
+    categoryService = TestBed.inject(CategoryService);
+    transactionService = TestBed.inject(TransactionService);
+    transferService = TestBed.inject(TransferService);
+  });
+
+  afterEach(async () => {
+    await new Promise<void>(resolve => setTimeout(resolve, 10));
+    await resetDb();
+  });
+
+  it('collapses to a single Total when no card balance is negative', async () => {
+    await accountService.create('Checking', 'EUR', 100000);
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    expect(component.hasCardDebt()).toBe(false);
+    expect(component.cardDebt()).toBe(0);
+    expect(fixture.nativeElement.querySelector('.balance-ledger')).toBeNull();
+    const stat = fixture.nativeElement.querySelector('.stat .value');
+    expect(stat).toBeTruthy();
+    expect(stat.textContent).toContain(component.formatMoney(100000));
+  });
+
+  it('keeps a single Total when the only card is overpaid', async () => {
+    const cash = await accountService.create('Checking', 'EUR', 100000);
+    await accountService.createCard({
+      name: 'Visa',
+      linkedAccountId: cash.id!,
+      initialBalance: 5000,
+    });
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    expect(component.hasCardDebt()).toBe(false);
+    expect(component.cardDebt()).toBe(0);
+    expect(component.totalBalanceBaseCurrency()).toBe(105000);
+    expect(fixture.nativeElement.querySelector('.balance-ledger')).toBeNull();
+    const stat = fixture.nativeElement.querySelector('.stat .value');
+    expect(stat).toBeTruthy();
+    expect(stat.textContent).toContain(component.formatMoney(105000));
+  });
+
+  it('shows the three-figure total when a card balance is negative', async () => {
+    const cash = await accountService.create('Checking', 'EUR', 100000);
+    const expenseCat = await categoryService.create('Groceries', 'expense');
+    const card = await accountService.createCard({ name: 'Visa', linkedAccountId: cash.id! });
+    await transactionService.create(card.id!, expenseCat.id!, 25000, new Date(), getCurrentPeriod());
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    expect(component.hasCardDebt()).toBe(true);
+    expect(component.cardDebt()).toBe(25000);
+    expect(component.totalBalanceBaseCurrency()).toBe(75000);
+    expect(component.totalBalanceWithoutDebt()).toBe(100000);
+
+    expect(fixture.nativeElement.querySelector('.stat')).toBeNull();
+    const lines = fixture.nativeElement.querySelectorAll('.balance-line');
+    expect(lines.length).toBe(3);
+    expect(lines[0].classList).toContain('without-debt');
+    expect(lines[1].classList).toContain('debt');
+    expect(lines[2].classList).toContain('with-debt');
+
+    const text = fixture.nativeElement.querySelector('.balance-ledger').textContent;
+    expect(text).toContain('Total without debt');
+    expect(text).toContain('Debt');
+    expect(text).toContain('Total with debt');
+    expect(text).toContain(component.formatMoney(100000));
+    expect(text).toContain(component.formatMoney(25000));
+    expect(text).toContain(component.formatMoney(75000));
+  });
+
+  it('sums only negative card balances into the Debt, leaving an overpaid card in the totals', async () => {
+    const cash = await accountService.create('Checking', 'EUR', 100000);
+    const expenseCat = await categoryService.create('Groceries', 'expense');
+    const card = await accountService.createCard({ name: 'Visa', linkedAccountId: cash.id! });
+    await accountService.createCard({
+      name: 'Master',
+      linkedAccountId: cash.id!,
+      initialBalance: 5000,
+    });
+    await transactionService.create(card.id!, expenseCat.id!, 25000, new Date(), getCurrentPeriod());
+
+    await component.ngOnInit();
+
+    // Debt is the 25 000 owed on Visa: Master's overpaid +5 000 stays in the
+    // totals, so without-debt is total + debt.
+    expect(component.hasCardDebt()).toBe(true);
+    expect(component.cardDebt()).toBe(25000);
+    expect(component.totalBalanceBaseCurrency()).toBe(80000);
+    expect(component.totalBalanceWithoutDebt()).toBe(105000);
+  });
+
+  it('clears the Debt when the card is settled', async () => {
+    const cash = await accountService.create('Checking', 'EUR', 100000);
+    const expenseCat = await categoryService.create('Groceries', 'expense');
+    const card = await accountService.createCard({ name: 'Visa', linkedAccountId: cash.id! });
+    await transactionService.create(card.id!, expenseCat.id!, 25000, new Date(), getCurrentPeriod());
+    await transferService.create(
+      cash.id!, card.id!, 25000, new Date(), getCurrentPeriod(), '', 1, getCurrentYear(), expenseCat.id!,
+    );
+
+    await component.ngOnInit();
+
+    expect(component.hasCardDebt()).toBe(false);
+    expect(component.cardDebt()).toBe(0);
+  });
+
+  it('computes the Debt in base currency from the card movements', async () => {
+    await accountService.create('Checking', 'EUR', 100000);
+    const usd = await accountService.create('USD Account', 'USD', 0);
+    const expenseCat = await categoryService.create('Groceries', 'expense');
+    const card = await accountService.createCard({ name: 'Visa', linkedAccountId: usd.id! });
+    // Stored at capture time: 100 USD at 1.08 = 108 EUR.
+    await transactionService.create(
+      card.id!, expenseCat.id!, 100, new Date(), getCurrentPeriod(), 1.08, 108,
+    );
+
+    const mockResponse = {
+      ok: true,
+      json: async () => [
+        { base: 'EUR', quote: 'USD', date: '2026-01-15', rate: 1.1 },
+      ],
+    };
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse as Response);
+
+    await component.ngOnInit();
+
+    expect(component.hasCardDebt()).toBe(true);
+    expect(component.cardDebt()).toBe(108);
+    expect(component.totalBalanceBaseCurrency()).toBe(100000 - 108);
+    expect(component.totalBalanceWithoutDebt()).toBe(100000);
+  });
+
+  it('groups cards after cash accounts in the balance list', async () => {
+    const cash = await accountService.create('Checking', 'EUR', 1000);
+    await accountService.createCard({ name: 'Visa', linkedAccountId: cash.id! });
+    await accountService.create('Savings', 'EUR', 2000);
+    await accountService.createCard({ name: 'Master', linkedAccountId: cash.id! });
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const order = component.accountBalances().map(b => b.account.name);
+    expect(order).toEqual(['Checking', 'Savings', 'Visa', 'Master']);
+
+    const rendered = Array.from(
+      fixture.nativeElement.querySelectorAll('.balance-row .account-name') as NodeListOf<HTMLElement>,
+    ).map(el => el.textContent?.trim());
+    expect(rendered).toEqual(order);
+  });
+
+  it('shows "used X of limit" on card rows carrying a Limit', async () => {
+    const cash = await accountService.create('Checking', 'EUR', 100000);
+    const expenseCat = await categoryService.create('Groceries', 'expense');
+    const card = await accountService.createCard({
+      name: 'Visa',
+      linkedAccountId: cash.id!,
+      limit: 50000,
+    });
+    await transactionService.create(card.id!, expenseCat.id!, 25000, new Date(), getCurrentPeriod());
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const row = Array.from(
+      fixture.nativeElement.querySelectorAll('.balance-row') as NodeListOf<HTMLElement>,
+    ).find(r => r.textContent?.includes('Visa'))!;
+    const caption = row.querySelector('.account-caption');
+    expect(caption).toBeTruthy();
+    expect(caption!.textContent).toContain('Used');
+    expect(caption!.textContent).toContain(component.formatAccountBalance(25000, 'EUR'));
+    expect(caption!.textContent).toContain(component.formatAccountBalance(50000, 'EUR'));
+  });
+
+  it('omits the used-of-limit caption on cards without a Limit', async () => {
+    const cash = await accountService.create('Checking', 'EUR', 100000);
+    await accountService.createCard({ name: 'Visa', linkedAccountId: cash.id! });
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.account-caption')).toBeNull();
+  });
+
+  it('reads an overpaid card as zero used against its Limit', async () => {
+    const cash = await accountService.create('Checking', 'EUR', 100000);
+    const card = await accountService.createCard({
+      name: 'Visa',
+      linkedAccountId: cash.id!,
+      limit: 50000,
+      initialBalance: 5000,
+    });
+
+    await component.ngOnInit();
+
+    const text = component.usedOfLimitText({ account: card, balance: 5000 });
+    expect(text).toContain(component.formatAccountBalance(0, 'EUR'));
+    expect(text).toContain(component.formatAccountBalance(50000, 'EUR'));
+  });
+});

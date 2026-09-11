@@ -21,7 +21,7 @@ import {
 } from '../../core/types/period.type';
 import { Transaction } from '../../core/models/transaction.model';
 import { Transfer } from '../../core/models/transfer.model';
-import { Account } from '../../core/models/account.model';
+import { Account, isCreditCard } from '../../core/models/account.model';
 import { Category, isIncomeCategory } from '../../core/models/category.model';
 import { DismissibleAlertComponent } from '../../shared/components/dismissible-alert/dismissible-alert.component';
 import { FitTextDirective } from '../../shared/directives/fit-text.directive';
@@ -48,6 +48,12 @@ import { cashBasisTransactions, cardPaymentTransfers } from '../../core/stats/ca
 interface Extremes {
   up: number;
   down: number;
+}
+
+/* An Account paired with its Period-end balance, in the account's currency. */
+interface AccountBalance {
+  account: Account;
+  balance: number;
 }
 
 @Component({
@@ -84,8 +90,14 @@ export class DashboardComponent implements OnInit {
   yearHasData = signal(false);
   yearHasMovements = signal(false);
   categoryBreakdown = signal<{ name: string; total: number }[]>([]);
-  accountBalances = signal<{ account: Account; balance: number }[]>([]);
+  accountBalances = signal<AccountBalance[]>([]);
+  readonly isCreditCard = isCreditCard;
   totalBalanceBaseCurrency = signal(0);
+  /* ADR 0022 / CONTEXT.md Stats: the sum of negative Credit Card balances,
+     stated as a positive figure. Zero and the flag off when no card is in
+     debt, which collapses the total back to a single figure. */
+  cardDebt = signal(0);
+  hasCardDebt = signal(false);
   conversionDegraded = signal<ConversionDegradation>({ ...noDegradation });
 
   avgMonthlyIncome = signal(0);
@@ -154,7 +166,7 @@ export class DashboardComponent implements OnInit {
     ]);
 
     const scope = this.scope();
-    const balances: { account: Account; balance: number }[] = [];
+    const balances: AccountBalance[] = [];
     for (const acc of this.accounts()) {
       const balance = periodEndBalance(
         { account: acc, transactions: allTxns, transfers: allTransfers, isIncome },
@@ -162,7 +174,7 @@ export class DashboardComponent implements OnInit {
       );
       balances.push({ account: acc, balance });
     }
-    this.accountBalances.set(balances);
+    this.accountBalances.set(this.cashAccountsFirst(balances));
 
     const unconverted = unconvertedTransactionsAffecting(
       allTxns,
@@ -182,6 +194,7 @@ export class DashboardComponent implements OnInit {
 
     if (nonBaseCurrencies.length === 0) {
       this.totalBalanceBaseCurrency.set(this.sumBalances(balances));
+      this.setCardDebt(balances, this.nativeBaseAmounts(balances));
       this.setAccumulated(
         allTxns,
         allTransfers,
@@ -219,14 +232,18 @@ export class DashboardComponent implements OnInit {
       this.setAccumulated(allTxns, allTransfers, isIncome, initialsInBase);
 
       let total = 0;
+      const baseAmounts = new Map<number, number>();
       for (const b of balances) {
-        total += periodEndBaseAmount(
+        const amount = periodEndBaseAmount(
           { account: b.account, transactions: allTxns, transfers: allTransfers, isIncome },
           scope,
           initialsInBase.get(b.account.id!)!,
         );
+        baseAmounts.set(b.account.id!, amount);
+        total += amount;
       }
       this.totalBalanceBaseCurrency.set(Math.round(total * 100) / 100);
+      this.setCardDebt(balances, baseAmounts);
     } catch {
       this.excludeForeignAccounts(balances, base, allTxns, allTransfers, isIncome);
     }
@@ -235,7 +252,7 @@ export class DashboardComponent implements OnInit {
   /* Foreign accounts whose Exchange Rate cannot be resolved are left out of
      the total balance and surface the conversion warning. */
   private excludeForeignAccounts(
-    balances: { account: Account; balance: number }[],
+    balances: AccountBalance[],
     base: string,
     allTxns: Transaction[],
     allTransfers: Transfer[],
@@ -243,6 +260,8 @@ export class DashboardComponent implements OnInit {
   ): void {
     this.conversionDegraded.update(d => ({ ...d, accountsExcluded: true }));
     this.totalBalanceBaseCurrency.set(this.sumBalances(balances, base));
+    const included = balances.filter(b => b.account.currency === base);
+    this.setCardDebt(included, this.nativeBaseAmounts(included));
     /* Degraded Accumulated: Base Currency accounts only, at face amounts. */
     this.setAccumulated(
       allTxns,
@@ -364,13 +383,61 @@ export class DashboardComponent implements OnInit {
     return (t: Transaction) => isIncomeCategory(catMap.get(t.categoryId)?.type);
   }
 
-  private sumBalances(
-    balances: { account: Account; balance: number }[],
-    currency?: string,
-  ): number {
+  private sumBalances(balances: AccountBalance[], currency?: string): number {
     return balances
       .filter(b => !currency || b.account.currency === currency)
       .reduce((sum, b) => sum + b.balance, 0);
+  }
+
+  private nativeBaseAmounts(balances: AccountBalance[]): Map<number, number> {
+    return new Map(balances.map(b => [b.account.id!, b.balance]));
+  }
+
+  /* Cards are grouped after Cash Accounts in the balance list (CONTEXT.md,
+     Stats). The sort is stable, so each group keeps its accounts' own order. */
+  private cashAccountsFirst(balances: AccountBalance[]): AccountBalance[] {
+    return [...balances].sort(
+      (a, b) => Number(isCreditCard(a.account)) - Number(isCreditCard(b.account)),
+    );
+  }
+
+  /* The Debt is the sum of the negative Credit Card balances, stated as a
+     positive figure; an overpaid card's positive balance lands in the totals,
+     never in the Debt (CONTEXT.md, Credit Card). Only the accounts that
+     contributed to the total — i.e. that are present in `baseAmounts` — are
+     counted, so a degenerate conversion cannot split the two figures. */
+  private setCardDebt(balances: AccountBalance[], baseAmounts: Map<number, number>): void {
+    let debt = 0;
+    let hasDebt = false;
+    for (const b of balances) {
+      if (!isCreditCard(b.account)) continue;
+      const amount = baseAmounts.get(b.account.id!);
+      if (amount == null || amount >= 0) continue;
+      hasDebt = true;
+      debt += -amount;
+    }
+    this.cardDebt.set(Math.round(debt * 100) / 100);
+    this.hasCardDebt.set(hasDebt);
+  }
+
+  /* The total balance mirrors the Income/Expenses/Net summary when a card is
+     in debt: the debt is added back to the (debt-inclusive) total to state
+     what the user would hold without it. */
+  totalBalanceWithoutDebt(): number {
+    return Math.round((this.totalBalanceBaseCurrency() + this.cardDebt()) * 100) / 100;
+  }
+
+  /* A card row's "used X of limit" caption: the outstanding debt against the
+     optional Limit, in the card's own currency. An overpaid card reads as
+     zero used. */
+  usedOfLimitText(item: AccountBalance): string {
+    const limit = item.account.limit;
+    if (limit == null) return '';
+    const used = Math.max(0, -item.balance);
+    return this.language.t('stats.usedOfLimit', {
+      used: this.formatAccountBalance(used, item.account.currency),
+      limit: this.formatAccountBalance(limit, item.account.currency),
+    });
   }
 
   async refreshAverages(): Promise<void> {

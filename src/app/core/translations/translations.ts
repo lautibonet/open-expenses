@@ -298,6 +298,10 @@ const en: Record<string, string> = {
   'stats.expensesByCategory': '{scope} Expenses by Category',
   'stats.totalBalance': '{scope} Total Balance',
   'stats.allAccounts': 'All accounts ({currency})',
+  'stats.totalWithoutDebt': 'Total without debt ({currency})',
+  'stats.debt': 'Debt',
+  'stats.totalWithDebt': 'Total with debt ({currency})',
+  'stats.usedOfLimit': 'Used {used} of {limit}',
   'stats.conversionWarning':
     'Foreign currency accounts could not be converted. Total only includes {currency} accounts.',
   'stats.conversionWarningUnconverted':
@@ -702,6 +706,10 @@ const es: Record<string, string> = {
   'stats.expensesByCategory': 'Gastos de {scope} por categoría',
   'stats.totalBalance': 'Saldo total de {scope}',
   'stats.allAccounts': 'Todas las cuentas ({currency})',
+  'stats.totalWithoutDebt': 'Total sin deuda ({currency})',
+  'stats.debt': 'Deuda',
+  'stats.totalWithDebt': 'Total con deuda ({currency})',
+  'stats.usedOfLimit': 'Usado {used} de {limit}',
   'stats.conversionWarning':
     'No se pudieron convertir las cuentas en moneda extranjera. El total solo incluye cuentas en {currency}.',
   'stats.conversionWarningUnconverted':
