@@ -2,6 +2,17 @@ import { Account, isCashAccount, isCreditCard } from '../models/account.model';
 import { Transaction } from '../models/transaction.model';
 import { Transfer } from '../models/transfer.model';
 
+/* ADR 0022: whether a Transaction's spending was paid with credit — it sits on
+   a Credit Card. A missing account is treated as cash, the orphan rule the
+   cash-basis seam and the spending split share. */
+export function isCreditCardTransaction(
+  transaction: Transaction,
+  accountsById: Map<number, Account>,
+): boolean {
+  const account = accountsById.get(transaction.accountId);
+  return account ? isCreditCard(account) : false;
+}
+
 /* ADR 0022: the Income, Expenses, and Net figures are cash-basis. A Transaction
    on a Credit Card (a Card Purchase or a card refund) never counts in them —
    card spending reaches Expenses only through a Card Payment. A missing account
@@ -10,8 +21,7 @@ export function countsTowardCashBasis(
   transaction: Transaction,
   accountsById: Map<number, Account>,
 ): boolean {
-  const account = accountsById.get(transaction.accountId);
-  return account ? isCashAccount(account) : true;
+  return !isCreditCardTransaction(transaction, accountsById);
 }
 
 /* The Transactions that count in the cash-basis KPIs: every one on a Cash

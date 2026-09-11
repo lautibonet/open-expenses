@@ -143,23 +143,31 @@
   </section>
 
   <section class="card">
-    <h2>{{ language.t('stats.expensesByCategory', { scope: scopeLabelText() }) }}</h2>
+    <h2>{{ language.t('stats.spendingByCategory', { scope: scopeLabelText() }) }}</h2>
     @if (categoryBreakdown().length > 0) {
       <ul class="category-bars">
-        @for (item of categoryBreakdown(); track item.name) {
+        @for (item of categoryBreakdown(); track item.categoryId) {
           <li class="category-bar-row">
             <div class="bar-head">
               <span class="cat-name">{{ item.name }}</span>
               <span class="cat-amount">{{ formatMoney(item.total) }}</span>
             </div>
             <div class="bar-track" aria-hidden="true">
-              <div class="bar-fill" [style.width.%]="categoryBarWidth(item.total)"></div>
+              <div class="bar-fill" [style.width.%]="categoryBarWidth(item.total)">
+                @if (item.cash > 0) {
+                  <span class="bar-segment cash" [style.width.%]="categoryCashShare(item)"></span>
+                }
+                @if (item.credit > 0) {
+                  <span class="bar-segment credit" [style.width.%]="categoryCreditShare(item)"></span>
+                }
+              </div>
             </div>
           </li>
         }
       </ul>
+      <p class="spending-legend">{{ language.t('stats.spendingLegend') }}</p>
     } @else {
-      <p class="empty-state">{{ language.t('stats.categoryZero', { scope: scopeLabelText() }) }}</p>
+      <p class="empty-state">{{ language.t('stats.spendingZero', { scope: scopeLabelText() }) }}</p>
     }
   </section>
 
