@@ -206,10 +206,15 @@ export class AccountService {
     return db.accounts.where('kind').equals('credit-card').toArray();
   }
 
-  /* Accounts offered to capture. Cards stay out until the capture forms learn
-     about them (a later Ticket), so card purchases cannot reach the cash-basis
-     KPIs before the reporting rules land. */
+  /* Accounts offered to the Transaction capture: both Cash Accounts and
+     Credit Cards. */
   async getActive(): Promise<Account[]> {
+    return db.accounts.filter(a => a.active).toArray();
+  }
+
+  /* Cash Accounts only, for captures that cannot yet land on a Credit Card
+     (the Transfer Form's Card Payment mode is a later Ticket). */
+  async getActiveCash(): Promise<Account[]> {
     return db.accounts.filter(a => a.active && isCashAccount(a)).toArray();
   }
 

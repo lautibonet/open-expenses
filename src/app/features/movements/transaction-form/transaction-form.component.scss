@@ -66,6 +66,15 @@
   @extend %rate-error;
 }
 
+/* ADR 0022: when a Credit Card is the selected account, say that its
+   purchases are counted when the Statement is paid. A persistent rule note,
+   not a transient status line, so it carries no italic. */
+.card-hint {
+  margin: 0 0 0.5rem;
+  font-size: var(--type-label);
+  color: var(--on-surface-variant);
+}
+
 .empty-state {
   @extend %empty-state;
 }

@@ -1,4 +1,4 @@
-import { Component, inject, input } from '@angular/core';
+import { Component, computed, inject, input } from '@angular/core';
 import { Transaction } from '../../../core/models/transaction.model';
 import { Transfer } from '../../../core/models/transfer.model';
 import { Account } from '../../../core/models/account.model';
@@ -6,6 +6,7 @@ import { Category, isIncomeCategory } from '../../../core/models/category.model'
 import { LanguageService } from '../../../core/services/language.service';
 import { PeriodScope } from '../../../core/types/period.type';
 import { unconvertedTransactionsAffecting } from '../../../core/balances/conversion-degradation';
+import { countsTowardCashBasis } from '../../../core/stats/cash-basis';
 import { DismissibleAlertComponent } from '../../../shared/components/dismissible-alert/dismissible-alert.component';
 
 export interface MovementItem {
@@ -28,6 +29,8 @@ export class NetFlowCardComponent {
   baseCurrency = input.required<string>();
   scope = input.required<PeriodScope>();
 
+  private accountsById = computed(() => new Map(this.accounts().map((a) => [a.id!, a])));
+
   private baseAmount(txn: Transaction): number {
     const account = this.accounts().find((a) => a.id === txn.accountId);
     if (!account || account.currency === this.baseCurrency()) {
@@ -40,6 +43,9 @@ export class NetFlowCardComponent {
     const total = this.movements().reduce((sum, item) => {
       if (item.type !== 'transaction') return sum;
       const txn = item.data as Transaction;
+      /* ADR 0022: a Transaction on a Credit Card never counts in the cash-basis
+         Income, Expenses, or Net figures. */
+      if (!countsTowardCashBasis(txn, this.accountsById())) return sum;
       const category = this.categories().find((c) => c.id === txn.categoryId);
       const kind = isIncomeCategory(category?.type) ? 'income' : 'expense';
       if (kind !== direction) return sum;

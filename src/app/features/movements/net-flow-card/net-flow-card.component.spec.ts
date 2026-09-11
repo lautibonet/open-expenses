@@ -136,6 +136,21 @@ describe('NetFlowCardComponent', () => {
     expect(component.netTotal()).toBe(1000);
   });
 
+  it('excludes a card-account purchase from the cash-basis flow', async () => {
+    const card = await accountService.createCard({
+      name: 'Visa',
+      linkedAccountId: eurAccountId,
+    });
+    const period = getCurrentPeriod();
+    await transactionService.create(eurAccountId, expenseCategoryId, 100, new Date(), period);
+    await transactionService.create(card.id!, expenseCategoryId, 500, new Date(), period);
+    await render();
+
+    expect(component.expenseTotal()).toBe(100);
+    expect(component.incomeTotal()).toBe(0);
+    expect(component.netTotal()).toBe(-100);
+  });
+
   it('renders a plus-signed mono net amount with IN/OUT sub-lines', async () => {
     const period = getCurrentPeriod();
     await transactionService.create(eurAccountId, incomeCategoryId, 5200, new Date(), period);

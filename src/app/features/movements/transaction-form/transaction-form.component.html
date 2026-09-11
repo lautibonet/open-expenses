@@ -103,6 +103,10 @@
         </label>
       </div>
 
+      @if (isCardAccount()) {
+        <p class="card-hint" role="note">{{ language.t('transactionForm.cardHint') }}</p>
+      }
+
       <app-exchange-rate-well
         [from]="selectedAccount()?.currency ?? ''"
         [to]="baseCurrency()"
