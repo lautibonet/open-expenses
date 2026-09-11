@@ -281,6 +281,7 @@ describe('translations', () => {
       'transactionForm.noCategories',
       'transactionForm.amount',
       'transactionForm.account',
+      'transactionForm.cardHint',
       'transactionForm.category',
       'transactionForm.fetchingRate',
       'transactionForm.editTransactionTitle',

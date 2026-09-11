@@ -34,7 +34,7 @@
   @if (dataLoaded()) {
     <app-net-flow-card
       [movements]="movements()"
-      [accounts]="accounts()"
+      [accounts]="allAccounts()"
       [categories]="allCategoriesForNameResolution()"
       [baseCurrency]="baseCurrency()"
       [scope]="scope()"
@@ -83,7 +83,7 @@
 
   <ng-template #transferForm>
     <app-transfer-form
-      [accounts]="accounts()"
+      [accounts]="cashAccounts()"
       [editTransfer]="editTransfer()"
       [initialDraft]="transferRestore()"
       [inSheet]="isMobileLayout()"

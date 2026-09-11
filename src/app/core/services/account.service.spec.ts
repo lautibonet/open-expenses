@@ -400,10 +400,16 @@ describe('AccountService - credit cards (ADR 0022)', () => {
     expect(cards.map((a) => a.id)).toEqual([card.id]);
   });
 
-  it('keeps cards out of the active capture picker', async () => {
-    await service.createCard({ name: 'Visa', linkedAccountId: cashId });
+  it('offers cards and cash accounts to the active capture picker', async () => {
+    const card = await service.createCard({ name: 'Visa', linkedAccountId: cashId });
     const active = await service.getActive();
-    expect(active.map((a) => a.id)).toEqual([cashId]);
+    expect(active.map((a) => a.id)).toEqual([cashId, card.id]);
+  });
+
+  it('keeps cards out of the active cash-only picker', async () => {
+    await service.createCard({ name: 'Visa', linkedAccountId: cashId });
+    const activeCash = await service.getActiveCash();
+    expect(activeCash.map((a) => a.id)).toEqual([cashId]);
   });
 
   it('reports the linked account as referenced by a card', async () => {

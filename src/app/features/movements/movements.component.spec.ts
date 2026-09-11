@@ -1,7 +1,9 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { Location } from '@angular/common';
 import { provideRouter } from '@angular/router';
 import { MovementsComponent } from './movements.component';
+import { NetFlowCardComponent } from './net-flow-card/net-flow-card.component';
 import { TransactionService } from '../../core/services/transaction.service';
 import { TransferService } from '../../core/services/transfer.service';
 import { AccountService } from '../../core/services/account.service';
@@ -3978,5 +3980,48 @@ describe('MovementsComponent - mobile transfer sheet (#104)', () => {
     expect(css).toMatch(
       /@media \(max-width: 768px\)[\s\S]*?\.form-actions[^{]*\{[^}]*calc\(-1 \* var\(--space-md\)\)/,
     );
+  });
+});
+
+describe('MovementsComponent - cash-basis KPIs (ADR 0022)', () => {
+  let fixture: ComponentFixture<MovementsComponent>;
+  let component: MovementsComponent;
+  let accountService: AccountService;
+  let categoryService: CategoryService;
+  let transactionService: TransactionService;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    await TestBed.configureTestingModule({
+      imports: [MovementsComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(MovementsComponent);
+    component = fixture.componentInstance;
+    accountService = TestBed.inject(AccountService);
+    categoryService = TestBed.inject(CategoryService);
+    transactionService = TestBed.inject(TransactionService);
+  });
+
+  afterEach(async () => {
+    await db.delete();
+  });
+
+  it("keeps a deactivated card's purchases out of the Net Flow figures", async () => {
+    const cash = await accountService.create('Cash', 'EUR', 0);
+    const card = await accountService.createCard({ name: 'Visa', linkedAccountId: cash.id! });
+    const cat = await categoryService.create('Food', 'expense');
+    const period = getCurrentPeriod();
+    await transactionService.create(cash.id!, cat.id!, 100, new Date(), period);
+    await transactionService.create(card.id!, cat.id!, 400, new Date(), period);
+    await accountService.setActive(card.id!, false);
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const netFlow = fixture.debugElement.query(By.directive(NetFlowCardComponent))
+      .componentInstance as NetFlowCardComponent;
+    expect(netFlow.expenseTotal()).toBe(100);
   });
 });

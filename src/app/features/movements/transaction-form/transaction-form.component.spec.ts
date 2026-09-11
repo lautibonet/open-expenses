@@ -21,6 +21,19 @@ function makeAccount(id: number, name: string, currency: string): Account {
   return { id, name, currency, initialBalance: 0, active: true, kind: 'cash', createdAt: new Date() };
 }
 
+function makeCardAccount(id: number, name: string, currency: string, linkedAccountId: number): Account {
+  return {
+    id,
+    name,
+    currency,
+    initialBalance: 0,
+    active: true,
+    kind: 'credit-card',
+    linkedAccountId,
+    createdAt: new Date(),
+  };
+}
+
 function makeCategory(id: number, name: string, type: 'income' | 'expense'): Category {
   return { id, name, type, active: true, createdAt: new Date() };
 }
@@ -90,6 +103,37 @@ describe('TransactionFormComponent', () => {
     expect(el.querySelector('select[name="period"]')).toBeTruthy();
     expect(el.querySelector('select[name="year"]')).toBeTruthy();
     expect(el.textContent).not.toContain('More...');
+  });
+
+  it('lists a Credit Card among the account choices', async () => {
+    const card = makeCardAccount(90, 'Visa', 'EUR', eurAccount.id!);
+    fixture.componentRef.setInput('accounts', [eurAccount, card]);
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const options = Array.from(
+      fixture.nativeElement.querySelectorAll('select[name="account"] option'),
+    ) as HTMLOptionElement[];
+    expect(options.map((o) => o.textContent?.trim())).toContain('Visa (EUR)');
+  });
+
+  it('shows the card hint only when a Credit Card is selected', async () => {
+    const card = makeCardAccount(90, 'Visa', 'EUR', eurAccount.id!);
+    fixture.componentRef.setInput('accounts', [eurAccount, card]);
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.card-hint')).toBeNull();
+
+    component.onAccountChange(card.id!);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.card-hint').textContent).toContain(
+      'counted when the Statement is paid',
+    );
+
+    component.onAccountChange(eurAccount.id!);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.card-hint')).toBeNull();
   });
 
   // jsdom does no layout, so "amount, note and date inputs are exactly as

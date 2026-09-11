@@ -259,6 +259,8 @@ const en: Record<string, string> = {
   'transactionForm.noCategories': 'No categories yet. Add one in Settings to start recording.',
   'transactionForm.amount': 'Amount',
   'transactionForm.account': 'Account',
+  'transactionForm.cardHint':
+    'Card purchases are counted when the Statement is paid.',
   'transactionForm.category': 'Category',
   'transactionForm.fetchingRate': 'Fetching rate…',
   'transactionForm.editTransactionTitle': 'Edit Transaction',
@@ -653,6 +655,8 @@ const es: Record<string, string> = {
   'transactionForm.noCategories': 'Aún no hay categorías. Añade una en Ajustes para empezar a registrar.',
   'transactionForm.amount': 'Importe',
   'transactionForm.account': 'Cuenta',
+  'transactionForm.cardHint':
+    'Las compras con tarjeta se cuentan cuando se paga el resumen.',
   'transactionForm.category': 'Categoría',
   'transactionForm.fetchingRate': 'Obteniendo tipo de cambio…',
   'transactionForm.editTransactionTitle': 'Editar transacción',

@@ -91,6 +91,13 @@ export class MovementsComponent implements OnInit, OnDestroy {
   months = MONTH_NUMBERS;
   years = Array.from({ length: 10 }, (_, i) => getCurrentYear() - i);
   accounts = signal<Account[]>([]);
+  /* Every Account, active or not, for resolving movement names and for the
+     cash-basis KPI classification: a Deactivated Credit Card keeps its past
+     purchases, which must still stay out of Income, Expenses, and Net. */
+  allAccounts = signal<Account[]>([]);
+  /* Active Cash Accounts only: the Transaction Form may pick a Credit Card,
+     but the Transfer Form's Card Payment mode is a later Ticket. */
+  cashAccounts = signal<Account[]>([]);
   categories = signal<Category[]>([]);
   allCategoriesForNameResolution = signal<Category[]>([]);
   movements = signal<MovementItem[]>([]);
@@ -358,6 +365,8 @@ export class MovementsComponent implements OnInit, OnDestroy {
     try {
       this.baseCurrency.set(await this.profileService.getBaseCurrency());
       this.accounts.set(await this.accountService.getActive());
+      this.allAccounts.set(await this.accountService.getAll());
+      this.cashAccounts.set(await this.accountService.getActiveCash());
       this.categories.set(await this.categoryService.getActive());
       this.allCategoriesForNameResolution.set(await this.categoryService.getAll());
       await this.refresh();
@@ -568,7 +577,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
   }
 
   getAccountCurrency(accountId: number): string {
-    return this.accounts().find((a) => a.id === accountId)?.currency ?? '';
+    return this.allAccounts().find((a) => a.id === accountId)?.currency ?? '';
   }
 
   /* Each capture form persists through its own store and reports whether the
@@ -712,7 +721,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
   }
 
   getAccountName(id: number): string {
-    return this.accounts().find((a) => a.id === id)?.name ?? this.language.t('movements.unknown');
+    return this.allAccounts().find((a) => a.id === id)?.name ?? this.language.t('movements.unknown');
   }
 
   getCategoryName(id: number): string {
@@ -759,7 +768,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
   }
 
   isForeignCurrencyTransaction(txn: Transaction): boolean {
-    const account = this.accounts().find((a) => a.id === txn.accountId);
+    const account = this.allAccounts().find((a) => a.id === txn.accountId);
     return !!account && account.currency !== this.baseCurrency();
   }
 

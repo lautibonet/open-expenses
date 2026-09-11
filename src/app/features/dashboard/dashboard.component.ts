@@ -41,6 +41,7 @@ import {
   accumulatedByPeriod,
   lastMovementPeriod,
 } from '../../core/stats/year-overview';
+import { cashBasisTransactions } from '../../core/stats/cash-basis';
 
 /* A graph track's two extremes around the zero line: the largest figure that
    grows up from it and the largest magnitude that grows below it. */
@@ -375,15 +376,23 @@ export class DashboardComponent implements OnInit {
   async refreshAverages(): Promise<void> {
     const allTxns = await this.transactionService.getAll();
     const allCategories = await this.categoryService.getAll();
+    const accountsById = new Map((await this.accountService.getAll()).map(a => [a.id!, a]));
     const catMap = new Map(allCategories.map(c => [c.id!, c]));
 
     const scope = this.scope();
     const selectedYear = String(scope.year);
 
-    const yearTxns = allTxns.filter(t => String(getPeriodYear(t)) === selectedYear);
-    const filteredTxns = yearTxns.filter(t => t.period <= scope.period);
+    /* ADR 0022: the year-to-period totals, averages, and overview are
+       cash-basis — Card Purchases never reach them. The balance strip keeps
+       every movement, so `yearHasMovements` stays on the full set. */
+    const cashTxns = cashBasisTransactions(allTxns, accountsById);
 
-    this.yearOverviewData.set(yearOverview(allTxns, this.incomeClassifier(catMap), scope.year));
+    const yearTxns = allTxns.filter(t => String(getPeriodYear(t)) === selectedYear);
+    const filteredTxns = cashTxns.filter(
+      t => String(getPeriodYear(t)) === selectedYear && t.period <= scope.period,
+    );
+
+    this.yearOverviewData.set(yearOverview(cashTxns, this.incomeClassifier(catMap), scope.year));
     this.yearHasMovements.set(yearTxns.length > 0);
 
     const monthsWithData = new Set(filteredTxns.map(t => t.period));

@@ -84,6 +84,23 @@ describe('DashboardComponent', () => {
     expect(component.yearTotalIncome()).toBe(3000);
   });
 
+  it('excludes card-account purchases from the cash-basis KPIs but keeps them in the category breakdown', async () => {
+    const cash = await accountService.create('Cash', 'EUR', 0);
+    const expenseCat = await categoryService.create('Groceries', 'expense');
+    const card = await accountService.createCard({ name: 'Visa', linkedAccountId: cash.id! });
+    const period = getCurrentPeriod();
+    await transactionService.create(cash.id!, expenseCat.id!, 200, new Date(), period);
+    await transactionService.create(card.id!, expenseCat.id!, 500, new Date(), period);
+
+    await component.ngOnInit();
+
+    expect(component.yearTotalExpenses()).toBe(200);
+    expect(component.avgMonthlyExpenses()).toBe(200);
+    expect(component.yearOverviewData().find(o => o.period === period)!.expenses).toBe(200);
+    expect(component.categoryBreakdown().find(b => b.name === 'Groceries')!.total).toBe(700);
+    expect(component.accountBalances().find(b => b.account.id === card.id)!.balance).toBe(-500);
+  });
+
   it('should include a Dec-dated movement in the selected year report of its period year', async () => {
     const acc = await accountService.create('Cash', 'EUR', 0);
     const incomeCat = await categoryService.create('Payroll', 'income');
