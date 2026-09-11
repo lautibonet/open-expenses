@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { db } from '../core/db/database';
+import { db, eraseAllLocalData } from '../core/db/database';
 import {
   BACKUP_SCHEMA_VERSION,
   BackupSnapshot,
@@ -117,6 +117,30 @@ describe('backup-snapshot', () => {
       expect(snapshot.exportedAt).toBeTruthy();
     });
 
+    it('captures the account kind, card fields, and the Card Payment category', async () => {
+      const cashId = await db.accounts.add({
+        name: 'Cash', currency: 'EUR', initialBalance: 1000, active: true,
+        kind: 'cash', createdAt: new Date(),
+      });
+      const paymentCategoryId = await db.categories.add({
+        name: 'Visa payment', type: 'expense', active: true, createdAt: new Date(),
+      });
+      await db.accounts.add({
+        name: 'Visa', currency: 'EUR', initialBalance: -250, active: true,
+        kind: 'credit-card', linkedAccountId: cashId, limit: 5000,
+        paymentCategoryId, createdAt: new Date(),
+      });
+
+      const snapshot = await createSnapshot();
+
+      const card = snapshot.accounts.find((a: any) => a.name === 'Visa');
+      expect(card.kind).toBe('credit-card');
+      expect(card.linkedAccountId).toBe(cashId);
+      expect(card.limit).toBe(5000);
+      expect(card.paymentCategoryId).toBe(paymentCategoryId);
+      expect(snapshot.categories.map((c: any) => c.name)).toContain('Visa payment');
+    });
+
     it('round-trips the profile language through backup and restore', async () => {
       await db.profile.add({ id: 1, baseCurrency: 'EUR', language: 'es', onboardingCompleted: true, lastBackupAt: null });
 
@@ -165,6 +189,20 @@ describe('backup-snapshot', () => {
       await overwriteLocalDb(snapshot);
 
       expect(await db.accounts.toArray()).toEqual([]);
+    });
+
+    it('backfills the Cash Account kind when restoring a legacy backup', async () => {
+      await overwriteLocalDb(legacySnapshot());
+
+      const accounts = await db.accounts.toArray();
+      expect(accounts.map((a) => a.kind)).toEqual(['cash']);
+    });
+
+    it('backfills the Cash Account kind when restoring a version 2 backup', async () => {
+      await overwriteLocalDb({ ...legacySnapshot(), schemaVersion: 2 });
+
+      const accounts = await db.accounts.toArray();
+      expect(accounts.map((a) => a.kind)).toEqual(['cash']);
     });
 
     it('backfills the period year from the date for legacy movements without a stored year', async () => {
@@ -272,7 +310,7 @@ describe('backup-snapshot', () => {
     it('stamps new snapshots with the current schema version', async () => {
       const snapshot = await createSnapshot();
       expect(snapshot.schemaVersion).toBe(BACKUP_SCHEMA_VERSION);
-      expect(BACKUP_SCHEMA_VERSION).toBe(2);
+      expect(BACKUP_SCHEMA_VERSION).toBe(3);
     });
 
     it('treats snapshots without a schemaVersion field as legacy version 1', () => {
@@ -297,6 +335,30 @@ describe('backup-snapshot', () => {
       migrateSnapshotToCurrent(legacy);
       expect(legacy.schemaVersion).toBeUndefined();
       expect(legacy.transactions[0].period).toBe('January');
+    });
+
+    it('backfills the Cash Account kind on legacy accounts', () => {
+      const legacy = legacySnapshot();
+      expect(legacy.accounts[0].kind).toBeUndefined();
+
+      const migrated = migrateSnapshotToCurrent(legacy);
+
+      expect(migrated.accounts.map((a: any) => a.kind)).toEqual(['cash']);
+    });
+
+    it('keeps an account kind already present on the snapshot', () => {
+      const snapshot = {
+        ...legacySnapshot(),
+        schemaVersion: 2,
+        accounts: [
+          { id: 1, name: 'Cash', currency: 'EUR', initialBalance: 0, active: true, kind: 'cash', createdAt: '2026-01-01T00:00:00.000Z' },
+          { id: 2, name: 'Visa', currency: 'EUR', initialBalance: -500, active: true, kind: 'credit-card', linkedAccountId: 1, createdAt: '2026-01-01T00:00:00.000Z' },
+        ],
+      };
+
+      const migrated = migrateSnapshotToCurrent(snapshot);
+
+      expect(migrated.accounts.map((a: any) => a.kind)).toEqual(['cash', 'credit-card']);
     });
 
     it('rejects snapshots from a newer schema version', () => {
@@ -325,6 +387,71 @@ describe('backup-snapshot', () => {
       await expect(overwriteLocalDb(newer)).rejects.toThrow(NewerBackupVersionError);
       // Local data must not have been touched by the rejected restore.
       expect(await db.accounts.toArray()).toEqual([]);
+    });
+  });
+
+  describe('backup -> erase -> restore round trip', () => {
+    it('reproduces cards, card purchases, and Card Payments identically', async () => {
+      const cashId = await db.accounts.add({
+        name: 'Checking', currency: 'EUR', initialBalance: 1000, active: true,
+        kind: 'cash', createdAt: new Date('2026-01-01'),
+      });
+      const paymentCategoryId = await db.categories.add({
+        name: 'Visa payment', type: 'expense', active: true, createdAt: new Date('2026-01-01'),
+      });
+      const foodId = await db.categories.add({
+        name: 'Food', type: 'expense', active: true, createdAt: new Date('2026-01-01'),
+      });
+      const cardId = await db.accounts.add({
+        name: 'Visa', currency: 'EUR', initialBalance: -200, active: true,
+        kind: 'credit-card', linkedAccountId: cashId, limit: 3000,
+        paymentCategoryId, createdAt: new Date('2026-01-01'),
+      });
+      await db.transactions.add({
+        accountId: cardId, categoryId: foodId, amount: 120,
+        date: new Date('2026-01-10'), period: 1, year: 2026,
+        exchangeRate: null, baseCurrencyAmount: null, note: 'Groceries',
+        createdAt: new Date('2026-01-10'),
+      });
+      await db.transactions.add({
+        accountId: cashId, categoryId: foodId, amount: 30,
+        date: new Date('2026-01-11'), period: 1, year: 2026,
+        exchangeRate: null, baseCurrencyAmount: null, note: 'Snacks',
+        createdAt: new Date('2026-01-11'),
+      });
+      await db.transfers.add({
+        sourceAccountId: cashId, destinationAccountId: cardId,
+        sourceAmount: 120, destinationAmount: 120, exchangeRate: 1,
+        baseCurrencyAmount: 120, date: new Date('2026-02-01'), period: 2,
+        year: 2026, note: 'Statement', categoryId: paymentCategoryId,
+        createdAt: new Date('2026-02-01'),
+      });
+      await db.profile.add({
+        id: 1, baseCurrency: 'EUR', language: 'en',
+        onboardingCompleted: true, lastBackupAt: null,
+      });
+
+      const before = await createSnapshot();
+      await eraseAllLocalData();
+      await overwriteLocalDb(parseSnapshot(stringifySnapshot(before)));
+      const after = await createSnapshot();
+
+      const snapshotData = (s: BackupSnapshot) => JSON.parse(JSON.stringify({
+        accounts: s.accounts,
+        categories: s.categories,
+        transactions: s.transactions,
+        transfers: s.transfers,
+        profile: s.profile,
+      }));
+
+      expect(snapshotData(after)).toEqual(snapshotData(before));
+
+      const card = after.accounts.find((a: any) => a.name === 'Visa');
+      expect(card.kind).toBe('credit-card');
+      expect(card.linkedAccountId).toBe(cashId);
+      expect(card.limit).toBe(3000);
+      expect(card.paymentCategoryId).toBe(paymentCategoryId);
+      expect(after.transfers[0].categoryId).toBe(paymentCategoryId);
     });
   });
 });
