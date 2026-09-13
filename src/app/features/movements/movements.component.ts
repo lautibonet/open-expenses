@@ -13,6 +13,7 @@ import { Transaction } from '../../core/models/transaction.model';
 import { Transfer } from '../../core/models/transfer.model';
 import { Account } from '../../core/models/account.model';
 import { Category, isIncomeCategory } from '../../core/models/category.model';
+import { isCardPayment, isCreditCardTransaction, buildAccountsById } from '../../core/stats/cash-basis';
 import {
   MONTH_NUMBERS,
   MonthNumber,
@@ -91,11 +92,21 @@ export class MovementsComponent implements OnInit, OnDestroy {
   months = MONTH_NUMBERS;
   years = Array.from({ length: 10 }, (_, i) => getCurrentYear() - i);
   accounts = signal<Account[]>([]);
+  /* Every Account, active or not, for resolving movement names and for the
+     cash-basis KPI classification: a Deactivated Credit Card keeps its past
+     purchases, which must still stay out of Income, Expenses, and Net. */
+  allAccounts = signal<Account[]>([]);
   categories = signal<Category[]>([]);
   allCategoriesForNameResolution = signal<Category[]>([]);
   movements = signal<MovementItem[]>([]);
   dataLoaded = signal(false);
   baseCurrency = signal('EUR');
+  /* Every Account keyed by id, for the ADR 0022 cash-basis classification the
+     row treatment shares: is a Transaction on a card, is a Transfer a Card
+     Payment. Built from allAccounts so a Deactivated card keeps its rows. */
+  private accountsById = computed<Map<number, Account>>(() =>
+    buildAccountsById(this.allAccounts()),
+  );
 
   showForm = signal<'none' | 'transfer' | 'transaction'>('none');
   editTransaction = signal<Transaction | null>(null);
@@ -358,6 +369,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
     try {
       this.baseCurrency.set(await this.profileService.getBaseCurrency());
       this.accounts.set(await this.accountService.getActive());
+      this.allAccounts.set(await this.accountService.getAll());
       this.categories.set(await this.categoryService.getActive());
       this.allCategoriesForNameResolution.set(await this.categoryService.getAll());
       await this.refresh();
@@ -568,7 +580,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
   }
 
   getAccountCurrency(accountId: number): string {
-    return this.accounts().find((a) => a.id === accountId)?.currency ?? '';
+    return this.allAccounts().find((a) => a.id === accountId)?.currency ?? '';
   }
 
   /* Each capture form persists through its own store and reports whether the
@@ -712,7 +724,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
   }
 
   getAccountName(id: number): string {
-    return this.accounts().find((a) => a.id === id)?.name ?? this.language.t('movements.unknown');
+    return this.allAccounts().find((a) => a.id === id)?.name ?? this.language.t('movements.unknown');
   }
 
   getCategoryName(id: number): string {
@@ -750,16 +762,38 @@ export class MovementsComponent implements OnInit, OnDestroy {
 
   kindLabel(item: MovementItem): string {
     if (this.isTransaction(item)) {
-      const kind = this.isIncomeTransaction(this.getTransactionData(item))
-        ? 'type.income'
-        : 'type.expense';
-      return this.language.t(kind);
+      const txn = this.getTransactionData(item);
+      const income = this.isIncomeTransaction(txn);
+      if (this.isCardTransaction(txn)) {
+        return this.language.t(income ? 'type.cardRefund' : 'type.cardPurchase');
+      }
+      return this.language.t(income ? 'type.income' : 'type.expense');
     }
     return this.language.t('type.transfer');
   }
 
+  /* ADR 0022 / #168: a Transaction recorded on a Credit Card is shown with a
+     Card badge so it is never mistaken for a counted cash Expense. The card
+     classification reuses the cash-basis seam, orphan rule included. */
+  isCardTransaction(txn: Transaction): boolean {
+    return isCreditCardTransaction(txn, this.accountsById());
+  }
+
+  /* The Expense category a Card Payment is captured under, or null when the
+     Transfer is not a Card Payment (or carries no category). */
+  cardPaymentCategoryName(tr: Transfer): string | null {
+    if (tr.categoryId == null || !isCardPayment(tr, this.accountsById())) {
+      return null;
+    }
+    return this.getCategoryName(tr.categoryId);
+  }
+
+  transferRoute(tr: Transfer): string {
+    return `${this.getAccountName(tr.sourceAccountId)} → ${this.getAccountName(tr.destinationAccountId)}`;
+  }
+
   isForeignCurrencyTransaction(txn: Transaction): boolean {
-    const account = this.accounts().find((a) => a.id === txn.accountId);
+    const account = this.allAccounts().find((a) => a.id === txn.accountId);
     return !!account && account.currency !== this.baseCurrency();
   }
 

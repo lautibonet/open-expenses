@@ -5,3 +5,5 @@ Transfers and Transactions are fully separate data stores, not a shared table wi
 This was chosen because it makes accidentally including a Transfer in an Income/Expense aggregate structurally impossible — not just filtered out at query time. The alternative (single `Movement` table with a `type` column) is simpler to query but requires discipline at every aggregation point to exclude Transfers, which is error-prone over time.
 
 The cost is two tables and two service layers instead of one, but the domain is small enough that this overhead is negligible.
+
+Amended by ADR 0022: a Transfer from a Cash Account into a Credit Card (a Card Payment) counts as an Expense; every other Transfer kind still never counts.

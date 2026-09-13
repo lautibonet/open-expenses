@@ -127,6 +127,41 @@ describe('database v5 upgrade (locale-neutral storage)', () => {
   });
 });
 
+describe('database v7 upgrade (account kind)', () => {
+  class LegacyDatabaseV6 extends Dexie {
+    constructor() {
+      super('open-expenses-v2');
+      this.version(6).stores(LEGACY_STORES);
+    }
+  }
+
+  let legacy: LegacyDatabaseV6;
+
+  beforeEach(async () => {
+    await db.delete();
+    legacy = new LegacyDatabaseV6();
+    await legacy.open();
+  });
+
+  afterEach(async () => {
+    legacy.close();
+    await db.delete();
+  });
+
+  it('assigns every pre-existing account the cash kind', async () => {
+    await legacy.table('accounts').bulkAdd([
+      { name: 'Cash', currency: 'EUR', initialBalance: 1000, active: true, createdAt: new Date() },
+      { name: 'Bank', currency: 'USD', initialBalance: 0, active: false, createdAt: new Date() },
+    ]);
+    legacy.close();
+
+    await db.open();
+
+    const accounts = await db.accounts.toArray();
+    expect(accounts.map((a) => a.kind)).toEqual(['cash', 'cash']);
+  });
+});
+
 describe('database v6 upgrade (local-midnight dates)', () => {
   let legacy: LegacyDatabaseV4;
 

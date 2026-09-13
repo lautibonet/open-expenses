@@ -18,7 +18,19 @@ function flush(ms = 10): Promise<void> {
 }
 
 function makeAccount(id: number, name: string, currency: string): Account {
-  return { id, name, currency, initialBalance: 0, active: true, createdAt: new Date() };
+  return { id, name, currency, initialBalance: 0, active: true, kind: 'cash', createdAt: new Date() };
+}
+
+function makeCardAccount(id: number, name: string, currency: string): Account {
+  return {
+    id,
+    name,
+    currency,
+    initialBalance: 0,
+    active: true,
+    kind: 'credit-card',
+    createdAt: new Date(),
+  };
 }
 
 function makeCategory(id: number, name: string, type: 'income' | 'expense'): Category {
@@ -90,6 +102,37 @@ describe('TransactionFormComponent', () => {
     expect(el.querySelector('select[name="period"]')).toBeTruthy();
     expect(el.querySelector('select[name="year"]')).toBeTruthy();
     expect(el.textContent).not.toContain('More...');
+  });
+
+  it('lists a Credit Card among the account choices', async () => {
+    const card = makeCardAccount(90, 'Visa', 'EUR');
+    fixture.componentRef.setInput('accounts', [eurAccount, card]);
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const options = Array.from(
+      fixture.nativeElement.querySelectorAll('select[name="account"] option'),
+    ) as HTMLOptionElement[];
+    expect(options.map((o) => o.textContent?.trim())).toContain('Visa (EUR)');
+  });
+
+  it('shows the card hint only when a Credit Card is selected', async () => {
+    const card = makeCardAccount(90, 'Visa', 'EUR');
+    fixture.componentRef.setInput('accounts', [eurAccount, card]);
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.card-hint')).toBeNull();
+
+    component.onAccountChange(card.id!);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.card-hint').textContent).toContain(
+      'counted when the Statement is paid',
+    );
+
+    component.onAccountChange(eurAccount.id!);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.card-hint')).toBeNull();
   });
 
   // jsdom does no layout, so "amount, note and date inputs are exactly as
@@ -540,7 +583,7 @@ describe('TransactionFormComponent - translations', () => {
   it('renders the full form in Spanish when the active Language is Spanish', async () => {
     const now = new Date();
     const accounts: Account[] = [
-      { id: 1, name: 'Cash', currency: 'EUR', initialBalance: 0, active: true, createdAt: now },
+      { id: 1, name: 'Cash', currency: 'EUR', initialBalance: 0, active: true, kind: 'cash', createdAt: now },
     ];
     const categories: Category[] = [
       { id: 10, name: 'Food', type: 'expense', active: true, createdAt: now },
@@ -563,7 +606,7 @@ describe('TransactionFormComponent - translations', () => {
   it('re-renders in Spanish immediately when the Language changes after render', async () => {
     const now = new Date();
     fixture.componentRef.setInput('accounts', [
-      { id: 1, name: 'Cash', currency: 'EUR', initialBalance: 0, active: true, createdAt: now } as Account,
+      { id: 1, name: 'Cash', currency: 'EUR', initialBalance: 0, active: true, kind: 'cash', createdAt: now } as Account,
     ]);
     fixture.componentRef.setInput('categories', [
       { id: 10, name: 'Food', type: 'expense', active: true, createdAt: now } as Category,

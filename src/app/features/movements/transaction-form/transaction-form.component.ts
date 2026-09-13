@@ -12,7 +12,7 @@ import {
   AfterViewInit,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Account } from '../../../core/models/account.model';
+import { Account, isCreditCard } from '../../../core/models/account.model';
 import { Category } from '../../../core/models/category.model';
 import { Transaction } from '../../../core/models/transaction.model';
 import {
@@ -134,6 +134,11 @@ export class TransactionFormComponent implements OnInit, AfterViewInit {
 
   selectedAccount = computed(() => this.accounts().find((a) => a.id === this.form().accountId));
 
+  isCardAccount = computed(() => {
+    const account = this.selectedAccount();
+    return account ? isCreditCard(account) : false;
+  });
+
   isForeignCurrency = computed(() => {
     const account = this.selectedAccount();
     return !!account && account.currency !== this.baseCurrency();
@@ -186,7 +191,7 @@ export class TransactionFormComponent implements OnInit, AfterViewInit {
     if (!this.inSheet() && heading && typeof heading.scrollIntoView === 'function') {
       heading.scrollIntoView({
         behavior: this.prefersReducedMotion() ? 'auto' : 'smooth',
-        block: 'start',
+        block: 'nearest',
       });
     }
   }
