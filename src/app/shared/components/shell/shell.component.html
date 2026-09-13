@@ -117,13 +117,23 @@
         type="button"
         class="backup-button"
         (click)="backUp()"
-        [disabled]="isBackingUp()"
+        [disabled]="isBackingUp() || isDownloading()"
+        [title]="language.t('backup.card.backUpTo', { method: backupMethod })"
       >
         {{
           isBackingUp()
             ? language.t('backup.action.backingUp')
-            : language.t('backup.action.backUp')
+            : language.t('backup.card.backUpTo', { method: backupMethod })
         }}
+      </button>
+      <button
+        type="button"
+        class="download-button"
+        (click)="downloadBackup()"
+        [disabled]="isBackingUp() || isDownloading()"
+        [title]="language.t('backup.card.download')"
+      >
+        {{ language.t('backup.card.download') }}
       </button>
       <p class="backup-caption">{{ backupCaption() }}</p>
     </div>

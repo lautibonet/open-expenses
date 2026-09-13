@@ -97,7 +97,7 @@ The first-run flow that collects language, base currency, initial accounts, and 
 _Avoid_: Setup, wizard, first-time flow
 
 **Backup**:
-A user-initiated snapshot of the full dataset saved off-device, either to a cloud provider or downloaded as a file. Backups are never triggered automatically — the user starts a cloud backup from the sidebar Backup action or the Settings backup card. _Avoid_: Sync, snapshot, export, autosave
+A user-initiated snapshot of the full dataset saved off-device, either to a cloud provider or downloaded as a file. Backups are never triggered automatically — the user starts a cloud backup from the sidebar Backup action or the Settings backup card, or downloads a Backup file from those same two surfaces. _Avoid_: Sync, snapshot, export, autosave
 
 **Backup Method**:
 The destination of a cloud Backup — Google Drive today, with Dropbox and iCloud as future providers. Shown next to the last-backup time in the sidebar backup caption and the Settings backup card.

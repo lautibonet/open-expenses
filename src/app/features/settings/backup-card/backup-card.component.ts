@@ -10,13 +10,13 @@ import { DriveBackupService } from '../../../core/services/drive-backup.service'
 import { NetworkService } from '../../../core/services/network.service';
 import { LanguageService } from '../../../core/services/language.service';
 import { NoBackupFoundError } from '../../../backup/drive-backup-provider';
-import { BackupSnapshot, createSnapshot, stringifySnapshot } from '../../../backup/backup-snapshot';
+import { BackupSnapshot } from '../../../backup/backup-snapshot';
+import { downloadBackupFile } from '../../../backup/backup-file-download';
 import { DismissibleAlertComponent } from '../../../shared/components/dismissible-alert/dismissible-alert.component';
 import { formatLastBackupStatus } from '../../../backup/last-backup-status';
 import { describeBackupError } from '../../../backup/backup-errors';
 import { TranslationError, errorCopy } from '../../../core/models/translation-error';
 
-const BACKUP_FILE_NAME = 'open-expenses-backup.json';
 
 @Component({
   selector: 'app-backup-card',
@@ -110,14 +110,7 @@ export class BackupCardComponent {
     this.newStatusCycle();
 
     try {
-      const snapshot = await createSnapshot();
-      const blob = new Blob([stringifySnapshot(snapshot)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
-      anchor.href = url;
-      anchor.download = BACKUP_FILE_NAME;
-      anchor.click();
-      URL.revokeObjectURL(url);
+      await downloadBackupFile();
       this.message.set(this.language.t('backup.fileDownloaded'));
     } catch (e: unknown) {
       this.errorMessage.set(

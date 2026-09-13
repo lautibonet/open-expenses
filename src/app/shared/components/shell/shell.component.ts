@@ -8,6 +8,8 @@ import { CaptureFormService } from '../../../core/services/capture-form.service'
 import { DriveBackupService } from '../../../core/services/drive-backup.service';
 import { PwaUpdateService } from '../../../core/services/pwa-update.service';
 import { formatLastBackupStatus } from '../../../backup/last-backup-status';
+import { downloadBackupFile } from '../../../backup/backup-file-download';
+import { errorCopy } from '../../../core/models/translation-error';
 
 @Component({
   selector: 'app-shell',
@@ -31,10 +33,18 @@ export class ShellComponent {
 
   isBackingUp = this.backupService.isBackingUp;
 
+  backupMethod = this.backupService.method;
+
+  isDownloading = signal(false);
+
+  downloadError = signal('');
+
   /** The install suggestion yields the strip to the urgent update banner. */
   showInstallPrompt = computed(() => !this.pwaUpdate.updateReady());
 
   backupCaption = computed(() => {
+    const error = this.downloadError();
+    if (error) return error;
     this.minuteTick();
     return formatLastBackupStatus(
       this.language.activeLanguage(),
@@ -64,13 +74,32 @@ export class ShellComponent {
   }
 
   async backUp(): Promise<void> {
-    if (this.isBackingUp()) {
+    if (this.isBackingUp() || this.isDownloading()) {
       return;
     }
     try {
       await this.backupService.backupNow();
     } catch {
       // Backup errors surface in the Settings backup card.
+    }
+  }
+
+  async downloadBackup(): Promise<void> {
+    if (this.isBackingUp() || this.isDownloading()) {
+      return;
+    }
+    this.isDownloading.set(true);
+    this.downloadError.set('');
+
+    try {
+      await downloadBackupFile();
+    } catch (e: unknown) {
+      this.downloadError.set(
+        errorCopy(e, this.language.translateFn, 'backup.card.downloadFailed'),
+      );
+      setTimeout(() => this.downloadError.set(''), 5000);
+    } finally {
+      this.isDownloading.set(false);
     }
   }
 
