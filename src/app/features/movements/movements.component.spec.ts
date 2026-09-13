@@ -2077,6 +2077,21 @@ describe('MovementsComponent - date header sorting', () => {
     expect(movementAmounts()).toEqual([200, 300, 100]);
   });
 
+  it('orders same-day movements newest creation first in the default descending view', async () => {
+    const year = getCurrentYear();
+    const period = getCurrentPeriod();
+    const sameDay = new Date(`${year}-01-05`);
+    await transactionService.create(accountId, categoryId, 100, sameDay, period, null, null, year);
+    await transactionService.create(accountId, categoryId, 200, sameDay, period, null, null, year);
+    await transactionService.create(accountId, categoryId, 300, sameDay, period, null, null, year);
+    await component.ngOnInit();
+
+    expect(movementAmounts()).toEqual([300, 200, 100]);
+
+    component.toggleSort();
+    expect(movementAmounts()).toEqual([100, 200, 300]);
+  });
+
   it('reflects the sort direction via aria-sort and the header button', async () => {
     await seedDatedTransactions();
     fixture.detectChanges();
