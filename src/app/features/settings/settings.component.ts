@@ -1,6 +1,15 @@
-import { Component, ElementRef, effect, inject, OnInit, signal, viewChild } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  effect,
+  inject,
+  OnInit,
+  signal,
+  viewChild,
+  WritableSignal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { AccountService } from '../../core/services/account.service';
+import { AccountService, DeleteRefusalReason } from '../../core/services/account.service';
 import { CategoryService } from '../../core/services/category.service';
 import { ProfileService } from '../../core/services/profile.service';
 import { LanguageService } from '../../core/services/language.service';
@@ -17,7 +26,20 @@ import { DismissibleAlertComponent } from '../../shared/components/dismissible-a
 interface AccountEditState {
   id: number;
   name: string;
+  currency: string;
+  /* ADR 0022: an account's currency can change only while it has no
+     movements; locked accounts show it as static text. */
+  currencyLocked: boolean;
   initialBalance: number;
+}
+
+interface CardEditState {
+  id: number;
+  name: string;
+  currency: string;
+  currencyLocked: boolean;
+  initialBalance: number;
+  limit: number | null;
 }
 
 interface CategoryEditState {
@@ -25,7 +47,7 @@ interface CategoryEditState {
   name: string;
 }
 
-type PencilTarget = { kind: 'account' | 'category' | 'base-currency'; id: number };
+type PencilTarget = { kind: 'account' | 'card' | 'category' | 'base-currency'; id: number };
 
 @Component({
   selector: 'app-settings',
@@ -43,6 +65,7 @@ export class SettingsComponent implements OnInit {
 
   supportedCurrencies = SUPPORTED_CURRENCIES;
   accounts = signal<Account[]>([]);
+  cards = signal<Account[]>([]);
   categories = signal<Category[]>([]);
   baseCurrency = signal('EUR');
 
@@ -50,26 +73,39 @@ export class SettingsComponent implements OnInit {
   newAccountCurrency = signal('EUR');
   /* Null while the field is empty; an empty field creates the account with balance 0. */
   newAccountBalance = signal<number | null>(null);
+  newCardName = signal('');
+  newCardCurrency = signal('EUR');
+  newCardLimit = signal<number | null>(null);
+  /* Null while the field is empty; an empty field creates the card with debt 0. */
+  newCardBalance = signal<number | null>(null);
+  newCardCreateCategory = signal(true);
   newCategoryName = signal('');
   newCategoryType = signal<CategoryType>('expense');
   addingAccount = signal(false);
+  addingCard = signal(false);
   addingCategory = signal(false);
   errorMessage = signal('');
   statusEpoch = signal(0);
   editingAccount = signal<AccountEditState | null>(null);
+  editingCard = signal<CardEditState | null>(null);
   editingCategory = signal<CategoryEditState | null>(null);
   editingBaseCurrency = signal(false);
   baseCurrencyDraft = signal('EUR');
   editError = signal('');
   confirmingAccountDelete = signal<number | null>(null);
+  confirmingCardDelete = signal<number | null>(null);
   confirmingCategoryDelete = signal<number | null>(null);
   refusedAccount = signal<number | null>(null);
+  refusedAccountReason = signal<DeleteRefusalReason | null>(null);
+  refusedCard = signal<number | null>(null);
   refusedCategory = signal<number | null>(null);
 
   accountNameInput = viewChild<ElementRef<HTMLInputElement>>('accountNameInput');
+  cardNameInput = viewChild<ElementRef<HTMLInputElement>>('cardNameInput');
   categoryNameInput = viewChild<ElementRef<HTMLInputElement>>('categoryNameInput');
   baseCurrencySelect = viewChild<ElementRef<HTMLSelectElement>>('baseCurrencySelect');
   newAccountNameInput = viewChild<ElementRef<HTMLInputElement>>('newAccountNameInput');
+  newCardNameInput = viewChild<ElementRef<HTMLInputElement>>('newCardNameInput');
   newCategoryNameInput = viewChild<ElementRef<HTMLInputElement>>('newCategoryNameInput');
 
   /* On open, focus the first input of the expanded edit state or of the
@@ -77,6 +113,9 @@ export class SettingsComponent implements OnInit {
   private focusEditState = effect(() => {
     if (this.editingAccount()) {
       this.accountNameInput()?.nativeElement.focus();
+    }
+    if (this.editingCard()) {
+      this.cardNameInput()?.nativeElement.focus();
     }
     if (this.editingCategory()) {
       this.categoryNameInput()?.nativeElement.focus();
@@ -86,6 +125,9 @@ export class SettingsComponent implements OnInit {
     }
     if (this.addingAccount()) {
       this.newAccountNameInput()?.nativeElement.focus();
+    }
+    if (this.addingCard()) {
+      this.newCardNameInput()?.nativeElement.focus();
     }
     if (this.addingCategory()) {
       this.newCategoryNameInput()?.nativeElement.focus();
@@ -104,7 +146,8 @@ export class SettingsComponent implements OnInit {
   }
 
   async refresh(): Promise<void> {
-    this.accounts.set(await this.accountService.getAll());
+    this.accounts.set(await this.accountService.getCashAccounts());
+    this.cards.set(await this.accountService.getCards());
     this.categories.set(await this.categoryService.getAll());
   }
 
@@ -146,16 +189,42 @@ export class SettingsComponent implements OnInit {
     const account = this.accounts().find((a) => a.id === id);
     if (!account) return;
     this.editingCategory.set(null);
+    this.editingCard.set(null);
     this.editingAccount.set({
       id,
       name: account.name,
+      currency: account.currency,
+      currencyLocked: true,
       initialBalance: account.initialBalance,
     });
     this.editError.set('');
+    void this.resolveCurrencyLock(this.editingAccount);
+  }
+
+  /* ADR 0022: the currency opens for editing only once the account is known
+     to have no movements; the draft starts locked so a slow check never
+     flashes an editable field that the service would refuse. Failures leave
+     the field locked — a closed database must not surface as an error. */
+  private async resolveCurrencyLock(
+    target: WritableSignal<AccountEditState | CardEditState | null>,
+  ): Promise<void> {
+    const id = target()?.id;
+    if (id === undefined) return;
+    try {
+      const hasMovements = await this.accountService.hasMovements(id);
+      if (target()?.id !== id) return;
+      target.update((e) => (e ? { ...e, currencyLocked: hasMovements } : e));
+    } catch {
+      /* leave the currency locked */
+    }
   }
 
   editAccountName(value: string): void {
     this.editingAccount.update((e) => (e ? { ...e, name: value } : e));
+  }
+
+  editAccountCurrency(value: string): void {
+    this.editingAccount.update((e) => (e ? { ...e, currency: value } : e));
   }
 
   editAccountBalance(value: number): void {
@@ -175,6 +244,7 @@ export class SettingsComponent implements OnInit {
     try {
       await this.accountService.update(editing.id, {
         name: editing.name,
+        ...(editing.currencyLocked ? {} : { currency: editing.currency }),
         initialBalance: editing.initialBalance,
       });
       this.editingAccount.set(null);
@@ -192,6 +262,7 @@ export class SettingsComponent implements OnInit {
     const category = this.categories().find((c) => c.id === id);
     if (!category) return;
     this.editingAccount.set(null);
+    this.editingCard.set(null);
     this.editingCategory.set({ id, name: category.name });
     this.editError.set('');
   }
@@ -261,8 +332,11 @@ export class SettingsComponent implements OnInit {
     this.refusedCategory.set(null);
     this.confirmingAccountDelete.set(null);
     this.refusedAccount.set(null);
-    if (await this.accountService.hasMovements(id)) {
+    this.refusedAccountReason.set(null);
+    const reason = await this.accountService.getDeleteRefusal(id);
+    if (reason) {
       this.refusedAccount.set(id);
+      this.refusedAccountReason.set(reason);
     } else {
       this.confirmingAccountDelete.set(id);
     }
@@ -274,6 +348,7 @@ export class SettingsComponent implements OnInit {
 
   cancelRefuseAccount(): void {
     this.refusedAccount.set(null);
+    this.refusedAccountReason.set(null);
   }
 
   async confirmDeleteAccount(): Promise<void> {
@@ -285,6 +360,7 @@ export class SettingsComponent implements OnInit {
     } catch (e: unknown) {
       if (e instanceof TranslationError && e.key === 'errors.accountHasMovements') {
         this.refusedAccount.set(id);
+        this.refusedAccountReason.set('movements');
         return;
       }
       throw e;
@@ -294,11 +370,162 @@ export class SettingsComponent implements OnInit {
 
   async deactivateInstead(id: number): Promise<void> {
     this.refusedAccount.set(null);
+    this.refusedAccountReason.set(null);
     await this.accountService.setActive(id, false);
     await this.refresh();
   }
 
   async reactivateAccount(id: number): Promise<void> {
+    await this.accountService.setActive(id, true);
+    await this.refresh();
+  }
+
+  /* Credit Cards (ADR 0022): a card is an Account of kind credit-card, so it
+     is created and managed through the AccountService, in its own section. */
+
+  startAddCard(): void {
+    this.newCardName.set('');
+    this.newCardCurrency.set(this.baseCurrency());
+    this.newCardLimit.set(null);
+    this.newCardBalance.set(null);
+    this.newCardCreateCategory.set(true);
+    this.clearStatus();
+    this.addingCard.set(true);
+  }
+
+  cancelAddCard(): void {
+    this.addingCard.set(false);
+    this.clearStatus();
+  }
+
+  async addCard(): Promise<void> {
+    this.clearStatus();
+    const name = this.newCardName().trim();
+    try {
+      await this.accountService.createCard(
+        {
+          name: this.newCardName(),
+          currency: this.newCardCurrency(),
+          limit: this.newCardLimit(),
+          initialBalance: this.newCardBalance() ?? 0,
+        },
+        this.newCardCreateCategory()
+          ? this.language.t('category.cardPayment', { name })
+          : null,
+      );
+      this.addingCard.set(false);
+      this.newCardName.set('');
+      this.newCardBalance.set(null);
+      this.newCardLimit.set(null);
+      await this.refresh();
+    } catch (e: unknown) {
+      this.errorMessage.set(errorCopy(e, this.language.translateFn, 'settings.failedAddCard'));
+    }
+  }
+
+  startEditCard(id: number): void {
+    const card = this.cards().find((c) => c.id === id);
+    if (!card) return;
+    this.editingAccount.set(null);
+    this.editingCategory.set(null);
+    this.editingCard.set({
+      id,
+      name: card.name,
+      currency: card.currency,
+      currencyLocked: true,
+      initialBalance: card.initialBalance,
+      limit: card.limit ?? null,
+    });
+    this.editError.set('');
+    void this.resolveCurrencyLock(this.editingCard);
+  }
+
+  editCardName(value: string): void {
+    this.editingCard.update((c) => (c ? { ...c, name: value } : c));
+  }
+
+  editCardCurrency(value: string): void {
+    this.editingCard.update((c) => (c ? { ...c, currency: value } : c));
+  }
+
+  editCardBalance(value: number): void {
+    this.editingCard.update((c) => (c ? { ...c, initialBalance: value } : c));
+  }
+
+  editCardLimit(value: number | null): void {
+    this.editingCard.update((c) => (c ? { ...c, limit: value } : c));
+  }
+
+  cancelEditCard(): void {
+    const id = this.editingCard()?.id;
+    this.editingCard.set(null);
+    this.editError.set('');
+    if (id !== undefined) this.returnToPencil({ kind: 'card', id });
+  }
+
+  async saveCardEdit(): Promise<void> {
+    const editing = this.editingCard();
+    if (!editing) return;
+    try {
+      await this.accountService.update(editing.id, {
+        name: editing.name,
+        ...(editing.currencyLocked ? {} : { currency: editing.currency }),
+        initialBalance: editing.initialBalance,
+        limit: editing.limit,
+      });
+      this.editingCard.set(null);
+      this.editError.set('');
+      await this.refresh();
+      this.returnToPencil({ kind: 'card', id: editing.id });
+    } catch (e: unknown) {
+      this.editError.set(errorCopy(e, this.language.translateFn, 'settings.failedSaveCard'));
+    }
+  }
+
+  async requestDeleteCard(id: number): Promise<void> {
+    this.confirmingAccountDelete.set(null);
+    this.refusedAccount.set(null);
+    this.refusedCategory.set(null);
+    this.confirmingCardDelete.set(null);
+    this.refusedCard.set(null);
+    if (await this.accountService.hasMovements(id)) {
+      this.refusedCard.set(id);
+    } else {
+      this.confirmingCardDelete.set(id);
+    }
+  }
+
+  cancelDeleteCard(): void {
+    this.confirmingCardDelete.set(null);
+  }
+
+  cancelRefuseCard(): void {
+    this.refusedCard.set(null);
+  }
+
+  async confirmDeleteCard(): Promise<void> {
+    const id = this.confirmingCardDelete();
+    if (id === null) return;
+    this.confirmingCardDelete.set(null);
+    try {
+      await this.accountService.delete(id);
+    } catch (e: unknown) {
+      if (e instanceof TranslationError && e.key === 'errors.accountHasMovements') {
+        this.refusedCard.set(id);
+        return;
+      }
+      throw e;
+    }
+    await this.refresh();
+  }
+
+  async deactivateCardInstead(id: number): Promise<void> {
+    this.refusedCard.set(null);
+    await this.accountService.setActive(id, false);
+    await this.refresh();
+  }
+
+  async reactivateCard(id: number): Promise<void> {
     await this.accountService.setActive(id, true);
     await this.refresh();
   }

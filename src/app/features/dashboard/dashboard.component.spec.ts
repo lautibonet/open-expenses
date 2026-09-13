@@ -84,6 +84,83 @@ describe('DashboardComponent', () => {
     expect(component.yearTotalIncome()).toBe(3000);
   });
 
+  it('excludes card-account purchases from the cash-basis KPIs but keeps them in the category breakdown', async () => {
+    const cash = await accountService.create('Cash', 'EUR', 0);
+    const expenseCat = await categoryService.create('Groceries', 'expense');
+    const card = await accountService.createCard({ name: 'Visa', currency: 'EUR' });
+    const period = getCurrentPeriod();
+    await transactionService.create(cash.id!, expenseCat.id!, 200, new Date(), period);
+    await transactionService.create(card.id!, expenseCat.id!, 500, new Date(), period);
+
+    await component.ngOnInit();
+
+    expect(component.yearTotalExpenses()).toBe(200);
+    expect(component.avgMonthlyExpenses()).toBe(200);
+    expect(component.yearOverviewData().find(o => o.period === period)!.expenses).toBe(200);
+    expect(component.categoryBreakdown().find(b => b.name === 'Groceries')!.total).toBe(700);
+    expect(component.accountBalances().find(b => b.account.id === card.id)!.balance).toBe(-500);
+  });
+
+  it('counts a Cash-to-Card Card Payment as an Expense in the payment Period, but no other Transfer kind', async () => {
+    const cash = await accountService.create('Cash', 'EUR', 100000);
+    const savings = await accountService.create('Savings', 'EUR', 0);
+    const card = await accountService.createCard({ name: 'Visa', currency: 'EUR' });
+    const card2 = await accountService.createCard({ name: 'Master', currency: 'EUR' });
+    const expenseCat = await categoryService.create('Groceries', 'expense');
+    const transferService = TestBed.inject(TransferService);
+    const period = getCurrentPeriod();
+    const year = getCurrentYear();
+
+    // Cash -> Card: a Card Payment, counts as an Expense.
+    await transferService.create(cash.id!, card.id!, 300, new Date(), period, '', 1, year, expenseCat.id!);
+    // Cash -> Cash, Card -> Cash, Card -> Card: never count.
+    await transferService.create(cash.id!, savings.id!, 100, new Date(), period, '', 1, year);
+    await transferService.create(card.id!, cash.id!, 50, new Date(), period, '', 1, year);
+    await transferService.create(card.id!, card2.id!, 25, new Date(), period, '', 1, year, expenseCat.id!);
+
+    await component.ngOnInit();
+
+    expect(component.yearTotalExpenses()).toBe(300);
+    expect(component.avgMonthlyExpenses()).toBe(300);
+    expect(component.yearOverviewData().find(o => o.period === period)!.expenses).toBe(300);
+    expect(component.categoryBreakdown().find(b => b.name === 'Groceries')).toBeUndefined();
+  });
+
+  it('excludes a Card Payment from Periods after the payment', async () => {
+    const cash = await accountService.create('Cash', 'EUR', 100000);
+    const card = await accountService.createCard({ name: 'Visa', currency: 'EUR' });
+    const expenseCat = await categoryService.create('Groceries', 'expense');
+    const transferService = TestBed.inject(TransferService);
+    const year = getCurrentYear();
+
+    await transferService.create(cash.id!, card.id!, 300, new Date(), 9, '', 1, year, expenseCat.id!);
+
+    await component.ngOnInit();
+    await component.onScopeYearChange(year);
+    await component.onScopeMonthChange(8);
+
+    expect(component.yearTotalExpenses()).toBe(0);
+
+    await component.onScopeMonthChange(9);
+    expect(component.yearTotalExpenses()).toBe(300);
+  });
+
+  it('renders the year overview when the only movement is a Card Payment', async () => {
+    const cash = await accountService.create('Cash', 'EUR', 100000);
+    const card = await accountService.createCard({ name: 'Visa', currency: 'EUR' });
+    const expenseCat = await categoryService.create('Groceries', 'expense');
+    const transferService = TestBed.inject(TransferService);
+    const period = getCurrentPeriod();
+    const year = getCurrentYear();
+
+    await transferService.create(cash.id!, card.id!, 300, new Date(), period, '', 1, year, expenseCat.id!);
+
+    await component.ngOnInit();
+
+    expect(component.yearHasMovements()).toBe(true);
+    expect(component.yearTotalExpenses()).toBe(300);
+  });
+
   it('should include a Dec-dated movement in the selected year report of its period year', async () => {
     const acc = await accountService.create('Cash', 'EUR', 0);
     const incomeCat = await categoryService.create('Payroll', 'income');
@@ -1018,19 +1095,73 @@ describe('DashboardComponent - page header, scope control and restyled cards', (
 
   it('computes category bar widths relative to the largest category', async () => {
     await component.categoryBreakdown.set([
-      { name: 'Rent', total: 1500 },
-      { name: 'Food', total: 500 },
+      { categoryId: 1, name: 'Rent', cash: 1500, credit: 0, total: 1500 },
+      { categoryId: 2, name: 'Food', cash: 500, credit: 0, total: 500 },
     ]);
 
     expect(component.categoryBarWidth(1500)).toBe(100);
     expect(component.categoryBarWidth(500)).toBeCloseTo(33.33, 2);
   });
 
+  it('splits a category bar into cash-paid and credit-paid segments', async () => {
+    const cash = await accountService.create('Cash', 'EUR', 0);
+    const card = await accountService.createCard({ name: 'Visa', currency: 'EUR' });
+    const food = await categoryService.create('Food', 'expense');
+    const period = getCurrentPeriod();
+    await transactionService.create(cash.id!, food.id!, 200, new Date(), period);
+    await transactionService.create(card.id!, food.id!, 600, new Date(), period);
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const cashSegment = fixture.nativeElement.querySelector(
+      '.category-bar-row .bar-segment.cash',
+    ) as HTMLElement;
+    const creditSegment = fixture.nativeElement.querySelector(
+      '.category-bar-row .bar-segment.credit',
+    ) as HTMLElement;
+    expect(cashSegment).toBeTruthy();
+    expect(creditSegment).toBeTruthy();
+    expect(cashSegment.style.width).toBe('25%');
+    expect(creditSegment.style.width).toBe('75%');
+
+    const legend = fixture.nativeElement.querySelector('.spending-legend');
+    expect(legend).toBeTruthy();
+    expect(legend.textContent).toContain('cash');
+    expect(legend.textContent).toContain('credit');
+  });
+
+  it('renders no credit segment for cash-only spending', async () => {
+    const cash = await accountService.create('Cash', 'EUR', 0);
+    const food = await categoryService.create('Food', 'expense');
+    await transactionService.create(cash.id!, food.id!, 200, new Date(), getCurrentPeriod());
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.category-bar-row .bar-segment.cash')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.category-bar-row .bar-segment.credit')).toBeNull();
+  });
+
+  it('excludes a card payment category from the spending graph', async () => {
+    const cash = await accountService.create('Cash', 'EUR', 0);
+    await accountService.createCard({ name: 'Visa', currency: 'EUR' }, 'Visa payment');
+    const payment = (await categoryService.getAll()).find(c => c.name === 'Visa payment')!;
+    const food = await categoryService.create('Food', 'expense');
+    const period = getCurrentPeriod();
+    await transactionService.create(cash.id!, payment.id!, 500, new Date(), period);
+    await transactionService.create(cash.id!, food.id!, 200, new Date(), period);
+
+    await component.ngOnInit();
+
+    expect(component.categoryBreakdown().map(b => b.name)).toEqual(['Food']);
+  });
+
   it('keeps the category card, showing the empty state, when the Period has no expenses', async () => {
     await component.ngOnInit();
     fixture.detectChanges();
 
-    const card = cardByHeading('Expenses by Category');
+    const card = cardByHeading('Spending by Category');
     expect(card).toBeTruthy();
     expect(card!.querySelector('.category-bars')).toBeNull();
     const empty = card!.querySelector('.empty-state');
@@ -1161,7 +1292,7 @@ describe('DashboardComponent - translations', () => {
     const text = fixture.nativeElement.textContent;
     expect(text).toContain('Estadísticas');
     expect(text).toContain('Tus totales, medias y saldos de un vistazo.');
-    expect(text).toContain('Gastos de');
+    expect(text).toContain('Gasto de');
     expect(text).toContain('Ingresos');
     expect(text).toContain('Gastos');
     expect(text).toContain('Neto');
@@ -2150,7 +2281,9 @@ describe('DashboardComponent - conversion degradation warnings', () => {
 
     await component.ngOnInit();
 
-    expect(component.categoryBreakdown()).toEqual([{ name: 'Food', total: 108 }]);
+    expect(component.categoryBreakdown()).toEqual([
+      { categoryId: food.id!, name: 'Food', cash: 108, credit: 0, total: 108 },
+    ]);
   });
 
   it('covers Period-end balances when the unconverted transaction predates the scope', async () => {
@@ -2319,5 +2452,227 @@ describe('DashboardComponent - Stats design-spec conformance', () => {
       const text = (row as HTMLElement).textContent ?? '';
       expect(text.split('EUR').length - 1, text).toBe(1);
     }
+  });
+});
+
+/* Issue #166 — Stats: conditional debt total + card rows (ADR 0022). */
+describe('DashboardComponent - conditional debt total and card rows', () => {
+  let fixture: ComponentFixture<DashboardComponent>;
+  let component: DashboardComponent;
+  let accountService: AccountService;
+  let categoryService: CategoryService;
+  let transactionService: TransactionService;
+  let transferService: TransferService;
+
+  beforeEach(async () => {
+    await resetDb();
+    await TestBed.configureTestingModule({
+      imports: [DashboardComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(DashboardComponent);
+    component = fixture.componentInstance;
+    accountService = TestBed.inject(AccountService);
+    categoryService = TestBed.inject(CategoryService);
+    transactionService = TestBed.inject(TransactionService);
+    transferService = TestBed.inject(TransferService);
+  });
+
+  afterEach(async () => {
+    await new Promise<void>(resolve => setTimeout(resolve, 10));
+    await resetDb();
+  });
+
+  it('collapses to a single Total when no card balance is negative', async () => {
+    await accountService.create('Checking', 'EUR', 100000);
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    expect(component.hasCardDebt()).toBe(false);
+    expect(component.cardDebt()).toBe(0);
+    expect(fixture.nativeElement.querySelector('.balance-ledger')).toBeNull();
+    const stat = fixture.nativeElement.querySelector('.stat .value');
+    expect(stat).toBeTruthy();
+    expect(stat.textContent).toContain(component.formatMoney(100000));
+  });
+
+  it('keeps a single Total when the only card is overpaid', async () => {
+    const cash = await accountService.create('Checking', 'EUR', 100000);
+    await accountService.createCard({
+      name: 'Visa',
+      currency: 'EUR',
+      initialBalance: 5000,
+    });
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    expect(component.hasCardDebt()).toBe(false);
+    expect(component.cardDebt()).toBe(0);
+    expect(component.totalBalanceBaseCurrency()).toBe(105000);
+    expect(fixture.nativeElement.querySelector('.balance-ledger')).toBeNull();
+    const stat = fixture.nativeElement.querySelector('.stat .value');
+    expect(stat).toBeTruthy();
+    expect(stat.textContent).toContain(component.formatMoney(105000));
+  });
+
+  it('shows the three-figure total when a card balance is negative', async () => {
+    const cash = await accountService.create('Checking', 'EUR', 100000);
+    const expenseCat = await categoryService.create('Groceries', 'expense');
+    const card = await accountService.createCard({ name: 'Visa', currency: 'EUR' });
+    await transactionService.create(card.id!, expenseCat.id!, 25000, new Date(), getCurrentPeriod());
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    expect(component.hasCardDebt()).toBe(true);
+    expect(component.cardDebt()).toBe(25000);
+    expect(component.totalBalanceBaseCurrency()).toBe(75000);
+    expect(component.totalBalanceWithoutDebt()).toBe(100000);
+
+    expect(fixture.nativeElement.querySelector('.stat')).toBeNull();
+    const lines = fixture.nativeElement.querySelectorAll('.balance-line');
+    expect(lines.length).toBe(3);
+    expect(lines[0].classList).toContain('without-debt');
+    expect(lines[1].classList).toContain('debt');
+    expect(lines[2].classList).toContain('with-debt');
+
+    const text = fixture.nativeElement.querySelector('.balance-ledger').textContent;
+    expect(text).toContain('Total without debt');
+    expect(text).toContain('Debt');
+    expect(text).toContain('Total with debt');
+    expect(text).toContain(component.formatMoney(100000));
+    expect(text).toContain(component.formatMoney(25000));
+    expect(text).toContain(component.formatMoney(75000));
+  });
+
+  it('sums only negative card balances into the Debt, leaving an overpaid card in the totals', async () => {
+    const cash = await accountService.create('Checking', 'EUR', 100000);
+    const expenseCat = await categoryService.create('Groceries', 'expense');
+    const card = await accountService.createCard({ name: 'Visa', currency: 'EUR' });
+    await accountService.createCard({
+      name: 'Master',
+      currency: 'EUR',
+      initialBalance: 5000,
+    });
+    await transactionService.create(card.id!, expenseCat.id!, 25000, new Date(), getCurrentPeriod());
+
+    await component.ngOnInit();
+
+    // Debt is the 25 000 owed on Visa: Master's overpaid +5 000 stays in the
+    // totals, so without-debt is total + debt.
+    expect(component.hasCardDebt()).toBe(true);
+    expect(component.cardDebt()).toBe(25000);
+    expect(component.totalBalanceBaseCurrency()).toBe(80000);
+    expect(component.totalBalanceWithoutDebt()).toBe(105000);
+  });
+
+  it('clears the Debt when the card is settled', async () => {
+    const cash = await accountService.create('Checking', 'EUR', 100000);
+    const expenseCat = await categoryService.create('Groceries', 'expense');
+    const card = await accountService.createCard({ name: 'Visa', currency: 'EUR' });
+    await transactionService.create(card.id!, expenseCat.id!, 25000, new Date(), getCurrentPeriod());
+    await transferService.create(
+      cash.id!, card.id!, 25000, new Date(), getCurrentPeriod(), '', 1, getCurrentYear(), expenseCat.id!,
+    );
+
+    await component.ngOnInit();
+
+    expect(component.hasCardDebt()).toBe(false);
+    expect(component.cardDebt()).toBe(0);
+  });
+
+  it('computes the Debt in base currency from the card movements', async () => {
+    await accountService.create('Checking', 'EUR', 100000);
+    const usd = await accountService.create('USD Account', 'USD', 0);
+    const expenseCat = await categoryService.create('Groceries', 'expense');
+    const card = await accountService.createCard({ name: 'Visa', currency: 'USD' });
+    // Stored at capture time: 100 USD at 1.08 = 108 EUR.
+    await transactionService.create(
+      card.id!, expenseCat.id!, 100, new Date(), getCurrentPeriod(), 1.08, 108,
+    );
+
+    const mockResponse = {
+      ok: true,
+      json: async () => [
+        { base: 'EUR', quote: 'USD', date: '2026-01-15', rate: 1.1 },
+      ],
+    };
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse as Response);
+
+    await component.ngOnInit();
+
+    expect(component.hasCardDebt()).toBe(true);
+    expect(component.cardDebt()).toBe(108);
+    expect(component.totalBalanceBaseCurrency()).toBe(100000 - 108);
+    expect(component.totalBalanceWithoutDebt()).toBe(100000);
+  });
+
+  it('groups cards after cash accounts in the balance list', async () => {
+    const cash = await accountService.create('Checking', 'EUR', 1000);
+    await accountService.createCard({ name: 'Visa', currency: 'EUR' });
+    await accountService.create('Savings', 'EUR', 2000);
+    await accountService.createCard({ name: 'Master', currency: 'EUR' });
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const order = component.accountBalances().map(b => b.account.name);
+    expect(order).toEqual(['Checking', 'Savings', 'Visa', 'Master']);
+
+    const rendered = Array.from(
+      fixture.nativeElement.querySelectorAll('.balance-row .account-name') as NodeListOf<HTMLElement>,
+    ).map(el => el.textContent?.trim());
+    expect(rendered).toEqual(order);
+  });
+
+  it('shows "used X of limit" on card rows carrying a Limit', async () => {
+    const cash = await accountService.create('Checking', 'EUR', 100000);
+    const expenseCat = await categoryService.create('Groceries', 'expense');
+    const card = await accountService.createCard({
+      name: 'Visa',
+      currency: 'EUR',
+      limit: 50000,
+    });
+    await transactionService.create(card.id!, expenseCat.id!, 25000, new Date(), getCurrentPeriod());
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const row = Array.from(
+      fixture.nativeElement.querySelectorAll('.balance-row') as NodeListOf<HTMLElement>,
+    ).find(r => r.textContent?.includes('Visa'))!;
+    const caption = row.querySelector('.account-caption');
+    expect(caption).toBeTruthy();
+    expect(caption!.textContent).toContain('Used');
+    expect(caption!.textContent).toContain(component.formatAccountBalance(25000, 'EUR'));
+    expect(caption!.textContent).toContain(component.formatAccountBalance(50000, 'EUR'));
+  });
+
+  it('omits the used-of-limit caption on cards without a Limit', async () => {
+    const cash = await accountService.create('Checking', 'EUR', 100000);
+    await accountService.createCard({ name: 'Visa', currency: 'EUR' });
+
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.account-caption')).toBeNull();
+  });
+
+  it('reads an overpaid card as zero used against its Limit', async () => {
+    const cash = await accountService.create('Checking', 'EUR', 100000);
+    const card = await accountService.createCard({
+      name: 'Visa',
+      currency: 'EUR',
+      limit: 50000,
+      initialBalance: 5000,
+    });
+
+    await component.ngOnInit();
+
+    const text = component.usedOfLimitText({ account: card, balance: 5000 });
+    expect(text).toContain(component.formatAccountBalance(0, 'EUR'));
+    expect(text).toContain(component.formatAccountBalance(50000, 'EUR'));
   });
 });

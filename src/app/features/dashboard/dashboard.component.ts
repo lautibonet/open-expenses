@@ -21,7 +21,7 @@ import {
 } from '../../core/types/period.type';
 import { Transaction } from '../../core/models/transaction.model';
 import { Transfer } from '../../core/models/transfer.model';
-import { Account } from '../../core/models/account.model';
+import { Account, isCreditCard } from '../../core/models/account.model';
 import { Category, isIncomeCategory } from '../../core/models/category.model';
 import { DismissibleAlertComponent } from '../../shared/components/dismissible-alert/dismissible-alert.component';
 import { FitTextDirective } from '../../shared/directives/fit-text.directive';
@@ -41,12 +41,24 @@ import {
   accumulatedByPeriod,
   lastMovementPeriod,
 } from '../../core/stats/year-overview';
+import { cashBasisTransactions, cardPaymentTransfers } from '../../core/stats/cash-basis';
+import {
+  CategorySpending,
+  categorySpending,
+  spendingShare,
+} from '../../core/stats/category-spending';
 
 /* A graph track's two extremes around the zero line: the largest figure that
    grows up from it and the largest magnitude that grows below it. */
 interface Extremes {
   up: number;
   down: number;
+}
+
+/* An Account paired with its Period-end balance, in the account's currency. */
+interface AccountBalance {
+  account: Account;
+  balance: number;
 }
 
 @Component({
@@ -82,9 +94,15 @@ export class DashboardComponent implements OnInit {
   yearTotalNet = signal(0);
   yearHasData = signal(false);
   yearHasMovements = signal(false);
-  categoryBreakdown = signal<{ name: string; total: number }[]>([]);
-  accountBalances = signal<{ account: Account; balance: number }[]>([]);
+  categoryBreakdown = signal<CategorySpending[]>([]);
+  accountBalances = signal<AccountBalance[]>([]);
+  readonly isCreditCard = isCreditCard;
   totalBalanceBaseCurrency = signal(0);
+  /* ADR 0022 / CONTEXT.md Stats: the sum of negative Credit Card balances,
+     stated as a positive figure. Zero and the flag off when no card is in
+     debt, which collapses the total back to a single figure. */
+  cardDebt = signal(0);
+  hasCardDebt = signal(false);
   conversionDegraded = signal<ConversionDegradation>({ ...noDegradation });
 
   avgMonthlyIncome = signal(0);
@@ -120,31 +138,12 @@ export class DashboardComponent implements OnInit {
     const allCategories = await this.categoryService.getAll();
     this.categories.set(allCategories);
     const catMap = new Map(allCategories.map(c => [c.id!, c]));
+    const accountsById = new Map(this.accounts().map(a => [a.id!, a]));
     const base = this.baseCurrency();
 
-    let income = 0;
-    let expenses = 0;
-    const catTotals = new Map<number, number>();
-
-    for (const t of txns) {
-      const amount = storedBaseAmount(t);
-      const cat = catMap.get(t.categoryId);
-      if (isIncomeCategory(cat?.type)) {
-        income += amount;
-      } else {
-        expenses += amount;
-        catTotals.set(t.categoryId, (catTotals.get(t.categoryId) ?? 0) + amount);
-      }
-    }
-
-    const breakdown: { name: string; total: number }[] = [];
-    for (const [catId, total] of catTotals) {
-      const cat = catMap.get(catId);
-      if (cat) {
-        breakdown.push({ name: cat.name, total });
-      }
-    }
-    this.categoryBreakdown.set(breakdown.sort((a, b) => b.total - a.total));
+    this.categoryBreakdown.set(
+      categorySpending(txns, catMap, accountsById, this.paymentCategoryIds()),
+    );
 
     const isIncome = this.incomeClassifier(catMap);
     const [allTxns, allTransfers] = await Promise.all([
@@ -153,7 +152,7 @@ export class DashboardComponent implements OnInit {
     ]);
 
     const scope = this.scope();
-    const balances: { account: Account; balance: number }[] = [];
+    const balances: AccountBalance[] = [];
     for (const acc of this.accounts()) {
       const balance = periodEndBalance(
         { account: acc, transactions: allTxns, transfers: allTransfers, isIncome },
@@ -161,14 +160,9 @@ export class DashboardComponent implements OnInit {
       );
       balances.push({ account: acc, balance });
     }
-    this.accountBalances.set(balances);
+    this.accountBalances.set(this.cashAccountsFirst(balances));
 
-    const unconverted = unconvertedTransactionsAffecting(
-      allTxns,
-      new Map(this.accounts().map(a => [a.id!, a])),
-      base,
-      scope,
-    );
+    const unconverted = unconvertedTransactionsAffecting(allTxns, accountsById, base, scope);
     if (unconverted.length > 0) {
       this.conversionDegraded.update(d => ({ ...d, unconvertedTransactions: true }));
     }
@@ -181,6 +175,7 @@ export class DashboardComponent implements OnInit {
 
     if (nonBaseCurrencies.length === 0) {
       this.totalBalanceBaseCurrency.set(this.sumBalances(balances));
+      this.setCardDebt(balances, this.nativeBaseAmounts(balances));
       this.setAccumulated(
         allTxns,
         allTransfers,
@@ -218,14 +213,18 @@ export class DashboardComponent implements OnInit {
       this.setAccumulated(allTxns, allTransfers, isIncome, initialsInBase);
 
       let total = 0;
+      const baseAmounts = new Map<number, number>();
       for (const b of balances) {
-        total += periodEndBaseAmount(
+        const amount = periodEndBaseAmount(
           { account: b.account, transactions: allTxns, transfers: allTransfers, isIncome },
           scope,
           initialsInBase.get(b.account.id!)!,
         );
+        baseAmounts.set(b.account.id!, amount);
+        total += amount;
       }
       this.totalBalanceBaseCurrency.set(Math.round(total * 100) / 100);
+      this.setCardDebt(balances, baseAmounts);
     } catch {
       this.excludeForeignAccounts(balances, base, allTxns, allTransfers, isIncome);
     }
@@ -234,7 +233,7 @@ export class DashboardComponent implements OnInit {
   /* Foreign accounts whose Exchange Rate cannot be resolved are left out of
      the total balance and surface the conversion warning. */
   private excludeForeignAccounts(
-    balances: { account: Account; balance: number }[],
+    balances: AccountBalance[],
     base: string,
     allTxns: Transaction[],
     allTransfers: Transfer[],
@@ -242,6 +241,8 @@ export class DashboardComponent implements OnInit {
   ): void {
     this.conversionDegraded.update(d => ({ ...d, accountsExcluded: true }));
     this.totalBalanceBaseCurrency.set(this.sumBalances(balances, base));
+    const included = balances.filter(b => b.account.currency === base);
+    this.setCardDebt(included, this.nativeBaseAmounts(included));
     /* Degraded Accumulated: Base Currency accounts only, at face amounts. */
     this.setAccumulated(
       allTxns,
@@ -335,6 +336,16 @@ export class DashboardComponent implements OnInit {
     return Math.round((total / max) * 10000) / 100;
   }
 
+  /* The two tones inside a category bar: the cash-paid and credit-paid
+     portions as shares of the category's own total. */
+  categoryCashShare(item: CategorySpending): number {
+    return spendingShare(item.cash, item.total);
+  }
+
+  categoryCreditShare(item: CategorySpending): number {
+    return spendingShare(item.credit, item.total);
+  }
+
   conversionWarningMessage(): string {
     const degraded = this.conversionDegraded();
     const parts: string[] = [];
@@ -363,30 +374,116 @@ export class DashboardComponent implements OnInit {
     return (t: Transaction) => isIncomeCategory(catMap.get(t.categoryId)?.type);
   }
 
-  private sumBalances(
-    balances: { account: Account; balance: number }[],
-    currency?: string,
-  ): number {
+  /* ADR 0022: a Card Payment's category labels the payment but never reaches
+     the spending graph — the settled purchases already report that spending.
+     Collected from the cards' locale-neutral payment-category links. */
+  private paymentCategoryIds(): Set<number> {
+    const ids = new Set<number>();
+    for (const account of this.accounts()) {
+      if (isCreditCard(account) && account.paymentCategoryId != null) {
+        ids.add(account.paymentCategoryId);
+      }
+    }
+    return ids;
+  }
+
+  private sumBalances(balances: AccountBalance[], currency?: string): number {
     return balances
       .filter(b => !currency || b.account.currency === currency)
       .reduce((sum, b) => sum + b.balance, 0);
   }
 
+  private nativeBaseAmounts(balances: AccountBalance[]): Map<number, number> {
+    return new Map(balances.map(b => [b.account.id!, b.balance]));
+  }
+
+  /* Cards are grouped after Cash Accounts in the balance list (CONTEXT.md,
+     Stats). The sort is stable, so each group keeps its accounts' own order. */
+  private cashAccountsFirst(balances: AccountBalance[]): AccountBalance[] {
+    return [...balances].sort(
+      (a, b) => Number(isCreditCard(a.account)) - Number(isCreditCard(b.account)),
+    );
+  }
+
+  /* The Debt is the sum of the negative Credit Card balances, stated as a
+     positive figure; an overpaid card's positive balance lands in the totals,
+     never in the Debt (CONTEXT.md, Credit Card). Only the accounts that
+     contributed to the total — i.e. that are present in `baseAmounts` — are
+     counted, so a degenerate conversion cannot split the two figures. */
+  private setCardDebt(balances: AccountBalance[], baseAmounts: Map<number, number>): void {
+    let debt = 0;
+    let hasDebt = false;
+    for (const b of balances) {
+      if (!isCreditCard(b.account)) continue;
+      const amount = baseAmounts.get(b.account.id!);
+      if (amount == null || amount >= 0) continue;
+      hasDebt = true;
+      debt += -amount;
+    }
+    this.cardDebt.set(Math.round(debt * 100) / 100);
+    this.hasCardDebt.set(hasDebt);
+  }
+
+  /* The total balance mirrors the Income/Expenses/Net summary when a card is
+     in debt: the debt is added back to the (debt-inclusive) total to state
+     what the user would hold without it. */
+  totalBalanceWithoutDebt(): number {
+    return Math.round((this.totalBalanceBaseCurrency() + this.cardDebt()) * 100) / 100;
+  }
+
+  /* A card row's "used X of limit" caption: the outstanding debt against the
+     optional Limit, in the card's own currency. An overpaid card reads as
+     zero used. */
+  usedOfLimitText(item: AccountBalance): string {
+    const limit = item.account.limit;
+    if (limit == null) return '';
+    const used = Math.max(0, -item.balance);
+    return this.language.t('stats.usedOfLimit', {
+      used: this.formatAccountBalance(used, item.account.currency),
+      limit: this.formatAccountBalance(limit, item.account.currency),
+    });
+  }
+
   async refreshAverages(): Promise<void> {
     const allTxns = await this.transactionService.getAll();
+    const allTransfers = await this.transferService.getAll();
     const allCategories = await this.categoryService.getAll();
+    const accountsById = new Map((await this.accountService.getAll()).map(a => [a.id!, a]));
     const catMap = new Map(allCategories.map(c => [c.id!, c]));
 
     const scope = this.scope();
     const selectedYear = String(scope.year);
 
+    /* ADR 0022: the year-to-period totals, averages, and overview are
+       cash-basis — Card Purchases never reach them, and a Cash-to-Card Card
+       Payment reaches them as an Expense in its stored Period. The balance
+       strip keeps every movement, so `yearHasMovements` stays on the full
+       set. */
+    const cashTxns = cashBasisTransactions(allTxns, accountsById);
+    const cardPayments = cardPaymentTransfers(allTransfers, accountsById);
+
     const yearTxns = allTxns.filter(t => String(getPeriodYear(t)) === selectedYear);
-    const filteredTxns = yearTxns.filter(t => t.period <= scope.period);
+    const filteredTxns = cashTxns.filter(
+      t => String(getPeriodYear(t)) === selectedYear && t.period <= scope.period,
+    );
+    const filteredCardPayments = cardPayments.filter(
+      t => String(getPeriodYear(t)) === selectedYear && t.period <= scope.period,
+    );
 
-    this.yearOverviewData.set(yearOverview(allTxns, this.incomeClassifier(catMap), scope.year));
-    this.yearHasMovements.set(yearTxns.length > 0);
+    this.yearOverviewData.set(
+      yearOverview(cashTxns, this.incomeClassifier(catMap), scope.year, cardPayments),
+    );
+    /* The balance strip keeps every movement — Transaction or Transfer — so a
+       year whose only movement is a Card Payment still renders the strip. */
+    this.yearHasMovements.set(
+      yearTxns.length > 0 ||
+        allTransfers.some(t => String(getPeriodYear(t)) === selectedYear),
+    );
 
-    const monthsWithData = new Set(filteredTxns.map(t => t.period));
+    const monthsWithData = new Set([
+      ...filteredTxns.map(t => t.period),
+      ...filteredCardPayments.map(t => t.period),
+    ]);
 
     if (monthsWithData.size === 0) {
       this.yearTotalIncome.set(0);
@@ -410,6 +507,10 @@ export class DashboardComponent implements OnInit {
       } else {
         totalExpenses += amount;
       }
+    }
+
+    for (const payment of filteredCardPayments) {
+      totalExpenses += payment.baseCurrencyAmount;
     }
 
     const months = monthsWithData.size;

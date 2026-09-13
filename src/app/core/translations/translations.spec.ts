@@ -72,6 +72,17 @@ describe('translations', () => {
       'settings.editLanguageAria',
       'settings.confirmEditAria',
       'settings.cancelEditAria',
+      'settings.creditCards',
+      'settings.newCard',
+      'settings.addCard',
+      'settings.startingDebt',
+      'settings.limit',
+      'settings.createPaymentCategory',
+      'settings.editCardAria',
+      'settings.deleteCardAria',
+      'settings.cardDeletePrompt',
+      'settings.failedAddCard',
+      'settings.failedSaveCard',
     ]) {
       expect(TRANSLATIONS.en[key]).toBeTruthy();
       expect(TRANSLATIONS.es[key]).toBeTruthy();
@@ -192,6 +203,7 @@ describe('translations', () => {
       'movements.saveDisabled.distinct',
       'movements.saveDisabled.amount',
       'movements.saveDisabled.rate',
+      'movements.saveDisabled.paymentCategory',
       'movements.shortcutsHint',
       'movements.sortByDateAria',
       'movements.editTransferTitle',
@@ -205,6 +217,10 @@ describe('translations', () => {
       'movements.period',
       'movements.year',
       'movements.note',
+      'movements.paymentCategory',
+      'movements.choosePaymentCategory',
+      'movements.cardOutstanding',
+      'movements.cardBadge',
       'movements.exchangeRate',
       'movements.fetchingRate',
       'movements.destAmount',
@@ -256,7 +272,7 @@ describe('translations', () => {
   });
 
   it('covers the movement row kind keys', () => {
-    for (const key of ['type.income', 'type.expense', 'type.transfer']) {
+    for (const key of ['type.income', 'type.expense', 'type.cardPurchase', 'type.cardRefund', 'type.transfer']) {
       expect(TRANSLATIONS.en[key]).toBeTruthy();
       expect(TRANSLATIONS.es[key]).toBeTruthy();
     }
@@ -268,6 +284,7 @@ describe('translations', () => {
       'transactionForm.noCategories',
       'transactionForm.amount',
       'transactionForm.account',
+      'transactionForm.cardHint',
       'transactionForm.category',
       'transactionForm.fetchingRate',
       'transactionForm.editTransactionTitle',
@@ -302,7 +319,8 @@ describe('translations', () => {
     for (const key of [
       'stats.title',
       'stats.subtitle',
-      'stats.expensesByCategory',
+      'stats.spendingByCategory',
+      'stats.spendingLegend',
       'stats.totalBalance',
       'stats.allAccounts',
       'stats.conversionWarning',
@@ -320,7 +338,7 @@ describe('translations', () => {
       'stats.balanceCaption',
       'stats.balanceStripLegend',
       'stats.kpiZero',
-      'stats.categoryZero',
+      'stats.spendingZero',
       'stats.noAccounts',
       'stats.avgCaption',
       'stats.savingsRate',
@@ -423,6 +441,12 @@ describe('translations', () => {
       'errors.noRatesReturned',
       'errors.accountHasMovements',
       'errors.categoryHasMovements',
+      'errors.currencyRequired',
+      'errors.currencyHasMovements',
+      'errors.cardLimitNegative',
+      'errors.cardPaymentCategoryRequired',
+      'errors.cardPaymentCategoryExpenseOnly',
+      'category.cardPayment',
     ]) {
       expect(TRANSLATIONS.en[key]).toBeTruthy();
       expect(TRANSLATIONS.es[key]).toBeTruthy();
