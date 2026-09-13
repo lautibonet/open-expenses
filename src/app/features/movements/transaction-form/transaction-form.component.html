@@ -14,19 +14,24 @@
       </h3>
 
       <div class="form-grid">
-        <label>
-          {{ language.t('transactionForm.account') }}
-          <select
-            [ngModel]="form().accountId"
-            (ngModelChange)="onAccountChange(+$event)"
-            name="account"
-            [attr.aria-label]="language.t('transactionForm.account')"
-          >
-            @for (acc of accounts(); track acc.id) {
-              <option [value]="acc.id">{{ acc.name }} ({{ acc.currency }})</option>
-            }
-          </select>
-        </label>
+        <div class="account-field">
+          <label>
+            {{ language.t('transactionForm.account') }}
+            <select
+              [ngModel]="form().accountId"
+              (ngModelChange)="onAccountChange(+$event)"
+              name="account"
+              [attr.aria-label]="language.t('transactionForm.account')"
+            >
+              @for (acc of accounts(); track acc.id) {
+                <option [value]="acc.id">{{ acc.name }} ({{ acc.currency }})</option>
+              }
+            </select>
+          </label>
+          @if (isCardAccount()) {
+            <p class="card-hint" role="note">{{ language.t('transactionForm.cardHint') }}</p>
+          }
+        </div>
         <label>
           {{ language.t('transactionForm.category') }}
           <select
@@ -102,10 +107,6 @@
           </select>
         </label>
       </div>
-
-      @if (isCardAccount()) {
-        <p class="card-hint" role="note">{{ language.t('transactionForm.cardHint') }}</p>
-      }
 
       <app-exchange-rate-well
         [from]="selectedAccount()?.currency ?? ''"

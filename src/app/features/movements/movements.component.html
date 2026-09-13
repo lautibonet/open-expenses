@@ -232,9 +232,6 @@
                 </td>
                 <td [attr.data-label]="language.t('movements.colCategoryTransfer')">
                   <span class="cat-chip">{{ getCategoryName(txn.categoryId) }}</span>
-                  @if (isCardTransaction(txn)) {
-                    <span class="card-badge">{{ language.t('movements.cardBadge') }}</span>
-                  }
                   @if (txn.note) {
                     <div class="note">{{ txn.note }}</div>
                   }
@@ -245,7 +242,12 @@
                 >
                   {{ formatTransactionDisplayAmount(txn) }}
                 </td>
-                <td [attr.data-label]="language.t('movements.colAccount')">{{ getAccountName(txn.accountId) }}</td>
+                <td [attr.data-label]="language.t('movements.colAccount')">
+                  @if (isCardTransaction(txn)) {
+                    <span class="card-badge">{{ language.t('movements.cardBadge') }}</span>
+                  }
+                  <div>{{ getAccountName(txn.accountId) }}</div>
+                </td>
                 <td class="actions-cell">
                   @if (confirmingDelete() === item) {
                     <span class="visually-hidden" aria-live="polite">
