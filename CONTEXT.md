@@ -13,16 +13,12 @@ A movement of money between two of the user's own accounts. Structurally separat
 _Avoid_: Movement, internal transfer
 
 **Account**:
-A named place where the user holds money — a Cash Account — or owes money — a Credit Card. Defined by a name, a currency, and an initial balance; a Credit Card additionally has a Linked Account and an optional Limit, and its initial balance is its starting debt. Its balance is computed from the initial balance plus Transactions and Transfers up to a given point in time; on Stats it is reported as of the end of the Scope's Period.
+A named place where the user holds money — a Cash Account — or owes money — a Credit Card. Defined by a name, a currency, and an initial balance; a Credit Card additionally has an optional Limit, and its initial balance is its starting debt. Its currency is chosen at creation and can change only while it has no movements. Its balance is computed from the initial balance plus Transactions and Transfers up to a given point in time; on Stats it is reported as of the end of the Scope's Period.
 _Avoid_: Wallet, bank account, source
 
 **Credit Card**:
-An Account that represents money the user owes rather than holds: spending on it uses the bank's credit, not the user's money. Created with a name, a currency (defaulted from the Linked Account), a Linked Account, and an optional Limit — a ceiling on its debt that warns and is shown as used-of-limit on Stats, but never blocks. Its balance is its outstanding debt: it goes negative with every Card Purchase and returns toward zero with every Card Payment. Managed in Settings; never created during Onboarding.
+An Account that represents money the user owes rather than holds: spending on it uses the bank's credit, not the user's money. Created with a name, a currency, an optional Limit — a ceiling on its debt that warns and is shown as used-of-limit on Stats, but never blocks — and an initial debt defaulted to zero. Its balance is its outstanding debt: it goes negative with every Card Purchase and returns toward zero with every Card Payment. Managed in Settings; never created during Onboarding.
 _Avoid_: credit line, revolving credit
-
-**Linked Account**:
-The Cash Account associated with a Credit Card. It seeds the card's currency at creation and pre-fills the source of its Card Payments, and, being referenced, it cannot be Deleted while a card points to it — only Deactivated. A default, never a constraint: a Statement can be paid from any Account.
-_Avoid_: backing account, paying account
 
 **Card Payment**:
 A Transfer from a Cash Account into a Credit Card that settles card debt — the moment the user pays a Statement, in full or in part, from any Account, possibly several times in one Period. It counts as an Expense in the Income and Expenses totals and in Net, under a required category created for the card (e.g. "Visa payment" / "Pago Visa"). That category labels the payment but never reaches the category graph, where it would double-count what the settled purchases already report. Interest and fees ride inside the Statement total and reach Expenses the same way — never recorded separately.
@@ -124,7 +120,7 @@ The reversible removal of an Account or Category from active use: it disappears 
 _Avoid_: Archive, disable, delete, hide
 
 **Delete**:
-The permanent, irreversible removal of an Account or Category that has no movements (a Category is un-used when no Transaction references it). Never cascades: if anything references the item, Delete is refused with an explanation and Deactivation is offered instead. A Credit Card counts as a reference to its Linked Account.
+The permanent, irreversible removal of an Account or Category that has no movements (a Category is un-used when no Transaction references it). Never cascades: if anything references the item, Delete is refused with an explanation and Deactivation is offered instead.
 _Avoid_: Remove, erase, destroy
 
 **Erase**:
