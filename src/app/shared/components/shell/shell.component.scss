@@ -125,6 +125,13 @@ $sidebar-width: 256px;
   padding-block: var(--space-sm);
 }
 
+/* Peer action below Back up: same geometry, default (non-primary) fill. */
+.download-button {
+  @extend %btn-base;
+  width: 100%;
+  padding-block: var(--space-sm);
+}
+
 .backup-caption {
   @extend %caps-label-muted;
   margin-top: var(--space-sm);

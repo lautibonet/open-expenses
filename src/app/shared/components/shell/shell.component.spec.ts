@@ -58,7 +58,7 @@ describe('ShellComponent', () => {
 
     const button = fixture.nativeElement.querySelector('button.backup-button') as HTMLButtonElement;
     expect(button).not.toBeNull();
-    expect(button.textContent?.trim()).toBe('Back up');
+    expect(button.textContent?.trim()).toBe('Back up to Google Drive');
 
     const block = fixture.nativeElement.querySelector('.backup-block') as HTMLElement;
     expect(block.getAttribute('role')).toBe('group');
@@ -82,7 +82,7 @@ describe('ShellComponent', () => {
     fixture.detectChanges();
 
     const button = fixture.nativeElement.querySelector('button.backup-button') as HTMLButtonElement;
-    expect(button.textContent?.trim()).toBe('Hacer copia');
+    expect(button.textContent?.trim()).toBe('Hacer copia en Google Drive');
 
     const block = fixture.nativeElement.querySelector('.backup-block') as HTMLElement;
     expect(block.getAttribute('aria-label')).toBe('Estado de la copia');
@@ -110,6 +110,61 @@ describe('ShellComponent', () => {
     const button = fixture.nativeElement.querySelector('button.backup-button') as HTMLButtonElement;
     expect(button.disabled).toBe(true);
     expect(button.textContent?.trim()).toBe('Backing up…');
+  });
+
+  it('renders the cloud and file-download backup actions stacked in the backup block', () => {
+    const block = fixture.nativeElement.querySelector('.backup-block') as HTMLElement;
+    const buttons = Array.from(block.querySelectorAll('button')) as HTMLButtonElement[];
+    expect(buttons.map((b) => b.textContent?.trim())).toEqual([
+      'Back up to Google Drive',
+      'Download backup file',
+    ]);
+  });
+
+  it('downloads the current snapshot as a file when the sidebar download button is tapped', async () => {
+    const createObjectURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock');
+    const revokeObjectURL = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+
+    const button = fixture.nativeElement.querySelector(
+      'button.download-button',
+    ) as HTMLButtonElement;
+    button.click();
+    await vi.waitFor(() => expect(click).toHaveBeenCalled());
+    expect(revokeObjectURL).toHaveBeenCalled();
+
+    const anchor = click.mock.instances[0] as HTMLAnchorElement;
+    expect(anchor.download).toBe('open-expenses-backup.json');
+
+    const blob = createObjectURL.mock.calls[0][0] as Blob;
+    const parsed = JSON.parse(await blob.text());
+    expect(parsed.exportedAt).toBeTruthy();
+    expect(parsed.accounts).toEqual([]);
+  });
+
+  it('disables both backup actions while a backup is in progress', () => {
+    const backupService = TestBed.inject(DriveBackupService);
+    backupService.isBackingUp.set(true);
+    fixture.detectChanges();
+
+    const backup = fixture.nativeElement.querySelector('button.backup-button') as HTMLButtonElement;
+    const download = fixture.nativeElement.querySelector(
+      'button.download-button',
+    ) as HTMLButtonElement;
+    expect(backup.disabled).toBe(true);
+    expect(download.disabled).toBe(true);
+  });
+
+  it('disables both backup actions while a download is in progress', () => {
+    fixture.componentInstance.isDownloading.set(true);
+    fixture.detectChanges();
+
+    const backup = fixture.nativeElement.querySelector('button.backup-button') as HTMLButtonElement;
+    const download = fixture.nativeElement.querySelector(
+      'button.download-button',
+    ) as HTMLButtonElement;
+    expect(backup.disabled).toBe(true);
+    expect(download.disabled).toBe(true);
   });
 
   it('links the Privacy page and the Landing from the app footer, in the active language (#132)', async () => {
