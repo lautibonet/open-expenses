@@ -229,7 +229,7 @@ export class TransferFormComponent implements AfterViewInit {
     if (!this.inSheet() && heading && typeof heading.scrollIntoView === 'function') {
       heading.scrollIntoView({
         behavior: this.prefersReducedMotion() ? 'auto' : 'smooth',
-        block: 'start',
+        block: 'nearest',
       });
     }
     heading?.focus();

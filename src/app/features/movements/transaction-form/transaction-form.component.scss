@@ -70,7 +70,7 @@
    purchases are counted when the Statement is paid. A persistent rule note,
    not a transient status line, so it carries no italic. */
 .card-hint {
-  margin: 0 0 0.5rem;
+  margin: var(--space-xs) 0;
   font-size: var(--type-label);
   color: var(--on-surface-variant);
 }

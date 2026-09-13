@@ -191,7 +191,7 @@ export class TransactionFormComponent implements OnInit, AfterViewInit {
     if (!this.inSheet() && heading && typeof heading.scrollIntoView === 'function') {
       heading.scrollIntoView({
         behavior: this.prefersReducedMotion() ? 'auto' : 'smooth',
-        block: 'start',
+        block: 'nearest',
       });
     }
   }
