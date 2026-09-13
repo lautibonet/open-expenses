@@ -63,7 +63,6 @@ test.describe('Settings credit cards (#163)', () => {
     const row = cardRow(page, 'Visa');
     await expect(row).toBeVisible();
     await expect(row).toContainText('EUR');
-    await expect(row).toContainText('Checking');
     await expect(row).toContainText('-500');
     await expect(row).toContainText('2000');
 
@@ -134,7 +133,7 @@ test.describe('Settings credit cards (#163)', () => {
     await expect(cardRow(page, 'Visa')).toHaveCount(0);
   });
 
-  test('refuses to delete a linked account and offers Deactivation instead', async ({ page }) => {
+  test('deletes a cash account even when a card exists', async ({ page }) => {
     await completeOnboarding(page);
     await page.goto('/settings');
 
@@ -148,12 +147,8 @@ test.describe('Settings credit cards (#163)', () => {
     const accounts = section(page, 'Accounts');
     const checking = accounts.locator('.account-row').filter({ hasText: 'Checking' });
     await checking.getByRole('button', { name: 'Delete account' }).click();
+    await checking.getByRole('button', { name: 'Confirm deletion' }).click();
 
-    const refusal = checking.locator('.delete-refusal');
-    await expect(refusal).toBeVisible();
-    await expect(refusal).toContainText('linked to a credit card');
-    await refusal.getByRole('button', { name: 'Deactivate instead' }).click();
-
-    await expect(checking).toContainText('Inactive');
+    await expect(accounts.locator('.account-row').filter({ hasText: 'Checking' })).toHaveCount(0);
   });
 });

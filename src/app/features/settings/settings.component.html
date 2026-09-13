@@ -202,7 +202,22 @@
                 </label>
                 <div class="field">
                   <span class="field-label">{{ language.t('settings.currency') }}</span>
-                  <span class="field-static">{{ acc.currency }}</span>
+                  @if (editingAccount()!.currencyLocked) {
+                    <span class="field-static">{{ editingAccount()!.currency }}</span>
+                  } @else {
+                    <select
+                      [ngModel]="editingAccount()!.currency"
+                      (ngModelChange)="editAccountCurrency($event)"
+                      (keydown.enter)="saveAccountEdit()"
+                      (keydown.escape)="cancelEditAccount()"
+                      class="input"
+                      [attr.aria-label]="language.t('settings.accountCurrencyAria')"
+                    >
+                      @for (currency of supportedCurrencies; track currency) {
+                        <option [value]="currency">{{ currency }}</option>
+                      }
+                    </select>
+                  }
                 </div>
               </div>
               <div class="edit-actions">
@@ -249,14 +264,25 @@
             </div>
           } @else {
             <div class="account-main">
-              <span class="account-name">{{ acc.name }}</span>
-              <span class="account-meta">
-                <span>{{ acc.currency }}</span>
-                <span>{{ acc.initialBalance }}</span>
+              <span class="account-heading">
+                <span class="account-name">{{ acc.name }}</span>
+                <span class="account-status account-status-inline">
+                  - {{ acc.active ? language.t('settings.active') : language.t('settings.inactive') }}
+                </span>
+              </span>
+              <span class="account-meta card-meta">
+                <span class="card-meta-field">
+                  <span class="card-meta-label">{{ language.t('settings.currency') }}</span>
+                  <span class="card-meta-value">{{ acc.currency }}</span>
+                </span>
+                <span class="card-meta-field">
+                  <span class="card-meta-label">{{ language.t('settings.initialBalance') }}</span>
+                  <span class="card-meta-value">{{ acc.initialBalance }}</span>
+                </span>
               </span>
             </div>
             <div class="account-side">
-              <span class="account-status">
+              <span class="account-status account-status-side">
                 {{ acc.active ? language.t('settings.active') : language.t('settings.inactive') }}
               </span>
               @if (acc.active) {
@@ -361,15 +387,7 @@
             </div>
             @if (refusedAccount() === acc.id) {
               <div class="delete-refusal" role="alert">
-                <p>
-                  {{
-                    language.t(
-                      refusedAccountReason() === 'linked-card'
-                        ? 'errors.accountLinkedToCard'
-                        : 'errors.accountHasMovements'
-                    )
-                  }}
-                </p>
+                <p>{{ language.t('errors.accountHasMovements') }}</p>
                 @if (acc.active) {
                   <button type="button" class="btn small" (click)="deactivateInstead(acc.id!)">
                     {{ language.t('settings.deactivateInstead') }}
@@ -418,16 +436,15 @@
           />
         </label>
         <label class="field">
-          <span class="field-label">{{ language.t('settings.linkedAccount') }}</span>
+          <span class="field-label">{{ language.t('settings.currency') }}</span>
           <select
-            [ngModel]="newCardLinkedAccountId()"
-            (ngModelChange)="newCardLinkedAccountId.set($event)"
+            [ngModel]="newCardCurrency()"
+            (ngModelChange)="newCardCurrency.set($event)"
             class="input"
-            [attr.aria-label]="language.t('settings.linkedAccountAria')"
+            [attr.aria-label]="language.t('settings.accountCurrencyAria')"
           >
-            <option [ngValue]="null">{{ language.t('settings.noLinkedAccountOption') }}</option>
-            @for (acc of accounts(); track acc.id) {
-              <option [ngValue]="acc.id">{{ acc.name }}</option>
+            @for (currency of supportedCurrencies; track currency) {
+              <option [value]="currency">{{ currency }}</option>
             }
           </select>
         </label>
@@ -451,10 +468,6 @@
             [attr.aria-label]="language.t('settings.limit')"
           />
         </label>
-        <div class="field">
-          <span class="field-label">{{ language.t('settings.currency') }}</span>
-          <span class="field-static">{{ currencyForAccount(newCardLinkedAccountId()) || '—' }}</span>
-        </div>
         <label class="consent">
           <input
             type="checkbox"
@@ -498,21 +511,25 @@
                     [attr.aria-label]="language.t('settings.name')"
                   />
                 </label>
-                <label class="field">
-                  <span class="field-label">{{ language.t('settings.linkedAccount') }}</span>
-                  <select
-                    [ngModel]="editingCard()!.linkedAccountId"
-                    (ngModelChange)="editCardLinkedAccount($event)"
-                    (keydown.enter)="saveCardEdit()"
-                    (keydown.escape)="cancelEditCard()"
-                    class="input"
-                    [attr.aria-label]="language.t('settings.linkedAccountAria')"
-                  >
-                    @for (acc of accounts(); track acc.id) {
-                      <option [ngValue]="acc.id">{{ acc.name }}</option>
-                    }
-                  </select>
-                </label>
+                <div class="field">
+                  <span class="field-label">{{ language.t('settings.currency') }}</span>
+                  @if (editingCard()!.currencyLocked) {
+                    <span class="field-static">{{ editingCard()!.currency }}</span>
+                  } @else {
+                    <select
+                      [ngModel]="editingCard()!.currency"
+                      (ngModelChange)="editCardCurrency($event)"
+                      (keydown.enter)="saveCardEdit()"
+                      (keydown.escape)="cancelEditCard()"
+                      class="input"
+                      [attr.aria-label]="language.t('settings.accountCurrencyAria')"
+                    >
+                      @for (currency of supportedCurrencies; track currency) {
+                        <option [value]="currency">{{ currency }}</option>
+                      }
+                    </select>
+                  }
+                </div>
                 <label class="field">
                   <span class="field-label">{{ language.t('settings.startingDebt') }}</span>
                   <input
@@ -537,12 +554,6 @@
                     [attr.aria-label]="language.t('settings.limit')"
                   />
                 </label>
-                <div class="field">
-                  <span class="field-label">{{ language.t('settings.currency') }}</span>
-                  <span class="field-static">{{
-                    currencyForAccount(editingCard()!.linkedAccountId)
-                  }}</span>
-                </div>
               </div>
               <div class="edit-actions">
                 <button
@@ -588,15 +599,16 @@
             </div>
           } @else {
             <div class="account-main">
-              <span class="account-name">{{ card.name }}</span>
+              <span class="account-heading">
+                <span class="account-name">{{ card.name }}</span>
+                <span class="account-status account-status-inline">
+                  - {{ card.active ? language.t('settings.active') : language.t('settings.inactive') }}
+                </span>
+              </span>
               <span class="account-meta card-meta">
                 <span class="card-meta-field">
                   <span class="card-meta-label">{{ language.t('settings.currency') }}</span>
                   <span class="card-meta-value">{{ card.currency }}</span>
-                </span>
-                <span class="card-meta-field">
-                  <span class="card-meta-label">{{ language.t('settings.linkedAccount') }}</span>
-                  <span class="card-meta-value is-name">{{ accountNameFor(card.linkedAccountId) }}</span>
                 </span>
                 @if (card.limit != null) {
                   <span class="card-meta-field">
@@ -611,7 +623,7 @@
               </span>
             </div>
             <div class="account-side">
-              <span class="account-status">
+              <span class="account-status account-status-side">
                 {{ card.active ? language.t('settings.active') : language.t('settings.inactive') }}
               </span>
               @if (card.active) {

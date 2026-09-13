@@ -118,7 +118,7 @@ describe('backup-snapshot', () => {
     });
 
     it('captures the account kind, card fields, and the Card Payment category', async () => {
-      const cashId = await db.accounts.add({
+      await db.accounts.add({
         name: 'Cash', currency: 'EUR', initialBalance: 1000, active: true,
         kind: 'cash', createdAt: new Date(),
       });
@@ -127,7 +127,7 @@ describe('backup-snapshot', () => {
       });
       await db.accounts.add({
         name: 'Visa', currency: 'EUR', initialBalance: -250, active: true,
-        kind: 'credit-card', linkedAccountId: cashId, limit: 5000,
+        kind: 'credit-card', limit: 5000,
         paymentCategoryId, createdAt: new Date(),
       });
 
@@ -135,7 +135,6 @@ describe('backup-snapshot', () => {
 
       const card = snapshot.accounts.find((a: any) => a.name === 'Visa');
       expect(card.kind).toBe('credit-card');
-      expect(card.linkedAccountId).toBe(cashId);
       expect(card.limit).toBe(5000);
       expect(card.paymentCategoryId).toBe(paymentCategoryId);
       expect(snapshot.categories.map((c: any) => c.name)).toContain('Visa payment');
@@ -346,7 +345,7 @@ describe('backup-snapshot', () => {
       expect(migrated.accounts.map((a: any) => a.kind)).toEqual(['cash']);
     });
 
-    it('keeps an account kind already present on the snapshot', () => {
+    it('keeps an account kind already present on the snapshot and strips the orphan Linked Account field', () => {
       const snapshot = {
         ...legacySnapshot(),
         schemaVersion: 2,
@@ -359,6 +358,7 @@ describe('backup-snapshot', () => {
       const migrated = migrateSnapshotToCurrent(snapshot);
 
       expect(migrated.accounts.map((a: any) => a.kind)).toEqual(['cash', 'credit-card']);
+      expect(migrated.accounts.every((a: any) => a.linkedAccountId === undefined)).toBe(true);
     });
 
     it('rejects snapshots from a newer schema version', () => {
@@ -404,7 +404,7 @@ describe('backup-snapshot', () => {
       });
       const cardId = await db.accounts.add({
         name: 'Visa', currency: 'EUR', initialBalance: -200, active: true,
-        kind: 'credit-card', linkedAccountId: cashId, limit: 3000,
+        kind: 'credit-card', limit: 3000,
         paymentCategoryId, createdAt: new Date('2026-01-01'),
       });
       await db.transactions.add({
@@ -448,7 +448,6 @@ describe('backup-snapshot', () => {
 
       const card = after.accounts.find((a: any) => a.name === 'Visa');
       expect(card.kind).toBe('credit-card');
-      expect(card.linkedAccountId).toBe(cashId);
       expect(card.limit).toBe(3000);
       expect(card.paymentCategoryId).toBe(paymentCategoryId);
       expect(after.transfers[0].categoryId).toBe(paymentCategoryId);

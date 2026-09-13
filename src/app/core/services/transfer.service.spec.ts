@@ -247,7 +247,7 @@ describe('TransferService', () => {
       categoryService = TestBed.inject(CategoryService);
       const card = await accountService.createCard({
         name: 'Visa',
-        linkedAccountId: cashId,
+        currency: 'EUR',
       });
       cardId = card.id!;
       const expense = await categoryService.create('Visa payment', 'expense');
