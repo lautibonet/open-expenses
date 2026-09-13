@@ -4010,7 +4010,7 @@ describe('MovementsComponent - cash-basis KPIs (ADR 0022)', () => {
 
   it("keeps a deactivated card's purchases out of the Net Flow figures", async () => {
     const cash = await accountService.create('Cash', 'EUR', 0);
-    const card = await accountService.createCard({ name: 'Visa', linkedAccountId: cash.id! });
+    const card = await accountService.createCard({ name: 'Visa', currency: 'EUR' });
     const cat = await categoryService.create('Food', 'expense');
     const period = getCurrentPeriod();
     await transactionService.create(cash.id!, cat.id!, 100, new Date(), period);
@@ -4055,7 +4055,7 @@ describe('MovementsComponent - card movement display treatment (#168)', () => {
     const cash = await accountService.create('Checking', 'EUR', 100000);
     cashId = cash.id!;
     const card = await accountService.createCard(
-      { name: 'Visa', linkedAccountId: cashId },
+      { name: 'Visa', currency: 'EUR' },
       'Visa payment',
     );
     cardId = card.id!;

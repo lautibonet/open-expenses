@@ -194,6 +194,23 @@ app-erase-card {
   color: var(--on-surface);
 }
 
+.account-name {
+  display: inline-block;
+  margin-bottom: var(--space-xs);
+}
+
+/* Name and its status flow as one line of text on a phone, so a long name
+   wraps into the status naturally ("N26 - Active"). On desktop the status
+   keeps its place among the row actions, so the inline copy stays hidden. */
+.account-heading {
+  display: block;
+  min-width: 0;
+}
+
+.account-status-inline {
+  display: none;
+}
+
 .account-meta {
   @extend %mono-data;
 
@@ -202,13 +219,12 @@ app-erase-card {
   color: var(--on-surface-variant);
 }
 
-/* A card row carries more metadata than a plain account row — the linked
-   account, an optional limit, and the starting debt — so it renders as
-   labeled pairs instead of one mono run. The label takes the caps-metadata
-   register, the value the data register: mono for the figures, Inter for
-   the linked-account name, which is prose and never belonged in the mono
-   face. Pairs wrap as units, so a long linked-account name can neither
-   crush itself into a ragged column nor shove the rest of the line. */
+/* Both account and card rows render their metadata as labeled pairs instead
+   of one mono run — currency plus initial balance on a cash account, currency,
+   an optional limit, and the starting debt on a card. The label takes the
+   caps-metadata register, the value the data register: mono for the figures.
+   Pairs wrap as units, so a long value can neither crush itself into a ragged
+   column nor shove the rest of the line. */
 .account-meta.card-meta {
   flex-wrap: wrap;
   align-items: baseline;
@@ -232,15 +248,6 @@ app-erase-card {
 .card-meta-value {
   @extend %mono-data;
 
-  color: var(--on-surface);
-}
-
-/* The linked-account value is a name, not a figure — interface prose in
-   the UI face, held to the muted secondary ink. */
-.card-meta-value.is-name {
-  font-family: var(--font-ui);
-  font-size: var(--type-caption);
-  line-height: var(--leading-caption);
   color: var(--on-surface-variant);
 }
 
@@ -395,5 +402,32 @@ app-erase-card {
 
   .settings .consent {
     min-height: 2.75rem;
+  }
+
+  /* The labeled metadata pairs are wider than the old mono run, so on a
+     phone they wrap mid-line and read ragged. Lay them out as a tidy grid
+     of label-over-value fields instead: columns align top, each pair holds
+     together as one unit. */
+  .account-meta.card-meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+    gap: var(--space-sm) var(--space-md);
+    width: 100%;
+  }
+
+  .card-meta-field {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+  }
+
+  /* The status rides the name line — "N26 - Active" — and the side copy
+     steps aside so it is announced once. */
+  .account-status-inline {
+    display: inline;
+  }
+
+  .account-status-side {
+    display: none;
   }
 }

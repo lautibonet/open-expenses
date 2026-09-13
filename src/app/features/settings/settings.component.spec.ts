@@ -44,11 +44,14 @@ describe('SettingsComponent - pencil edit state (component)', () => {
     await db.delete();
   });
 
-  it('opens the account edit state with name and initial balance', () => {
+  it('opens the account edit state with name and initial balance', async () => {
     component.startEditAccount(accountId);
+    await flush();
     expect(component.editingAccount()).toEqual({
       id: accountId,
       name: 'Cash',
+      currency: 'EUR',
+      currencyLocked: false,
       initialBalance: 100000,
     });
     expect(component.editError()).toBe('');
@@ -1620,7 +1623,6 @@ describe('SettingsComponent - credit cards (ADR 0022)', () => {
   let accountService: AccountService;
   let categoryService: CategoryService;
   let cashId: number;
-  let cash2Id: number;
 
   const flush = () => new Promise<void>((resolve) => setTimeout(resolve, 10));
 
@@ -1638,8 +1640,6 @@ describe('SettingsComponent - credit cards (ADR 0022)', () => {
 
     const cash = await accountService.create('Checking', 'EUR', 100000);
     cashId = cash.id!;
-    const cash2 = await accountService.create('Savings', 'USD', 0);
-    cash2Id = cash2.id!;
     await component.ngOnInit();
     fixture.detectChanges();
   });
@@ -1655,10 +1655,10 @@ describe('SettingsComponent - credit cards (ADR 0022)', () => {
     return rows.find((r) => r.textContent!.includes(name))!;
   }
 
-  it('reveals the card form with the first cash account and consent checked', () => {
+  it('reveals the card form with the base currency and consent checked', () => {
     component.startAddCard();
     expect(component.addingCard()).toBe(true);
-    expect(component.newCardLinkedAccountId()).toBe(cashId);
+    expect(component.newCardCurrency()).toBe('EUR');
     expect(component.newCardCreateCategory()).toBe(true);
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('input[type="checkbox"]')).toBeTruthy();
@@ -1675,7 +1675,6 @@ describe('SettingsComponent - credit cards (ADR 0022)', () => {
     expect(card).toBeDefined();
     expect(card!.kind).toBe('credit-card');
     expect(card!.currency).toBe('EUR');
-    expect(card!.linkedAccountId).toBe(cashId);
     expect(card!.initialBalance).toBe(-50000);
     expect(card!.limit).toBe(200000);
     expect(card!.active).toBe(true);
@@ -1715,29 +1714,29 @@ describe('SettingsComponent - credit cards (ADR 0022)', () => {
     expect(component.cards().length).toBe(0);
   });
 
-  it('edits a card name, starting debt, limit and linked account; currency is kept', async () => {
-    const card = await accountService.createCard({ name: 'Visa', linkedAccountId: cashId });
+  it('edits a card name, starting debt, limit and currency while it has no movements', async () => {
+    const card = await accountService.createCard({ name: 'Visa', currency: 'EUR' });
     await component.refresh();
 
     component.startEditCard(card.id!);
+    await flush();
     component.editCardName('Mastercard');
+    component.editCardCurrency('USD');
     component.editCardBalance(-99900);
     component.editCardLimit(123000);
-    component.editCardLinkedAccount(cash2Id);
     await component.saveCardEdit();
 
     const updated = await accountService.getById(card.id!);
     expect(updated!.name).toBe('Mastercard');
+    expect(updated!.currency).toBe('USD');
     expect(updated!.initialBalance).toBe(-99900);
     expect(updated!.limit).toBe(123000);
-    expect(updated!.linkedAccountId).toBe(cash2Id);
-    expect(updated!.currency).toBe('EUR');
     expect(component.cards()[0].name).toBe('Mastercard');
   });
 
-  it('renders the card name, currency, linked account and starting debt', async () => {
+  it('renders the card name, currency, limit and starting debt', async () => {
     await accountService.createCard(
-      { name: 'Visa', linkedAccountId: cashId, initialBalance: -5000, limit: 10000 },
+      { name: 'Visa', currency: 'EUR', initialBalance: -5000, limit: 10000 },
       null,
     );
     await component.refresh();
@@ -1747,13 +1746,13 @@ describe('SettingsComponent - credit cards (ADR 0022)', () => {
     expect(row.querySelector('.account-name')!.textContent!.trim()).toBe('Visa');
     const meta = row.querySelector('.account-meta')!.textContent!;
     expect(meta).toContain('EUR');
-    expect(meta).toContain('Checking');
+    expect(meta).not.toContain('Checking');
     expect(meta).toContain('10000');
     expect(meta).toContain('-5000');
   });
 
   it('deletes an unused card only after confirming', async () => {
-    const card = await accountService.createCard({ name: 'Visa', linkedAccountId: cashId });
+    const card = await accountService.createCard({ name: 'Visa', currency: 'EUR' });
     await component.refresh();
 
     await component.requestDeleteCard(card.id!);
@@ -1763,7 +1762,7 @@ describe('SettingsComponent - credit cards (ADR 0022)', () => {
   });
 
   it('refuses to delete a card with movements and offers Deactivation', async () => {
-    const card = await accountService.createCard({ name: 'Visa', linkedAccountId: cashId });
+    const card = await accountService.createCard({ name: 'Visa', currency: 'EUR' });
     const category = await categoryService.create('Food', 'expense');
     await db.transactions.add({
       accountId: card.id!,
@@ -1789,7 +1788,7 @@ describe('SettingsComponent - credit cards (ADR 0022)', () => {
   });
 
   it('reactivates a card', async () => {
-    const card = await accountService.createCard({ name: 'Visa', linkedAccountId: cashId });
+    const card = await accountService.createCard({ name: 'Visa', currency: 'EUR' });
     await accountService.setActive(card.id!, false);
     await component.refresh();
 
@@ -1797,45 +1796,19 @@ describe('SettingsComponent - credit cards (ADR 0022)', () => {
     expect((await accountService.getById(card.id!))!.active).toBe(true);
   });
 
-  it('refuses to delete a linked account and records the linked-card reason', async () => {
-    await accountService.createCard({ name: 'Visa', linkedAccountId: cashId });
+  it('deletes a cash account even when cards exist', async () => {
+    await accountService.createCard({ name: 'Visa', currency: 'EUR' });
     await component.refresh();
 
     await component.requestDeleteAccount(cashId);
-    expect(component.refusedAccount()).toBe(cashId);
-    expect(component.refusedAccountReason()).toBe('linked-card');
-    expect(component.confirmingAccountDelete()).toBeNull();
-    expect(await accountService.getById(cashId)).toBeDefined();
-
-    await component.deactivateInstead(cashId);
-    expect((await accountService.getById(cashId))!.active).toBe(false);
-  });
-
-  it('renders the linked-to-card explanation with a Deactivate fallback in the Accounts card', async () => {
-    await accountService.createCard({ name: 'Visa', linkedAccountId: cashId });
-    await component.refresh();
-    fixture.detectChanges();
-
-    const row = rowFor('.account-row', 'Checking');
-    (row.querySelector('button[aria-label="Delete account"]') as HTMLButtonElement).click();
-    await flush();
-    fixture.detectChanges();
-
-    const refusal = row.querySelector('.delete-refusal') as HTMLElement;
-    expect(refusal).toBeTruthy();
-    expect(refusal.textContent).toContain('linked to a credit card');
-    expect(refusal.textContent).toContain('Deactivate instead');
-
-    const fallback = Array.from(
-      refusal.querySelectorAll('button') as NodeListOf<HTMLButtonElement>,
-    ).find((b) => b.textContent!.trim() === 'Deactivate instead')!;
-    fallback.click();
-    await flush();
-    expect((await accountService.getById(cashId))!.active).toBe(false);
+    expect(component.confirmingAccountDelete()).toBe(cashId);
+    expect(component.refusedAccount()).toBeNull();
+    await component.confirmDeleteAccount();
+    expect(await accountService.getById(cashId)).toBeUndefined();
   });
 
   it('keeps cards out of the Accounts section', async () => {
-    await accountService.createCard({ name: 'Visa', linkedAccountId: cashId });
+    await accountService.createCard({ name: 'Visa', currency: 'EUR' });
     await component.refresh();
     fixture.detectChanges();
 

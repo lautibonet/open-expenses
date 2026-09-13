@@ -21,7 +21,7 @@ function makeAccount(id: number, name: string, currency: string): Account {
   return { id, name, currency, initialBalance: 0, active: true, kind: 'cash', createdAt: new Date() };
 }
 
-function makeCardAccount(id: number, name: string, currency: string, linkedAccountId: number): Account {
+function makeCardAccount(id: number, name: string, currency: string): Account {
   return {
     id,
     name,
@@ -29,7 +29,6 @@ function makeCardAccount(id: number, name: string, currency: string, linkedAccou
     initialBalance: 0,
     active: true,
     kind: 'credit-card',
-    linkedAccountId,
     createdAt: new Date(),
   };
 }
@@ -106,7 +105,7 @@ describe('TransactionFormComponent', () => {
   });
 
   it('lists a Credit Card among the account choices', async () => {
-    const card = makeCardAccount(90, 'Visa', 'EUR', eurAccount.id!);
+    const card = makeCardAccount(90, 'Visa', 'EUR');
     fixture.componentRef.setInput('accounts', [eurAccount, card]);
     await component.ngOnInit();
     fixture.detectChanges();
@@ -118,7 +117,7 @@ describe('TransactionFormComponent', () => {
   });
 
   it('shows the card hint only when a Credit Card is selected', async () => {
-    const card = makeCardAccount(90, 'Visa', 'EUR', eurAccount.id!);
+    const card = makeCardAccount(90, 'Visa', 'EUR');
     fixture.componentRef.setInput('accounts', [eurAccount, card]);
     await component.ngOnInit();
     fixture.detectChanges();

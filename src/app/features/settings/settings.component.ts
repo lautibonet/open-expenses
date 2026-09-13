@@ -1,4 +1,13 @@
-import { Component, ElementRef, effect, inject, OnInit, signal, viewChild } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  effect,
+  inject,
+  OnInit,
+  signal,
+  viewChild,
+  WritableSignal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AccountService, DeleteRefusalReason } from '../../core/services/account.service';
 import { CategoryService } from '../../core/services/category.service';
@@ -17,15 +26,20 @@ import { DismissibleAlertComponent } from '../../shared/components/dismissible-a
 interface AccountEditState {
   id: number;
   name: string;
+  currency: string;
+  /* ADR 0022: an account's currency can change only while it has no
+     movements; locked accounts show it as static text. */
+  currencyLocked: boolean;
   initialBalance: number;
 }
 
 interface CardEditState {
   id: number;
   name: string;
+  currency: string;
+  currencyLocked: boolean;
   initialBalance: number;
   limit: number | null;
-  linkedAccountId: number;
 }
 
 interface CategoryEditState {
@@ -60,7 +74,7 @@ export class SettingsComponent implements OnInit {
   /* Null while the field is empty; an empty field creates the account with balance 0. */
   newAccountBalance = signal<number | null>(null);
   newCardName = signal('');
-  newCardLinkedAccountId = signal<number | null>(null);
+  newCardCurrency = signal('EUR');
   newCardLimit = signal<number | null>(null);
   /* Null while the field is empty; an empty field creates the card with debt 0. */
   newCardBalance = signal<number | null>(null);
@@ -179,13 +193,38 @@ export class SettingsComponent implements OnInit {
     this.editingAccount.set({
       id,
       name: account.name,
+      currency: account.currency,
+      currencyLocked: true,
       initialBalance: account.initialBalance,
     });
     this.editError.set('');
+    void this.resolveCurrencyLock(this.editingAccount);
+  }
+
+  /* ADR 0022: the currency opens for editing only once the account is known
+     to have no movements; the draft starts locked so a slow check never
+     flashes an editable field that the service would refuse. Failures leave
+     the field locked — a closed database must not surface as an error. */
+  private async resolveCurrencyLock(
+    target: WritableSignal<AccountEditState | CardEditState | null>,
+  ): Promise<void> {
+    const id = target()?.id;
+    if (id === undefined) return;
+    try {
+      const hasMovements = await this.accountService.hasMovements(id);
+      if (target()?.id !== id) return;
+      target.update((e) => (e ? { ...e, currencyLocked: hasMovements } : e));
+    } catch {
+      /* leave the currency locked */
+    }
   }
 
   editAccountName(value: string): void {
     this.editingAccount.update((e) => (e ? { ...e, name: value } : e));
+  }
+
+  editAccountCurrency(value: string): void {
+    this.editingAccount.update((e) => (e ? { ...e, currency: value } : e));
   }
 
   editAccountBalance(value: number): void {
@@ -205,6 +244,7 @@ export class SettingsComponent implements OnInit {
     try {
       await this.accountService.update(editing.id, {
         name: editing.name,
+        ...(editing.currencyLocked ? {} : { currency: editing.currency }),
         initialBalance: editing.initialBalance,
       });
       this.editingAccount.set(null);
@@ -323,11 +363,6 @@ export class SettingsComponent implements OnInit {
         this.refusedAccountReason.set('movements');
         return;
       }
-      if (e instanceof TranslationError && e.key === 'errors.accountLinkedToCard') {
-        this.refusedAccount.set(id);
-        this.refusedAccountReason.set('linked-card');
-        return;
-      }
       throw e;
     }
     await this.refresh();
@@ -350,7 +385,7 @@ export class SettingsComponent implements OnInit {
 
   startAddCard(): void {
     this.newCardName.set('');
-    this.newCardLinkedAccountId.set(this.accounts()[0]?.id ?? null);
+    this.newCardCurrency.set(this.baseCurrency());
     this.newCardLimit.set(null);
     this.newCardBalance.set(null);
     this.newCardCreateCategory.set(true);
@@ -370,7 +405,7 @@ export class SettingsComponent implements OnInit {
       await this.accountService.createCard(
         {
           name: this.newCardName(),
-          linkedAccountId: this.newCardLinkedAccountId()!,
+          currency: this.newCardCurrency(),
           limit: this.newCardLimit(),
           initialBalance: this.newCardBalance() ?? 0,
         },
@@ -388,16 +423,6 @@ export class SettingsComponent implements OnInit {
     }
   }
 
-  currencyForAccount(id: number | null): string {
-    if (id == null) return '';
-    return this.accounts().find((a) => a.id === id)?.currency ?? '';
-  }
-
-  accountNameFor(id: number | undefined): string {
-    if (id == null) return '';
-    return this.accounts().find((a) => a.id === id)?.name ?? '';
-  }
-
   startEditCard(id: number): void {
     const card = this.cards().find((c) => c.id === id);
     if (!card) return;
@@ -406,15 +431,21 @@ export class SettingsComponent implements OnInit {
     this.editingCard.set({
       id,
       name: card.name,
+      currency: card.currency,
+      currencyLocked: true,
       initialBalance: card.initialBalance,
       limit: card.limit ?? null,
-      linkedAccountId: card.linkedAccountId ?? this.accounts()[0]?.id ?? 0,
     });
     this.editError.set('');
+    void this.resolveCurrencyLock(this.editingCard);
   }
 
   editCardName(value: string): void {
     this.editingCard.update((c) => (c ? { ...c, name: value } : c));
+  }
+
+  editCardCurrency(value: string): void {
+    this.editingCard.update((c) => (c ? { ...c, currency: value } : c));
   }
 
   editCardBalance(value: number): void {
@@ -423,10 +454,6 @@ export class SettingsComponent implements OnInit {
 
   editCardLimit(value: number | null): void {
     this.editingCard.update((c) => (c ? { ...c, limit: value } : c));
-  }
-
-  editCardLinkedAccount(value: number): void {
-    this.editingCard.update((c) => (c ? { ...c, linkedAccountId: value } : c));
   }
 
   cancelEditCard(): void {
@@ -442,9 +469,9 @@ export class SettingsComponent implements OnInit {
     try {
       await this.accountService.update(editing.id, {
         name: editing.name,
+        ...(editing.currencyLocked ? {} : { currency: editing.currency }),
         initialBalance: editing.initialBalance,
         limit: editing.limit,
-        linkedAccountId: editing.linkedAccountId,
       });
       this.editingCard.set(null);
       this.editError.set('');

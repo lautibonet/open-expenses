@@ -106,11 +106,9 @@ const en: Record<string, string> = {
   'errors.noRatesReturned': 'No exchange rates returned',
   'errors.accountHasMovements':
     "This account has movements, so it can't be deleted. Deactivate it instead.",
-  'errors.accountLinkedToCard':
-    "This account is linked to a credit card, so it can't be deleted. Deactivate it instead.",
-  'errors.linkedAccountRequired': 'Choose a linked account for this card',
-  'errors.linkedAccountMustBeCash':
-    'A credit card can only be linked to a cash account.',
+  'errors.currencyRequired': 'Choose a currency for this account',
+  'errors.currencyHasMovements':
+    "This account has movements, so its currency can't be changed.",
   'errors.cardLimitNegative': 'Limit cannot be negative',
   'errors.cardPaymentCategoryRequired':
     'Choose an Expense category for this Card Payment.',
@@ -134,9 +132,6 @@ const en: Record<string, string> = {
   'settings.currency': 'Currency',
   'settings.initialBalance': 'Initial balance',
   'settings.startingDebt': 'Starting debt',
-  'settings.linkedAccount': 'Linked account',
-  'settings.linkedAccountAria': 'Linked account',
-  'settings.noLinkedAccountOption': 'Choose an account',
   'settings.limit': 'Limit',
   'settings.createPaymentCategory': 'Create payment category',
   'settings.createPaymentCategoryHint':
@@ -520,11 +515,9 @@ const es: Record<string, string> = {
   'errors.noRatesReturned': 'No se recibieron tipos de cambio',
   'errors.accountHasMovements':
     'Esta cuenta tiene movimientos, así que no se puede eliminar. Desactívala en su lugar.',
-  'errors.accountLinkedToCard':
-    'Esta cuenta está vinculada a una tarjeta de crédito, así que no se puede eliminar. Desactívala en su lugar.',
-  'errors.linkedAccountRequired': 'Elige una cuenta vinculada para esta tarjeta',
-  'errors.linkedAccountMustBeCash':
-    'Una tarjeta de crédito solo se puede vincular a una cuenta de efectivo.',
+  'errors.currencyRequired': 'Elige una moneda para esta cuenta',
+  'errors.currencyHasMovements':
+    'Esta cuenta tiene movimientos, así que no se puede cambiar su moneda.',
   'errors.cardLimitNegative': 'El límite no puede ser negativo',
   'errors.cardPaymentCategoryRequired':
     'Elige una categoría de gasto para este pago con tarjeta.',
@@ -548,9 +541,6 @@ const es: Record<string, string> = {
   'settings.currency': 'Moneda',
   'settings.initialBalance': 'Saldo inicial',
   'settings.startingDebt': 'Deuda inicial',
-  'settings.linkedAccount': 'Cuenta vinculada',
-  'settings.linkedAccountAria': 'Cuenta vinculada',
-  'settings.noLinkedAccountOption': 'Elige una cuenta',
   'settings.limit': 'Límite',
   'settings.createPaymentCategory': 'Crear categoría de pago',
   'settings.createPaymentCategoryHint':

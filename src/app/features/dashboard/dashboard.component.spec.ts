@@ -87,7 +87,7 @@ describe('DashboardComponent', () => {
   it('excludes card-account purchases from the cash-basis KPIs but keeps them in the category breakdown', async () => {
     const cash = await accountService.create('Cash', 'EUR', 0);
     const expenseCat = await categoryService.create('Groceries', 'expense');
-    const card = await accountService.createCard({ name: 'Visa', linkedAccountId: cash.id! });
+    const card = await accountService.createCard({ name: 'Visa', currency: 'EUR' });
     const period = getCurrentPeriod();
     await transactionService.create(cash.id!, expenseCat.id!, 200, new Date(), period);
     await transactionService.create(card.id!, expenseCat.id!, 500, new Date(), period);
@@ -104,8 +104,8 @@ describe('DashboardComponent', () => {
   it('counts a Cash-to-Card Card Payment as an Expense in the payment Period, but no other Transfer kind', async () => {
     const cash = await accountService.create('Cash', 'EUR', 100000);
     const savings = await accountService.create('Savings', 'EUR', 0);
-    const card = await accountService.createCard({ name: 'Visa', linkedAccountId: cash.id! });
-    const card2 = await accountService.createCard({ name: 'Master', linkedAccountId: cash.id! });
+    const card = await accountService.createCard({ name: 'Visa', currency: 'EUR' });
+    const card2 = await accountService.createCard({ name: 'Master', currency: 'EUR' });
     const expenseCat = await categoryService.create('Groceries', 'expense');
     const transferService = TestBed.inject(TransferService);
     const period = getCurrentPeriod();
@@ -128,7 +128,7 @@ describe('DashboardComponent', () => {
 
   it('excludes a Card Payment from Periods after the payment', async () => {
     const cash = await accountService.create('Cash', 'EUR', 100000);
-    const card = await accountService.createCard({ name: 'Visa', linkedAccountId: cash.id! });
+    const card = await accountService.createCard({ name: 'Visa', currency: 'EUR' });
     const expenseCat = await categoryService.create('Groceries', 'expense');
     const transferService = TestBed.inject(TransferService);
     const year = getCurrentYear();
@@ -147,7 +147,7 @@ describe('DashboardComponent', () => {
 
   it('renders the year overview when the only movement is a Card Payment', async () => {
     const cash = await accountService.create('Cash', 'EUR', 100000);
-    const card = await accountService.createCard({ name: 'Visa', linkedAccountId: cash.id! });
+    const card = await accountService.createCard({ name: 'Visa', currency: 'EUR' });
     const expenseCat = await categoryService.create('Groceries', 'expense');
     const transferService = TestBed.inject(TransferService);
     const period = getCurrentPeriod();
@@ -1105,7 +1105,7 @@ describe('DashboardComponent - page header, scope control and restyled cards', (
 
   it('splits a category bar into cash-paid and credit-paid segments', async () => {
     const cash = await accountService.create('Cash', 'EUR', 0);
-    const card = await accountService.createCard({ name: 'Visa', linkedAccountId: cash.id! });
+    const card = await accountService.createCard({ name: 'Visa', currency: 'EUR' });
     const food = await categoryService.create('Food', 'expense');
     const period = getCurrentPeriod();
     await transactionService.create(cash.id!, food.id!, 200, new Date(), period);
@@ -1145,7 +1145,7 @@ describe('DashboardComponent - page header, scope control and restyled cards', (
 
   it('excludes a card payment category from the spending graph', async () => {
     const cash = await accountService.create('Cash', 'EUR', 0);
-    await accountService.createCard({ name: 'Visa', linkedAccountId: cash.id! }, 'Visa payment');
+    await accountService.createCard({ name: 'Visa', currency: 'EUR' }, 'Visa payment');
     const payment = (await categoryService.getAll()).find(c => c.name === 'Visa payment')!;
     const food = await categoryService.create('Food', 'expense');
     const period = getCurrentPeriod();
@@ -2501,7 +2501,7 @@ describe('DashboardComponent - conditional debt total and card rows', () => {
     const cash = await accountService.create('Checking', 'EUR', 100000);
     await accountService.createCard({
       name: 'Visa',
-      linkedAccountId: cash.id!,
+      currency: 'EUR',
       initialBalance: 5000,
     });
 
@@ -2520,7 +2520,7 @@ describe('DashboardComponent - conditional debt total and card rows', () => {
   it('shows the three-figure total when a card balance is negative', async () => {
     const cash = await accountService.create('Checking', 'EUR', 100000);
     const expenseCat = await categoryService.create('Groceries', 'expense');
-    const card = await accountService.createCard({ name: 'Visa', linkedAccountId: cash.id! });
+    const card = await accountService.createCard({ name: 'Visa', currency: 'EUR' });
     await transactionService.create(card.id!, expenseCat.id!, 25000, new Date(), getCurrentPeriod());
 
     await component.ngOnInit();
@@ -2550,10 +2550,10 @@ describe('DashboardComponent - conditional debt total and card rows', () => {
   it('sums only negative card balances into the Debt, leaving an overpaid card in the totals', async () => {
     const cash = await accountService.create('Checking', 'EUR', 100000);
     const expenseCat = await categoryService.create('Groceries', 'expense');
-    const card = await accountService.createCard({ name: 'Visa', linkedAccountId: cash.id! });
+    const card = await accountService.createCard({ name: 'Visa', currency: 'EUR' });
     await accountService.createCard({
       name: 'Master',
-      linkedAccountId: cash.id!,
+      currency: 'EUR',
       initialBalance: 5000,
     });
     await transactionService.create(card.id!, expenseCat.id!, 25000, new Date(), getCurrentPeriod());
@@ -2571,7 +2571,7 @@ describe('DashboardComponent - conditional debt total and card rows', () => {
   it('clears the Debt when the card is settled', async () => {
     const cash = await accountService.create('Checking', 'EUR', 100000);
     const expenseCat = await categoryService.create('Groceries', 'expense');
-    const card = await accountService.createCard({ name: 'Visa', linkedAccountId: cash.id! });
+    const card = await accountService.createCard({ name: 'Visa', currency: 'EUR' });
     await transactionService.create(card.id!, expenseCat.id!, 25000, new Date(), getCurrentPeriod());
     await transferService.create(
       cash.id!, card.id!, 25000, new Date(), getCurrentPeriod(), '', 1, getCurrentYear(), expenseCat.id!,
@@ -2587,7 +2587,7 @@ describe('DashboardComponent - conditional debt total and card rows', () => {
     await accountService.create('Checking', 'EUR', 100000);
     const usd = await accountService.create('USD Account', 'USD', 0);
     const expenseCat = await categoryService.create('Groceries', 'expense');
-    const card = await accountService.createCard({ name: 'Visa', linkedAccountId: usd.id! });
+    const card = await accountService.createCard({ name: 'Visa', currency: 'USD' });
     // Stored at capture time: 100 USD at 1.08 = 108 EUR.
     await transactionService.create(
       card.id!, expenseCat.id!, 100, new Date(), getCurrentPeriod(), 1.08, 108,
@@ -2611,9 +2611,9 @@ describe('DashboardComponent - conditional debt total and card rows', () => {
 
   it('groups cards after cash accounts in the balance list', async () => {
     const cash = await accountService.create('Checking', 'EUR', 1000);
-    await accountService.createCard({ name: 'Visa', linkedAccountId: cash.id! });
+    await accountService.createCard({ name: 'Visa', currency: 'EUR' });
     await accountService.create('Savings', 'EUR', 2000);
-    await accountService.createCard({ name: 'Master', linkedAccountId: cash.id! });
+    await accountService.createCard({ name: 'Master', currency: 'EUR' });
 
     await component.ngOnInit();
     fixture.detectChanges();
@@ -2632,7 +2632,7 @@ describe('DashboardComponent - conditional debt total and card rows', () => {
     const expenseCat = await categoryService.create('Groceries', 'expense');
     const card = await accountService.createCard({
       name: 'Visa',
-      linkedAccountId: cash.id!,
+      currency: 'EUR',
       limit: 50000,
     });
     await transactionService.create(card.id!, expenseCat.id!, 25000, new Date(), getCurrentPeriod());
@@ -2652,7 +2652,7 @@ describe('DashboardComponent - conditional debt total and card rows', () => {
 
   it('omits the used-of-limit caption on cards without a Limit', async () => {
     const cash = await accountService.create('Checking', 'EUR', 100000);
-    await accountService.createCard({ name: 'Visa', linkedAccountId: cash.id! });
+    await accountService.createCard({ name: 'Visa', currency: 'EUR' });
 
     await component.ngOnInit();
     fixture.detectChanges();
@@ -2664,7 +2664,7 @@ describe('DashboardComponent - conditional debt total and card rows', () => {
     const cash = await accountService.create('Checking', 'EUR', 100000);
     const card = await accountService.createCard({
       name: 'Visa',
-      linkedAccountId: cash.id!,
+      currency: 'EUR',
       limit: 50000,
       initialBalance: 5000,
     });

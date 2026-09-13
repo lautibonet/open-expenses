@@ -42,7 +42,7 @@ function txn(overrides: Partial<Transaction>): Transaction {
 
 describe('cash-basis KPI filter (ADR 0022)', () => {
   const cash = account({ id: 1, name: 'Cash' });
-  const card = account({ id: 2, name: 'Visa', kind: 'credit-card', linkedAccountId: 1 });
+  const card = account({ id: 2, name: 'Visa', kind: 'credit-card' });
   const accountsById = new Map([
     [cash.id!, cash],
     [card.id!, card],
@@ -92,7 +92,7 @@ function transfer(overrides: Partial<Transfer>): Transfer {
 describe('card-payment classification (ADR 0022)', () => {
   const cash = account({ id: 1, name: 'Cash' });
   const cash2 = account({ id: 3, name: 'Savings' });
-  const card = account({ id: 2, name: 'Visa', kind: 'credit-card', linkedAccountId: 1 });
+  const card = account({ id: 2, name: 'Visa', kind: 'credit-card' });
   const accountsById = new Map([
     [cash.id!, cash],
     [cash2.id!, cash2],

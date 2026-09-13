@@ -47,7 +47,7 @@ function txn(overrides: Partial<Transaction>): Transaction {
 
 describe('category spending split (ADR 0022)', () => {
   const cash = account({ id: 1, name: 'Cash' });
-  const card = account({ id: 2, name: 'Visa', kind: 'credit-card', linkedAccountId: 1 });
+  const card = account({ id: 2, name: 'Visa', kind: 'credit-card' });
   const groceries = category({ id: 1, name: 'Groceries' });
   const accountsById = new Map([
     [cash.id!, cash],

@@ -139,7 +139,7 @@ describe('NetFlowCardComponent', () => {
   it('excludes a card-account purchase from the cash-basis flow', async () => {
     const card = await accountService.createCard({
       name: 'Visa',
-      linkedAccountId: eurAccountId,
+      currency: 'EUR',
     });
     const period = getCurrentPeriod();
     await transactionService.create(eurAccountId, expenseCategoryId, 100, new Date(), period);
@@ -154,7 +154,7 @@ describe('NetFlowCardComponent', () => {
   it('counts a Cash-to-Card Card Payment as an Expense in the flow', async () => {
     const card = await accountService.createCard({
       name: 'Visa',
-      linkedAccountId: eurAccountId,
+      currency: 'EUR',
     });
     const period = getCurrentPeriod();
     await transferService.create(
@@ -168,8 +168,8 @@ describe('NetFlowCardComponent', () => {
   });
 
   it('excludes Card-to-Cash and Card-to-Card Transfers from the flow', async () => {
-    const card = await accountService.createCard({ name: 'Visa', linkedAccountId: eurAccountId });
-    const card2 = await accountService.createCard({ name: 'Master', linkedAccountId: eurAccountId });
+    const card = await accountService.createCard({ name: 'Visa', currency: 'EUR' });
+    const card2 = await accountService.createCard({ name: 'Master', currency: 'EUR' });
     const period = getCurrentPeriod();
     const year = defaultScope().year;
     await transferService.create(card.id!, eurAccountId, 100, new Date(), period, '', 1, year);

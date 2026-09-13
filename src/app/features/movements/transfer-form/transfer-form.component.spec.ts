@@ -692,7 +692,6 @@ describe('TransferFormComponent', () => {
         initialBalance: -200,
         active: true,
         kind: 'credit-card',
-        linkedAccountId: eurAccountId,
         createdAt: new Date(),
       });
       paymentCategoryId = await db.categories.add({

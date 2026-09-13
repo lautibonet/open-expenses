@@ -7,8 +7,8 @@ import { getPeriodYear, monthNumberFromName } from '../core/types/period.type';
  * and store locale-sensitive values (English month names, `Income`/`Expense`
  * category types); version 2 stores locale-neutral values (month numbers
  * 1-12, `income`/`expense` codes). Version 3 carries the account kind and the
- * Credit Card fields (Linked Account, Limit, payment category), plus the
- * Card Payment category on a Transfer. See ADR 0009 and ADR 0022.
+ * Credit Card fields (Limit, payment category), plus the Card Payment
+ * category on a Transfer. See ADR 0009 and ADR 0022.
  */
 export const BACKUP_SCHEMA_VERSION = 3;
 
@@ -102,9 +102,11 @@ function migrateLegacyCategory(category: any): any {
 }
 
 /* ADR 0022: accounts persisted before the kind field existed are Cash
-   Accounts. Mirrors the v7 upgrade in database.ts. */
+   Accounts. Mirrors the v7 upgrade in database.ts. Snapshots from before the
+   Linked Account was dropped carry the orphan field; strip it. */
 function migrateLegacyAccount(account: any): any {
-  return { ...account, kind: account?.kind ?? 'cash' };
+  const { linkedAccountId: _dropped, ...rest } = account ?? {};
+  return { ...rest, kind: rest?.kind ?? 'cash' };
 }
 
 /**

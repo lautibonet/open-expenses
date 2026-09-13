@@ -6,19 +6,19 @@ import { createCategory } from './category.service';
 
 export interface CreateCardInput {
   name: string;
-  linkedAccountId: number;
+  currency: string;
   limit?: number | null;
   initialBalance?: number;
 }
 
 export interface AccountChanges {
   name?: string;
+  currency?: string;
   initialBalance?: number;
-  linkedAccountId?: number;
   limit?: number | null;
 }
 
-export type DeleteRefusalReason = 'movements' | 'linked-card';
+export type DeleteRefusalReason = 'movements';
 
 @Injectable({ providedIn: 'root' })
 export class AccountService {
@@ -49,8 +49,8 @@ export class AccountService {
     return { ...account, id };
   }
 
-  /* ADR 0022: a Credit Card's account is a Cash Account, its currency is
-     seeded from that account, and its initial balance is its starting debt —
+  /* ADR 0022: a Credit Card is tied to no Account — its currency is chosen
+     explicitly at creation and its initial balance is its starting debt,
      which may be negative. With consent, its payment category is created in
      the same transaction, named by the caller in the active Language. */
   async createCard(
@@ -61,18 +61,14 @@ export class AccountService {
     if (!trimmedName) {
       throw new TranslationError('errors.accountNameRequired');
     }
-    if (input.linkedAccountId == null) {
-      throw new TranslationError('errors.linkedAccountRequired');
+    const currency = input.currency?.trim().toUpperCase();
+    if (!currency) {
+      throw new TranslationError('errors.currencyRequired');
     }
 
     const existing = await db.accounts.where('name').equals(trimmedName).first();
     if (existing) {
       throw new TranslationError('errors.accountNameTaken', { name: trimmedName });
-    }
-
-    const linked = await db.accounts.get(input.linkedAccountId);
-    if (!linked || !isCashAccount(linked)) {
-      throw new TranslationError('errors.linkedAccountMustBeCash');
     }
 
     if (input.limit != null && input.limit < 0) {
@@ -85,11 +81,10 @@ export class AccountService {
         : null;
       const card: Account = {
         name: trimmedName,
-        currency: linked.currency,
+        currency,
         initialBalance: input.initialBalance ?? 0,
         active: true,
         kind: 'credit-card',
-        linkedAccountId: linked.id,
         createdAt: new Date(),
       };
       if (input.limit != null) {
@@ -123,20 +118,28 @@ export class AccountService {
       await db.accounts.update(id, { name: trimmedName });
     }
 
+    /* ADR 0022: an Account's currency is chosen at creation and can change
+       only while it has no movements — a currency change with recorded
+       movements would silently reinterpret history. */
+    if (changes.currency !== undefined) {
+      const currency = changes.currency.trim().toUpperCase();
+      if (currency !== account.currency) {
+        if (await this.hasMovements(id)) {
+          throw new TranslationError('errors.currencyHasMovements');
+        }
+        if (!currency) {
+          throw new TranslationError('errors.currencyRequired');
+        }
+        await db.accounts.update(id, { currency });
+      }
+    }
+
     if (changes.initialBalance !== undefined) {
       /* A Cash Account may not go negative; a Credit Card's is its debt. */
       if (!card && changes.initialBalance < 0) {
         throw new TranslationError('errors.initialBalanceNegative');
       }
       await db.accounts.update(id, { initialBalance: changes.initialBalance });
-    }
-
-    if (card && changes.linkedAccountId !== undefined) {
-      const linked = await db.accounts.get(changes.linkedAccountId);
-      if (!linked || !isCashAccount(linked)) {
-        throw new TranslationError('errors.linkedAccountMustBeCash');
-      }
-      await db.accounts.update(id, { linkedAccountId: changes.linkedAccountId });
     }
 
     if (card && changes.limit !== undefined) {
@@ -167,29 +170,19 @@ export class AccountService {
     return (await db.transfers.where('destinationAccountId').equals(id).count()) > 0;
   }
 
-  /* A Credit Card counts as a reference to its Linked Account (CONTEXT.md,
-     Delete): a Cash Account any card points to cannot be deleted. */
-  async hasCardReference(id: number): Promise<boolean> {
-    return (await db.accounts.where('linkedAccountId').equals(id).count()) > 0;
-  }
-
   /* What would refuse Delete, in the order the explanation is offered. */
   async getDeleteRefusal(id: number): Promise<DeleteRefusalReason | null> {
-    if (await this.hasCardReference(id)) return 'linked-card';
     if (await this.hasMovements(id)) return 'movements';
     return null;
   }
 
-  /* Delete-if-unused, never cascade (ADR 0018): an Account referenced by a
-     Credit Card or carrying movements is refused; an unused Account is
-     permanently removed. There is no guard on deleting the last Account. */
+  /* Delete-if-unused, never cascade (ADR 0018): an Account carrying movements
+     is refused; an unused Account is permanently removed. There is no guard
+     on deleting the last Account. */
   async delete(id: number): Promise<void> {
     const account = await db.accounts.get(id);
     if (!account) {
       throw new TranslationError('errors.accountNotFound');
-    }
-    if (await this.hasCardReference(id)) {
-      throw new TranslationError('errors.accountLinkedToCard');
     }
     if (await this.hasMovements(id)) {
       throw new TranslationError('errors.accountHasMovements');
