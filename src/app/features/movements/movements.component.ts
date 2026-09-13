@@ -415,7 +415,11 @@ export class MovementsComponent implements OnInit, OnDestroy {
         a.type === 'transaction' ? (a.data as Transaction).date : (a.data as Transfer).date;
       const dateB =
         b.type === 'transaction' ? (b.data as Transaction).date : (b.data as Transfer).date;
-      return new Date(dateB).getTime() - new Date(dateA).getTime();
+      const byDate = new Date(dateB).getTime() - new Date(dateA).getTime();
+      /* Same-day movements tie-break by id (creation order) so the newest
+         creation sorts first in the default descending view (#172). */
+      if (byDate !== 0) return byDate;
+      return (b.data.id ?? 0) - (a.data.id ?? 0);
     });
 
     this.movements.set(items);
