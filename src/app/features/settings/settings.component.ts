@@ -19,7 +19,7 @@ import { ProfileService } from '../../core/services/profile.service';
 import { LanguageService } from '../../core/services/language.service';
 import { DataVersionService } from '../../core/services/data-version.service';
 import { SUPPORTED_CURRENCIES } from '../../core/constants/currencies';
-import { Account } from '../../core/models/account.model';
+import { Account, paymentCategoryIds } from '../../core/models/account.model';
 import { Category, CategoryType } from '../../core/models/category.model';
 import { errorCopy, TranslationError } from '../../core/models/translation-error';
 import { BackupCardComponent } from './backup-card/backup-card.component';
@@ -70,7 +70,12 @@ export class SettingsComponent implements OnInit {
   supportedCurrencies = SUPPORTED_CURRENCIES;
   accounts = signal<Account[]>([]);
   cards = signal<Account[]>([]);
+  /* The categories the user curates. A card's Payment Category is a system
+     category: managed only through its card, it never appears in Settings. */
   categories = signal<Category[]>([]);
+  /* Every category, including system ones — the paired-deletion copies read
+     the payment category's name from here. */
+  allCategories = signal<Category[]>([]);
   baseCurrency = signal('EUR');
 
   newAccountName = signal('');
@@ -157,7 +162,10 @@ export class SettingsComponent implements OnInit {
   async refresh(): Promise<void> {
     this.accounts.set(await this.accountService.getCashAccounts());
     this.cards.set(await this.accountService.getCards());
-    this.categories.set(await this.categoryService.getAll());
+    const allCategories = await this.categoryService.getAll();
+    this.allCategories.set(allCategories);
+    const owned = paymentCategoryIds([...this.accounts(), ...this.cards()]);
+    this.categories.set(allCategories.filter((c) => !owned.has(c.id!)));
   }
 
   /* Creation lives behind a New button: the reveal resets the draft so
@@ -513,7 +521,7 @@ export class SettingsComponent implements OnInit {
     const card = this.cards().find((c) => c.id === cardId);
     const category =
       card?.paymentCategoryId != null
-        ? this.categories().find((c) => c.id === card.paymentCategoryId)
+        ? this.allCategories().find((c) => c.id === card.paymentCategoryId)
         : undefined;
     return category?.name ?? '';
   }
