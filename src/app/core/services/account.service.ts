@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { db } from '../db/database';
 import { Account, isCashAccount, isCreditCard } from '../models/account.model';
 import { TranslationError } from '../models/translation-error';
-import { findOrCreateCategory } from './category.service';
+import { categoryHasTransactions, findOrCreateCategory } from './category.service';
 import { LanguageService } from './language.service';
 
 export interface CreateCardInput {
@@ -20,6 +20,13 @@ export interface AccountChanges {
 }
 
 export type DeleteRefusalReason = 'movements';
+
+/* Issue #175: what happens to a card's paired payment category when the
+   card is deleted — 'delete' when the linked category is unused and goes
+   with the card, 'keep' when it carries transactions and survives (the
+   caller explains why), 'absent' when there is no link or the link is
+   dangling (a silent no-op). */
+export type PairedCategoryDeletion = 'delete' | 'keep' | 'absent';
 
 @Injectable({ providedIn: 'root' })
 export class AccountService {
@@ -193,10 +200,34 @@ export class AccountService {
     return null;
   }
 
+  /* Pre-check for the card delete confirm step (issue #175): it says what
+     the paired deletion will do before anything is removed, so the confirm
+     can warn about the payment category only when it actually will be
+     deleted. */
+  async pairedCategoryDeletion(id: number): Promise<PairedCategoryDeletion> {
+    const account = await db.accounts.get(id);
+    if (!account || account.paymentCategoryId == null) {
+      return 'absent';
+    }
+    const category = await db.categories.get(account.paymentCategoryId);
+    if (!category) {
+      return 'absent';
+    }
+    if (await categoryHasTransactions(account.paymentCategoryId)) {
+      return 'keep';
+    }
+    return 'delete';
+  }
+
   /* Delete-if-unused, never cascade (ADR 0018): an Account carrying movements
-     is refused; an unused Account is permanently removed. There is no guard
-     on deleting the last Account. */
-  async delete(id: number): Promise<void> {
+      is refused; an unused Account is permanently removed. There is no guard
+      on deleting the last Account. Amended 0022 (issue #175): deleting a card
+      also removes its paired payment category in the same transaction — but
+      only when the category itself has no transactions (deactivated
+      categories included); a category with transactions is kept and the
+      caller explains why with a page-level notice. A dangling link (the
+      category is already gone) is a silent no-op. */
+  async delete(id: number): Promise<PairedCategoryDeletion> {
     const account = await db.accounts.get(id);
     if (!account) {
       throw new TranslationError('errors.accountNotFound');
@@ -204,7 +235,21 @@ export class AccountService {
     if (await this.hasMovements(id)) {
       throw new TranslationError('errors.accountHasMovements');
     }
-    await db.accounts.delete(id);
+    return db.transaction('rw', db.accounts, db.categories, db.transactions, async () => {
+      await db.accounts.delete(id);
+      const categoryId = account.paymentCategoryId;
+      if (categoryId == null) {
+        return 'absent';
+      }
+      if (!(await db.categories.get(categoryId))) {
+        return 'absent';
+      }
+      if (await categoryHasTransactions(categoryId)) {
+        return 'keep';
+      }
+      await db.categories.delete(categoryId);
+      return 'delete';
+    });
   }
 
   async getAll(): Promise<Account[]> {

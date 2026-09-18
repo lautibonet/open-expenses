@@ -66,6 +66,14 @@ export async function findOrCreateCategory(name: string, type: CategoryType): Pr
   return createCategory(trimmedName, type);
 }
 
+/* The category movements predicate as a plain function, so callers that are
+   not DI-injected (the AccountService's paired-deletion transaction) can
+   reuse the same rule. Issue #175: for a Category, "has movements" means
+   "has transactions" — Transfers wearing the category never count. */
+export async function categoryHasTransactions(id: number): Promise<boolean> {
+  return (await db.transactions.where('categoryId').equals(id).count()) > 0;
+}
+
 @Injectable({ providedIn: 'root' })
 export class CategoryService {
   static defaultCategories(language: Language): { key: string; name: string; type: CategoryType }[] {
@@ -120,19 +128,21 @@ export class CategoryService {
     await db.categories.update(id, { active });
   }
 
-  /* ADR 0018: a Category has movements when any Transaction references it. */
-  async hasMovements(id: number): Promise<boolean> {
-    return (await db.transactions.where('categoryId').equals(id).count()) > 0;
+  /* ADR 0018, issue #175: for a Category, "has movements" means "has
+     transactions" — this guard counts Transaction references only, never
+     Transfers wearing the category, so it says so. */
+  async hasTransactions(id: number): Promise<boolean> {
+    return categoryHasTransactions(id);
   }
 
   /* Delete-if-unused, never cascade (ADR 0018): a Category referenced by a
-     Transaction is refused; an unused Category is permanently removed. */
+      Transaction is refused; an unused Category is permanently removed. */
   async delete(id: number): Promise<void> {
     const category = await db.categories.get(id);
     if (!category) {
       throw new TranslationError('errors.categoryNotFound');
     }
-    if (await this.hasMovements(id)) {
+    if (await this.hasTransactions(id)) {
       throw new TranslationError('errors.categoryHasMovements');
     }
     await db.categories.delete(id);

@@ -319,6 +319,23 @@ app-erase-card {
   }
 }
 
+/* Issue #175 paired-deletion warning: under the card row, in the confirm
+   step, saying the payment category is deleted together with the card. */
+.paired-category-warning {
+  flex: 1 1 100%;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+
+  p {
+    margin: 0;
+    font-size: var(--type-caption);
+    color: var(--error);
+  }
+}
+
 .card-value {
   display: flex;
   align-items: center;

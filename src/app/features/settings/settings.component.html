@@ -13,6 +13,15 @@
     [resetKey]="statusEpoch()"
   />
 
+  <!-- Issue #175: page-level notice explaining why a card's paired payment
+       category survived its deletion. -->
+  <app-dismissible-alert
+    role="status"
+    variant="info"
+    [message]="pageNotice()"
+    [resetKey]="statusEpoch()"
+  />
+
   <div class="settings-top-row">
     <section class="card">
       <h2>
@@ -728,6 +737,23 @@
                 <button type="button" class="btn small" (click)="cancelRefuseCard()">
                   {{ language.t('settings.cancel') }}
                 </button>
+              </div>
+            }
+            @if (
+              confirmingCardDelete() === card.id &&
+              pairedCardCategory() === 'delete' &&
+              pairedCardCategoryName()
+            ) {
+              <!-- Issue #175: the paired-deletion pre-check says the payment
+                   category goes with the card, so the confirm warns visibly. -->
+              <div class="paired-category-warning" role="alert">
+                <p>
+                  {{
+                    language.t('settings.cardDeletePairedWarning', {
+                      name: pairedCardCategoryName(),
+                    })
+                  }}
+                </p>
               </div>
             }
           }

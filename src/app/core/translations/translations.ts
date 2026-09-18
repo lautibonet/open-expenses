@@ -152,6 +152,14 @@ const en: Record<string, string> = {
   'settings.deleteCategoryAria': 'Delete category',
   'settings.accountDeletePrompt': 'Delete this account? This is permanent.',
   'settings.cardDeletePrompt': 'Delete this card? This is permanent.',
+  /* Issue #175: shown in the confirm step only when the paired-deletion
+     pre-check says the card's payment category will be deleted too. */
+  'settings.cardDeletePairedWarning':
+    'This also permanently deletes the payment category "{name}".',
+  /* Issue #175: page-level notice when the paired category survives because
+     it carries transactions. */
+  'settings.cardDeleteCategoryKept':
+    'The payment category "{name}" has transactions, so it was kept. Deactivate it instead if you no longer need it.',
   'settings.categoryDeletePrompt': 'Delete this category? This is permanent.',
   'settings.confirmDeletionAria': 'Confirm deletion',
   'settings.cancelDeletionAria': 'Cancel deletion',
@@ -552,6 +560,10 @@ const es: Record<string, string> = {
   'settings.deleteCategoryAria': 'Eliminar categoría',
   'settings.accountDeletePrompt': '¿Eliminar esta cuenta? Es permanente.',
   'settings.cardDeletePrompt': '¿Eliminar esta tarjeta? Es permanente.',
+  'settings.cardDeletePairedWarning':
+    'Esto también elimina permanentemente la categoría de pago "{name}".',
+  'settings.cardDeleteCategoryKept':
+    'La categoría de pago "{name}" tiene transacciones, así que se conservó. Desactívala en su lugar si ya no la necesitas.',
   'settings.categoryDeletePrompt': '¿Eliminar esta categoría? Es permanente.',
   'settings.confirmDeletionAria': 'Confirmar eliminación',
   'settings.cancelDeletionAria': 'Cancelar eliminación',
