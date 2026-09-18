@@ -1679,7 +1679,7 @@ describe('SettingsComponent - credit cards (ADR 0022)', () => {
     expect(card!.active).toBe(true);
     expect(card!.paymentCategoryId).toBeDefined();
 
-    const category = component.categories().find((c) => c.name === 'Visa payment');
+    const category = component.allCategories().find((c) => c.name === 'Visa payment');
     expect(category).toBeDefined();
     expect(category!.type).toBe('expense');
     expect(component.addingCard()).toBe(false);
@@ -1691,21 +1691,24 @@ describe('SettingsComponent - credit cards (ADR 0022)', () => {
     component.newCardName.set('Visa');
     await component.addCard();
 
-    expect(component.categories().some((c) => c.name === 'Pago Visa')).toBe(true);
+    expect(component.allCategories().some((c) => c.name === 'Pago Visa')).toBe(true);
   });
 
-  // Issue #174: the payment category vanishes from the ordinary pickers but
-  // stays visible and manageable in the Settings category list.
-  it('renders the payment category in the Settings category list', async () => {
+  // The payment category is a system category: it is managed only through its
+  // card, so Settings lists the categories the user curates and nothing else.
+  it('does not render the payment category in the Settings category list', async () => {
+    await categoryService.create('Food', 'expense');
     component.startAddCard();
     component.newCardName.set('Visa');
     await component.addCard();
+    await component.refresh();
     fixture.detectChanges();
 
-    const row = Array.from(
+    const rows = Array.from(
       fixture.nativeElement.querySelectorAll('.category-row') as NodeListOf<HTMLElement>,
-    ).find((r) => r.textContent!.includes('Visa payment'));
-    expect(row).toBeDefined();
+    );
+    expect(rows.some((r) => r.textContent!.includes('Visa payment'))).toBe(false);
+    expect(rows.some((r) => r.textContent!.includes('Food'))).toBe(true);
   });
 
   it('keeps the form open and shows the standard error when creation fails', async () => {
