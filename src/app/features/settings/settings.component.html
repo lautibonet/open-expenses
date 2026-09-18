@@ -468,15 +468,6 @@
             [attr.aria-label]="language.t('settings.limit')"
           />
         </label>
-        <label class="consent">
-          <input
-            type="checkbox"
-            [ngModel]="newCardCreateCategory()"
-            (ngModelChange)="newCardCreateCategory.set($event)"
-          />
-          <span class="consent-label">{{ language.t('settings.createPaymentCategory') }}</span>
-          <small class="consent-hint">{{ language.t('settings.createPaymentCategoryHint') }}</small>
-        </label>
         <div class="form-actions">
           <button type="button" class="btn dashed" (click)="addCard()">
             + {{ language.t('settings.addCard') }}

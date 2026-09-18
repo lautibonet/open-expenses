@@ -4069,10 +4069,7 @@ describe('MovementsComponent - card movement display treatment (#168)', () => {
 
     const cash = await accountService.create('Checking', 'EUR', 100000);
     cashId = cash.id!;
-    const card = await accountService.createCard(
-      { name: 'Visa', currency: 'EUR' },
-      'Visa payment',
-    );
+    const card = await accountService.createCard({ name: 'Visa', currency: 'EUR' });
     cardId = card.id!;
     paymentCategoryId = card.paymentCategoryId!;
     const food = await categoryService.create('Food', 'expense');

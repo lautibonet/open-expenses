@@ -78,7 +78,6 @@ export class SettingsComponent implements OnInit {
   newCardLimit = signal<number | null>(null);
   /* Null while the field is empty; an empty field creates the card with debt 0. */
   newCardBalance = signal<number | null>(null);
-  newCardCreateCategory = signal(true);
   newCategoryName = signal('');
   newCategoryType = signal<CategoryType>('expense');
   addingAccount = signal(false);
@@ -388,7 +387,6 @@ export class SettingsComponent implements OnInit {
     this.newCardCurrency.set(this.baseCurrency());
     this.newCardLimit.set(null);
     this.newCardBalance.set(null);
-    this.newCardCreateCategory.set(true);
     this.clearStatus();
     this.addingCard.set(true);
   }
@@ -400,19 +398,13 @@ export class SettingsComponent implements OnInit {
 
   async addCard(): Promise<void> {
     this.clearStatus();
-    const name = this.newCardName().trim();
     try {
-      await this.accountService.createCard(
-        {
-          name: this.newCardName(),
-          currency: this.newCardCurrency(),
-          limit: this.newCardLimit(),
-          initialBalance: this.newCardBalance() ?? 0,
-        },
-        this.newCardCreateCategory()
-          ? this.language.t('category.cardPayment', { name })
-          : null,
-      );
+      await this.accountService.createCard({
+        name: this.newCardName(),
+        currency: this.newCardCurrency(),
+        limit: this.newCardLimit(),
+        initialBalance: this.newCardBalance() ?? 0,
+      });
       this.addingCard.set(false);
       this.newCardName.set('');
       this.newCardBalance.set(null);

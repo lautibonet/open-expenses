@@ -6,6 +6,10 @@ Card spending follows the owner's cash-basis philosophy: Expenses measure money 
 
 The category graph counts spending, not cash: every purchase — cash or credit — appears under its real category, each bar split into what was paid with cash and what with credit, while the Card Payment's category is excluded from the graph so nothing double counts. The totals and the graph therefore measure different things and may disagree within a Period (and wherever debt is carried); they agree once every card is fully settled.
 
+## Amendment: the Payment Category became structural
+
+Originally the category was optional — created "with consent" via a checkbox, and a card could exist without one, the Transfer Form then falling back to a name match or a manual pick. In practice the checkbox was a decision the user had no interesting way to make: the category is plumbing for Card Payments, not a classification the user curates. The Payment Category is now provisioned unconditionally with the card, in the same transaction: a pre-existing category with that name is linked rather than duplicated (card names are unique, so two cards can never share one), every legacy card gets one in a DB migration, renaming the card renames the category (a name collision fails the whole rename), and it is hidden from every surface that picks categories for ordinary work (this amendment and its companion tickets: transfer-form read-only, picker hiding, paired deletion).
+
 ## Considered options
 
 - **Separate CreditCard entity + "card purchase" and "card payment" movement types** — rejected: duplicates balances, periods, and reporting machinery, while the settlement semantics would still have to be designed from scratch.
@@ -17,7 +21,7 @@ The category graph counts spending, not cash: every purchase — cash or credit 
 
 - A card account may start with debt: its initial balance is unconstrained (typically negative), while Cash Accounts keep the non-negative rule.
 - An Account's currency is chosen at creation and can change only while it has no movements: a currency change with recorded movements would silently reinterpret history, so the service refuses it.
-- Card Payments carry a required, Expense-type category created with consent when the card is created (e.g. "Visa payment" / "Pago Visa"), pre-filled deterministically in the Transfer Form; it labels the payment but never reaches the category graph.
+- Card Payments carry a required, Expense-type category — the card's Payment Category — provisioned when the card is created (e.g. "Visa payment" / "Pago Visa") and shown read-only in the Transfer Form; it labels the payment but never reaches the category graph. See the amendment below.
 - A refund recorded on a card counts nowhere: it cancels debt, and the smaller later statement carries the correction into Expenses through a smaller Card Payment.
 - Interest and fees are never recorded separately — they ride inside the Statement total and reach Expenses through the Card Payment.
 - A card purchase can exceed the Limit: that warns inline, never blocks.

@@ -1655,16 +1655,15 @@ describe('SettingsComponent - credit cards (ADR 0022)', () => {
     return rows.find((r) => r.textContent!.includes(name))!;
   }
 
-  it('reveals the card form with the base currency and consent checked', () => {
+  it('reveals the card form with the base currency, with no payment-category consent', () => {
     component.startAddCard();
     expect(component.addingCard()).toBe(true);
     expect(component.newCardCurrency()).toBe('EUR');
-    expect(component.newCardCreateCategory()).toBe(true);
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('input[type="checkbox"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('input[type="checkbox"]')).toBeFalsy();
   });
 
-  it('creates a card with its payment category when consent is given', async () => {
+  it('creates a card with its payment category', async () => {
     component.startAddCard();
     component.newCardName.set('Visa');
     component.newCardBalance.set(-50000);
@@ -1678,21 +1677,12 @@ describe('SettingsComponent - credit cards (ADR 0022)', () => {
     expect(card!.initialBalance).toBe(-50000);
     expect(card!.limit).toBe(200000);
     expect(card!.active).toBe(true);
+    expect(card!.paymentCategoryId).toBeDefined();
 
     const category = component.categories().find((c) => c.name === 'Visa payment');
     expect(category).toBeDefined();
     expect(category!.type).toBe('expense');
     expect(component.addingCard()).toBe(false);
-  });
-
-  it('creates no payment category when consent is declined', async () => {
-    component.startAddCard();
-    component.newCardName.set('Visa');
-    component.newCardCreateCategory.set(false);
-    await component.addCard();
-
-    expect(component.cards().length).toBe(1);
-    expect(component.categories().some((c) => c.name === 'Visa payment')).toBe(false);
   });
 
   it('names the payment category in the active Language', async () => {
@@ -1735,10 +1725,12 @@ describe('SettingsComponent - credit cards (ADR 0022)', () => {
   });
 
   it('renders the card name, currency, limit and starting debt', async () => {
-    await accountService.createCard(
-      { name: 'Visa', currency: 'EUR', initialBalance: -5000, limit: 10000 },
-      null,
-    );
+    await accountService.createCard({
+      name: 'Visa',
+      currency: 'EUR',
+      initialBalance: -5000,
+      limit: 10000,
+    });
     await component.refresh();
     fixture.detectChanges();
 
