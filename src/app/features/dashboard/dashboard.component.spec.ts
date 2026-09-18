@@ -1145,7 +1145,7 @@ describe('DashboardComponent - page header, scope control and restyled cards', (
 
   it('excludes a card payment category from the spending graph', async () => {
     const cash = await accountService.create('Cash', 'EUR', 0);
-    await accountService.createCard({ name: 'Visa', currency: 'EUR' }, 'Visa payment');
+    await accountService.createCard({ name: 'Visa', currency: 'EUR' });
     const payment = (await categoryService.getAll()).find(c => c.name === 'Visa payment')!;
     const food = await categoryService.create('Food', 'expense');
     const period = getCurrentPeriod();

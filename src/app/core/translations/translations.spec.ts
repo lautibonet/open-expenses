@@ -77,7 +77,6 @@ describe('translations', () => {
       'settings.addCard',
       'settings.startingDebt',
       'settings.limit',
-      'settings.createPaymentCategory',
       'settings.editCardAria',
       'settings.deleteCardAria',
       'settings.cardDeletePrompt',

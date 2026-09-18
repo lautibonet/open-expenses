@@ -250,8 +250,7 @@ describe('TransferService', () => {
         currency: 'EUR',
       });
       cardId = card.id!;
-      const expense = await categoryService.create('Visa payment', 'expense');
-      expenseId = expense.id!;
+      expenseId = card.paymentCategoryId!;
       const income = await categoryService.create('Salary', 'income');
       incomeId = income.id!;
     });

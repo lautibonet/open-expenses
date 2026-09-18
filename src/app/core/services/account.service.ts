@@ -1,8 +1,9 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { db } from '../db/database';
 import { Account, isCashAccount, isCreditCard } from '../models/account.model';
 import { TranslationError } from '../models/translation-error';
-import { createCategory } from './category.service';
+import { findOrCreateCategory } from './category.service';
+import { LanguageService } from './language.service';
 
 export interface CreateCardInput {
   name: string;
@@ -22,6 +23,8 @@ export type DeleteRefusalReason = 'movements';
 
 @Injectable({ providedIn: 'root' })
 export class AccountService {
+  private languageService = inject(LanguageService);
+
   async create(name: string, currency: string, initialBalance: number): Promise<Account> {
     const trimmedName = name.trim();
     if (!trimmedName) {
@@ -51,12 +54,11 @@ export class AccountService {
 
   /* ADR 0022: a Credit Card is tied to no Account — its currency is chosen
      explicitly at creation and its initial balance is its starting debt,
-     which may be negative. With consent, its payment category is created in
-     the same transaction, named by the caller in the active Language. */
-  async createCard(
-    input: CreateCardInput,
-    paymentCategoryName?: string | null,
-  ): Promise<Account> {
+     which may be negative. Amended 0022 (ticket #172): the payment category
+     is no longer optional — every card owns one, provisioned in the same
+     transaction and named in the active Language; a pre-existing category
+     with that name is linked, not duplicated. */
+  async createCard(input: CreateCardInput): Promise<Account> {
     const trimmedName = input.name.trim();
     if (!trimmedName) {
       throw new TranslationError('errors.accountNameRequired');
@@ -76,22 +78,21 @@ export class AccountService {
     }
 
     return db.transaction('rw', db.accounts, db.categories, async () => {
-      const paymentCategory = paymentCategoryName
-        ? await createCategory(paymentCategoryName, 'expense')
-        : null;
+      const paymentCategory = await findOrCreateCategory(
+        this.languageService.t('category.cardPayment', { name: trimmedName }),
+        'expense',
+      );
       const card: Account = {
         name: trimmedName,
         currency,
         initialBalance: input.initialBalance ?? 0,
         active: true,
         kind: 'credit-card',
+        paymentCategoryId: paymentCategory.id,
         createdAt: new Date(),
       };
       if (input.limit != null) {
         card.limit = input.limit;
-      }
-      if (paymentCategory) {
-        card.paymentCategoryId = paymentCategory.id;
       }
 
       const id = await db.accounts.add(card);
@@ -115,7 +116,23 @@ export class AccountService {
       if (existing && existing.id !== id) {
         throw new TranslationError('errors.accountNameTaken', { name: trimmedName });
       }
-      await db.accounts.update(id, { name: trimmedName });
+      /* Amended 0022: a card owns its payment category, so the category
+         follows the name; a collision fails the whole rename atomically. */
+      if (card && account.paymentCategoryId != null) {
+        const paymentName = this.languageService.t('category.cardPayment', {
+          name: trimmedName,
+        });
+        await db.transaction('rw', db.accounts, db.categories, async () => {
+          const taken = await db.categories.where('name').equals(paymentName).first();
+          if (taken && taken.id !== account.paymentCategoryId) {
+            throw new TranslationError('errors.categoryNameTaken', { name: paymentName });
+          }
+          await db.accounts.update(id, { name: trimmedName });
+          await db.categories.update(account.paymentCategoryId!, { name: paymentName });
+        });
+      } else {
+        await db.accounts.update(id, { name: trimmedName });
+      }
     }
 
     /* ADR 0022: an Account's currency is chosen at creation and can change

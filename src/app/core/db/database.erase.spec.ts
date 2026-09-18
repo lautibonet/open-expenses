@@ -1,3 +1,4 @@
+import { TestBed } from '@angular/core/testing';
 import { db, eraseAllLocalData } from './database';
 import { AccountService } from '../services/account.service';
 import { CategoryService } from '../services/category.service';
@@ -11,9 +12,10 @@ describe('eraseAllLocalData', () => {
   beforeEach(async () => {
     await db.delete();
     await db.open();
-    accountService = new AccountService();
-    categoryService = new CategoryService();
-    profileService = new ProfileService();
+    TestBed.configureTestingModule({});
+    accountService = TestBed.inject(AccountService);
+    categoryService = TestBed.inject(CategoryService);
+    profileService = TestBed.inject(ProfileService);
 
     await accountService.create('Cash', 'EUR', 100);
     await accountService.create('Bank', 'USD', 500);

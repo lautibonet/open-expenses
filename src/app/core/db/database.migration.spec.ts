@@ -162,6 +162,143 @@ describe('database v7 upgrade (account kind)', () => {
   });
 });
 
+describe('database v8 upgrade (every card owns its payment category)', () => {
+  class LegacyDatabaseV7 extends Dexie {
+    constructor() {
+      super('open-expenses-v2');
+      this.version(7).stores({
+        accounts: '++id, name, currency, active, kind',
+        categories: '++id, name, type, active',
+        transactions: '++id, accountId, categoryId, date, period, year',
+        transfers: '++id, sourceAccountId, destinationAccountId, date, period, year',
+        profile: 'id',
+      });
+    }
+  }
+
+  let legacy: LegacyDatabaseV7;
+
+  beforeEach(async () => {
+    await db.delete();
+    legacy = new LegacyDatabaseV7();
+    await legacy.open();
+  });
+
+  afterEach(async () => {
+    legacy.close();
+    await db.delete();
+  });
+
+  async function seedProfile(language: string): Promise<void> {
+    await legacy.table('profile').add({
+      id: 1,
+      baseCurrency: 'EUR',
+      language,
+      onboardingCompleted: true,
+      lastBackupAt: null,
+    });
+  }
+
+  it('finds or creates a payment category and links the legacy card', async () => {
+    await legacy.table('accounts').bulkAdd([
+      {
+        name: 'Cash', currency: 'EUR', initialBalance: 1000, active: true,
+        kind: 'cash', createdAt: new Date(),
+      },
+      {
+        name: 'Visa', currency: 'EUR', initialBalance: -500, active: true,
+        kind: 'credit-card', createdAt: new Date(),
+      },
+    ]);
+    legacy.close();
+
+    await db.open();
+
+    const card = (await db.accounts.toArray()).find((a) => a.name === 'Visa')!;
+    expect(card.paymentCategoryId).toBeDefined();
+    const category = (await db.categories.get(card.paymentCategoryId!))!;
+    expect(category.name).toBe('Visa payment');
+    expect(category.type).toBe('expense');
+    expect((await db.categories.toArray()).length).toBe(1);
+  });
+
+  it('links an existing category with the payment name instead of duplicating it', async () => {
+    const existingId = await legacy.table('categories').add({
+      name: 'Visa payment',
+      type: 'expense',
+      active: true,
+      createdAt: new Date(),
+    });
+    await legacy.table('accounts').add({
+      name: 'Visa', currency: 'EUR', initialBalance: -500, active: true,
+      kind: 'credit-card', createdAt: new Date(),
+    });
+    legacy.close();
+
+    await db.open();
+
+    const card = (await db.accounts.toArray()).find((a) => a.name === 'Visa')!;
+    expect(card.paymentCategoryId).toBe(existingId);
+    expect((await db.categories.toArray()).length).toBe(1);
+  });
+
+  it('names the created category in the profile language', async () => {
+    await seedProfile('es');
+    await legacy.table('accounts').add({
+      name: 'Visa', currency: 'EUR', initialBalance: -500, active: true,
+      kind: 'credit-card', createdAt: new Date(),
+    });
+    legacy.close();
+
+    await db.open();
+
+    const card = (await db.accounts.toArray()).find((a) => a.name === 'Visa')!;
+    expect((await db.categories.get(card.paymentCategoryId!))!.name).toBe('Pago Visa');
+  });
+
+  it('leaves cards that already have a payment category untouched', async () => {
+    const categoryId = await legacy.table('categories').add({
+      name: 'Mine',
+      type: 'expense',
+      active: true,
+      createdAt: new Date(),
+    });
+    await legacy.table('accounts').bulkAdd([
+      {
+        name: 'Visa', currency: 'EUR', initialBalance: -500, active: true,
+        kind: 'credit-card', paymentCategoryId: categoryId, createdAt: new Date(),
+      },
+      {
+        name: 'Master', currency: 'EUR', initialBalance: 0, active: true,
+        kind: 'credit-card', createdAt: new Date(),
+      },
+    ]);
+    legacy.close();
+
+    await db.open();
+
+    const visa = (await db.accounts.toArray()).find((a) => a.name === 'Visa')!;
+    expect(visa.paymentCategoryId).toBe(categoryId);
+    const master = (await db.accounts.toArray()).find((a) => a.name === 'Master')!;
+    expect(master.paymentCategoryId).toBeDefined();
+    expect((await db.categories.toArray()).length).toBe(2);
+  });
+
+  it('leaves cash accounts without a payment category', async () => {
+    await legacy.table('accounts').add({
+      name: 'Cash', currency: 'EUR', initialBalance: 1000, active: true,
+      kind: 'cash', createdAt: new Date(),
+    });
+    legacy.close();
+
+    await db.open();
+
+    const cash = (await db.accounts.toArray()).find((a) => a.name === 'Cash')!;
+    expect(cash.paymentCategoryId).toBeUndefined();
+    expect((await db.categories.toArray()).length).toBe(0);
+  });
+});
+
 describe('database v6 upgrade (local-midnight dates)', () => {
   let legacy: LegacyDatabaseV4;
 

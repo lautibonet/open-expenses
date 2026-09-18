@@ -133,9 +133,6 @@ const en: Record<string, string> = {
   'settings.initialBalance': 'Initial balance',
   'settings.startingDebt': 'Starting debt',
   'settings.limit': 'Limit',
-  'settings.createPaymentCategory': 'Create payment category',
-  'settings.createPaymentCategoryHint':
-    "Creates a category for this card's payments; it's pre-filled when you pay the card.",
   'settings.status': 'Status',
   'settings.type': 'Type',
   'settings.active': 'Active',
@@ -542,9 +539,6 @@ const es: Record<string, string> = {
   'settings.initialBalance': 'Saldo inicial',
   'settings.startingDebt': 'Deuda inicial',
   'settings.limit': 'Límite',
-  'settings.createPaymentCategory': 'Crear categoría de pago',
-  'settings.createPaymentCategoryHint':
-    'Crea una categoría para los pagos de esta tarjeta; se rellena al pagar.',
   'settings.status': 'Estado',
   'settings.type': 'Tipo',
   'settings.active': 'Activa',

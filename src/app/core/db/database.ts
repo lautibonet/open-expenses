@@ -4,7 +4,9 @@ import { Category, categoryTypeFromLegacy } from '../models/category.model';
 import { Transaction } from '../models/transaction.model';
 import { Transfer } from '../models/transfer.model';
 import { Profile } from '../models/profile.model';
+import { DEFAULT_LANGUAGE, isLanguage, Language } from '../types/language.type';
 import { getPeriodYear, monthNumberFromName } from '../types/period.type';
+import { translate } from '../translations/translations';
 
 interface LegacyTransfer {
   id?: number;
@@ -167,6 +169,37 @@ export class AppDatabase extends Dexie {
         if (account.kind == null) {
           await tx.table('accounts').update(account.id!, { kind: 'cash' });
         }
+      }
+    });
+    /* Amended ADR 0022: every Credit Card owns its payment category. Cards
+       created before the link was mandatory get one — found by the payment
+       name in the profile's Language, or created — in the same upgrade. */
+    this.version(8).stores({
+      accounts: '++id, name, currency, active, kind',
+      categories: '++id, name, type, active',
+      transactions: '++id, accountId, categoryId, date, period, year',
+      transfers: '++id, sourceAccountId, destinationAccountId, date, period, year',
+      profile: 'id',
+    }).upgrade(async tx => {
+      const profiles = await tx.table('profile').toArray();
+      const profile = profiles[0] as Profile | undefined;
+      const language: Language =
+        profile && isLanguage(profile.language) ? profile.language : DEFAULT_LANGUAGE;
+      const cards = await tx.table('accounts').where('kind').equals('credit-card').toArray();
+      for (const card of cards) {
+        if (card.paymentCategoryId != null) continue;
+        const name = translate(language, 'category.cardPayment', { name: card.name });
+        let category = await tx.table('categories').where('name').equals(name).first();
+        if (!category) {
+          const id = await tx.table('categories').add({
+            name,
+            type: 'expense',
+            active: true,
+            createdAt: new Date(),
+          });
+          category = (await tx.table('categories').get(id)) as Category;
+        }
+        await tx.table('accounts').update(card.id!, { paymentCategoryId: category.id });
       }
     });
   }

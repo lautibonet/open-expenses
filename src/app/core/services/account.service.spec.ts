@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { AccountService } from './account.service';
+import { LanguageService } from './language.service';
 import { db } from '../db/database';
 import { TranslationError } from '../models/translation-error';
 
@@ -324,31 +325,57 @@ describe('AccountService - credit cards (ADR 0022)', () => {
       .rejects.toThrow('errors.cardLimitNegative');
   });
 
-  it('creates the payment category with consent and links it to the card', async () => {
-    const card = await service.createCard({ name: 'Visa', currency: 'EUR' }, 'Visa payment');
+  it('always creates a payment category and links it to the card', async () => {
+    const card = await service.createCard({ name: 'Visa', currency: 'EUR' });
     const categories = await db.categories.toArray();
     const payment = categories.find((c) => c.name === 'Visa payment')!;
     expect(payment.type).toBe('expense');
     expect(card.paymentCategoryId).toBe(payment.id);
   });
 
-  it('creates nothing when consent is declined', async () => {
-    const card = await service.createCard({ name: 'Visa', currency: 'EUR' }, null);
-    expect(await db.categories.count()).toBe(0);
-    expect(card.paymentCategoryId).toBeUndefined();
+  it('names the payment category in the active language', async () => {
+    await TestBed.inject(LanguageService).setLanguage('es');
+    const card = await service.createCard({ name: 'Visa', currency: 'EUR' });
+    const payment = (await db.categories.get(card.paymentCategoryId!))!;
+    expect(payment.name).toBe('Pago Visa');
   });
 
-  it('rolls the card back when its payment category already exists', async () => {
-    await db.categories.add({
+  it('links the pre-existing category when the payment name is taken', async () => {
+    const existingId = await db.categories.add({
       name: 'Visa payment',
       type: 'expense',
       active: true,
       createdAt: new Date(),
     });
-    await expect(
-      service.createCard({ name: 'Visa', currency: 'EUR' }, 'Visa payment'),
-    ).rejects.toThrow('errors.categoryNameTaken');
-    expect(await db.accounts.where('kind').equals('credit-card').count()).toBe(0);
+    const card = await service.createCard({ name: 'Visa', currency: 'EUR' });
+    expect(card.paymentCategoryId).toBe(existingId);
+    expect(await db.categories.count()).toBe(1);
+    expect(await db.accounts.where('kind').equals('credit-card').count()).toBe(1);
+  });
+
+  it('renames the payment category when the card is renamed', async () => {
+    const card = await service.createCard({ name: 'Visa', currency: 'EUR' });
+    await service.update(card.id!, { name: 'Amex' });
+    const category = await db.categories.get(card.paymentCategoryId!);
+    expect(category!.name).toBe('Amex payment');
+  });
+
+  it('fails the card rename when the new payment name is taken, leaving both untouched', async () => {
+    const card = await service.createCard({ name: 'Visa', currency: 'EUR' });
+    await db.categories.add({
+      name: 'Amex payment',
+      type: 'expense',
+      active: true,
+      createdAt: new Date(),
+    });
+
+    await expect(service.update(card.id!, { name: 'Amex' })).rejects.toMatchObject({
+      key: 'errors.categoryNameTaken',
+      params: { name: 'Amex payment' },
+    });
+
+    expect((await service.getById(card.id!))!.name).toBe('Visa');
+    expect((await db.categories.get(card.paymentCategoryId!))!.name).toBe('Visa payment');
   });
 
   it('edits a card name, starting debt, limit and currency while it has no movements', async () => {

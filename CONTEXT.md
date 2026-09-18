@@ -17,12 +17,16 @@ A named place where the user holds money — a Cash Account — or owes money �
 _Avoid_: Wallet, bank account, source
 
 **Credit Card**:
-An Account that represents money the user owes rather than holds: spending on it uses the bank's credit, not the user's money. Created with a name, a currency, an optional Limit — a ceiling on its debt that warns and is shown as used-of-limit on Stats, but never blocks — and an initial debt defaulted to zero. Its balance is its outstanding debt: it goes negative with every Card Purchase and returns toward zero with every Card Payment. Managed in Settings; never created during Onboarding.
+An Account that represents money the user owes rather than holds: spending on it uses the bank's credit, not the user's money. Created with a name, a currency, an optional Limit — a ceiling on its debt that warns and is shown as used-of-limit on Stats, but never blocks — and an initial debt defaulted to zero, together with its own Payment Category. Its balance is its outstanding debt: it goes negative with every Card Purchase and returns toward zero with every Card Payment. Managed in Settings; never created during Onboarding.
 _Avoid_: credit line, revolving credit
 
 **Card Payment**:
-A Transfer from a Cash Account into a Credit Card that settles card debt — the moment the user pays a Statement, in full or in part, from any Account, possibly several times in one Period. It counts as an Expense in the Income and Expenses totals and in Net, under a required category created for the card (e.g. "Visa payment" / "Pago Visa"). That category labels the payment but never reaches the category graph, where it would double-count what the settled purchases already report. Interest and fees ride inside the Statement total and reach Expenses the same way — never recorded separately.
+A Transfer from a Cash Account into a Credit Card that settles card debt — the moment the user pays a Statement, in full or in part, from any Account, possibly several times in one Period. It counts as an Expense in the Income and Expenses totals and in Net, under the card's Payment Category. That category labels the payment but never reaches the category graph, where it would double-count what the settled purchases already report. Interest and fees ride inside the Statement total and reach Expenses the same way — never recorded separately.
 _Avoid_: statement payment, pay credit card, card settlement
+
+**Payment Category**:
+The Expense category a Credit Card owns for labeling its Card Payments, named after the card in the active Language ("Visa payment" / "Pago Visa") and provisioned together with the card — created, or linked when that name is already taken. Renaming the card renames it. It is plumbing for the Card Payment, not a classification the user curates: it never reaches the category graph and never appears where categories are picked for ordinary work; it is visible only in Settings, alongside its card.
+_Avoid_: card category, payment type
 
 **Statement**:
 The monthly summary a card's issuer produces: what was billed, what is due, and by when. The app never stores or computes it — it is the source of truth the user reads from when recording. The card's balance always shows the total debt, not the Statement's due amount, and the app offers no statement-cycle view.

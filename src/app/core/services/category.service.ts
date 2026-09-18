@@ -52,6 +52,20 @@ export async function createCategory(name: string, type: CategoryType): Promise<
   return { ...category, id };
 }
 
+/* Find-or-create, for callers that provision a paired category (the Account
+   Service's card transaction): a category whose name is already taken is
+   linked, not duplicated, and never fails the caller. */
+export async function findOrCreateCategory(name: string, type: CategoryType): Promise<Category> {
+  assertCategoryType(type);
+  const trimmedName = name.trim();
+  if (!trimmedName) {
+    throw new TranslationError('errors.categoryNameRequired');
+  }
+  const existing = await db.categories.where('name').equals(trimmedName).first();
+  if (existing) return existing;
+  return createCategory(trimmedName, type);
+}
+
 @Injectable({ providedIn: 'root' })
 export class CategoryService {
   static defaultCategories(language: Language): { key: string; name: string; type: CategoryType }[] {
