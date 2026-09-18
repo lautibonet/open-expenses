@@ -109,7 +109,7 @@
   <ng-template #transactionForm>
     <app-transaction-form
       [accounts]="accounts()"
-      [categories]="categories()"
+      [categories]="pickableCategories()"
       [baseCurrency]="baseCurrency()"
       [editTransaction]="editTransaction()"
       [initialDraft]="transactionRestore()"
@@ -163,7 +163,7 @@
           {{ language.t('movements.category') }}
           <select [ngModel]="filterCategory() ?? 0" (ngModelChange)="filterCategory.set(+$event || null)">
             <option [value]="0">{{ language.t('movements.allCategories') }}</option>
-            @for (cat of categories(); track cat.id) {
+            @for (cat of pickableCategories(); track cat.id) {
               <option [value]="cat.id">{{ cat.name }}</option>
             }
           </select>

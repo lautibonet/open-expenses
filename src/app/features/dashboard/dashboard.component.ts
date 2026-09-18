@@ -21,7 +21,7 @@ import {
 } from '../../core/types/period.type';
 import { Transaction } from '../../core/models/transaction.model';
 import { Transfer } from '../../core/models/transfer.model';
-import { Account, isCreditCard } from '../../core/models/account.model';
+import { Account, isCreditCard, paymentCategoryIds } from '../../core/models/account.model';
 import { Category, isIncomeCategory } from '../../core/models/category.model';
 import { DismissibleAlertComponent } from '../../shared/components/dismissible-alert/dismissible-alert.component';
 import { FitTextDirective } from '../../shared/directives/fit-text.directive';
@@ -142,7 +142,7 @@ export class DashboardComponent implements OnInit {
     const base = this.baseCurrency();
 
     this.categoryBreakdown.set(
-      categorySpending(txns, catMap, accountsById, this.paymentCategoryIds()),
+      categorySpending(txns, catMap, accountsById, paymentCategoryIds(this.accounts())),
     );
 
     const isIncome = this.incomeClassifier(catMap);
@@ -374,19 +374,9 @@ export class DashboardComponent implements OnInit {
     return (t: Transaction) => isIncomeCategory(catMap.get(t.categoryId)?.type);
   }
 
-  /* ADR 0022: a Card Payment's category labels the payment but never reaches
-     the spending graph — the settled purchases already report that spending.
-     Collected from the cards' locale-neutral payment-category links. */
-  private paymentCategoryIds(): Set<number> {
-    const ids = new Set<number>();
-    for (const account of this.accounts()) {
-      if (isCreditCard(account) && account.paymentCategoryId != null) {
-        ids.add(account.paymentCategoryId);
-      }
-    }
-    return ids;
-  }
-
+  /* ADR 0022 / #174: a Card Payment's category labels the payment but never
+     reaches the spending graph — the settled purchases already report that
+     spending. Derived by the shared account-model helper (#174). */
   private sumBalances(balances: AccountBalance[], currency?: string): number {
     return balances
       .filter(b => !currency || b.account.currency === currency)
