@@ -476,6 +476,13 @@
       @extend %field;
       margin-top: var(--space-xs);
       width: 100%;
+
+      /* A readonly display field — the Transfer Form's payment category
+         (#173) — zones as static information with the shared muted
+         treatment, not an editable field. */
+      &.readonly {
+        @extend %readonly-field;
+      }
     }
   }
 }
