@@ -98,17 +98,13 @@
     @if (cardDestination()) {
       <label>
         {{ language.t('movements.paymentCategory') }}
-        <select
-          [ngModel]="form().categoryId"
-          (ngModelChange)="onPaymentCategoryChange($event)"
+        <input
+          type="text"
+          readonly
+          [value]="paymentCategoryName()"
           name="paymentCategory"
           [attr.aria-label]="language.t('movements.paymentCategory')"
-        >
-          <option [ngValue]="null">{{ language.t('movements.choosePaymentCategory') }}</option>
-          @for (cat of paymentCategories(); track cat.id) {
-            <option [ngValue]="cat.id">{{ cat.name }}</option>
-          }
-        </select>
+        />
       </label>
     }
   </div>

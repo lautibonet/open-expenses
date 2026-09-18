@@ -110,10 +110,6 @@ const en: Record<string, string> = {
   'errors.currencyHasMovements':
     "This account has movements, so its currency can't be changed.",
   'errors.cardLimitNegative': 'Limit cannot be negative',
-  'errors.cardPaymentCategoryRequired':
-    'Choose an Expense category for this Card Payment.',
-  'errors.cardPaymentCategoryExpenseOnly':
-    'A Card Payment category must be an Expense category.',
   'errors.categoryHasMovements':
     "This category has movements, so it can't be deleted. Deactivate it instead.",
   'settings.title': 'Settings',
@@ -188,7 +184,6 @@ const en: Record<string, string> = {
   'movements.saveDisabled.distinct': 'Choose two different accounts.',
   'movements.saveDisabled.amount': 'Enter an amount greater than zero.',
   'movements.saveDisabled.rate': 'The exchange rate is still loading.',
-  'movements.saveDisabled.paymentCategory': 'Choose a payment category.',
   'movements.shortcutsHint': 'Shortcuts: N transaction · T transfer · Esc close',
   'movements.sortByDateAria': 'Sort by date, currently newest first',
   'movements.editTransferTitle': 'Edit Transfer',
@@ -203,7 +198,6 @@ const en: Record<string, string> = {
   'movements.year': 'Year',
   'movements.note': 'Note',
   'movements.paymentCategory': 'Payment category',
-  'movements.choosePaymentCategory': 'Choose a category',
   'movements.cardOutstanding': 'Outstanding balance:',
   'movements.cardBadge': 'Card',
   'movements.exchangeRate': 'Exchange Rate',
@@ -516,10 +510,6 @@ const es: Record<string, string> = {
   'errors.currencyHasMovements':
     'Esta cuenta tiene movimientos, así que no se puede cambiar su moneda.',
   'errors.cardLimitNegative': 'El límite no puede ser negativo',
-  'errors.cardPaymentCategoryRequired':
-    'Elige una categoría de gasto para este pago con tarjeta.',
-  'errors.cardPaymentCategoryExpenseOnly':
-    'La categoría de un pago con tarjeta debe ser de gasto.',
   'errors.categoryHasMovements':
     'Esta categoría tiene movimientos, así que no se puede eliminar. Desactívala en su lugar.',
   'settings.title': 'Ajustes',
@@ -594,7 +584,6 @@ const es: Record<string, string> = {
   'movements.saveDisabled.distinct': 'Elige dos cuentas distintas.',
   'movements.saveDisabled.amount': 'Introduce un importe mayor que cero.',
   'movements.saveDisabled.rate': 'El tipo de cambio todavía se está obteniendo.',
-  'movements.saveDisabled.paymentCategory': 'Elige una categoría de pago.',
   'movements.shortcutsHint': 'Atajos: N transacción · T transferencia · Esc cerrar',
   'movements.sortByDateAria': 'Ordenar por fecha, actualmente los más recientes primero',
   'movements.editTransferTitle': 'Editar transferencia',
@@ -609,7 +598,6 @@ const es: Record<string, string> = {
   'movements.year': 'Año',
   'movements.note': 'Nota',
   'movements.paymentCategory': 'Categoría de pago',
-  'movements.choosePaymentCategory': 'Elige una categoría',
   'movements.cardOutstanding': 'Saldo pendiente:',
   'movements.cardBadge': 'Tarjeta',
   'movements.exchangeRate': 'Tipo de cambio',

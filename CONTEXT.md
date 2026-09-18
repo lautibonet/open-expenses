@@ -9,7 +9,7 @@ A recorded movement of money linked to an account, a category, an amount, a date
 _Avoid_: Entry, record, line item
 
 **Transfer**:
-A movement of money between two of the user's own accounts. Structurally separate from Transactions. Counts as an Expense only when it moves money from a Cash Account into a Credit Card — a Card Payment; every other Transfer (Cash to Cash, Card to Cash, Card to Card) never counts as Income or Expense. Stores `sourceAmount`, `destinationAmount`, `exchangeRate`, and `baseCurrencyAmount` — and, on a Card Payment, a category. For same-currency transfers, `sourceAmount` equals `destinationAmount`.
+A movement of money between two of the user's own accounts. Structurally separate from Transactions. Counts as an Expense only when it moves money from a Cash Account into a Credit Card — a Card Payment; every other Transfer (Cash to Cash, Card to Cash, Card to Card) never counts as Income or Expense. Stores `sourceAmount`, `destinationAmount`, `exchangeRate`, and `baseCurrencyAmount` — and, on a Transfer into a Credit Card, the destination card's Payment Category. For same-currency transfers, `sourceAmount` equals `destinationAmount`.
 _Avoid_: Movement, internal transfer
 
 **Account**:
@@ -69,7 +69,7 @@ The Transaction capture form on the Movements screen — account, category, amou
 _Avoid_: Quick Add, quick entry, mini form, inline add, more options
 
 **Transfer Form**:
-The Transfer capture form on the Movements screen — source account, destination account, source and destination amounts, note, date, and period shown all at once. When the destination is a Credit Card it becomes the Card Payment capture: a required category pre-filled with the card's payment category and a hint showing the card's outstanding balance. Revealed by the Add Transfer button; presents as a bottom sheet on mobile and inline on desktop, like the Transaction Form. Used for both recording and editing a Transfer.
+The Transfer capture form on the Movements screen — source account, destination account, source and destination amounts, note, date, and period shown all at once. When the destination is a Credit Card it becomes the Card Payment capture: a readonly category field showing the card's payment category and a hint showing the card's outstanding balance. Changing the destination re-resolves the category — another card wears that card's payment category; a cash account clears it. Revealed by the Add Transfer button; presents as a bottom sheet on mobile and inline on desktop, like the Transaction Form. Used for both recording and editing a Transfer.
 _Avoid_: Transfer dialog, move-money form
 
 **Net**:
