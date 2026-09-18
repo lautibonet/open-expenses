@@ -1767,6 +1767,124 @@ describe('SettingsComponent - credit cards (ADR 0022)', () => {
     expect(await accountService.getById(card.id!)).toBeUndefined();
   });
 
+  /* Issue #175: the confirm step warns visibly that the paired payment
+     category goes with the card — but only when the pre-check says it
+     actually will be deleted. */
+  it('warns visibly in the confirm step when the paired category will be deleted too', async () => {
+    const card = await accountService.createCard({ name: 'Visa', currency: 'EUR' });
+    await component.refresh();
+
+    await component.requestDeleteCard(card.id!);
+    fixture.detectChanges();
+
+    expect(component.pairedCardCategory()).toBe('delete');
+    const row = rowFor('.account-row', 'Visa');
+    const warning = row.querySelector('.paired-category-warning') as HTMLElement;
+    expect(warning).toBeDefined();
+    expect(warning.textContent).toContain('Visa payment');
+  });
+
+  it('removes the unused paired category together with the card on confirm', async () => {
+    const card = await accountService.createCard({ name: 'Visa', currency: 'EUR' });
+    await component.refresh();
+    await component.requestDeleteCard(card.id!);
+
+    await component.confirmDeleteCard();
+    fixture.detectChanges();
+
+    expect(await accountService.getById(card.id!)).toBeUndefined();
+    expect(await categoryService.getById(card.paymentCategoryId!)).toBeUndefined();
+  });
+
+  /* The pre-check is advisory: a transaction can land on the category after
+     the warning was computed. The in-transaction re-check wins and the
+     notice explains why the category survived. */
+  it('falls back to the kept-category notice when the category gains transactions after the warning', async () => {
+    const card = await accountService.createCard({ name: 'Visa', currency: 'EUR' });
+    await component.refresh();
+    vi.spyOn(accountService, 'pairedCategoryDeletion').mockResolvedValue('delete');
+
+    await component.requestDeleteCard(card.id!);
+    expect(component.pairedCardCategory()).toBe('delete');
+
+    await db.transactions.add({
+      accountId: cashId,
+      categoryId: card.paymentCategoryId!,
+      amount: 1000,
+      date: new Date(),
+      period: 1,
+      year: 2026,
+      exchangeRate: null,
+      baseCurrencyAmount: null,
+      note: '',
+      createdAt: new Date(),
+    });
+
+    await component.confirmDeleteCard();
+    fixture.detectChanges();
+
+    expect(await accountService.getById(card.id!)).toBeUndefined();
+    expect(await categoryService.getById(card.paymentCategoryId!)).toBeDefined();
+    expect(component.pageNotice()).toContain('Visa payment');
+  });
+
+  it('keeps a paired category that has transactions and explains why with a page-level notice', async () => {    const card = await accountService.createCard({ name: 'Visa', currency: 'EUR' });
+    await db.transactions.add({
+      accountId: cashId,
+      categoryId: card.paymentCategoryId!,
+      amount: 1000,
+      date: new Date(),
+      period: 1,
+      year: 2026,
+      exchangeRate: null,
+      baseCurrencyAmount: null,
+      note: '',
+      createdAt: new Date(),
+    });
+    await component.refresh();
+
+    await component.requestDeleteCard(card.id!);
+    fixture.detectChanges();
+    expect(component.pairedCardCategory()).toBe('keep');
+    expect(rowFor('.account-row', 'Visa').querySelector('.paired-category-warning')).toBeNull();
+
+    await component.confirmDeleteCard();
+    fixture.detectChanges();
+
+    expect(await accountService.getById(card.id!)).toBeUndefined();
+    expect(await categoryService.getById(card.paymentCategoryId!)).toBeDefined();
+    expect(component.pageNotice()).toContain('Visa payment');
+  });
+
+  it('does not warn and deletes without error when the linked category no longer exists', async () => {
+    const card = await accountService.createCard({ name: 'Visa', currency: 'EUR' });
+    await db.categories.delete(card.paymentCategoryId!);
+    await component.refresh();
+
+    await component.requestDeleteCard(card.id!);
+    fixture.detectChanges();
+    expect(component.pairedCardCategory()).toBe('absent');
+    expect(rowFor('.account-row', 'Visa').querySelector('.paired-category-warning')).toBeNull();
+
+    await component.confirmDeleteCard();
+    fixture.detectChanges();
+
+    expect(await accountService.getById(card.id!)).toBeUndefined();
+    expect(component.pageNotice()).toBe('');
+  });
+
+  it('clears the paired-category warning when the confirm is cancelled', async () => {
+    const card = await accountService.createCard({ name: 'Visa', currency: 'EUR' });
+    await component.refresh();
+
+    await component.requestDeleteCard(card.id!);
+    component.cancelDeleteCard();
+
+    expect(component.confirmingCardDelete()).toBeNull();
+    expect(component.pairedCardCategory()).toBeNull();
+    expect(component.pairedCardCategoryName()).toBe('');
+  });
+
   it('refuses to delete a card with movements and offers Deactivation', async () => {
     const card = await accountService.createCard({ name: 'Visa', currency: 'EUR' });
     const category = await categoryService.create('Food', 'expense');

@@ -9,7 +9,11 @@ import {
   WritableSignal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { AccountService, DeleteRefusalReason } from '../../core/services/account.service';
+import {
+  AccountService,
+  DeleteRefusalReason,
+  PairedCategoryDeletion,
+} from '../../core/services/account.service';
 import { CategoryService } from '../../core/services/category.service';
 import { ProfileService } from '../../core/services/profile.service';
 import { LanguageService } from '../../core/services/language.service';
@@ -98,6 +102,12 @@ export class SettingsComponent implements OnInit {
   refusedAccountReason = signal<DeleteRefusalReason | null>(null);
   refusedCard = signal<number | null>(null);
   refusedCategory = signal<number | null>(null);
+  /* Issue #175: what the paired-deletion pre-check says for the card under
+     confirm, plus the paired category's name for the warning and notice
+     copies — captured up front, since the deletion removes the link. */
+  pairedCardCategory = signal<PairedCategoryDeletion | null>(null);
+  pairedCardCategoryName = signal('');
+  pageNotice = signal('');
 
   accountNameInput = viewChild<ElementRef<HTMLInputElement>>('accountNameInput');
   cardNameInput = viewChild<ElementRef<HTMLInputElement>>('cardNameInput');
@@ -480,15 +490,38 @@ export class SettingsComponent implements OnInit {
     this.refusedCategory.set(null);
     this.confirmingCardDelete.set(null);
     this.refusedCard.set(null);
+    this.pairedCardCategory.set(null);
+    this.pairedCardCategoryName.set('');
     if (await this.accountService.hasMovements(id)) {
       this.refusedCard.set(id);
-    } else {
-      this.confirmingCardDelete.set(id);
+      return;
     }
+    this.confirmingCardDelete.set(id);
+    /* Issue #175: the pre-check decides whether the confirm step warns about
+       the paired payment category — the warning shows only when the category
+       actually will be deleted. */
+    const outcome = await this.accountService.pairedCategoryDeletion(id);
+    if (this.confirmingCardDelete() !== id) return;
+    this.pairedCardCategory.set(outcome);
+    if (outcome !== 'absent') {
+      this.pairedCardCategoryName.set(this.paymentCategoryName(id));
+    }
+  }
+
+  /* The paired category's display name, read from the loaded lists. */
+  private paymentCategoryName(cardId: number): string {
+    const card = this.cards().find((c) => c.id === cardId);
+    const category =
+      card?.paymentCategoryId != null
+        ? this.categories().find((c) => c.id === card.paymentCategoryId)
+        : undefined;
+    return category?.name ?? '';
   }
 
   cancelDeleteCard(): void {
     this.confirmingCardDelete.set(null);
+    this.pairedCardCategory.set(null);
+    this.pairedCardCategoryName.set('');
   }
 
   cancelRefuseCard(): void {
@@ -500,13 +533,25 @@ export class SettingsComponent implements OnInit {
     if (id === null) return;
     this.confirmingCardDelete.set(null);
     try {
-      await this.accountService.delete(id);
+      const outcome = await this.accountService.delete(id);
+      /* Issue #175: a paired category that carries transactions survives the
+         card; the page-level notice explains why. */
+      if (outcome === 'keep') {
+        this.pageNotice.set(
+          this.language.t('settings.cardDeleteCategoryKept', {
+            name: this.pairedCardCategoryName(),
+          }),
+        );
+      }
     } catch (e: unknown) {
       if (e instanceof TranslationError && e.key === 'errors.accountHasMovements') {
         this.refusedCard.set(id);
         return;
       }
       throw e;
+    } finally {
+      this.pairedCardCategory.set(null);
+      this.pairedCardCategoryName.set('');
     }
     await this.refresh();
   }
@@ -553,7 +598,7 @@ export class SettingsComponent implements OnInit {
     this.refusedAccount.set(null);
     this.confirmingCategoryDelete.set(null);
     this.refusedCategory.set(null);
-    if (await this.categoryService.hasMovements(id)) {
+    if (await this.categoryService.hasTransactions(id)) {
       this.refusedCategory.set(id);
     } else {
       this.confirmingCategoryDelete.set(id);
@@ -609,5 +654,6 @@ export class SettingsComponent implements OnInit {
   private clearStatus(): void {
     this.statusEpoch.update((n) => n + 1);
     this.errorMessage.set('');
+    this.pageNotice.set('');
   }
 }

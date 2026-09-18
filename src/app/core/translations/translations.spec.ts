@@ -80,6 +80,8 @@ describe('translations', () => {
       'settings.editCardAria',
       'settings.deleteCardAria',
       'settings.cardDeletePrompt',
+      'settings.cardDeletePairedWarning',
+      'settings.cardDeleteCategoryKept',
       'settings.failedAddCard',
       'settings.failedSaveCard',
     ]) {

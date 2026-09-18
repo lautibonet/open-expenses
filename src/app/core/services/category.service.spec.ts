@@ -169,15 +169,52 @@ describe('CategoryService - delete-if-unused (ADR 0018)', () => {
     });
   }
 
-  it('reports an unused category as having no movements', async () => {
+  /* Issue #175: for a Category, "has movements" means "has transactions" —
+     the guard counts Transaction references only. */
+  it('reports an unused category as having no transactions', async () => {
     const category = await service.create('Food', 'expense');
-    expect(await service.hasMovements(category.id!)).toBe(false);
+    expect(await service.hasTransactions(category.id!)).toBe(false);
   });
 
-  it('reports a category referenced by a transaction as having movements', async () => {
+  it('reports a category referenced by a transaction as having transactions', async () => {
     const category = await service.create('Food', 'expense');
     await seedTransaction(category.id!);
-    expect(await service.hasMovements(category.id!)).toBe(true);
+    expect(await service.hasTransactions(category.id!)).toBe(true);
+  });
+
+  it('ignores Transfers wearing the category: only Transaction references count', async () => {
+    const category = await service.create('Food', 'expense');
+    const source = await db.accounts.add({
+      name: 'Cash',
+      currency: 'EUR',
+      initialBalance: 0,
+      active: true,
+      kind: 'cash',
+      createdAt: new Date(),
+    });
+    const destination = await db.accounts.add({
+      name: 'Bank',
+      currency: 'EUR',
+      initialBalance: 0,
+      active: true,
+      kind: 'cash',
+      createdAt: new Date(),
+    });
+    await db.transfers.add({
+      sourceAccountId: source,
+      destinationAccountId: destination,
+      sourceAmount: 1000,
+      destinationAmount: 1000,
+      exchangeRate: 1,
+      baseCurrencyAmount: 1000,
+      date: new Date(),
+      period: 1,
+      year: 2026,
+      note: '',
+      createdAt: new Date(),
+      categoryId: category.id!,
+    });
+    expect(await service.hasTransactions(category.id!)).toBe(false);
   });
 
   it('permanently deletes an unused category', async () => {

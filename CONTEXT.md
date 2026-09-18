@@ -57,7 +57,7 @@ The reference Exchange Rate fetched for a currency pair and the movement's date,
 _Avoid_: Recommended rate, default rate, auto rate
 
 **Movement**:
-The unified display of Transactions and Transfers in a single chronological list. Each row carries a colored edge stripe identifying its kind: green for Income, red for Expense, grey for Transfer. Amounts are always positive; cross-currency items show both original and converted amounts (e.g. `$10.00 → €8.57`). As a data predicate, an Account or Category has movements when any Transaction or Transfer references it — having movements is what makes an item un-Deletable.
+The unified display of Transactions and Transfers in a single chronological list. Each row carries a colored edge stripe identifying its kind: green for Income, red for Expense, grey for Transfer. Amounts are always positive; cross-currency items show both original and converted amounts (e.g. `$10.00 → €8.57`). As a data predicate, an Account has movements when any Transaction or Transfer references it; a Category has movements when a Transaction references it — Transfers wearing the category as a label never count (a Card Payment's Payment Category is labeling, not classification). Having movements is what makes an item un-Deletable.
 _Avoid_: Feed, timeline, history
 
 **Movement Date**:
@@ -124,7 +124,7 @@ The reversible removal of an Account or Category from active use: it disappears 
 _Avoid_: Archive, disable, delete, hide
 
 **Delete**:
-The permanent, irreversible removal of an Account or Category that has no movements (a Category is un-used when no Transaction references it). Never cascades: if anything references the item, Delete is refused with an explanation and Deactivation is offered instead.
+The permanent, irreversible removal of an Account or Category that has no movements (a Category is un-used when no Transaction references it). Never cascades: if anything references the item, Delete is refused with an explanation and Deactivation is offered instead. One targeted exception: deleting a Credit Card also deletes its paired Payment Category in the same transaction, but only when that category itself has no Transactions (deactivated categories included); a category that carries Transactions is kept and a page-level notice explains why, while a dangling link (the category is already gone) is a silent no-op. Before deletion, the confirm step warns that the payment category will be deleted only when the pre-check says it actually will.
 _Avoid_: Remove, erase, destroy
 
 **Erase**:
