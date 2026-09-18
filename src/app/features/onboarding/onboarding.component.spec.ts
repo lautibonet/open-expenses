@@ -5,6 +5,7 @@ import { DriveBackupService } from '../../core/services/drive-backup.service';
 import { LanguageService } from '../../core/services/language.service';
 import { NoBackupFoundError } from '../../backup/drive-backup-provider';
 import { TranslationError } from '../../core/models/translation-error';
+import { AccountService } from '../../core/services/account.service';
 import { db } from '../../core/db/database';
 
 function stubNavigator(language: string): void {
@@ -658,6 +659,20 @@ describe('OnboardingComponent', () => {
   function pencilForCategory(row: HTMLElement): HTMLButtonElement {
     return row.querySelector('button[data-edit-pencil]') as HTMLButtonElement;
   }
+
+  // Issue #174: a card's Payment Category is plumbing for card payments, so
+  // it never appears in Onboarding's category review — the step stages the
+  // localized defaults only, never the categories already in the database.
+  it('never stages a card payment category from the database', async () => {
+    const accountService = TestBed.inject(AccountService);
+    await accountService.createCard({ name: 'Visa', currency: 'EUR' });
+
+    stageCategories();
+
+    const names = categoryRows().map((r) => r.querySelector('.category-name')!.textContent!.trim());
+    expect(names).not.toContain('Visa payment');
+    expect(component.categories().some((c) => c.name === 'Visa payment')).toBe(false);
+  });
 
   // Issue #142: the categories step adopts the Settings categories-card
   // composition — list tiles plus a fixed-width inline add form, the shared

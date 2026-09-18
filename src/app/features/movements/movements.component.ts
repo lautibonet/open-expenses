@@ -11,7 +11,7 @@ import { CaptureFormService } from '../../core/services/capture-form.service';
 import { DataVersionService } from '../../core/services/data-version.service';
 import { Transaction } from '../../core/models/transaction.model';
 import { Transfer } from '../../core/models/transfer.model';
-import { Account } from '../../core/models/account.model';
+import { Account, paymentCategoryIds } from '../../core/models/account.model';
 import { Category, isIncomeCategory } from '../../core/models/category.model';
 import { isCardPayment, isCreditCardTransaction, buildAccountsById } from '../../core/stats/cash-basis';
 import {
@@ -98,6 +98,16 @@ export class MovementsComponent implements OnInit, OnDestroy {
   allAccounts = signal<Account[]>([]);
   categories = signal<Category[]>([]);
   allCategoriesForNameResolution = signal<Category[]>([]);
+  /* #174: a card's Payment Category is plumbing for card payments, so it
+     vanishes from every surface that picks categories for ordinary work —
+     the transaction form's picker and the movements filter dropdown. Derived
+     from every card's link (allAccounts, so a Deactivated card counts too);
+     the transfer form keeps the full list because it resolves the payment
+     category by it, and Settings keeps them visible. */
+  pickableCategories = computed(() => {
+    const excluded = paymentCategoryIds(this.allAccounts());
+    return this.categories().filter((c) => c.id == null || !excluded.has(c.id));
+  });
   movements = signal<MovementItem[]>([]);
   dataLoaded = signal(false);
   baseCurrency = signal('EUR');

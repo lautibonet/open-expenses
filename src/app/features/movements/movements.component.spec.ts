@@ -161,6 +161,85 @@ describe('MovementsComponent - filtering', () => {
   });
 });
 
+describe('MovementsComponent - payment categories vanish from ordinary pickers (#174)', () => {
+  let fixture: ComponentFixture<MovementsComponent>;
+  let component: MovementsComponent;
+  let accountService: AccountService;
+  let categoryService: CategoryService;
+  let paymentCategoryId: number;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    await TestBed.configureTestingModule({
+      imports: [MovementsComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(MovementsComponent);
+    component = fixture.componentInstance;
+    accountService = TestBed.inject(AccountService);
+    categoryService = TestBed.inject(CategoryService);
+
+    await accountService.create('Cash', 'EUR', 100000);
+    await categoryService.create('Food', 'expense');
+    await categoryService.create('Payroll', 'income');
+    await accountService.createCard({ name: 'Visa', currency: 'EUR' });
+    const payment = (await categoryService.getAll()).find((c) => c.name === 'Visa payment')!;
+    paymentCategoryId = payment.id!;
+  });
+
+  afterEach(async () => {
+    await db.delete();
+  });
+
+  async function categoryOptionNames(): Promise<string[]> {
+    await component.ngOnInit();
+    component.toggleFilters();
+    fixture.detectChanges();
+    const select = fixture.nativeElement.querySelector(
+      '.filter-panel select',
+    ) as HTMLSelectElement;
+    return Array.from(select.options)
+      .map((o) => o.textContent!.trim())
+      .filter((t) => t !== 'All categories');
+  }
+
+  it('excludes the card payment category from the movements filter dropdown', async () => {
+    const names = await categoryOptionNames();
+    expect(names).toContain('Food');
+    expect(names).toContain('Payroll');
+    expect(names).not.toContain('Visa payment');
+  });
+
+  it('excludes the card payment category from the transaction form picker', async () => {
+    await component.ngOnInit();
+    component.toggleTransactionForm();
+    fixture.detectChanges();
+    const select = fixture.nativeElement.querySelector(
+      'select[name="category"]',
+    ) as HTMLSelectElement;
+    const names = Array.from(select.options).map((o) => o.textContent!.trim());
+    expect(names).toContain('Food (Expense)');
+    expect(names).toContain('Payroll (Income)');
+    expect(names.some((n) => n.startsWith('Visa payment'))).toBe(false);
+  });
+
+  it('keeps the payment category available for name resolution', async () => {
+    await component.ngOnInit();
+    expect(component.allCategoriesForNameResolution().some((c) => c.id === paymentCategoryId)).toBe(
+      true,
+    );
+  });
+
+  it('keeps the full category list for the transfer form payment-category resolution', async () => {
+    await component.ngOnInit();
+    // The transfer form resolves a card's payment category from this list;
+    // only the transaction form and the filter dropdown get the filtered one.
+    expect(component.categories().some((c) => c.id === paymentCategoryId)).toBe(true);
+    expect(component.pickableCategories().some((c) => c.id === paymentCategoryId)).toBe(false);
+  });
+});
+
 describe('MovementsComponent - no tag affordances', () => {
   let fixture: ComponentFixture<MovementsComponent>;
   let component: MovementsComponent;

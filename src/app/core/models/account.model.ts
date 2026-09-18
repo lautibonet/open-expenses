@@ -27,3 +27,18 @@ export function isCashAccount(account: Pick<Account, 'kind'>): boolean {
 export function isCreditCard(account: Pick<Account, 'kind'>): boolean {
   return account.kind === 'credit-card';
 }
+
+/* ADR 0022 / #174: the set of categories that are a Credit Card's Payment
+   Category, derived in one place from the cards' locale-neutral links — never
+   stored or duplicated elsewhere. Stats excludes them from the spending graph
+   (category-spending.ts); the ordinary pickers (transaction form, movements
+   filter, onboarding) exclude them the same way, while Settings keeps them. */
+export function paymentCategoryIds(accounts: Account[]): Set<number> {
+  const ids = new Set<number>();
+  for (const account of accounts) {
+    if (isCreditCard(account) && account.paymentCategoryId != null) {
+      ids.add(account.paymentCategoryId);
+    }
+  }
+  return ids;
+}

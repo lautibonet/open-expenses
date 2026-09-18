@@ -1694,6 +1694,20 @@ describe('SettingsComponent - credit cards (ADR 0022)', () => {
     expect(component.categories().some((c) => c.name === 'Pago Visa')).toBe(true);
   });
 
+  // Issue #174: the payment category vanishes from the ordinary pickers but
+  // stays visible and manageable in the Settings category list.
+  it('renders the payment category in the Settings category list', async () => {
+    component.startAddCard();
+    component.newCardName.set('Visa');
+    await component.addCard();
+    fixture.detectChanges();
+
+    const row = Array.from(
+      fixture.nativeElement.querySelectorAll('.category-row') as NodeListOf<HTMLElement>,
+    ).find((r) => r.textContent!.includes('Visa payment'));
+    expect(row).toBeDefined();
+  });
+
   it('keeps the form open and shows the standard error when creation fails', async () => {
     component.startAddCard();
     component.newCardName.set('Checking');
