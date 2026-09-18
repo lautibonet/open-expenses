@@ -48,6 +48,14 @@ describe('shared capture-form style placeholders (#107)', () => {
     expect(patternsScss).toMatch(/%field\s*\{[^}]*box-sizing:\s*border-box/);
   });
 
+  it('greys out a readonly field in the capture grid with the shared readonly treatment', () => {
+    // The rate well's equivalent field and the Transfer Form's payment
+    // category are static information: the same muted zone, defined once.
+    expect(patternsScss).toMatch(
+      /%capture-form-grid\s*\{[\s\S]*?&\.readonly\s*\{[^}]*@extend %readonly-field/,
+    );
+  });
+
   it.each([
     ['Transaction Form', transactionFormScss],
     ['Transfer Form', transferFormScss],

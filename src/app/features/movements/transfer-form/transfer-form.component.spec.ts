@@ -734,6 +734,9 @@ describe('TransferFormComponent', () => {
       expect(input).toBeTruthy();
       expect(input.readOnly).toBe(true);
       expect(input.value).toBe('Visa payment');
+      // Greyed out with the shared readonly treatment so it reads as
+      // static information, not an editable field.
+      expect(input.classList).toContain('readonly');
       expect(fixture.nativeElement.querySelector('select[name="paymentCategory"]')).toBeNull();
     });
 
