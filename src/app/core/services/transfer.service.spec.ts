@@ -255,57 +255,60 @@ describe('TransferService', () => {
       incomeId = income.id!;
     });
 
-    it('stores the Expense category on a Cash-to-Card Transfer', async () => {
+    it('resolves the card payment category on a Cash-to-Card Transfer without being told', async () => {
       const t = await transferService.create(
-        cashId, cardId, 500, new Date(), 1, '', 1, getCurrentYear(), expenseId,
+        cashId, cardId, 500, new Date(), 1, '', 1, getCurrentYear(),
       );
       expect(t.categoryId).toBe(expenseId);
     });
 
-    it('requires a category when the destination is a Card', async () => {
-      await expect(
-        transferService.create(cashId, cardId, 500, new Date(), 1),
-      ).rejects.toThrow('errors.cardPaymentCategoryRequired');
+    it('resolves the card payment category on a Card-to-Card Transfer too', async () => {
+      const card2 = await accountService.createCard({ name: 'Master', currency: 'EUR' });
+      const t = await transferService.create(cardId, card2.id!, 500, new Date(), 1);
+      expect(t.categoryId).toBe(card2.paymentCategoryId);
     });
 
-    it('rejects an Income-type category on a Card Transfer', async () => {
-      await expect(
-        transferService.create(cashId, cardId, 500, new Date(), 1, '', 1, getCurrentYear(), incomeId),
-      ).rejects.toThrow('errors.cardPaymentCategoryExpenseOnly');
+    it('wears the card payment category even when an update carries a stale category', async () => {
+      const t = await transferService.create(cashId, cardId, 500, new Date(), 1);
+      const updated = await transferService.update(t.id!, { categoryId: incomeId });
+      expect(updated.categoryId).toBe(expenseId);
     });
 
-    it('rejects an unknown category on a Card Transfer', async () => {
-      await expect(
-        transferService.create(cashId, cardId, 500, new Date(), 1, '', 1, getCurrentYear(), 9999),
-      ).rejects.toThrow('errors.categoryNotFound');
+    it('resolves by name for a legacy card that owns no stored link', async () => {
+      await db.accounts.update(cardId, { paymentCategoryId: undefined });
+      const t = await transferService.create(cashId, cardId, 500, new Date(), 1);
+      const category = await db.categories.get(t.categoryId!);
+      expect(category?.name).toBe('Visa payment');
     });
 
     it('carries no category on a Cash-to-Cash Transfer', async () => {
       const t = await transferService.create(
-        cashId, savingsId, 500, new Date(), 1, '', 1, getCurrentYear(), expenseId,
+        cashId, savingsId, 500, new Date(), 1, '', 1, getCurrentYear(),
       );
       expect(t.categoryId).toBeUndefined();
     });
 
-    it('requires a category when updating a Transfer into a Card', async () => {
+    it('resolves the card payment category when a Transfer is redirected into a Card', async () => {
       const t = await transferService.create(cashId, savingsId, 500, new Date(), 1);
-      await expect(
-        transferService.update(t.id!, { destinationAccountId: cardId }),
-      ).rejects.toThrow('errors.cardPaymentCategoryRequired');
+      const updated = await transferService.update(t.id!, { destinationAccountId: cardId });
+      expect(updated.categoryId).toBe(expenseId);
     });
 
-    it('stores the category when updating a Transfer into a Card', async () => {
-      const t = await transferService.create(cashId, savingsId, 500, new Date(), 1);
+    it('re-resolves to the new card payment category when the destination changes cards', async () => {
+      const card2 = await accountService.createCard({ name: 'Master', currency: 'EUR' });
+      const t = await transferService.create(
+        cashId, cardId, 500, new Date(), 1, '', 1, getCurrentYear(),
+      );
       const updated = await transferService.update(t.id!, {
-        destinationAccountId: cardId,
-        categoryId: expenseId,
+        destinationAccountId: card2.id!,
       });
-      expect(updated.categoryId).toBe(expenseId);
+      expect(updated.categoryId).toBe(card2.paymentCategoryId);
+      expect(updated.categoryId).not.toBe(expenseId);
     });
 
     it('clears the category when a Card Payment is redirected to Cash', async () => {
       const t = await transferService.create(
-        cashId, cardId, 500, new Date(), 1, '', 1, getCurrentYear(), expenseId,
+        cashId, cardId, 500, new Date(), 1, '', 1, getCurrentYear(),
       );
       const updated = await transferService.update(t.id!, { destinationAccountId: savingsId });
       expect(updated.categoryId).toBeUndefined();

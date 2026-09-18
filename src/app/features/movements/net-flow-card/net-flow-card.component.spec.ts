@@ -158,7 +158,7 @@ describe('NetFlowCardComponent', () => {
     });
     const period = getCurrentPeriod();
     await transferService.create(
-      eurAccountId, card.id!, 400, new Date(), period, '', 1, defaultScope().year, expenseCategoryId,
+      eurAccountId, card.id!, 400, new Date(), period, '', 1, defaultScope().year,
     );
     await render();
 
@@ -173,7 +173,7 @@ describe('NetFlowCardComponent', () => {
     const period = getCurrentPeriod();
     const year = defaultScope().year;
     await transferService.create(card.id!, eurAccountId, 100, new Date(), period, '', 1, year);
-    await transferService.create(card.id!, card2.id!, 100, new Date(), period, '', 1, year, expenseCategoryId);
+    await transferService.create(card.id!, card2.id!, 100, new Date(), period, '', 1, year);
     await render();
 
     expect(component.expenseTotal()).toBe(0);

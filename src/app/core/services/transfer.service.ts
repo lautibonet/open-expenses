@@ -1,8 +1,10 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { db } from '../db/database';
 import { Transfer } from '../models/transfer.model';
 import { Account, isCreditCard } from '../models/account.model';
 import { TranslationError } from '../models/translation-error';
+import { LanguageService } from './language.service';
+import { findOrCreateCategory } from './category.service';
 import {
   PeriodScope,
   getCurrentYear,
@@ -13,6 +15,8 @@ import {
 
 @Injectable({ providedIn: 'root' })
 export class TransferService {
+  private languageService = inject(LanguageService);
+
   async create(
     sourceAccountId: number,
     destinationAccountId: number,
@@ -22,7 +26,6 @@ export class TransferService {
     note: string = '',
     exchangeRate: number = 1,
     year: number = getCurrentYear(),
-    categoryId: number | null = null,
   ): Promise<Transfer> {
     if (sourceAccountId === destinationAccountId) {
       throw new TranslationError('errors.accountsMustDiffer');
@@ -50,7 +53,7 @@ export class TransferService {
       throw new TranslationError('errors.destinationAccountNotFound');
     }
 
-    const paymentCategoryId = await this.resolvePaymentCategory(destAccount, categoryId);
+    const paymentCategoryId = await this.resolvePaymentCategory(destAccount);
 
     const sourceAmount = amount;
     const destinationAmount = Math.round(amount * exchangeRate * 100) / 100;
@@ -120,9 +123,7 @@ export class TransferService {
     const newDestinationAmount = Math.round(newSourceAmount * newExchangeRate * 100) / 100;
     const newBaseCurrencyAmount = isCrossCurrency ? newDestinationAmount : newSourceAmount;
 
-    const effectiveCategoryId =
-      changes.categoryId !== undefined ? changes.categoryId : existing.categoryId;
-    const paymentCategoryId = await this.resolvePaymentCategory(destAccount, effectiveCategoryId);
+    const paymentCategoryId = await this.resolvePaymentCategory(destAccount);
 
     const mergedChanges = {
       ...changes,
@@ -137,26 +138,29 @@ export class TransferService {
     return (await db.transfers.get(id))!;
   }
 
-  /* ADR 0022: a Transfer into a Credit Card (any source) carries a required
-     Expense category; every other Transfer carries none. */
+  /* Amended ADR 0022 (ticket #173): a Transfer into a Credit Card wears the
+     card's own Payment Category — the caller never picks one, and redirecting
+     the destination re-resolves it. Every other Transfer carries none. The
+     stored link wins; a card without one (legacy, un-migrated) still resolves
+     by its payment name, linked rather than duplicated, exactly as
+     provisioning does. */
   private async resolvePaymentCategory(
     destination: Account | undefined,
-    categoryId: number | null | undefined,
   ): Promise<number | undefined> {
     if (!destination || !isCreditCard(destination)) {
       return undefined;
     }
-    if (categoryId == null) {
-      throw new TranslationError('errors.cardPaymentCategoryRequired');
+    if (destination.paymentCategoryId != null) {
+      const linked = await db.categories.get(destination.paymentCategoryId);
+      if (linked) {
+        return linked.id;
+      }
     }
-    const category = await db.categories.get(categoryId);
-    if (!category) {
-      throw new TranslationError('errors.categoryNotFound');
-    }
-    if (category.type !== 'expense') {
-      throw new TranslationError('errors.cardPaymentCategoryExpenseOnly');
-    }
-    return categoryId;
+    const category = await findOrCreateCategory(
+      this.languageService.t('category.cardPayment', { name: destination.name }),
+      'expense',
+    );
+    return category.id;
   }
 
   async delete(id: number): Promise<void> {

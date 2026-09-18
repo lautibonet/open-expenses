@@ -106,17 +106,16 @@ describe('DashboardComponent', () => {
     const savings = await accountService.create('Savings', 'EUR', 0);
     const card = await accountService.createCard({ name: 'Visa', currency: 'EUR' });
     const card2 = await accountService.createCard({ name: 'Master', currency: 'EUR' });
-    const expenseCat = await categoryService.create('Groceries', 'expense');
     const transferService = TestBed.inject(TransferService);
     const period = getCurrentPeriod();
     const year = getCurrentYear();
 
     // Cash -> Card: a Card Payment, counts as an Expense.
-    await transferService.create(cash.id!, card.id!, 300, new Date(), period, '', 1, year, expenseCat.id!);
+    await transferService.create(cash.id!, card.id!, 300, new Date(), period, '', 1, year);
     // Cash -> Cash, Card -> Cash, Card -> Card: never count.
     await transferService.create(cash.id!, savings.id!, 100, new Date(), period, '', 1, year);
     await transferService.create(card.id!, cash.id!, 50, new Date(), period, '', 1, year);
-    await transferService.create(card.id!, card2.id!, 25, new Date(), period, '', 1, year, expenseCat.id!);
+    await transferService.create(card.id!, card2.id!, 25, new Date(), period, '', 1, year);
 
     await component.ngOnInit();
 
@@ -129,11 +128,10 @@ describe('DashboardComponent', () => {
   it('excludes a Card Payment from Periods after the payment', async () => {
     const cash = await accountService.create('Cash', 'EUR', 100000);
     const card = await accountService.createCard({ name: 'Visa', currency: 'EUR' });
-    const expenseCat = await categoryService.create('Groceries', 'expense');
     const transferService = TestBed.inject(TransferService);
     const year = getCurrentYear();
 
-    await transferService.create(cash.id!, card.id!, 300, new Date(), 9, '', 1, year, expenseCat.id!);
+    await transferService.create(cash.id!, card.id!, 300, new Date(), 9, '', 1, year);
 
     await component.ngOnInit();
     await component.onScopeYearChange(year);
@@ -148,12 +146,11 @@ describe('DashboardComponent', () => {
   it('renders the year overview when the only movement is a Card Payment', async () => {
     const cash = await accountService.create('Cash', 'EUR', 100000);
     const card = await accountService.createCard({ name: 'Visa', currency: 'EUR' });
-    const expenseCat = await categoryService.create('Groceries', 'expense');
     const transferService = TestBed.inject(TransferService);
     const period = getCurrentPeriod();
     const year = getCurrentYear();
 
-    await transferService.create(cash.id!, card.id!, 300, new Date(), period, '', 1, year, expenseCat.id!);
+    await transferService.create(cash.id!, card.id!, 300, new Date(), period, '', 1, year);
 
     await component.ngOnInit();
 
@@ -2574,7 +2571,7 @@ describe('DashboardComponent - conditional debt total and card rows', () => {
     const card = await accountService.createCard({ name: 'Visa', currency: 'EUR' });
     await transactionService.create(card.id!, expenseCat.id!, 25000, new Date(), getCurrentPeriod());
     await transferService.create(
-      cash.id!, card.id!, 25000, new Date(), getCurrentPeriod(), '', 1, getCurrentYear(), expenseCat.id!,
+      cash.id!, card.id!, 25000, new Date(), getCurrentPeriod(), '', 1, getCurrentYear(),
     );
 
     await component.ngOnInit();

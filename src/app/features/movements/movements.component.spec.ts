@@ -4114,8 +4114,6 @@ describe('MovementsComponent - card movement display treatment (#168)', () => {
       period,
       '',
       1,
-      undefined,
-      paymentCategoryId,
     );
     await component.ngOnInit();
     fixture.detectChanges();
@@ -4167,8 +4165,6 @@ describe('MovementsComponent - card movement display treatment (#168)', () => {
       period,
       '',
       1,
-      undefined,
-      paymentCategoryId,
     );
     const move = await transferService.create(savings.id!, cashId, 100, new Date(), period, '');
     await component.ngOnInit();

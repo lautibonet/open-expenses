@@ -152,11 +152,12 @@ export class TransferFormComponent implements AfterViewInit {
     return dst && isCreditCard(dst) ? dst : null;
   });
 
-  /* Expense categories only: a Card Payment's category is an Expense by
-     definition (ADR 0022). */
-  paymentCategories = computed(() =>
-    this.categories().filter((c) => c.type === 'expense'),
-  );
+  /* The name shown in the readonly payment category field: the resolved
+     category of the form state, which the destination card owns. */
+  paymentCategoryName = computed(() => {
+    const id = this.form().categoryId;
+    return id == null ? '' : (this.categories().find((c) => c.id === id)?.name ?? '');
+  });
 
   isForeignCurrency = computed(() => {
     const { src, dst } = this.selectedAccounts();
@@ -177,7 +178,6 @@ export class TransferFormComponent implements AfterViewInit {
     const f = this.form();
     if (!f.sourceAccountId || !f.destAccountId) return false;
     if (f.sourceAccountId === f.destAccountId) return false;
-    if (this.cardDestination() && !f.categoryId) return false;
     if (!((f.sourceAmount ?? 0) > 0)) return false;
     if (this.isForeignCurrency() && this.rateState().loading) return false;
     return !this.saving();
@@ -191,9 +191,6 @@ export class TransferFormComponent implements AfterViewInit {
     }
     if (f.sourceAccountId === f.destAccountId) {
       return this.language.t('movements.saveDisabled.distinct');
-    }
-    if (this.cardDestination() && !f.categoryId) {
-      return this.language.t('movements.saveDisabled.paymentCategory');
     }
     if (!((f.sourceAmount ?? 0) > 0)) return this.language.t('movements.saveDisabled.amount');
     if (this.isForeignCurrency() && this.rateState().loading) {
@@ -263,10 +260,6 @@ export class TransferFormComponent implements AfterViewInit {
     void this.refreshCardBalance();
   }
 
-  onPaymentCategoryChange(value: number | null): void {
-    this.form.update((f) => ({ ...f, categoryId: value == null ? null : Number(value) }));
-  }
-
   formatMoney(amount: number, currency: string): string {
     return this.language.formatMoney(amount, currency);
   }
@@ -275,11 +268,11 @@ export class TransferFormComponent implements AfterViewInit {
      survives a rename or a Language change; fall back to the category named
      after the card for cards created before the link was stored. */
   private paymentCategoryIdFor(card: Account): number | null {
-    if (card.paymentCategoryId != null && this.paymentCategories().some((c) => c.id === card.paymentCategoryId)) {
+    if (card.paymentCategoryId != null && this.categories().some((c) => c.id === card.paymentCategoryId)) {
       return card.paymentCategoryId;
     }
     const name = this.language.t('category.cardPayment', { name: card.name });
-    const match = this.paymentCategories().find((c) => c.name === name);
+    const match = this.categories().find((c) => c.name === name && c.type === 'expense');
     return match?.id ?? null;
   }
 
@@ -353,7 +346,6 @@ export class TransferFormComponent implements AfterViewInit {
           period: f.period,
           year: f.year,
           note: f.note,
-          categoryId: f.categoryId ?? undefined,
         });
       } else {
         await this.transferService.create(
@@ -365,7 +357,6 @@ export class TransferFormComponent implements AfterViewInit {
           f.note,
           f.exchangeRate,
           f.year,
-          f.categoryId,
         );
       }
       this.saving.set(false);
@@ -385,6 +376,11 @@ export class TransferFormComponent implements AfterViewInit {
     if (!t) return;
     const date = dateToLocalISO(new Date(t.date));
     this.editingId.set(t.id ?? null);
+    /* Ticket #173: the payment category always comes from the destination
+       card, never from the stored transfer — redirecting the destination or
+       reopening a payment with a stale category silently re-resolves. */
+    const dst = this.accounts().find((a) => a.id === t.destinationAccountId);
+    const categoryId = dst && isCreditCard(dst) ? this.paymentCategoryIdFor(dst) : null;
     this.form.set({
       sourceAccountId: t.sourceAccountId,
       destAccountId: t.destinationAccountId,
@@ -395,10 +391,9 @@ export class TransferFormComponent implements AfterViewInit {
       period: t.period,
       year: getPeriodYear(t),
       note: t.note,
-      categoryId: t.categoryId ?? null,
+      categoryId,
     });
     const src = this.accounts().find((a) => a.id === t.sourceAccountId);
-    const dst = this.accounts().find((a) => a.id === t.destinationAccountId);
     this.rateSeed.set(
       src && dst && src.currency !== dst.currency ? { rate: t.exchangeRate, date: 'stored' } : null,
     );
