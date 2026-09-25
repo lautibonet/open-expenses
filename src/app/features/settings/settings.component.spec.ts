@@ -1341,7 +1341,7 @@ describe('SettingsComponent - LedgerFlow restyle', () => {
     expect(updated?.active).toBe(true);
   });
 
-  it('renders New buttons before reveal and dashed add affordances inside the revealed forms', () => {
+  it('renders New buttons before reveal and solid add actions inside the revealed forms', () => {
     const buttons = Array.from(
       fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>,
     ).map((b) => b.textContent!.trim());
@@ -1354,13 +1354,13 @@ describe('SettingsComponent - LedgerFlow restyle', () => {
     component.startAddCategory();
     fixture.detectChanges();
 
-    const dashed = Array.from(
-      fixture.nativeElement.querySelectorAll('.btn.dashed') as NodeListOf<HTMLButtonElement>,
+    const solid = Array.from(
+      fixture.nativeElement.querySelectorAll('.form-actions .btn.primary') as NodeListOf<HTMLButtonElement>,
     ).map((b) => b.textContent!.trim());
-    expect(dashed.length).toBe(3);
-    expect(dashed[0]).toContain('Add Account');
-    expect(dashed[1]).toContain('Add Card');
-    expect(dashed[2]).toContain('Add');
+    expect(solid.length).toBe(3);
+    for (const label of solid) {
+      expect(label).toContain('Add');
+    }
   });
 
   it('sizes every revealed add-form field uniformly', () => {
@@ -1455,7 +1455,7 @@ describe('SettingsComponent - New-button creation forms', () => {
     expect(nameInput).toBeTruthy();
     expect(nameInput.value).toBe('');
     expect(document.activeElement).toBe(nameInput);
-    expect(form.textContent).toContain('Add Account');
+    expect(form.textContent).toContain('Add');
   });
 
   it('hides the form again on cancel without creating anything', async () => {
@@ -1490,7 +1490,7 @@ describe('SettingsComponent - New-button creation forms', () => {
     nameInput.dispatchEvent(new Event('input'));
     fixture.detectChanges();
 
-    (form.querySelector('button.btn.dashed') as HTMLButtonElement).click();
+    (form.querySelector('button.btn.primary') as HTMLButtonElement).click();
     await flush();
     fixture.detectChanges();
 
@@ -1510,7 +1510,7 @@ describe('SettingsComponent - New-button creation forms', () => {
     nameInput.dispatchEvent(new Event('input'));
     fixture.detectChanges();
 
-    (form.querySelector('button.btn.dashed') as HTMLButtonElement).click();
+    (form.querySelector('button.btn.primary') as HTMLButtonElement).click();
     await flush();
     fixture.detectChanges();
 
@@ -1530,7 +1530,7 @@ describe('SettingsComponent - New-button creation forms', () => {
     nameInput.dispatchEvent(new Event('input'));
     fixture.detectChanges();
 
-    (form.querySelector('button.btn.dashed') as HTMLButtonElement).click();
+    (form.querySelector('button.btn.primary') as HTMLButtonElement).click();
     await flush();
     fixture.detectChanges();
 
@@ -1547,7 +1547,7 @@ describe('SettingsComponent - New-button creation forms', () => {
     nameInput.value = 'Wallet';
     nameInput.dispatchEvent(new Event('input'));
     fixture.detectChanges();
-    (form.querySelector('button.btn.dashed') as HTMLButtonElement).click();
+    (form.querySelector('button.btn.primary') as HTMLButtonElement).click();
     await flush();
     fixture.detectChanges();
 

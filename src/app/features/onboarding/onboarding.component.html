@@ -209,8 +209,8 @@
                   [attr.aria-label]="languageService.t('onboarding.accounts.balanceAria')"
                 />
               </div>
-              <button class="btn dashed" (click)="addAccount()">
-                + {{ languageService.t('onboarding.accounts.add') }}
+              <button class="btn primary" (click)="addAccount()">
+                {{ languageService.t('onboarding.accounts.add') }}
               </button>
               <button type="button" class="btn" (click)="cancelAddAccount()">
                 {{ languageService.t('settings.cancel') }}
@@ -381,6 +381,8 @@
                 </li>
               }
             </ul>
+          } @else {
+            <p class="empty-state">{{ languageService.t('onboarding.accounts.emptyState') }}</p>
           }
 
           <div class="nav-buttons">
@@ -421,7 +423,7 @@
                 <option value="expense">{{ languageService.t('type.expense') }}</option>
                 <option value="income">{{ languageService.t('type.income') }}</option>
               </select>
-              <button class="btn dashed" (click)="addCategory()">+ {{ languageService.t('onboarding.categories.add') }}</button>
+              <button class="btn primary" (click)="addCategory()">{{ languageService.t('onboarding.categories.add') }}</button>
               <button type="button" class="btn" (click)="cancelAddCategory()">
                 {{ languageService.t('settings.cancel') }}
               </button>
@@ -627,6 +629,7 @@
             </ul>
           } @else {
             <div class="empty-categories">
+              <p class="empty-state">{{ languageService.t('onboarding.categories.emptyState') }}</p>
               <button
                 type="button"
                 class="restore-chip"

@@ -358,7 +358,7 @@ describe('OnboardingComponent', () => {
 
     revealAccountForm();
     const form = fixture.nativeElement.querySelector('.inline-form') as HTMLElement;
-    expect(form.querySelector('.btn.dashed')).toBeTruthy();
+    expect(form.querySelector('.btn.primary')).toBeTruthy();
     expect(form.textContent).toContain('Add');
     expect(form.textContent).toContain('Cancel');
 
@@ -366,12 +366,12 @@ describe('OnboardingComponent', () => {
     setNgModelValue(form.querySelector('select') as HTMLSelectElement, 'USD');
     setNgModelValue(form.querySelector('input[type="number"]') as HTMLInputElement, '500');
     fixture.detectChanges();
-    (form.querySelector('.btn.dashed') as HTMLButtonElement).click();
+    (form.querySelector('.btn.primary') as HTMLButtonElement).click();
     await flush();
     fixture.detectChanges();
 
-    expect(component.addingAccount()).toBe(false);
-    expect(fixture.nativeElement.querySelector('.inline-form')).toBeNull();
+    expect(component.addingAccount()).toBe(true);
+    expect(fixture.nativeElement.querySelector('.inline-form')).toBeTruthy();
     expect(accountRows().length).toBe(1);
     const row = rowFor('Wallet');
     expect(row.querySelector('.account-meta')!.textContent).toContain('USD');
@@ -395,7 +395,7 @@ describe('OnboardingComponent', () => {
       '-5',
     );
     fixture.detectChanges();
-    (form.querySelector('.btn.dashed') as HTMLButtonElement).click();
+    (form.querySelector('.btn.primary') as HTMLButtonElement).click();
     fixture.detectChanges();
 
     const alert = fixture.nativeElement.querySelector('.alert') as HTMLElement;
@@ -406,8 +406,8 @@ describe('OnboardingComponent', () => {
   });
 
   // Issue #149: both steps reveal their add form behind the same New button
-  // used in Settings — the reveal resets the draft, saving or cancelling
-  // hides it, and a failed add keeps it open.
+  // used in Settings — the reveal resets the draft, cancelling hides it, a
+  // successful add leaves it open with a fresh draft.
   it('shows a New button instead of always-visible add inputs on both steps', () => {
     component.goTo('accounts');
     fixture.detectChanges();
@@ -739,12 +739,12 @@ describe('OnboardingComponent', () => {
     setNgModelValue(form.querySelector('input[type="text"]') as HTMLInputElement, 'Groceries');
     setNgModelValue(form.querySelector('select') as HTMLSelectElement, 'income');
     fixture.detectChanges();
-    (form.querySelector('.btn.dashed') as HTMLButtonElement).click();
+    (form.querySelector('.btn.primary') as HTMLButtonElement).click();
     await flush();
     fixture.detectChanges();
 
-    expect(component.addingCategory()).toBe(false);
-    expect(fixture.nativeElement.querySelector('.inline-form')).toBeNull();
+    expect(component.addingCategory()).toBe(true);
+    expect(fixture.nativeElement.querySelector('.inline-form')).toBeTruthy();
     expect(categoryRows().length).toBe(10);
     const row = rowForCategory('Groceries');
     expect(row.querySelector('.category-meta')!.textContent).toContain('Income');
@@ -757,7 +757,7 @@ describe('OnboardingComponent', () => {
     revealCategoryForm();
 
     const form = fixture.nativeElement.querySelector('.inline-form') as HTMLElement;
-    (form.querySelector('.btn.dashed') as HTMLButtonElement).click();
+    (form.querySelector('.btn.primary') as HTMLButtonElement).click();
     fixture.detectChanges();
 
     let alert = fixture.nativeElement.querySelector('.alert') as HTMLElement;
@@ -767,7 +767,7 @@ describe('OnboardingComponent', () => {
 
     setNgModelValue(form.querySelector('input[type="text"]') as HTMLInputElement, 'Transport');
     fixture.detectChanges();
-    (form.querySelector('.btn.dashed') as HTMLButtonElement).click();
+    (form.querySelector('.btn.primary') as HTMLButtonElement).click();
     fixture.detectChanges();
 
     alert = fixture.nativeElement.querySelector('.alert') as HTMLElement;

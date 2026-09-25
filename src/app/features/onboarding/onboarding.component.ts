@@ -238,8 +238,11 @@ export class OnboardingComponent {
   }
 
   /* Creation lives behind a New button, like the Settings cards: the reveal
-     resets the draft so every open starts from a fresh form; saving or
-     cancelling hides it. Nothing is persisted until Onboarding completes. */
+     resets the draft so every open starts from a fresh form; cancelling
+     hides it. Nothing is persisted until Onboarding completes. After a
+     successful add the form stays open with a fresh draft, so a run of
+     accounts or categories needs no detour through the New button; leaving
+     the step discards any typed-but-un-added draft. */
   startAddAccount(): void {
     this.accountName.set('');
     this.accountCurrency.set('EUR');
@@ -282,7 +285,7 @@ export class OnboardingComponent {
     ]);
     this.accountName.set('');
     this.accountBalance.set(null);
-    this.addingAccount.set(false);
+    this.addingAccount.set(true);
     this.errorMessage.set('');
   }
 
@@ -377,10 +380,10 @@ export class OnboardingComponent {
   }
 
   /* New rows come from the New-button-revealed inline add form — name plus
-     type — validated before staging, the Settings categories-card grammar
-     (#142). The reveal resets the draft; saving or cancelling hides it. A
-     pending Delete all confirm disarms: the list it was about to clear just
-     grew (#143). */
+      type — validated before staging, the Settings categories-card grammar
+      (#142). The reveal resets the draft; cancelling hides it, a successful
+      add leaves it open with a fresh draft. A pending Delete all confirm
+      disarms: the list it was about to clear just grew (#143). */
   startAddCategory(): void {
     this.newCategoryName.set('');
     this.newCategoryType.set('expense');
@@ -411,7 +414,7 @@ export class OnboardingComponent {
     }
     this.categories.update(cats => [...cats, { name, type: this.newCategoryType() }]);
     this.newCategoryName.set('');
-    this.addingCategory.set(false);
+    this.addingCategory.set(true);
     this.confirmingDeleteAll.set(false);
     this.errorMessage.set('');
   }

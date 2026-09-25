@@ -286,11 +286,14 @@
   }
 }
 
-/* Add form: name input, currency/type select and Add button share the same
-   width and height — the Settings card composition (#141, #142). Creation is
-   revealed by a New button that occupies the same slot when hidden.
-   Bottom-aligned rather than stretched: the labeled balance field is taller
-   than a bare input and must not stretch its row-mates. */
+/* Add form: one line on desktop. The name input flexes to absorb the
+   leftover width; the currency/type select and the labeled balance field
+   size to their content, and the Add/Cancel pair auto-sizes to its label —
+   the short ADD/CANCEL labels no longer need the 10rem square the older
+   object-named labels required. Height stays pinned to the %field floor so
+   nothing renders shorter than its row-mates. Bottom-aligned rather than
+   stretched: the labeled balance field is taller than a bare input and
+   must not stretch its row-mates. */
 .inline-form {
   display: flex;
   gap: var(--space-sm);
@@ -301,7 +304,13 @@
   .input {
     @extend %field;
 
-    width: 10rem;
+    width: 7rem;
+  }
+
+  /* The name field is the first control of both the accounts and the
+     categories add form; it grows so the row fills the panel width. */
+  > .input:first-child {
+    flex: 1 1 10rem;
   }
 
   /* Visible label over the one field a placeholder cannot explain (the
@@ -310,7 +319,7 @@
     @extend %labeled-field;
 
     .input {
-      width: 10rem;
+      width: 8rem;
     }
   }
 
@@ -318,9 +327,14 @@
     @extend %labeled-field-label;
   }
 
-  .btn.dashed {
-    width: 10rem;
+  .btn {
+    min-height: calc(var(--type-body) * var(--leading-body) + 1rem + 2px);
   }
+}
+
+.empty-state {
+  color: var(--on-surface-variant);
+  margin: 0 0 var(--space-md);
 }
 
 .btn.add-toggle {
@@ -514,6 +528,28 @@ app-dismissible-alert {
 
   .step-title {
     font-size: var(--type-headline);
+  }
+
+  /* The add form stacks: fields and the Add/Cancel pair go full width of
+     the panel, so the commit button is as big and reachable as the fields.
+     The desktop flex rule is dropped: in a column it would stretch the
+     name input's height instead of its width. */
+  .inline-form {
+    flex-direction: column;
+    align-items: stretch;
+
+    > .input:first-child {
+      flex: 0 0 auto;
+    }
+
+    .input,
+    .field .input {
+      width: 100%;
+    }
+
+    .btn {
+      width: 100%;
+    }
   }
 }
 

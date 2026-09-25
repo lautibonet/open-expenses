@@ -100,6 +100,14 @@ _Avoid_: public route, open page, unauthenticated page
 The first-run flow that collects language, base currency, initial accounts, and initial categories before the app is usable. Its first step asks the preferred Language; the second asks whether to restore a Backup from a cloud provider or from an uploaded file, before the wizard itself runs. Steps after the first carry a Back control; going back only navigates — it never undoes completed work (a completed Restore, the chosen Language, staged accounts and categories all persist). Restoring a Backup overwrites the chosen Language with the Backup's.
 _Avoid_: Setup, wizard, first-time flow
 
+**Draft**:
+Values typed into an add form (an Onboarding account or category) that have not been added to the step's list. A Draft is never persisted and never preserved across steps: leaving the step or closing the form discards it. Drafts are deliberately not saved; typing without choosing Add is treated as no action.
+_Avoid_: pending item, unsaved account
+
+**Staged**:
+An account or category added to an Onboarding step's list, pending persistence when Onboarding completes. Going back never un-stages it.
+_Avoid_: temporary item, local copy
+
 **Backup**:
 A user-initiated snapshot of the full dataset saved off-device, either to a cloud provider or downloaded as a file. Backups are never triggered automatically — the user starts a cloud backup from the sidebar Backup action or the Settings backup card, or downloads a Backup file from those same two surfaces. _Avoid_: Sync, snapshot, export, autosave
 
