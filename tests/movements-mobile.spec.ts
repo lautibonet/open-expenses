@@ -192,44 +192,26 @@ test.describe('movements on a phone (coarse pointer)', () => {
 });
 
 test.describe('movements capture sheet on a phone (#103)', () => {
-  test('bottom nav carries the capture slot as the single blue action', async ({ page }) => {
+  test('bottom nav carries only the three page tabs', async ({ page }) => {
     await completeOnboarding(page);
     // Park the virtual mouse away from the nav bar: the click that finished
-    // onboarding leaves it hovering the page, and :hover deepens the slot.
+    // onboarding leaves it hovering the page.
     await page.mouse.move(0, 200);
 
-    const capture = page.locator('nav.tab-bar button.capture-slot');
-    await expect(capture).toBeVisible();
-    await expect(capture).toHaveAccessibleName('+ New Transaction');
-    await expectHeightAtLeast(capture, 44);
-
-    const styles = await capture.evaluate((el) => {
-      const s = getComputedStyle(el);
-      return {
-        background: s.backgroundColor,
-        borderRadius: s.borderRadius,
-        borderWidth: s.borderWidth,
-      };
-    });
-    expect(styles.background).toBe('rgb(0, 82, 255)');
-    expect(styles.borderRadius).toBe('0px');
-    expect(parseFloat(styles.borderWidth)).toBeGreaterThanOrEqual(1);
-
-    // The slot is the only blue-filled element in the nav bar.
-    const blueChildren = await page.locator('nav.tab-bar').evaluate((nav) =>
-      Array.from(nav.querySelectorAll('a, button')).filter(
-        (el) => getComputedStyle(el).backgroundColor === 'rgb(0, 82, 255)',
-      ).length,
-    );
-    expect(blueChildren).toBe(1);
+    // The capture slot is retired: the nav bar carries only Movements, Stats
+    // and Settings; capture lives in the page's controls row.
+    const navButtons = page.locator('nav.tab-bar a, nav.tab-bar button');
+    await expect(navButtons).toHaveCount(3);
+    await expect(page.locator('nav.tab-bar button')).toHaveCount(0);
+    await expect(page.locator('.controls button', { hasText: '+ Transaction' })).toBeVisible();
   });
 
-  test('capture slot opens the sheet; Save/Cancel pinned; save lands in the ledger', async ({
+  test('controls row opens the sheet; Save/Cancel pinned; save lands in the ledger', async ({
     page,
   }) => {
     await completeOnboarding(page);
 
-    await page.locator('nav.tab-bar button.capture-slot').click();
+    await page.getByRole('button', { name: '+ Transaction' }).click();
     const sheet = page.locator('app-bottom-sheet .sheet');
     await expect(sheet).toBeVisible();
     await awaitSheetSettled(page);
@@ -413,10 +395,10 @@ test.describe('movements on desktop (fine pointer)', () => {
     await expect(page.locator('.shortcut-hint')).toBeVisible();
   });
 
-  test('desktop has no capture slot in the sidebar and no sheet on capture', async ({ page }) => {
+  test('desktop has no capture slot and no sheet on capture', async ({ page }) => {
     await completeOnboarding(page);
 
-    await expect(page.locator('nav.tab-bar button.capture-slot')).toBeHidden();
+    await expect(page.locator('nav.tab-bar button')).toHaveCount(0);
 
     await page.getByRole('button', { name: '+ Transaction' }).click();
     await expect(page.locator('.transaction-form-form')).toBeVisible();

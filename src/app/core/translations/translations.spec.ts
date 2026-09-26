@@ -46,6 +46,8 @@ describe('translations', () => {
       'shell.newTransactionShortcut',
       'shell.privacy',
       'shell.about',
+      'shell.quickBackup',
+      'shell.quickRestore',
     ]) {
       expect(TRANSLATIONS.en[key]).toBeTruthy();
       expect(TRANSLATIONS.es[key]).toBeTruthy();
@@ -107,7 +109,17 @@ describe('translations', () => {
       'backup.noCloudBackup',
       'backup.restoredOk',
       'backup.card.backUpTo',
+      'backup.feedback.backedUp',
+      'backup.feedback.backupFailed',
+      'backup.feedback.dismiss',
     ]) {
+      expect(TRANSLATIONS.en[key]).toBeTruthy();
+      expect(TRANSLATIONS.es[key]).toBeTruthy();
+    }
+  });
+
+  it('covers the restore feedback keys', () => {
+    for (const key of ['restore.feedback.restored']) {
       expect(TRANSLATIONS.en[key]).toBeTruthy();
       expect(TRANSLATIONS.es[key]).toBeTruthy();
     }

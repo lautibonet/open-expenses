@@ -10,7 +10,6 @@ import { DriveBackupService } from '../../../core/services/drive-backup.service'
 import { NetworkService } from '../../../core/services/network.service';
 import { LanguageService } from '../../../core/services/language.service';
 import { NoBackupFoundError } from '../../../backup/drive-backup-provider';
-import { BackupSnapshot } from '../../../backup/backup-snapshot';
 import { downloadBackupFile } from '../../../backup/backup-file-download';
 import { DismissibleAlertComponent } from '../../../shared/components/dismissible-alert/dismissible-alert.component';
 import { formatLastBackupStatus } from '../../../backup/last-backup-status';
@@ -30,7 +29,7 @@ export class BackupCardComponent {
   language = inject(LanguageService);
 
   method = this.backupService.method;
-  pendingRestore = signal<BackupSnapshot | null>(null);
+  pendingRestore = this.backupService.pendingRestore;
   isBusy = signal(false);
   message = signal('');
   errorMessage = signal('');
@@ -130,9 +129,9 @@ export class BackupCardComponent {
 
     try {
       const snapshot = await this.backupService.parseBackupFile(file);
-      this.pendingRestore.set(snapshot);
+      this.backupService.pendingRestore.set(snapshot);
     } catch (e: unknown) {
-      this.pendingRestore.set(null);
+      this.backupService.pendingRestore.set(null);
       this.errorMessage.set(
         errorCopy(e, this.language.translateFn, 'backup.error.invalidFile'),
       );
@@ -144,11 +143,11 @@ export class BackupCardComponent {
   async restoreFromCloud(): Promise<void> {
     this.isBusy.set(true);
     this.newStatusCycle();
-    this.pendingRestore.set(null);
+    this.backupService.pendingRestore.set(null);
 
     try {
       const snapshot = await this.backupService.getCloudSnapshot();
-      this.pendingRestore.set(snapshot);
+      this.backupService.pendingRestore.set(snapshot);
     } catch (e: unknown) {
       if (e instanceof NoBackupFoundError) {
         this.errorMessage.set(this.language.t('backup.noCloudBackup'));
@@ -163,7 +162,7 @@ export class BackupCardComponent {
   }
 
   async confirmRestore(): Promise<void> {
-    const snapshot = this.pendingRestore();
+    const snapshot = this.backupService.pendingRestore();
     if (!snapshot) return;
 
     this.isBusy.set(true);
@@ -171,7 +170,7 @@ export class BackupCardComponent {
 
     try {
       await this.backupService.restoreFromSnapshot(snapshot);
-      this.pendingRestore.set(null);
+      this.backupService.pendingRestore.set(null);
       this.message.set(this.language.t('backup.restoredOk'));
     } catch (e: unknown) {
       this.errorMessage.set(
@@ -183,6 +182,6 @@ export class BackupCardComponent {
   }
 
   cancelRestore(): void {
-    this.pendingRestore.set(null);
+    this.backupService.cancelPendingRestore();
   }
 }

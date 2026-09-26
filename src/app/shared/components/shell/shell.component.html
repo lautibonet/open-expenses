@@ -60,24 +60,6 @@
         /></svg
       ><span class="tab-label">{{ language.t('shell.stats') }}</span></a
     >
-    <button
-      type="button"
-      class="capture-slot"
-      (click)="goToTransactionForm()"
-      [attr.aria-label]="language.t('shell.newTransaction')"
-      [title]="language.t('shell.newTransaction')"
-    >
-      <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
-        <path
-          d="M12 5v14M5 12h14"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        />
-      </svg>
-    </button>
     <a
       routerLink="/settings"
       routerLinkActive="active"
@@ -148,7 +130,125 @@
     </svg>
     <span class="wordmark">Open Expenses</span>
   </div>
+  <div class="top-bar-actions">
+    <button
+      type="button"
+      class="quick-action"
+      (click)="quickBackUp()"
+      [disabled]="quickActionsDisabled()"
+      [attr.aria-label]="language.t('backup.card.backUpTo', { method: backupMethod })"
+      [title]="language.t('backup.card.backUpTo', { method: backupMethod })"
+    >
+      @if (backupInFlight()) {
+        <svg class="spin" aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+          <path d="M12 3a9 9 0 1 1-9 9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+        </svg>
+      } @else {
+        <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+          <path
+            d="M4 16.5V20h16v-3.5"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+          <path
+            d="M12 15V4M8 8l4-4 4 4"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
+      }
+      <span class="quick-label">{{ language.t('shell.quickBackup') }}</span>
+    </button>
+    <button
+      type="button"
+      class="quick-action"
+      (click)="quickRestore()"
+      [disabled]="quickActionsDisabled()"
+      [attr.aria-label]="language.t('backup.card.restoreFrom', { method: backupMethod })"
+      [title]="language.t('backup.card.restoreFrom', { method: backupMethod })"
+    >
+      @if (restoreInFlight()) {
+        <svg class="spin" aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+          <path d="M12 3a9 9 0 1 1-9 9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+        </svg>
+      } @else {
+        <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+          <path
+            d="M4 16.5V20h16v-3.5"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+          <path
+            d="M12 4v11M8 11l4 4 4-4"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
+      }
+      <span class="quick-label">{{ language.t('shell.quickRestore') }}</span>
+    </button>
+  </div>
 </header>
+
+@if (feedbackCopy(); as copy) {
+  <div
+    class="feedback-strip"
+    [class.success]="copy.kind === 'success'"
+    [class.error]="copy.kind === 'error'"
+    [attr.role]="copy.kind === 'error' ? 'alert' : 'status'"
+  >
+    <span>{{ copy.text }}</span>
+    <button type="button" class="feedback-dismiss" (click)="dismissFeedback()">
+      {{ language.t('backup.feedback.dismiss') }}
+    </button>
+  </div>
+}
+
+@if (isMobileLayout() && restoreSheetOpen() && pendingRestore()) {
+  <app-bottom-sheet
+    [label]="language.t('backup.card.title')"
+    (dismissed)="cancelRestore()"
+  >
+    <div class="restore-confirm">
+      <h3>{{ language.t('backup.card.restoreFrom', { method: backupMethod }) }}</h3>
+      <p class="restore-meta">
+        {{ language.t('backup.card.backupFromLabel') }}
+        <strong>{{ restoreDate() }}</strong>
+      </p>
+      <p class="restore-warning">{{ language.t('backup.card.replacesAllData') }}</p>
+      <div class="restore-confirm-actions">
+        <button
+          type="button"
+          class="btn danger filled"
+          [disabled]="isBusy()"
+          (click)="confirmRestore()"
+        >
+          {{ language.t('backup.card.restoreData') }}
+        </button>
+        <button
+          type="button"
+          class="btn"
+          [disabled]="isBusy()"
+          (click)="cancelRestore()"
+        >
+          {{ language.t('backup.card.cancel') }}
+        </button>
+      </div>
+    </div>
+  </app-bottom-sheet>
+}
 
 <div class="main-area">
   @if (showInstallPrompt()) {

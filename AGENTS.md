@@ -13,3 +13,7 @@ Default five-role vocabulary: `needs-triage`, `needs-info`, `ready-for-agent`, `
 ### Domain docs
 
 Single-context layout: one `CONTEXT.md` at repo root + `docs/adr/`. See `docs/agents/domain.md`.
+
+## Language
+
+The code must be in English (e.g., names of methods, variables, constants, etc.). This does not apply to translations into other languages.
