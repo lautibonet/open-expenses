@@ -37,6 +37,12 @@ export class DriveBackupService {
   isBackingUp = signal(false);
   lastBackupAt = signal<Date | null>(null);
   error = signal<TranslationError | Error | string | null>(null);
+  /**
+   * The snapshot awaiting confirm in the two-step Restore, shared by the
+   * Settings backup card and the mobile top-bar quick action so both entry
+   * points present one pending Restore.
+   */
+  pendingRestore = signal<BackupSnapshot | null>(null);
 
   private accessToken: string | null = null;
 
@@ -51,6 +57,10 @@ export class DriveBackupService {
 
   clearError(): void {
     this.error.set(null);
+  }
+
+  cancelPendingRestore(): void {
+    this.pendingRestore.set(null);
   }
 
   private setAndRethrow(fallbackKey: string, e: unknown): never {

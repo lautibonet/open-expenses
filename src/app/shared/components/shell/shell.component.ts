@@ -3,17 +3,22 @@ import { Router, RouterOutlet, RouterLink, RouterLinkActive } from '@angular/rou
 import { version } from '../../../../../package.json';
 import { InstallPromptComponent } from '../install-prompt/install-prompt.component';
 import { UpdatePromptComponent } from '../update-prompt/update-prompt.component';
+import { BottomSheetComponent } from '../bottom-sheet/bottom-sheet.component';
 import { LanguageService } from '../../../core/services/language.service';
 import { CaptureFormService } from '../../../core/services/capture-form.service';
 import { DriveBackupService } from '../../../core/services/drive-backup.service';
+import { NetworkService } from '../../../core/services/network.service';
 import { PwaUpdateService } from '../../../core/services/pwa-update.service';
+import { NoBackupFoundError } from '../../../backup/drive-backup-provider';
+import { formatRelativeTimeIn } from '../../../core/format/relative-time';
 import { formatLastBackupStatus } from '../../../backup/last-backup-status';
 import { downloadBackupFile } from '../../../backup/backup-file-download';
-import { errorCopy } from '../../../core/models/translation-error';
+import { TranslationError, errorCopy } from '../../../core/models/translation-error';
+import { BackupSnapshot } from '../../../backup/backup-snapshot';
 
 @Component({
   selector: 'app-shell',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, InstallPromptComponent, UpdatePromptComponent],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, InstallPromptComponent, UpdatePromptComponent, BottomSheetComponent],
   templateUrl: './shell.component.html',
   styleUrl: './shell.component.scss',
   host: { '(document:keydown)': 'onDocKeydown($event)' },
@@ -27,6 +32,7 @@ export class ShellComponent {
   private router = inject(Router);
   private captureFormService = inject(CaptureFormService);
   private backupService = inject(DriveBackupService);
+  private networkService = inject(NetworkService);
   private pwaUpdate = inject(PwaUpdateService);
 
   private minuteTick = signal(0);
@@ -53,9 +59,47 @@ export class ShellComponent {
     );
   });
 
+  /* Mobile top-bar quick actions: busy/offline semantics mirror the Settings
+     backup card so behavior never contradicts itself between entry points. */
+  isOnline = this.networkService.isOnline;
+
+  isBusy = this.backupService.isBackingUp;
+
+  pendingRestore = this.backupService.pendingRestore;
+
+  /** Which action the strip feedback is about: none, success, or failure. */
+  private feedbackKind = signal<'none' | 'success' | 'error'>('none');
+
+  private feedbackMessage = signal('');
+
+  feedbackCopy = computed(() => {
+    this.language.activeLanguage();
+    if (this.feedbackKind() === 'none') return null;
+    return { kind: this.feedbackKind(), text: this.feedbackMessage() };
+  });
+
+  private feedbackTimer: ReturnType<typeof setTimeout> | null = null;
+
+  restoreDate = computed(() => {
+    const pending = this.pendingRestore();
+    if (!pending) return '';
+    return this.language.formatDate(new Date(pending.exportedAt), {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  });
+
   constructor() {
     const intervalId = setInterval(() => this.minuteTick.update((t) => t + 1), 60_000);
-    inject(DestroyRef).onDestroy(() => clearInterval(intervalId));
+    inject(DestroyRef).onDestroy(() => {
+      clearInterval(intervalId);
+      if (this.feedbackTimer !== null) {
+        clearTimeout(this.feedbackTimer);
+      }
+    });
   }
 
   skipToContent(event: MouseEvent): void {
@@ -79,9 +123,19 @@ export class ShellComponent {
     }
     try {
       await this.backupService.backupNow();
+      this.showSuccessFeedback('backup.feedback.backedUp');
     } catch {
-      // Backup errors surface in the Settings backup card.
+      /* Cloud backup errors surface via the service error in the strip. */
+      this.showFailureFeedback();
     }
+  }
+
+  /** Quick-action Backup from the mobile top bar: same busy gates, strip feedback. */
+  async quickBackUp(): Promise<void> {
+    if (this.isBusy() || !this.isOnline()) {
+      return;
+    }
+    await this.backUp();
   }
 
   async downloadBackup(): Promise<void> {
@@ -120,6 +174,90 @@ export class ShellComponent {
       await this.goToTransactionForm();
     } else if (e.key === 't' || e.key === 'T') {
       await this.goToTransferForm();
+    }
+  }
+
+  /**
+   * Quick-action Restore from the mobile top bar: fetch the cloud snapshot
+   * into the shared pending state, then open the confirm bottom sheet. The
+   * two-step confirm mirrors the Settings backup card exactly.
+   */
+  async quickRestore(): Promise<void> {
+    if (this.isBusy() || !this.isOnline()) {
+      return;
+    }
+    this.backupService.pendingRestore.set(null);
+
+    try {
+      const snapshot = await this.backupService.getCloudSnapshot();
+      this.backupService.pendingRestore.set(snapshot);
+    } catch (e: unknown) {
+      if (e instanceof NoBackupFoundError) {
+        this.showFailureFeedback(this.language.t('backup.noCloudBackup'));
+      } else {
+        this.showFailureFeedback(
+          errorCopy(e, this.language.translateFn, 'backup.error.restoreFailed'),
+        );
+      }
+    }
+  }
+
+  async confirmRestore(): Promise<void> {
+    const snapshot = this.backupService.pendingRestore();
+    if (!snapshot) return;
+
+    try {
+      await this.backupService.restoreFromSnapshot(snapshot);
+      this.backupService.pendingRestore.set(null);
+      this.showSuccessFeedback('backup.feedback.restored');
+    } catch (e: unknown) {
+      this.showFailureFeedback(
+        errorCopy(e, this.language.translateFn, 'backup.error.restoreFailed'),
+      );
+    }
+  }
+
+  cancelRestore(): void {
+    this.backupService.cancelPendingRestore();
+  }
+
+  dismissFeedback(): void {
+    if (this.feedbackTimer !== null) {
+      clearTimeout(this.feedbackTimer);
+      this.feedbackTimer = null;
+    }
+    this.feedbackKind.set('none');
+    this.feedbackMessage.set('');
+  }
+
+  private showSuccessFeedback(key: string): void {
+    const when = this.backupService.lastBackupAt()
+      ? formatRelativeTimeIn(this.language.activeLanguage(), this.backupService.lastBackupAt() as Date)
+      : this.language.t('backup.relative.justNow');
+    this.setFeedback('success', this.language.t(key, { when }), 4000);
+  }
+
+  private showFailureFeedback(text?: string): void {
+    const err = this.backupService.error();
+    const message =
+      text ??
+      (err instanceof TranslationError
+        ? this.language.t(err.key, err.params)
+        : err instanceof Error
+          ? err.message
+          : this.language.t('backup.feedback.actionFailed'));
+    this.setFeedback('error', message);
+  }
+
+  private setFeedback(kind: 'none' | 'success' | 'error', text: string, autoHideMs?: number): void {
+    if (this.feedbackTimer !== null) {
+      clearTimeout(this.feedbackTimer);
+      this.feedbackTimer = null;
+    }
+    this.feedbackKind.set(kind);
+    this.feedbackMessage.set(text);
+    if (autoHideMs !== undefined) {
+      this.feedbackTimer = setTimeout(() => this.dismissFeedback(), autoHideMs);
     }
   }
 

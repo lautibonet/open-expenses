@@ -26,11 +26,6 @@ $sidebar-width: 256px;
   white-space: nowrap;
 }
 
-.status-chip {
-  @extend %caps-label-muted;
-  margin: var(--space-sm) 0 0;
-}
-
 /* ===== Desktop sidebar (>= 769px) ===== */
 
 .sidebar {
@@ -140,16 +135,11 @@ $sidebar-width: 256px;
   overflow-wrap: anywhere;
 }
 
-/* Capture slot (#103): exists only in the mobile bottom nav, where it is
-   the single blue action; the desktop sidebar keeps its New Transaction CTA
-   and three-link nav, so the slot never renders there. */
-.capture-slot {
-  display: none;
-}
-
 /* ===== Mobile top bar (<= 768px) — hidden on desktop ===== */
 
-.top-bar {
+.top-bar,
+.feedback-strip,
+.restore-confirm {
   display: none;
 }
 
@@ -270,39 +260,8 @@ $sidebar-width: 256px;
     }
   }
 
-  /* The nav's center capture slot (#103): the one blue element on mobile —
-     square, zero radius, Primary Container fill with the hard border and
-      press interaction every button carries (%btn-base's properties are
-      repeated by hand: @extend cannot cross a media-query boundary). Same
-      nav height as the tabs — sized by the bar's stretch (#112). */
-  .capture-slot {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    flex: 1;
-    padding: 0;
-    background: var(--primary-container);
-    color: var(--surface-lowest);
-    border: var(--border-hard);
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-    box-shadow: var(--shadow-press);
-
-    svg {
-      width: 1.5rem;
-      height: 1.5rem;
-    }
-
-    &:hover {
-      background: var(--primary-deep);
-      color: var(--surface-lowest);
-    }
-
-    &:active {
-      box-shadow: none;
-      transform: translate(2px, 2px);
-    }
-  }
+  /* The nav's center capture slot retired: the bar carries only the three
+     real pages; Add lives on the Movements page (controls row, empty state). */
 
   .top-bar {
     display: flex;
@@ -320,9 +279,165 @@ $sidebar-width: 256px;
     background: var(--surface-lowest);
     border-bottom: 1px solid var(--on-surface);
 
-    .status-chip {
-      margin: 0;
-      text-align: right;
+    .top-bar-actions {
+      display: flex;
+      align-items: center;
+      gap: var(--space-xs);
+    }
+
+    /* The quick actions speak as ghosts: no box, no border, no fill — the
+       glyph alone, at the 44px thumb minimum. */
+    .quick-action {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 2.75rem;
+      height: 2.75rem;
+      padding: 0;
+      background: none;
+      border: none;
+      color: var(--on-surface);
+      cursor: pointer;
+      box-shadow: none;
+
+      svg {
+        width: 1.25rem;
+        height: 1.25rem;
+      }
+
+      &:hover:not(:disabled) {
+        background: var(--surface-container-high);
+      }
+
+      &:active:not(:disabled) {
+        transform: translate(2px, 2px);
+      }
+
+      &:disabled {
+        opacity: 0.6;
+        cursor: default;
+      }
+
+      .spin {
+        animation: quick-action-spin 1s linear infinite;
+      }
+    }
+  }
+
+  @keyframes quick-action-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .quick-action .spin {
+      animation: none;
+    }
+  }
+
+  /* Whole-surface feedback under the bar: primary tint for success, error
+     ramp for failures; errors persist until dismissed, success self-clears. */
+  .feedback-strip {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-sm);
+    padding: var(--space-sm) var(--space-md);
+    font-size: var(--type-body);
+    background: var(--surface-container-low);
+    border-bottom: 1px solid var(--on-surface);
+
+    &.success {
+      background: var(--primary-fixed);
+      color: var(--on-primary-fixed);
+    }
+
+    &.error {
+      background: var(--error-container);
+      color: var(--on-error-container);
+    }
+
+    .feedback-dismiss {
+      /* Caps label by hand: @extend cannot cross a media-query boundary. */
+      font-size: var(--type-label);
+      font-weight: 700;
+      letter-spacing: var(--tracking-caps);
+      text-transform: uppercase;
+      background: none;
+      border: 1px solid currentColor;
+      padding: var(--space-xs) var(--space-sm);
+      cursor: pointer;
+      color: var(--on-surface);
+      flex: 0 0 auto;
+    }
+  }
+
+  /* The top-bar Restore confirm rides the shared bottom sheet; its inner
+     panel mirrors the Settings card's restore-confirm grammar. */
+  .restore-confirm {
+    display: block;
+    padding: var(--space-md);
+
+    h3 {
+      margin: 0 0 var(--space-sm);
+      font-size: var(--type-title);
+      font-weight: 700;
+    }
+  }
+
+  .restore-meta {
+    /* Caps label by hand: @extend cannot cross a media-query boundary. */
+    font-size: var(--type-label);
+    font-weight: 700;
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    color: var(--on-surface-variant);
+    margin: 0 0 var(--space-sm);
+  }
+
+  .restore-warning {
+    margin: 0 0 var(--space-md);
+    padding: var(--space-sm) var(--space-md);
+    background: var(--error-container);
+    color: var(--on-error-container);
+    border: 1px solid var(--on-error-container);
+    font-weight: 600;
+  }
+
+  .restore-confirm-actions {
+    display: flex;
+    gap: var(--space-sm);
+  }
+
+  .btn {
+    /* %btn-base by hand: @extend cannot cross a media-query boundary. */
+    padding: 0.5rem 1rem;
+    border: var(--border-hard);
+    border-radius: var(--radius-sm);
+    background: var(--surface-lowest);
+    cursor: pointer;
+    font-size: var(--type-label);
+    font-weight: 700;
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    box-shadow: var(--shadow-press);
+    flex: 1;
+
+    &:active:not(:disabled) {
+      box-shadow: none;
+      transform: translate(2px, 2px);
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+
+    &.danger.filled {
+      background: var(--error);
+      color: var(--surface-lowest);
+      border-color: var(--on-surface);
     }
   }
 

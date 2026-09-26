@@ -6,8 +6,10 @@ import { routes } from '../../../app.routes';
 import { LanguageService } from '../../../core/services/language.service';
 import { CaptureFormService } from '../../../core/services/capture-form.service';
 import { DriveBackupService } from '../../../core/services/drive-backup.service';
+import { NetworkService } from '../../../core/services/network.service';
 import { PwaInstallService } from '../../../core/services/pwa-install.service';
 import { PwaUpdateService } from '../../../core/services/pwa-update.service';
+import { TranslationError } from '../../../core/models/translation-error';
 import { db } from '../../../core/db/database';
 
 describe('ShellComponent', () => {
@@ -196,31 +198,191 @@ describe('ShellComponent', () => {
     expect(links).toEqual(['Movements', 'Stats', 'Settings']);
   });
 
-  it('renders the capture slot between Stats and Settings in the nav bar', () => {
+  it('renders the nav bar with only the three real page tabs', () => {
     const nav = fixture.nativeElement.querySelector('nav.tab-bar') as HTMLElement;
-    const children = Array.from(nav.querySelectorAll('a.tab, button.capture-slot'));
-    const kinds = children.map((el) =>
-      el.tagName === 'A' ? (el as HTMLElement).textContent?.trim() : 'capture',
-    );
-    expect(kinds).toEqual(['Movements', 'Stats', 'capture', 'Settings']);
-
-    const capture = nav.querySelector('button.capture-slot') as HTMLButtonElement;
-    expect(capture.getAttribute('aria-label')).toBe('+ New Transaction');
-    expect(capture.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
+    const children = Array.from(nav.querySelectorAll('a.tab, button'));
+    expect(children.length).toBe(3);
+    expect(children.every((el) => el.tagName === 'A')).toBe(true);
   });
 
-  it('opens the Transaction Form from the capture slot', async () => {
-    const captureFormService = TestBed.inject(CaptureFormService);
-    const router = TestBed.inject(Router);
-    vi.spyOn(router, 'url', 'get').mockReturnValue('/movements');
+  it('renders two ghost quick actions in the top bar, Backup and Restore', () => {
+    const actions = Array.from(
+      fixture.nativeElement.querySelectorAll('.top-bar-actions .quick-action'),
+    ) as HTMLButtonElement[];
+    expect(actions.length).toBe(2);
 
-    const capture = fixture.nativeElement.querySelector(
-      'button.capture-slot',
-    ) as HTMLButtonElement;
-    capture.click();
+    expect(actions[0].getAttribute('aria-label')).toBe('Back up to Google Drive');
+    expect(actions[0].getAttribute('title')).toBe('Back up to Google Drive');
+    expect(actions[0].querySelector('svg[aria-hidden="true"]')).not.toBeNull();
+
+    expect(actions[1].getAttribute('aria-label')).toBe('Restore from Google Drive');
+    expect(actions[1].getAttribute('title')).toBe('Restore from Google Drive');
+    expect(actions[1].querySelector('svg[aria-hidden="true"]')).not.toBeNull();
+  });
+
+  it('disables both quick actions while a backup is in progress', () => {
+    const backupService = TestBed.inject(DriveBackupService);
+    backupService.isBackingUp.set(true);
+    fixture.detectChanges();
+
+    const actions = fixture.nativeElement.querySelectorAll(
+      '.quick-action',
+    ) as NodeListOf<HTMLButtonElement>;
+    expect(actions[0].disabled).toBe(true);
+    expect(actions[1].disabled).toBe(true);
+  });
+
+  it('disables both quick actions while offline', () => {
+    TestBed.inject(NetworkService).isOnline.set(false);
+    fixture.detectChanges();
+
+    const actions = fixture.nativeElement.querySelectorAll(
+      '.quick-action',
+    ) as NodeListOf<HTMLButtonElement>;
+    expect(actions[0].disabled).toBe(true);
+    expect(actions[1].disabled).toBe(true);
+  });
+
+  it('backs up from the quick action and shows the transient success strip', async () => {
+    vi.useFakeTimers();
+    try {
+      const backupService = TestBed.inject(DriveBackupService);
+      vi.spyOn(backupService, 'backupNow').mockImplementation(async () => {
+        backupService.lastBackupAt.set(new Date());
+        return undefined;
+      });
+
+      const actions = fixture.nativeElement.querySelectorAll(
+        '.quick-action',
+      ) as NodeListOf<HTMLButtonElement>;
+      actions[0].click();
+      await vi.advanceTimersByTimeAsync(1000);
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const strip = fixture.nativeElement.querySelector('.feedback-strip') as HTMLElement;
+      expect(strip.textContent).toContain('Backed up · Just now');
+      expect(strip.getAttribute('role')).toBe('status');
+
+      // Success feedback is transient: it self-clears after ~4s.
+      await vi.advanceTimersByTimeAsync(4100);
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('.feedback-strip')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('keeps a failed backup in the strip until dismissed', async () => {
+    const backupService = TestBed.inject(DriveBackupService);
+    backupService.error.set(new TranslationError('backup.error.backupFailed'));
+    vi.spyOn(backupService, 'backupNow').mockRejectedValue(new Error('Failed to fetch'));
+
+    const actions = fixture.nativeElement.querySelectorAll(
+      '.quick-action',
+    ) as NodeListOf<HTMLButtonElement>;
+    actions[0].click();
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('.feedback-strip.error')).not.toBeNull();
+    });
+
+    const strip = fixture.nativeElement.querySelector('.feedback-strip') as HTMLElement;
+    expect(strip.getAttribute('role')).toBe('alert');
+
+    (fixture.nativeElement.querySelector('.feedback-dismiss') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.feedback-strip')).toBeNull();
+  });
+
+  it('fetches the cloud snapshot and opens the restore confirm sheet', async () => {
+    const snapshot = {
+      accounts: [],
+      categories: [],
+      transactions: [],
+      transfers: [],
+      profile: [],
+      exportedAt: '2026-08-27T00:00:00.000Z',
+    };
+    const backupService = TestBed.inject(DriveBackupService);
+    vi.spyOn(backupService, 'getCloudSnapshot').mockResolvedValue(snapshot as never);
+
+    const actions = fixture.nativeElement.querySelectorAll(
+      '.quick-action',
+    ) as NodeListOf<HTMLButtonElement>;
+    actions[1].click();
     await fixture.whenStable();
+    fixture.detectChanges();
 
-    expect(captureFormService.pendingTransactionFormRequests()).toBe(1);
+    expect(backupService.pendingRestore()).not.toBeNull();
+    const sheet = fixture.nativeElement.querySelector('app-bottom-sheet') as HTMLElement;
+    expect(sheet).not.toBeNull();
+    expect(sheet.textContent).toContain('Restore from Google Drive');
+    expect(sheet.textContent).toContain('This replaces all current data.');
+    expect(sheet.textContent).toContain('Restore data');
+  });
+
+  it('confirms a restore from the sheet with success feedback', async () => {
+    const snapshot = {
+      accounts: [],
+      categories: [],
+      transactions: [],
+      transfers: [],
+      profile: [{ id: 1, baseCurrency: 'USD', onboardingCompleted: true, lastBackupAt: null }],
+      exportedAt: new Date().toISOString(),
+    };
+    const backupService = TestBed.inject(DriveBackupService);
+    vi.spyOn(backupService, 'getCloudSnapshot').mockResolvedValue(snapshot as never);
+    vi.spyOn(backupService, 'restoreFromSnapshot').mockResolvedValue(undefined);
+
+    const actions = fixture.nativeElement.querySelectorAll(
+      '.quick-action',
+    ) as NodeListOf<HTMLButtonElement>;
+    actions[1].click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const danger = Array.from(
+      fixture.nativeElement.querySelectorAll('.restore-confirm-actions button'),
+    ).find((b) => (b as HTMLButtonElement).textContent?.trim() === 'Restore data') as HTMLButtonElement;
+    danger.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(backupService.pendingRestore()).toBeNull();
+    const strip = fixture.nativeElement.querySelector('.feedback-strip') as HTMLElement;
+    expect(strip.textContent).toContain('Restored · Just now');
+  });
+
+  it('cancelling the restore sheet leaves data untouched and closes it', async () => {
+    const snapshot = {
+      accounts: [],
+      categories: [],
+      transactions: [],
+      transfers: [],
+      profile: [],
+      exportedAt: '2026-08-27T00:00:00.000Z',
+    };
+    const backupService = TestBed.inject(DriveBackupService);
+    vi.spyOn(backupService, 'getCloudSnapshot').mockResolvedValue(snapshot as never);
+    const restoreSpy = vi.spyOn(backupService, 'restoreFromSnapshot');
+
+    const actions = fixture.nativeElement.querySelectorAll(
+      '.quick-action',
+    ) as NodeListOf<HTMLButtonElement>;
+    actions[1].click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const cancel = Array.from(
+      fixture.nativeElement.querySelectorAll('.restore-confirm-actions button'),
+    ).find((b) => (b as HTMLButtonElement).textContent?.trim() === 'Cancel') as HTMLButtonElement;
+    cancel.click();
+    fixture.detectChanges();
+
+    expect(backupService.pendingRestore()).toBeNull();
+    expect(restoreSpy).not.toHaveBeenCalled();
+    expect(fixture.nativeElement.querySelector('app-bottom-sheet')).toBeNull();
   });
 
   it('names each nav tab accessibly and renders an icon beside its label', () => {
@@ -392,14 +554,11 @@ describe('ShellComponent', () => {
   // The tabs' content-box min-height stacked padding and borders on top of the
   // token (56px meant to be 75px measured); the bar's own height must size
   // them, so they carry no min-height of their own in the mobile regime.
-  it('keeps the tab buttons and capture slot from stacking height onto the bar', () => {
+  it('keeps the tab buttons from stacking height onto the bar', () => {
     const block = mobileBlock(compiledComponentCss());
 
     const tabRule = block.match(/\.tab(\[[^\]]*\])?\s*\{([^}]*)\}/)?.[2] ?? '';
     expect(tabRule).not.toMatch(/min-height/);
-
-    const captureRule = block.match(/\.capture-slot(\[[^\]]*\])?\s*\{([^}]*)\}/)?.[2] ?? '';
-    expect(captureRule).not.toMatch(/min-height/);
   });
 
   it('keeps the sticky top bar at the documented token height with border-box', () => {

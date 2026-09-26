@@ -65,7 +65,7 @@ The user-selected calendar day of a Transaction or Transfer. A date, not an inst
 _Avoid_: timestamp, datetime, created at
 
 **Transaction Form**:
-The Transaction capture form on the Movements screen — account, category, amount, note, date, and period shown all at once, with no compact/expanded distinction. When a Credit Card is selected as the account, a hint states that purchases on a card are counted when the Statement is paid. Revealed by the New Transaction button, the sidebar capture action, or the mobile bottom nav's center capture slot; presents as a bottom sheet on mobile and inline on desktop. Used for both recording and editing a Transaction.
+The Transaction capture form on the Movements screen — account, category, amount, note, date, and period shown all at once, with no compact/expanded distinction. When a Credit Card is selected as the account, a hint states that purchases on a card are counted when the Statement is paid. Revealed by the New Transaction button (the desktop sidebar's Quick Add action or the Movements controls row) or the empty-state CTA; presents as a bottom sheet on mobile and inline on desktop. Used for both recording and editing a Transaction.
 _Avoid_: Quick Add, quick entry, mini form, inline add, more options
 
 **Transfer Form**:
@@ -109,7 +109,7 @@ An account or category added to an Onboarding step's list, pending persistence w
 _Avoid_: temporary item, local copy
 
 **Backup**:
-A user-initiated snapshot of the full dataset saved off-device, either to a cloud provider or downloaded as a file. Backups are never triggered automatically — the user starts a cloud backup from the sidebar Backup action or the Settings backup card, or downloads a Backup file from those same two surfaces. _Avoid_: Sync, snapshot, export, autosave
+A user-initiated snapshot of the full dataset saved off-device, either to a cloud provider or downloaded as a file. Backups are never triggered automatically — the user starts a cloud backup from the sidebar Backup action, the Settings backup card, or the mobile top bar quick actions, or downloads a Backup file from the sidebar action or the Settings backup card. _Avoid_: Sync, snapshot, export, autosave
 
 **Backup Method**:
 The destination of a cloud Backup — Google Drive today, with Dropbox and iCloud as future providers. Shown next to the last-backup time in the sidebar backup caption and the Settings backup card.

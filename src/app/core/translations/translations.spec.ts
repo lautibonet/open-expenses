@@ -107,6 +107,9 @@ describe('translations', () => {
       'backup.noCloudBackup',
       'backup.restoredOk',
       'backup.card.backUpTo',
+      'backup.feedback.backedUp',
+      'backup.feedback.restored',
+      'backup.feedback.actionFailed',
     ]) {
       expect(TRANSLATIONS.en[key]).toBeTruthy();
       expect(TRANSLATIONS.es[key]).toBeTruthy();
@@ -121,6 +124,9 @@ describe('translations', () => {
       'backup.action.backUp',
       'backup.action.backingUp',
       'backup.relative.justNow',
+      'backup.feedback.backedUp',
+      'backup.feedback.restored',
+      'backup.feedback.actionFailed',
     ]) {
       expect(TRANSLATIONS.en[key]).toBeTruthy();
       expect(TRANSLATIONS.es[key]).toBeTruthy();
