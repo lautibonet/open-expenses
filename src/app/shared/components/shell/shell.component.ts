@@ -1,4 +1,4 @@
-import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
 import { Router, RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { version } from '../../../../../package.json';
 import { InstallPromptComponent } from '../install-prompt/install-prompt.component';
@@ -67,6 +67,26 @@ export class ShellComponent {
 
   pendingRestore = this.backupService.pendingRestore;
 
+  /** The whole mobile regime (top bar, strips, sheets) lives below 768px. */
+  private mobileMediaQuery: MediaQueryList | null =
+    typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+      ? window.matchMedia('(max-width: 768px)')
+      : null;
+
+  readonly isMobileLayout = signal<boolean>(this.mobileMediaQuery?.matches ?? false);
+
+  /** Which quick action is driving the shared busy state, for the spinner. */
+  private actingAction = signal<'backup' | 'restore' | null>(null);
+
+  backupInFlight = computed(() => this.isBusy() && this.actingAction() === 'backup');
+
+  restoreInFlight = computed(() => this.isBusy() && this.actingAction() === 'restore');
+
+  quickActionsDisabled = computed(() => this.isBusy() || !this.isOnline());
+
+  /** The sheet is shell-owned: it only opens for a top-bar-initiated Restore. */
+  restoreSheetOpen = signal(false);
+
   /** Which action the strip feedback is about: none, success, or failure. */
   private feedbackKind = signal<'none' | 'success' | 'error'>('none');
 
@@ -99,8 +119,23 @@ export class ShellComponent {
       if (this.feedbackTimer !== null) {
         clearTimeout(this.feedbackTimer);
       }
+      this.mobileMediaQuery?.removeEventListener('change', this.onMediaChange);
+    });
+
+    this.mobileMediaQuery?.addEventListener('change', this.onMediaChange);
+
+    /* The pending Restore is shared: if the Settings card confirms or cancels
+       it, the shell's sheet must not linger over a null snapshot. */
+    effect(() => {
+      if (!this.pendingRestore()) {
+        this.restoreSheetOpen.set(false);
+      }
     });
   }
+
+  private onMediaChange = (event: MediaQueryListEvent): void => {
+    this.isMobileLayout.set(event.matches);
+  };
 
   skipToContent(event: MouseEvent): void {
     event.preventDefault();
@@ -132,10 +167,15 @@ export class ShellComponent {
 
   /** Quick-action Backup from the mobile top bar: same busy gates, strip feedback. */
   async quickBackUp(): Promise<void> {
-    if (this.isBusy() || !this.isOnline()) {
+    if (this.quickActionsDisabled()) {
       return;
     }
-    await this.backUp();
+    this.actingAction.set('backup');
+    try {
+      await this.backUp();
+    } finally {
+      this.actingAction.set(null);
+    }
   }
 
   async downloadBackup(): Promise<void> {
@@ -183,14 +223,16 @@ export class ShellComponent {
    * two-step confirm mirrors the Settings backup card exactly.
    */
   async quickRestore(): Promise<void> {
-    if (this.isBusy() || !this.isOnline()) {
+    if (this.quickActionsDisabled()) {
       return;
     }
+    this.actingAction.set('restore');
     this.backupService.pendingRestore.set(null);
 
     try {
       const snapshot = await this.backupService.getCloudSnapshot();
       this.backupService.pendingRestore.set(snapshot);
+      this.restoreSheetOpen.set(true);
     } catch (e: unknown) {
       if (e instanceof NoBackupFoundError) {
         this.showFailureFeedback(this.language.t('backup.noCloudBackup'));
@@ -199,6 +241,8 @@ export class ShellComponent {
           errorCopy(e, this.language.translateFn, 'backup.error.restoreFailed'),
         );
       }
+    } finally {
+      this.actingAction.set(null);
     }
   }
 
@@ -206,14 +250,17 @@ export class ShellComponent {
     const snapshot = this.backupService.pendingRestore();
     if (!snapshot) return;
 
+    this.actingAction.set('restore');
     try {
       await this.backupService.restoreFromSnapshot(snapshot);
       this.backupService.pendingRestore.set(null);
-      this.showSuccessFeedback('backup.feedback.restored');
+      this.showSuccessFeedback('restore.feedback.restored');
     } catch (e: unknown) {
       this.showFailureFeedback(
         errorCopy(e, this.language.translateFn, 'backup.error.restoreFailed'),
       );
+    } finally {
+      this.actingAction.set(null);
     }
   }
 
@@ -231,9 +278,11 @@ export class ShellComponent {
   }
 
   private showSuccessFeedback(key: string): void {
-    const when = this.backupService.lastBackupAt()
-      ? formatRelativeTimeIn(this.language.activeLanguage(), this.backupService.lastBackupAt() as Date)
-      : this.language.t('backup.relative.justNow');
+    /* The strip answers "did my action just succeed", not "how fresh is the
+       data": the relative moment is the action's own, which for a Restore is
+       now even when the restored snapshot was taken days ago (Last Backup
+       answers freshness; the strip does not). */
+    const when = formatRelativeTimeIn(this.language.activeLanguage(), new Date());
     this.setFeedback('success', this.language.t(key, { when }), 4000);
   }
 

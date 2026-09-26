@@ -42,8 +42,9 @@ const en: Record<string, string> = {
   'backup.action.backingUp': 'Backing up…',
   'backup.card.backUpTo': 'Back up to {method}',
   'backup.feedback.backedUp': 'Backed up · {when}',
-  'backup.feedback.restored': 'Restored · {when}',
-  'backup.feedback.actionFailed': 'Backup failed — check the connection and retry.',
+  'backup.feedback.backupFailed': 'Backup failed — check the connection and retry.',
+  'backup.feedback.dismiss': 'Dismiss',
+  'restore.feedback.restored': 'Restored · {when}',
   'erase.card.title': 'Erase',
   'erase.card.description':
     'Permanently delete all local data, including accounts, categories, transactions, transfers, and your profile, and start over. This cannot be undone.',
@@ -456,8 +457,9 @@ const es: Record<string, string> = {
   'backup.action.backingUp': 'Copiando…',
   'backup.card.backUpTo': 'Hacer copia en {method}',
   'backup.feedback.backedUp': 'Copia hecha · {when}',
-  'backup.feedback.restored': 'Restaurado · {when}',
-  'backup.feedback.actionFailed': 'La copia falló — comprueba la conexión e inténtalo de nuevo.',
+  'backup.feedback.backupFailed': 'La copia falló — comprueba la conexión e inténtalo de nuevo.',
+  'backup.feedback.dismiss': 'Descartar',
+  'restore.feedback.restored': 'Restaurado · {when}',
   'erase.card.title': 'Borrar',
   'erase.card.description':
     'Elimina permanentemente todos los datos locales, incluidas cuentas, categorías, transacciones, transferencias y tu perfil, y empieza de nuevo. Esto no se puede deshacer.',

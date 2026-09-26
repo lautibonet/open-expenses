@@ -309,10 +309,6 @@ $sidebar-width: 256px;
         background: var(--surface-container-high);
       }
 
-      &:active:not(:disabled) {
-        transform: translate(2px, 2px);
-      }
-
       &:disabled {
         opacity: 0.6;
         cursor: default;
@@ -359,16 +355,18 @@ $sidebar-width: 256px;
     }
 
     .feedback-dismiss {
-      /* Caps label by hand: @extend cannot cross a media-query boundary. */
+      /* Caps label by hand: @extend cannot cross a media-query boundary.
+         currentColor keeps the strip's own ramp ink (Primary Fixed on
+         success, On Error Container on failure). */
       font-size: var(--type-label);
       font-weight: 700;
       letter-spacing: var(--tracking-caps);
       text-transform: uppercase;
       background: none;
       border: 1px solid currentColor;
+      color: inherit;
       padding: var(--space-xs) var(--space-sm);
       cursor: pointer;
-      color: var(--on-surface);
       flex: 0 0 auto;
     }
   }

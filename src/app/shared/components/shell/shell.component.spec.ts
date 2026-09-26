@@ -15,6 +15,17 @@ import { db } from '../../../core/db/database';
 describe('ShellComponent', () => {
   let fixture: ComponentFixture<ShellComponent>;
 
+  function snapshotStub() {
+    return {
+      accounts: [],
+      categories: [],
+      transactions: [],
+      transfers: [],
+      profile: [],
+      exportedAt: '2026-08-27T00:00:00.000Z',
+    };
+  }
+
   function compiledComponentCss(): string {
     return Array.from(document.querySelectorAll('style'))
       .map((s) => s.textContent ?? '')
@@ -306,6 +317,7 @@ describe('ShellComponent', () => {
     };
     const backupService = TestBed.inject(DriveBackupService);
     vi.spyOn(backupService, 'getCloudSnapshot').mockResolvedValue(snapshot as never);
+    fixture.componentInstance.isMobileLayout.set(true);
 
     const actions = fixture.nativeElement.querySelectorAll(
       '.quick-action',
@@ -322,6 +334,44 @@ describe('ShellComponent', () => {
     expect(sheet.textContent).toContain('Restore data');
   });
 
+  it('spins the restore icon while its snapshot fetch is in flight', async () => {
+    const backupService = TestBed.inject(DriveBackupService);
+    let releaseFetch: (() => void) | undefined;
+    vi.spyOn(backupService, 'getCloudSnapshot').mockImplementation(async () => {
+      backupService.isBackingUp.set(true);
+      await new Promise<void>((resolve) => {
+        releaseFetch = () => resolve();
+      });
+      backupService.isBackingUp.set(false);
+      return snapshotStub() as never;
+    });
+    fixture.componentInstance.isMobileLayout.set(true);
+
+    const actions = fixture.nativeElement.querySelectorAll(
+      '.quick-action',
+    ) as NodeListOf<HTMLButtonElement>;
+    actions[1].click();
+
+    fixture.detectChanges();
+    expect(actions[1].querySelector('svg.spin')).not.toBeNull();
+    expect(actions[0].querySelector('svg.spin')).toBeNull();
+
+    releaseFetch?.();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(actions[1].querySelector('svg.spin')).toBeNull();
+  });
+
+  it('keeps the restore sheet closed when the pending restore comes from the Settings card', () => {
+    const snapshot = snapshotStub();
+    TestBed.inject(DriveBackupService).pendingRestore.set(snapshot);
+    fixture.componentInstance.isMobileLayout.set(true);
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.restoreSheetOpen()).toBe(false);
+    expect(fixture.nativeElement.querySelector('app-bottom-sheet')).toBeNull();
+  });
+
   it('confirms a restore from the sheet with success feedback', async () => {
     const snapshot = {
       accounts: [],
@@ -334,6 +384,7 @@ describe('ShellComponent', () => {
     const backupService = TestBed.inject(DriveBackupService);
     vi.spyOn(backupService, 'getCloudSnapshot').mockResolvedValue(snapshot as never);
     vi.spyOn(backupService, 'restoreFromSnapshot').mockResolvedValue(undefined);
+    fixture.componentInstance.isMobileLayout.set(true);
 
     const actions = fixture.nativeElement.querySelectorAll(
       '.quick-action',
@@ -355,17 +406,10 @@ describe('ShellComponent', () => {
   });
 
   it('cancelling the restore sheet leaves data untouched and closes it', async () => {
-    const snapshot = {
-      accounts: [],
-      categories: [],
-      transactions: [],
-      transfers: [],
-      profile: [],
-      exportedAt: '2026-08-27T00:00:00.000Z',
-    };
     const backupService = TestBed.inject(DriveBackupService);
-    vi.spyOn(backupService, 'getCloudSnapshot').mockResolvedValue(snapshot as never);
+    vi.spyOn(backupService, 'getCloudSnapshot').mockResolvedValue(snapshotStub() as never);
     const restoreSpy = vi.spyOn(backupService, 'restoreFromSnapshot');
+    fixture.componentInstance.isMobileLayout.set(true);
 
     const actions = fixture.nativeElement.querySelectorAll(
       '.quick-action',
