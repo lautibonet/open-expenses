@@ -275,7 +275,11 @@ $sidebar-width: 256px;
        token height instead of stacking onto it (#112). */
     box-sizing: border-box;
     min-height: var(--nav-bar-size);
-    padding: var(--space-sm) var(--space-md);
+    /* Vertical padding is sized to the 44px quick actions: 2×4px padding +
+       44px glyph square + 1px border = 53px, inside the 3.5rem token — the
+       bar must stay at --nav-bar-size or the sticky bar pushes every page
+       taller than it was before the quick actions existed. */
+    padding: var(--space-xs) var(--space-md);
     background: var(--surface-lowest);
     border-bottom: 1px solid var(--on-surface);
 
