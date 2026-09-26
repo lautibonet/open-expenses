@@ -145,10 +145,25 @@
         </svg>
       } @else {
         <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
-          <path d="M7 18h10a4 4 0 0 0 .8-7.92A6 6 0 0 0 6.36 8.6 4.5 4.5 0 0 0 7 18Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
-          <path d="M12 15V8M9 10.5 12 7.5l3 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+          <path
+            d="M4 16.5V20h16v-3.5"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+          <path
+            d="M12 15V4M8 8l4-4 4 4"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
         </svg>
       }
+      <span class="quick-label">{{ language.t('shell.quickBackup') }}</span>
     </button>
     <button
       type="button"
@@ -164,10 +179,25 @@
         </svg>
       } @else {
         <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
-          <path d="M7 18h10a4 4 0 0 0 .8-7.92A6 6 0 0 0 6.36 8.6 4.5 4.5 0 0 0 7 18Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
-          <path d="M12 8v7M9 12.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+          <path
+            d="M4 16.5V20h16v-3.5"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+          <path
+            d="M12 4v11M8 11l4 4 4-4"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
         </svg>
       }
+      <span class="quick-label">{{ language.t('shell.quickRestore') }}</span>
     </button>
   </div>
 </header>

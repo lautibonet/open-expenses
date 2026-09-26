@@ -225,10 +225,12 @@ describe('ShellComponent', () => {
     expect(actions[0].getAttribute('aria-label')).toBe('Back up to Google Drive');
     expect(actions[0].getAttribute('title')).toBe('Back up to Google Drive');
     expect(actions[0].querySelector('svg[aria-hidden="true"]')).not.toBeNull();
+    expect(actions[0].querySelector('.quick-label')?.textContent?.trim()).toBe('Back up');
 
     expect(actions[1].getAttribute('aria-label')).toBe('Restore from Google Drive');
     expect(actions[1].getAttribute('title')).toBe('Restore from Google Drive');
     expect(actions[1].querySelector('svg[aria-hidden="true"]')).not.toBeNull();
+    expect(actions[1].querySelector('.quick-label')?.textContent?.trim()).toBe('Restore');
   });
 
   it('disables both quick actions while a backup is in progress', () => {

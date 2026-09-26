@@ -283,30 +283,49 @@ $sidebar-width: 256px;
     background: var(--surface-lowest);
     border-bottom: 1px solid var(--on-surface);
 
+    /* One type step down: the wordmark shares the row with the labeled
+       quick actions and must not clip them on 375px phones. */
+    .wordmark {
+      font-size: 1.125rem;
+    }
+
     .top-bar-actions {
       display: flex;
       align-items: center;
       gap: var(--space-xs);
     }
 
-    /* The quick actions speak as ghosts: no box, no border, no fill — the
-       glyph alone, at the 44px thumb minimum. */
+    /* The quick actions speak as ghosts: no box, no border, no fill — a
+       glyph over a short caps label (option F). The button is still the
+       44px thumb minimum as its height; the label sizes the width. */
     .quick-action {
       display: inline-flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      width: 2.75rem;
+      gap: 2px;
       height: 2.75rem;
-      padding: 0;
+      min-width: 2.75rem;
+      padding: 0 var(--space-sm);
       background: none;
       border: none;
       color: var(--on-surface);
       cursor: pointer;
       box-shadow: none;
+      white-space: nowrap;
 
       svg {
         width: 1.25rem;
         height: 1.25rem;
+      }
+
+      .quick-label {
+        /* Caps label by hand: @extend cannot cross a media-query boundary. */
+        font-size: var(--type-label);
+        font-weight: 700;
+        letter-spacing: var(--tracking-caps);
+        text-transform: uppercase;
+        line-height: 1;
       }
 
       &:hover:not(:disabled) {
@@ -321,6 +340,14 @@ $sidebar-width: 256px;
       .spin {
         animation: quick-action-spin 1s linear infinite;
       }
+    }
+  }
+
+  /* Very narrow phones: the wordmark yields its space to the labeled quick
+     actions; the mark alone carries the brand there. */
+  @media (max-width: 360px) {
+    .top-bar .wordmark {
+      display: none;
     }
   }
 

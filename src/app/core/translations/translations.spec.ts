@@ -46,6 +46,8 @@ describe('translations', () => {
       'shell.newTransactionShortcut',
       'shell.privacy',
       'shell.about',
+      'shell.quickBackup',
+      'shell.quickRestore',
     ]) {
       expect(TRANSLATIONS.en[key]).toBeTruthy();
       expect(TRANSLATIONS.es[key]).toBeTruthy();
