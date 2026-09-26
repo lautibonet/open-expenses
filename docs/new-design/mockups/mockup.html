@@ -1,0 +1,299 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup â€” Mobile top bar quick actions & 3-tab nav</title>
+<style>
+  :root {
+    --primary: #003ec7;
+    --primary-container: #0052ff;
+    --primary-deep: #0038b6;
+    --primary-fixed: #dde1ff;
+    --on-primary-fixed: #001452;
+    --error: #ba1a1a;
+    --error-container: #ffdad6;
+    --on-error-container: #93000a;
+    --surface: #f9f9f9;
+    --surface-lowest: #ffffff;
+    --surface-container-low: #f3f3f3;
+    --surface-container-high: #e8e8e8;
+    --outline-variant: #c3c5d9;
+    --border: #1a1c1c;
+    --text: #1a1c1c;
+    --text-muted: #434656;
+    --type-title: 1.25rem;
+    --type-caption: 0.875rem;
+    --nav-bar-size: 3.5rem;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--surface-container-low); font-family: system-ui, sans-serif; color: var(--text); }
+  h2 {
+    font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--text-muted); margin: 2.5rem 0 0.75rem;
+  }
+  .page { max-width: 900px; margin: 0 auto; padding: 1rem 1rem 4rem; }
+  .devices { display: flex; flex-wrap: wrap; gap: 2rem; align-items: flex-start; }
+  .phone {
+    width: 390px; min-width: 300px; flex: 0 0 auto;
+    border: 1px solid var(--border); background: var(--surface);
+  }
+  .content { height: 420px; position: relative; overflow: hidden; display: flex; flex-direction: column; }
+
+  /* ---- Top bar ---- */
+  .top-bar {
+    display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;
+    min-height: var(--nav-bar-size); padding: 0.5rem 1rem;
+    background: var(--surface-lowest); border-bottom: 1px solid var(--border);
+    flex: 0 0 auto;
+  }
+  .brand { display: flex; align-items: center; gap: 0.5rem; }
+  .cell-mark { width: 1.25rem; height: 1.25rem; }
+  .wordmark { font-size: var(--type-title); font-weight: 800; letter-spacing: -0.01em; white-space: nowrap; }
+  .top-bar-actions { display: flex; align-items: center; gap: 0.25rem; }
+  .icon-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 2.75rem; height: 2.75rem;
+    background: transparent; border: none; color: inherit; cursor: pointer;
+  }
+  .icon-btn:hover:enabled { background: var(--surface-container-high); }
+  .icon-btn:disabled { opacity: 0.6; cursor: default; }
+  .icon-btn svg { width: 1.25rem; height: 1.25rem; }
+  .spin { animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ---- Feedback strip ---- */
+  .feedback-strip {
+    display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
+    padding: 0.5rem 1rem; font-size: var(--type-caption);
+    background: var(--surface-container-low); border-bottom: 1px solid var(--border);
+    flex: 0 0 auto;
+  }
+  .feedback-strip.success { background: var(--primary-fixed); color: var(--on-primary-fixed); }
+  .feedback-strip.error { background: var(--error-container); color: var(--on-error-container); }
+  .dismiss {
+    background: transparent; border: 1px solid currentColor; color: inherit;
+    font-size: 0.75rem; font-weight: 700; padding: 0.25rem 0.5rem; cursor: pointer; flex: 0 0 auto;
+  }
+
+  /* ---- Body placeholder ---- */
+  .placeholder { flex: 1 1 auto; margin: 1rem; border: 1px dashed var(--text-muted); padding: 1rem; color: var(--text-muted); font-size: var(--type-caption); }
+
+  /* ---- Bottom nav (3 tabs) ---- */
+  .bottom-nav {
+    display: flex; height: var(--nav-bar-size);
+    background: var(--surface-lowest); border-top: 1px solid var(--border);
+    flex: 0 0 auto;
+  }
+  .tab {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 2px; text-decoration: none; color: var(--text-muted);
+    font-size: 0.625rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+  }
+  .tab.active { color: var(--primary); background: var(--primary-fixed); }
+  .tab svg { width: 1.25rem; height: 1.25rem; }
+
+  /* ---- Restore confirm sheet ---- */
+  .scrim { position: absolute; inset: 0; background: rgba(0,0,0,0.25); }
+  .sheet {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    background: var(--surface-lowest); border-top: 2px solid var(--border);
+    padding: 1rem;
+  }
+  .sheet h3 { font-size: var(--type-title); font-weight: 700; margin-bottom: 0.5rem; }
+  .sheet .meta { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.5rem; }
+  .sheet .warning {
+    background: var(--error-container); color: var(--on-error-container);
+    border: 1px solid var(--on-error-container);
+    padding: 0.5rem 1rem; margin-bottom: 1rem; font-size: var(--type-caption);
+  }
+  .sheet .actions { display: flex; gap: 0.5rem; }
+  .btn {
+    flex: 1; display: inline-flex; align-items: center; justify-content: center;
+    border: 1px solid var(--border); background: var(--surface-lowest); color: var(--text);
+    font-weight: 600; font-size: 1rem; padding: 0.5rem 1rem; cursor: pointer;
+  }
+  .btn.danger { background: var(--error-container); border-color: var(--on-error-container); color: var(--on-error-container); }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <h2>1 Â· Idle â€” top bar with quick actions + new 3-tab nav</h2>
+  <div class="devices">
+    <div class="phone">
+      <div class="content">
+        <div class="top-bar">
+          <div class="brand">
+            <svg class="cell-mark" aria-hidden="true" viewBox="0 0 96 96" focusable="false">
+              <rect x="4" y="4" width="88" height="88" fill="none" stroke="currentColor" stroke-width="8"/>
+              <rect x="34" y="34" width="28" height="28" fill="#0052ff"/>
+            </svg>
+            <span class="wordmark">Open Expenses</span>
+          </div>
+          <div class="top-bar-actions">
+            <button class="icon-btn" aria-label="Back up to Google Drive" title="Back up to Google Drive">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter">
+                <path d="M7 18h10a4 4 0 0 0 .8-7.92A6 6 0 0 0 6.36 8.6 4.5 4.5 0 0 0 7 18Z"/>
+                <path d="M12 15V8"/>
+                <path d="M9 10.5 12 7.5l3 3"/>
+              </svg>
+            </button>
+            <button class="icon-btn" aria-label="Restore from Google Drive" title="Restore from Google Drive">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter">
+                <path d="M7 18h10a4 4 0 0 0 .8-7.92A6 6 0 0 0 6.36 8.6 4.5 4.5 0 0 0 7 18Z"/>
+                <path d="M12 8v7"/>
+                <path d="M9 12.5l3 3 3-3"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="placeholder">Movements list placeholder â€” content area.</div>
+        <div class="bottom-nav">
+          <a class="tab active" href="#">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+            Movements
+          </a>
+          <a class="tab" href="#">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V10M10 19V5M16 19v-7M22 19H2"/></svg>
+            Stats
+          </a>
+          <a class="tab" href="#">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1"/></svg>
+            Settings
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p style="margin-top:0.75rem; font-size: 0.875rem; color: var(--text-muted);">
+    Icons are ghost strokes: no box, no border, no fill â€” currentColor only, per your "no noise" answer. Bottom nav drops from 4 slots to 3 real pages.
+  </p>
+
+  <h2>2 Â· Backup in progress</h2>
+  <div class="phone">
+    <div class="content">
+      <div class="top-bar">
+        <div class="brand">
+          <svg class="cell-mark" aria-hidden="true" viewBox="0 0 96 96" focusable="false">
+            <rect x="4" y="4" width="88" height="88" fill="none" stroke="currentColor" stroke-width="8"/>
+            <rect x="34" y="34" width="28" height="28" fill="#0052ff"/>
+          </svg>
+          <span class="wordmark">Open Expenses</span>
+        </div>
+        <div class="top-bar-actions">
+          <button class="icon-btn" disabled aria-label="Backing upâ€¦">
+            <svg class="spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 3a9 9 0 1 1-9 9"/>
+            </svg>
+          </button>
+          <button class="icon-btn" disabled aria-label="Restore from Google Drive">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square">
+              <path d="M7 18h10a4 4 0 0 0 .8-7.92A6 6 0 0 0 6.36 8.6 4.5 4.5 0 0 0 7 18Z"/><path d="M12 8v7"/><path d="M9 12.5l3 3 3-3"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div class="feedback-strip success" role="status">
+        <span>Backed up Â· just now</span>
+        <button class="dismiss">Dismiss</button>
+      </div>
+      <div class="placeholder">Content area â€” both actions disabled while busy.</div>
+      <div class="bottom-nav">
+        <a class="tab active" href="#">Movements</a>
+        <a class="tab" href="#">Stats</a>
+        <a class="tab" href="#">Settings</a>
+      </div>
+    </div>
+  </div>
+
+  <h2>3 Â· Error â€” persists until dismissed</h2>
+  <div class="phone">
+    <div class="content">
+      <div class="top-bar">
+        <div class="brand">
+          <svg class="cell-mark" aria-hidden="true" viewBox="0 0 96 96" focusable="false">
+            <rect x="4" y="4" width="88" height="88" fill="none" stroke="currentColor" stroke-width="8"/>
+            <rect x="34" y="34" width="28" height="28" fill="#0052ff"/>
+          </svg>
+          <span class="wordmark">Open Expenses</span>
+        </div>
+        <div class="top-bar-actions">
+          <button class="icon-btn" aria-label="Back up to Google Drive">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square">
+              <path d="M7 18h10a4 4 0 0 0 .8-7.92A6 6 0 0 0 6.36 8.6 4.5 4.5 0 0 0 7 18Z"/><path d="M12 15V8"/><path d="M9 10.5 12 7.5l3 3"/>
+            </svg>
+          </button>
+          <button class="icon-btn" aria-label="Restore from Google Drive">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square">
+              <path d="M7 18h10a4 4 0 0 0 .8-7.92A6 6 0 0 0 6.36 8.6 4.5 4.5 0 0 0 7 18Z"/><path d="M12 8v7"/><path d="M9 12.5l3 3 3-3"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div class="feedback-strip error" role="alert">
+        <span>Backup failed â€” check the connection and retry.</span>
+        <button class="dismiss">Dismiss</button>
+      </div>
+      <div class="placeholder">Content area.</div>
+      <div class="bottom-nav">
+        <a class="tab active" href="#">Movements</a>
+        <a class="tab" href="#">Stats</a>
+        <a class="tab" href="#">Settings</a>
+      </div>
+    </div>
+  </div>
+
+  <h2>4 Â· Restore confirm â€” bottom sheet</h2>
+  <p style="margin-bottom:0.75rem; font-size: 0.875rem; color: var(--text-muted);">
+    Tapping the top-bar Restore icon opens this confirm sheet: snapshot date, destructive warning, danger confirm + cancel.
+  </p>
+  <div class="phone">
+    <div class="content">
+      <div class="top-bar">
+        <div class="brand">
+          <svg class="cell-mark" aria-hidden="true" viewBox="0 0 96 96" focusable="false">
+            <rect x="4" y="4" width="88" height="88" fill="none" stroke="currentColor" stroke-width="8"/>
+            <rect x="34" y="34" width="28" height="28" fill="#0052ff"/>
+          </svg>
+          <span class="wordmark">Open Expenses</span>
+        </div>
+        <div class="top-bar-actions">
+          <button class="icon-btn" aria-label="Back up to Google Drive">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square">
+              <path d="M7 18h10a4 4 0 0 0 .8-7.92A6 6 0 0 0 6.36 8.6 4.5 4.5 0 0 0 7 18Z"/><path d="M12 15V8"/><path d="M9 10.5 12 7.5l3 3"/>
+            </svg>
+          </button>
+          <button class="icon-btn" aria-label="Restore from Google Drive">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square">
+              <path d="M7 18h10a4 4 0 0 0 .8-7.92A6 6 0 0 0 6.36 8.6 4.5 4.5 0 0 0 7 18Z"/><path d="M12 8v7"/><path d="M9 12.5l3 3 3-3"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div class="placeholder" style="margin:0; border:none; flex:1;">Content area (dimmed behind sheet â€” no scrim in the real sheet, per ADR 0015: the doubled top stroke is the only separation).</div>
+      <div class="sheet">
+        <h3>Restore from Google Drive</h3>
+        <p class="meta">Backup from Sep 26, 2026, 14:02</p>
+        <p class="warning">This replaces all current data on this device.</p>
+        <div class="actions">
+          <button class="btn danger">Restore data</button>
+          <button class="btn">Cancel</button>
+        </div>
+      </div>
+      <div class="bottom-nav">
+        <a class="tab active" href="#">Movements</a>
+        <a class="tab" href="#">Stats</a>
+        <a class="tab" href="#">Settings</a>
+      </div>
+    </div>
+  </div>
+
+  <p style="margin-top: 2rem; color: var(--text-muted); font-size: 0.875rem;">
+    Real design tokens throughout: Surface Lowest bars, 1px hard #1a1c1c borders, zero radius, caps-label metadata, JetBrains Mono for time figures, error-container family for the destructive warning.
+  </p>
+</div>
+</body>
+</html>
+
+
