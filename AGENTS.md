@@ -14,6 +14,10 @@ Default five-role vocabulary: `needs-triage`, `needs-info`, `ready-for-agent`, `
 
 Single-context layout: one `CONTEXT.md` at repo root + `docs/adr/`. See `docs/agents/domain.md`.
 
+### Releases
+
+Version bumps and GitHub Releases tied to `v*` tags, published automatically by CI. Write `.github/release-notes/<tag>.md` before tagging. See `docs/agents/release.md`.
+
 ## Language
 
 The code must be in English (e.g., names of methods, variables, constants, etc.). This does not apply to translations into other languages.
