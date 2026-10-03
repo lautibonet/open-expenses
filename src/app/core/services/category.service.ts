@@ -4,6 +4,7 @@ import { Category, CategoryType, isCategoryType } from '../models/category.model
 import { DEFAULT_LANGUAGE, Language } from '../types/language.type';
 import { translate } from '../translations/translations';
 import { TranslationError } from '../models/translation-error';
+import { namesMatch } from '../models/name-uniqueness';
 
 const DEFAULT_CATEGORIES: { key: string; type: CategoryType }[] = [
   { key: 'food', type: 'expense' },
@@ -27,6 +28,13 @@ function categoryName(key: string, language: Language): string {
   return translate(language, `category.${key}`);
 }
 
+/* Issue #180: names are unique ignoring letter case, so the lookup applies
+   the shared rule rather than the exact-match name index. Exported for the
+   AccountService's card rename, which checks the payment name. */
+export function findCategoryNamed(name: string): Promise<Category | undefined> {
+  return db.categories.filter(c => namesMatch(c.name, name)).first();
+}
+
 /* Category creation as a plain function so callers that are not DI-injected
    (and the AccountService's card transaction) can reuse the same rules. */
 export async function createCategory(name: string, type: CategoryType): Promise<Category> {
@@ -36,7 +44,7 @@ export async function createCategory(name: string, type: CategoryType): Promise<
     throw new TranslationError('errors.categoryNameRequired');
   }
 
-  const existing = await db.categories.where('name').equals(trimmedName).first();
+  const existing = await findCategoryNamed(trimmedName);
   if (existing) {
     throw new TranslationError('errors.categoryNameTaken', { name: trimmedName });
   }
@@ -61,7 +69,7 @@ export async function findOrCreateCategory(name: string, type: CategoryType): Pr
   if (!trimmedName) {
     throw new TranslationError('errors.categoryNameRequired');
   }
-  const existing = await db.categories.where('name').equals(trimmedName).first();
+  const existing = await findCategoryNamed(trimmedName);
   if (existing) return existing;
   return createCategory(trimmedName, type);
 }
@@ -106,7 +114,7 @@ export class CategoryService {
       if (!trimmedName) {
         throw new TranslationError('errors.categoryNameRequired');
       }
-      const existing = await db.categories.where('name').equals(trimmedName).first();
+      const existing = await findCategoryNamed(trimmedName);
       if (existing && existing.id !== id) {
         throw new TranslationError('errors.categoryNameTaken', { name: trimmedName });
       }

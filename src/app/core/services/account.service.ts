@@ -1,8 +1,9 @@
 import { Injectable, inject } from '@angular/core';
 import { db } from '../db/database';
 import { Account, isCashAccount, isCreditCard } from '../models/account.model';
+import { namesMatch } from '../models/name-uniqueness';
 import { TranslationError } from '../models/translation-error';
-import { categoryHasTransactions, findOrCreateCategory } from './category.service';
+import { categoryHasTransactions, findCategoryNamed, findOrCreateCategory } from './category.service';
 import { LanguageService } from './language.service';
 
 export interface CreateCardInput {
@@ -28,6 +29,12 @@ export type DeleteRefusalReason = 'movements';
    dangling (a silent no-op). */
 export type PairedCategoryDeletion = 'delete' | 'keep' | 'absent';
 
+/* Issue #180: names are unique ignoring letter case, so the lookup applies
+   the shared rule rather than the exact-match name index. */
+function findAccountNamed(name: string): Promise<Account | undefined> {
+  return db.accounts.filter(a => namesMatch(a.name, name)).first();
+}
+
 @Injectable({ providedIn: 'root' })
 export class AccountService {
   private languageService = inject(LanguageService);
@@ -41,7 +48,7 @@ export class AccountService {
       throw new TranslationError('errors.initialBalanceNegative');
     }
 
-    const existing = await db.accounts.where('name').equals(trimmedName).first();
+    const existing = await findAccountNamed(trimmedName);
     if (existing) {
       throw new TranslationError('errors.accountNameTaken', { name: trimmedName });
     }
@@ -75,7 +82,7 @@ export class AccountService {
       throw new TranslationError('errors.currencyRequired');
     }
 
-    const existing = await db.accounts.where('name').equals(trimmedName).first();
+    const existing = await findAccountNamed(trimmedName);
     if (existing) {
       throw new TranslationError('errors.accountNameTaken', { name: trimmedName });
     }
@@ -119,7 +126,7 @@ export class AccountService {
       if (!trimmedName) {
         throw new TranslationError('errors.accountNameRequired');
       }
-      const existing = await db.accounts.where('name').equals(trimmedName).first();
+      const existing = await findAccountNamed(trimmedName);
       if (existing && existing.id !== id) {
         throw new TranslationError('errors.accountNameTaken', { name: trimmedName });
       }
@@ -130,7 +137,7 @@ export class AccountService {
           name: trimmedName,
         });
         await db.transaction('rw', db.accounts, db.categories, async () => {
-          const taken = await db.categories.where('name').equals(paymentName).first();
+          const taken = await findCategoryNamed(paymentName);
           if (taken && taken.id !== account.paymentCategoryId) {
             throw new TranslationError('errors.categoryNameTaken', { name: paymentName });
           }

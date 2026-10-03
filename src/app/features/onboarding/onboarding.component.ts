@@ -9,14 +9,14 @@ import {
 } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { ProfileService } from '../../core/services/profile.service';
-import { AccountService } from '../../core/services/account.service';
+import { OnboardingService } from '../../core/services/onboarding.service';
 import { CategoryService } from '../../core/services/category.service';
 import { DriveBackupService } from '../../core/services/drive-backup.service';
 import { LanguageService } from '../../core/services/language.service';
 import { NoBackupFoundError } from '../../backup/drive-backup-provider';
 import { CURRENCY_SYMBOLS, SUPPORTED_CURRENCIES } from '../../core/constants/currencies';
 import { CategoryType, isCategoryType } from '../../core/models/category.model';
+import { isNameTaken } from '../../core/models/name-uniqueness';
 import { isLanguage, LANGUAGES, detectBrowserLanguage, Language } from '../../core/types/language.type';
 import { DismissibleAlertComponent } from '../../shared/components/dismissible-alert/dismissible-alert.component';
 import { errorCopy, TranslationError } from '../../core/models/translation-error';
@@ -52,9 +52,7 @@ interface CategoryEditState {
   styleUrl: './onboarding.component.scss',
 })
 export class OnboardingComponent {
-  private profileService = inject(ProfileService);
-  private accountService = inject(AccountService);
-  private categoryService = inject(CategoryService);
+  private onboardingService = inject(OnboardingService);
   private driveBackupService = inject(DriveBackupService);
   languageService = inject(LanguageService);
   private router = inject(Router);
@@ -258,17 +256,13 @@ export class OnboardingComponent {
 
   addAccount(): void {
     this.resetError();
-    if (!this.accountName()) {
+    const name = this.accountName().trim();
+    if (!name) {
       this.errorMessage.set(this.languageService.t('errors.accountNameRequired'));
       return;
     }
-    const exists = this.accounts().some(
-      a => a.name.toLowerCase() === this.accountName().toLowerCase(),
-    );
-    if (exists) {
-      this.errorMessage.set(
-        this.languageService.t('errors.accountNameTaken', { name: this.accountName() }),
-      );
+    if (isNameTaken(this.accounts(), name)) {
+      this.errorMessage.set(this.languageService.t('errors.accountNameTaken', { name }));
       return;
     }
     if ((this.accountBalance() ?? 0) < 0) {
@@ -278,7 +272,7 @@ export class OnboardingComponent {
     this.accounts.update(accs => [
       ...accs,
       {
-        name: this.accountName(),
+        name,
         currency: this.accountCurrency(),
         balance: this.accountBalance() ?? 0,
       },
@@ -321,17 +315,13 @@ export class OnboardingComponent {
   saveAccountEdit(): void {
     const editing = this.editingAccount();
     if (!editing) return;
-    if (!editing.name.trim()) {
+    const name = editing.name.trim();
+    if (!name) {
       this.editError.set(this.languageService.t('errors.accountNameRequired'));
       return;
     }
-    const taken = this.accounts().some(
-      (a, i) => i !== editing.index && a.name.toLowerCase() === editing.name.toLowerCase(),
-    );
-    if (taken) {
-      this.editError.set(
-        this.languageService.t('errors.accountNameTaken', { name: editing.name }),
-      );
+    if (isNameTaken(this.accounts(), name, (_, i) => i === editing.index)) {
+      this.editError.set(this.languageService.t('errors.accountNameTaken', { name }));
       return;
     }
     if (editing.balance < 0) {
@@ -341,7 +331,7 @@ export class OnboardingComponent {
     this.accounts.update(accs =>
       accs.map((a, i) =>
         i === editing.index
-          ? { name: editing.name, currency: a.currency, balance: editing.balance }
+          ? { name, currency: a.currency, balance: editing.balance }
           : a,
       ),
     );
@@ -403,10 +393,7 @@ export class OnboardingComponent {
       this.errorMessage.set(this.languageService.t('errors.categoryNameRequired'));
       return;
     }
-    const exists = this.categories().some(
-      c => c.name.toLowerCase() === name.toLowerCase(),
-    );
-    if (exists) {
+    if (isNameTaken(this.categories(), name)) {
       this.errorMessage.set(
         this.languageService.t('errors.categoryNameTaken', { name }),
       );
@@ -463,11 +450,7 @@ export class OnboardingComponent {
       this.categoryEditError.set(this.languageService.t('errors.categoryNameRequired'));
       return;
     }
-    const taken = this.categories().some(
-      (c, i) =>
-        i !== editing.index && c.name.toLowerCase() === editing.name.trim().toLowerCase(),
-    );
-    if (taken) {
+    if (isNameTaken(this.categories(), editing.name, (_, i) => i === editing.index)) {
       this.categoryEditError.set(
         this.languageService.t('errors.categoryNameTaken', { name: editing.name.trim() }),
       );
@@ -554,14 +537,15 @@ export class OnboardingComponent {
       return;
     }
 
+    /* Nothing is saved unless everything is (#181): on failure the staged
+       items stay listed here with the error. */
     try {
-      await this.profileService.completeOnboarding(this.baseCurrency(), this.language());
-      for (const acc of this.accounts()) {
-        await this.accountService.create(acc.name, acc.currency, acc.balance);
-      }
-      for (const cat of this.categories()) {
-        await this.categoryService.create(cat.name, cat.type);
-      }
+      await this.onboardingService.complete({
+        baseCurrency: this.baseCurrency(),
+        language: this.language(),
+        accounts: this.accounts(),
+        categories: this.categories(),
+      });
       this.router.navigate(['/movements']);
     } catch (e: unknown) {
       this.errorMessage.set(
@@ -574,4 +558,3 @@ export class OnboardingComponent {
     }
   }
 }
-

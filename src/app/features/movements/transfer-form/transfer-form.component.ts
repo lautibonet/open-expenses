@@ -20,6 +20,7 @@ import { Transfer } from '../../../core/models/transfer.model';
 import { Transaction } from '../../../core/models/transaction.model';
 import { Account, isCreditCard } from '../../../core/models/account.model';
 import { Category, isIncomeCategory } from '../../../core/models/category.model';
+import { namesMatch } from '../../../core/models/name-uniqueness';
 import { periodEndBalance } from '../../../core/balances/period-end-balances';
 import {
   ExchangeRateWellComponent,
@@ -266,13 +267,14 @@ export class TransferFormComponent implements AfterViewInit {
 
   /* The card's payment category. Prefer the stored link so the pre-fill
      survives a rename or a Language change; fall back to the category named
-     after the card for cards created before the link was stored. */
+     after the card for cards created before the link was stored — matched
+     ignoring letter case, as the Category Service links it (#180). */
   private paymentCategoryIdFor(card: Account): number | null {
     if (card.paymentCategoryId != null && this.categories().some((c) => c.id === card.paymentCategoryId)) {
       return card.paymentCategoryId;
     }
     const name = this.language.t('category.cardPayment', { name: card.name });
-    const match = this.categories().find((c) => c.name === name && c.type === 'expense');
+    const match = this.categories().find((c) => namesMatch(c.name, name) && c.type === 'expense');
     return match?.id ?? null;
   }
 

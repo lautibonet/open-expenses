@@ -83,6 +83,32 @@ describe('CategoryService', () => {
       });
   });
 
+  /* Issue #180: names are unique ignoring letter case, everywhere. */
+  it('rejects a name that differs from an existing one only by case', async () => {
+    await service.create('Food', 'expense');
+    await expect(service.create(' fOOD ', 'income')).rejects.toMatchObject({
+      key: 'errors.categoryNameTaken',
+      params: { name: 'fOOD' },
+    });
+    expect(await db.categories.count()).toBe(1);
+  });
+
+  it('rejects a rename to another category name under a different case', async () => {
+    await service.create('Food', 'expense');
+    const transport = await service.create('Transport', 'expense');
+    await expect(service.update(transport.id!, { name: 'FOOD' })).rejects.toMatchObject({
+      key: 'errors.categoryNameTaken',
+      params: { name: 'FOOD' },
+    });
+    expect((await service.getById(transport.id!))!.name).toBe('Transport');
+  });
+
+  it('allows a rename to a different capitalisation of its own name', async () => {
+    const category = await service.create('Food', 'expense');
+    const updated = await service.update(category.id!, { name: 'FOOD' });
+    expect(updated.name).toBe('FOOD');
+  });
+
   it('should deactivate a category', async () => {
     const category = await service.create('Food', 'expense');
     await service.setActive(category.id!, false);
