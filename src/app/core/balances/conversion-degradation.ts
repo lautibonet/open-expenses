@@ -1,6 +1,7 @@
 import { PeriodScope, getPeriodYear, movementIsAtOrBeforePeriod } from '../types/period.type';
 import { Account } from '../models/account.model';
 import { Transaction } from '../models/transaction.model';
+import { isUnconvertedTransaction } from '../stats/cash-basis';
 
 /**
  * The silent paths that degrade Base Currency figures on Stats:
@@ -33,9 +34,7 @@ export function unconvertedTransactionsAffecting(
   scope: PeriodScope,
 ): Transaction[] {
   return transactions.filter(t => {
-    if (t.baseCurrencyAmount != null || t.exchangeRate != null) return false;
-    const account = accountsById.get(t.accountId);
-    if (!account || account.currency === baseCurrency) return false;
+    if (!isUnconvertedTransaction(t, accountsById.get(t.accountId), baseCurrency)) return false;
     return (
       movementIsAtOrBeforePeriod(t, scope) || getPeriodYear(t) === scope.year
     );

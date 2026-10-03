@@ -84,6 +84,27 @@ describe('DashboardComponent', () => {
     expect(component.yearTotalIncome()).toBe(3000);
   });
 
+  it('converts an older foreign Transaction that stored only its Exchange Rate, as Movements does (#182)', async () => {
+    const usd = await accountService.create('Cash USD', 'USD', 0);
+    const food = await categoryService.create('Food', 'expense');
+    await transactionService.create(usd.id!, food.id!, 10, new Date(), getCurrentPeriod(), 0.9, null);
+
+    await component.ngOnInit();
+
+    expect(component.yearTotalExpenses()).toBe(9);
+  });
+
+  it('counts a Transaction on a Base Currency Account at its face amount, ignoring a stale stored base amount (#182)', async () => {
+    const eur = await accountService.create('Cash', 'EUR', 0);
+    const food = await categoryService.create('Food', 'expense');
+    /* Recorded while the Base Currency was USD: its stored base amount is in USD. */
+    await transactionService.create(eur.id!, food.id!, 50, new Date(), getCurrentPeriod(), 1.1, 55);
+
+    await component.ngOnInit();
+
+    expect(component.yearTotalExpenses()).toBe(50);
+  });
+
   it('excludes card-account purchases from the cash-basis KPIs but keeps them in the category breakdown', async () => {
     const cash = await accountService.create('Cash', 'EUR', 0);
     const expenseCat = await categoryService.create('Groceries', 'expense');
