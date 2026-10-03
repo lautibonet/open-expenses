@@ -29,15 +29,12 @@ function categoryName(key: string, language: Language): string {
 }
 
 /* Issue #180: names are unique ignoring letter case, so the lookup applies
-   the shared rule rather than the exact-match name index. Exported for the
-   AccountService's card rename, which checks the payment name. */
-export function findCategoryNamed(name: string): Promise<Category | undefined> {
+   the shared rule rather than the exact-match name index. */
+function findCategoryNamed(name: string): Promise<Category | undefined> {
   return db.categories.filter(c => namesMatch(c.name, name)).first();
 }
 
-/* Category creation as a plain function so callers that are not DI-injected
-   (and the AccountService's card transaction) can reuse the same rules. */
-export async function createCategory(name: string, type: CategoryType): Promise<Category> {
+async function createCategory(name: string, type: CategoryType): Promise<Category> {
   assertCategoryType(type);
   const trimmedName = name.trim();
   if (!trimmedName) {
@@ -60,22 +57,8 @@ export async function createCategory(name: string, type: CategoryType): Promise<
   return { ...category, id };
 }
 
-/* Find-or-create, for callers that provision a paired category (the Account
-   Service's card transaction): a category whose name is already taken is
-   linked, not duplicated, and never fails the caller. */
-export async function findOrCreateCategory(name: string, type: CategoryType): Promise<Category> {
-  assertCategoryType(type);
-  const trimmedName = name.trim();
-  if (!trimmedName) {
-    throw new TranslationError('errors.categoryNameRequired');
-  }
-  const existing = await findCategoryNamed(trimmedName);
-  if (existing) return existing;
-  return createCategory(trimmedName, type);
-}
-
 /* The category movements predicate as a plain function, so callers that are
-   not DI-injected (the AccountService's paired-deletion transaction) can
+   not DI-injected (the Payment Category module's card deletion) can
    reuse the same rule. Issue #175: for a Category, "has movements" means
    "has transactions" — Transfers wearing the category never count. */
 export async function categoryHasTransactions(id: number): Promise<boolean> {

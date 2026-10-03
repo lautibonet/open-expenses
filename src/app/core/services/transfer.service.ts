@@ -5,7 +5,7 @@ import { Transfer } from '../models/transfer.model';
 import { Account, isCreditCard } from '../models/account.model';
 import { TranslationError } from '../models/translation-error';
 import { LanguageService } from './language.service';
-import { findOrCreateCategory } from './category.service';
+import { ensurePaymentCategory } from '../payment-category/payment-category';
 import {
   getCurrentYear,
   isValidPeriod,
@@ -53,8 +53,6 @@ export class TransferService {
       throw new TranslationError('errors.destinationAccountNotFound');
     }
 
-    const paymentCategoryId = await this.resolvePaymentCategory(destAccount);
-
     const sourceAmount = amount;
     const destinationAmount = Math.round(amount * exchangeRate * 100) / 100;
     const baseCurrencyAmount = sourceAccount.currency !== destAccount.currency
@@ -73,11 +71,17 @@ export class TransferService {
       year,
       note,
       createdAt: new Date(),
-      ...(paymentCategoryId !== undefined ? { categoryId: paymentCategoryId } : {}),
     };
 
-    const id = await db.transfers.add(transfer);
-    return { ...transfer, id };
+    return db.transaction('rw', db.accounts, db.categories, db.transfers, async () => {
+      const paymentCategoryId = await this.resolvePaymentCategory(destAccount);
+      const stored: Transfer = {
+        ...transfer,
+        ...(paymentCategoryId !== undefined ? { categoryId: paymentCategoryId } : {}),
+      };
+      const id = await db.transfers.add(stored);
+      return { ...stored, id };
+    });
   }
 
   async update(
@@ -123,42 +127,33 @@ export class TransferService {
     const newDestinationAmount = Math.round(newSourceAmount * newExchangeRate * 100) / 100;
     const newBaseCurrencyAmount = isCrossCurrency ? newDestinationAmount : newSourceAmount;
 
-    const paymentCategoryId = await this.resolvePaymentCategory(destAccount);
-
-    const mergedChanges = {
-      ...changes,
-      sourceAmount: newSourceAmount,
-      destinationAmount: newDestinationAmount,
-      exchangeRate: newExchangeRate,
-      baseCurrencyAmount: newBaseCurrencyAmount,
-      categoryId: paymentCategoryId,
-    };
-
-    await db.transfers.update(id, mergedChanges);
-    return (await db.transfers.get(id))!;
+    return db.transaction('rw', db.accounts, db.categories, db.transfers, async () => {
+      const paymentCategoryId = await this.resolvePaymentCategory(destAccount);
+      await db.transfers.update(id, {
+        ...changes,
+        sourceAmount: newSourceAmount,
+        destinationAmount: newDestinationAmount,
+        exchangeRate: newExchangeRate,
+        baseCurrencyAmount: newBaseCurrencyAmount,
+        categoryId: paymentCategoryId,
+      });
+      return (await db.transfers.get(id))!;
+    });
   }
 
   /* Amended ADR 0022 (ticket #173): a Transfer into a Credit Card wears the
      card's own Payment Category — the caller never picks one, and redirecting
      the destination re-resolves it. Every other Transfer carries none. The
-     stored link wins; a card without one (legacy, un-migrated) still resolves
-     by its payment name, linked rather than duplicated, exactly as
-     provisioning does. */
+     Payment Category module resolves it, repairing a dangling link (#184). */
   private async resolvePaymentCategory(
     destination: Account | undefined,
   ): Promise<number | undefined> {
     if (!destination || !isCreditCard(destination)) {
       return undefined;
     }
-    if (destination.paymentCategoryId != null) {
-      const linked = await db.categories.get(destination.paymentCategoryId);
-      if (linked) {
-        return linked.id;
-      }
-    }
-    const category = await findOrCreateCategory(
-      this.languageService.t('category.cardPayment', { name: destination.name }),
-      'expense',
+    const category = await ensurePaymentCategory(
+      destination,
+      this.languageService.activeLanguage(),
     );
     return category.id;
   }
