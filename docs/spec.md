@@ -170,7 +170,8 @@ Exchange rate lookups happen directly from the client against a free, key-less p
 - Full-dataset JSON snapshot (every Dexie table serialized), not incremental diff.
 - Backup is manual-only and optional: the persistent banner is the single cloud-backup trigger, showing method + last backup time (and offline state). No automatic backup on change or on visibility-hide.
 - The Settings Backup card offers download backup file, restore from file (upload), and restore from cloud (see ADR-0006).
-- Restore always overwrites the full local dataset (last-write-wins, matches mono-user pattern) and never itself triggers a new backup.
+- Before a cloud Backup is saved or a Restore overwrites local data, the two datasets are compared by Containment (ADR-0025): identical data is reported as such, a contained side proceeds silently, and a Divergence stops the operation and asks (Backup) or warns (Restore) before anything is overwritten. Backup first checks the Backup Baseline (a `localStorage` fingerprint of the cloud backup this device last pushed or restored): while the cloud still matches it, the Backup is pushed silently. When the cloud is ahead of this device, Backup offers Restore instead.
+- Restore replaces the full local dataset and never itself triggers a new backup.
 - Last backup timestamp stored and surfaced in the UI.
 
 **Exchange rates**
@@ -199,7 +200,7 @@ Exchange rate lookups happen directly from the client against a free, key-less p
 ## Out of Scope
 
 - Automated period computation engine (periods are manually selected month names).
-- Real-time or conflict-resolved multi-device sync — restore is a full overwrite, not a merge.
+- Real-time or conflict-resolved multi-device sync, and automatic merging of divergent datasets — when both sides hold unique data, the user picks a side; there is no merge.
 - Any multi-user or shared-account functionality — this app is explicitly mono-user.
 - Any backend, server, or hosted database of any kind.
 - Broad public distribution of the app — designed for the author's personal use and as a portfolio piece.

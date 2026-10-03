@@ -109,19 +109,35 @@ An account or category added to an Onboarding step's list, pending persistence w
 _Avoid_: temporary item, local copy
 
 **Backup**:
-A user-initiated snapshot of the full dataset saved off-device, either to a cloud provider or downloaded as a file. Backups are never triggered automatically — the user starts a cloud backup from the sidebar Backup action, the Settings backup card, or the mobile top bar quick actions, or downloads a Backup file from the sidebar action or the Settings backup card. _Avoid_: Sync, snapshot, export, autosave
+A user-initiated snapshot of the full dataset saved off-device, either to a cloud provider or downloaded as a file. Backups are never triggered automatically — the user starts a cloud backup from the sidebar Backup action, the Settings backup card, or the mobile top bar quick actions, or downloads a Backup file from the sidebar action or the Settings backup card. Before a cloud Backup is saved, the existing cloud Backup is checked: identical data is reported as already backed up; a cloud Backup that still matches the Backup Baseline, or that is contained in the local data, is replaced silently; a cloud Backup newer than this device (the local data is contained in it) offers Restore instead; and any other Divergence stops the Backup and asks before replacing the cloud copy. _Avoid_: Sync, snapshot, export, autosave
 
 **Backup Method**:
 The destination of a cloud Backup — Google Drive today, with Dropbox and iCloud as future providers. Shown next to the last-backup time in the sidebar backup caption and the Settings backup card.
 _Avoid_: Provider, cloud service, storage
 
 **Restore**:
-A user-initiated, full overwrite of local data from a prior Backup — from a cloud provider or an uploaded file. Restore replaces the entire local dataset and never triggers a new Backup.
+A user-initiated, full overwrite of local data from a prior Backup — from a cloud provider or an uploaded file. Restore replaces the entire local dataset and never triggers a new Backup. Before anything is overwritten, the local data and the Backup are compared by Containment (the Backup Baseline is never consulted): identical data is reported as such, an empty local dataset restores without asking, and a Divergence warns that the Backup is missing data you have locally before replacing anything.
 _Avoid_: Recovery, import, rollback
 
 **Last Backup**:
-The freshness figure shown in the sidebar caption and the Settings backup card: the time of the most recent Backup whose data this device holds. A Backup sets it to the backup's own time; a Restore sets it to the time the restored snapshot was taken — never to the restoring device's action time, and never inherited from the snapshot's mirrored profile. It answers "how fresh is the data I'm holding", not "when did this device last act".
+The freshness figure shown in the sidebar caption and the Settings backup card: the time of the most recent Backup whose data this device holds. A Backup sets it to the backup's own time; a Backup or Restore that finds identical data sets it to that Backup's time; a Restore sets it to the time the restored snapshot was taken — never to the restoring device's action time, and never inherited from the snapshot's mirrored profile. It answers "how fresh is the data I'm holding", not "when did this device last act".
 _Avoid_: last sync, backup date of this device
+
+**Divergence**:
+A disagreement in content between a Backup and the local dataset. Cloud-side Divergence means the Backup holds data this device never had — typically a Backup made on another device; local-side Divergence means the device holds data no Backup contains. Detected by Containment: a side whose records all exist in the other loses nothing by being overwritten, while any record the other side lacks makes the side divergent. Backup and Restore both halt on Divergence and require an explicit choice before overwriting — except that Backup skips the check while the cloud Backup still matches the Backup Baseline, since then no other device has replaced it.
+_Avoid_: conflict, mismatch, difference, drift
+
+**Content Key**:
+The identity of a record's data: a hash of every stored field — the record's own id and its referenced ids included, since ids travel with a record through Backups and only diverge when the same record was created independently on two devices — except `active` on Accounts and Categories, which is reversible soft state. Two records share a Content Key only when they hold the same data, and duplicates are counted: two identical movements need two matches.
+_Avoid_: fingerprint, primary key, record id
+
+**Containment**:
+The relationship between two datasets when every record of one also exists in the other, matched by Content Key. Only Account, Category and movement records take part; Profile settings never make a side divergent, but an identical dataset also requires the same base currency and Language. Backup and Restore each test their two sides before touching anything (Backup only when the cloud no longer matches the Backup Baseline): a contained side loses nothing, so the operation proceeds silently, and an identical dataset is reported as such; a side that is not contained holds data the other lacks — a Divergence — and the operation stops and asks. Containment answers only "does this data exist there?": it is a safety check, not a reconciliation.
+_Avoid_: subset check, diff, merge, sync
+
+**Backup Baseline**:
+A device-local fingerprint of the cloud Backup this device last pushed, restored, or found identical. While the cloud Backup still matches it, no other device has replaced the Backup, so a new Backup overwrites it silently — edits and Deletes made here never prompt. It is forgotten on Erase and on disconnecting the Backup Method, and is untouched by a Restore from a file. Only Backup consults it; Restore always relies on Containment.
+_Avoid_: sync marker, checkpoint, last sync
 
 **Cancelled Restore**:
 A Restore attempt that ends before any data changes because the user backed out — closing the sign-in window, declining access, or not picking a file. It leaves local data untouched, re-enables the Restore controls, and is not a failed Restore.
