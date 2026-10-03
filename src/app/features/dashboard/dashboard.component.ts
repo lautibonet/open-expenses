@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { TransactionService } from '../../core/services/transaction.service';
 import { TransferService } from '../../core/services/transfer.service';
@@ -9,16 +9,16 @@ import { ExchangeRateService } from '../../core/services/exchange-rate.service';
 import { NetworkService } from '../../core/services/network.service';
 import { LanguageService } from '../../core/services/language.service';
 import { DataVersionService } from '../../core/services/data-version.service';
+import { MonthNumber, movementInScope } from '../../core/types/period.type';
 import {
-  MONTH_NUMBERS,
-  MonthNumber,
   MonthScope,
+  ScopeOptions,
+  changeMonth,
+  changeYear,
   defaultScope,
-  getCurrentPeriod,
-  getPeriodYear,
-  isMonthNumber,
-  scopeOptionsFromMovements,
-} from '../../core/types/period.type';
+  noScopeOptions,
+  scopeOptions,
+} from '../../core/scope/scope';
 import { Transaction } from '../../core/models/transaction.model';
 import { Transfer } from '../../core/models/transfer.model';
 import { Account, isCreditCard, paymentCategoryIds } from '../../core/models/account.model';
@@ -78,8 +78,9 @@ export class DashboardComponent implements OnInit {
   language = inject(LanguageService);
 
   scope = signal<MonthScope>(defaultScope());
-  scopeYears = signal<number[]>([]);
-  scopeMonths = signal<MonthNumber[]>([]);
+  private availableScopes = signal<ScopeOptions>(noScopeOptions);
+  scopeYears = computed(() => this.availableScopes().years);
+  scopeMonths = computed(() => this.availableScopes().months);
   scopeAnnouncement = signal('');
 
   periodTransactions = signal<Transaction[]>([]);
@@ -280,14 +281,11 @@ export class DashboardComponent implements OnInit {
   }
 
   async onScopeYearChange(value: number): Promise<void> {
-    const current = this.scope();
-    const period = current.year === value ? current.period : getCurrentPeriod();
-    await this.setScope({ kind: 'month', period, year: value });
+    await this.setScope(changeYear(this.scope(), value));
   }
 
-  async onScopeMonthChange(period: number): Promise<void> {
-    const current = this.scope();
-    await this.setScope({ ...current, period: period as MonthNumber });
+  async onScopeMonthChange(period: MonthNumber): Promise<void> {
+    await this.setScope(changeMonth(this.scope(), period));
   }
 
   private async setScope(scope: MonthScope): Promise<void> {
@@ -300,13 +298,7 @@ export class DashboardComponent implements OnInit {
   private async applyScopeOptions(): Promise<void> {
     const txns = await this.transactionService.getAll();
     const transfers = await this.transferService.getAll();
-    const all = [
-      ...txns.map(t => ({ period: t.period, year: t.year, date: t.date })),
-      ...transfers.map(t => ({ period: t.period, year: t.year, date: t.date })),
-    ];
-    const options = scopeOptionsFromMovements(all);
-    this.scopeYears.set(options.years);
-    this.scopeMonths.set(options.months);
+    this.availableScopes.set(scopeOptions([...txns, ...transfers]));
   }
 
   scopeLabelText(): string {
@@ -449,7 +441,7 @@ export class DashboardComponent implements OnInit {
     });
     this.yearOverviewData.set(figures.periods(scope.year));
     this.yearHasMovements.set(
-      [...allTxns, ...allTransfers].some(m => getPeriodYear(m) === scope.year),
+      [...allTxns, ...allTransfers].some(m => movementInScope(m, { kind: 'year', year: scope.year })),
     );
 
     const totals = figures.yearToPeriodTotals(scope);

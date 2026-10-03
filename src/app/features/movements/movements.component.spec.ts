@@ -16,7 +16,13 @@ import { Transaction } from '../../core/models/transaction.model';
 import { Transfer } from '../../core/models/transfer.model';
 import { CaptureFormService } from '../../core/services/capture-form.service';
 import { DataVersionService } from '../../core/services/data-version.service';
-import { MONTH_NAMES, MonthNumber, defaultScope, getCurrentPeriod, getCurrentYear } from '../../core/types/period.type';
+import {
+  MONTH_NAMES,
+  MonthNumber,
+  getCurrentPeriod,
+  getCurrentYear,
+} from '../../core/types/period.type';
+import { defaultScope } from '../../core/scope/scope';
 
 function flush(ms = 10): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));

@@ -159,13 +159,6 @@ describe('TransactionService', () => {
     ).rejects.toThrow('errors.transactionExists');
   });
 
-  it('should get transactions by period', async () => {
-    await transactionService.create(accountId, categoryId, 100, new Date(), 1);
-    await transactionService.create(accountId, categoryId, 200, new Date(), 2);
-    const jan = await transactionService.getByPeriod(1);
-    expect(jan.length).toBe(1);
-  });
-
   it('should store exchange rate and base currency amount', async () => {
     const t = await transactionService.create(
       accountId, categoryId, 1500, new Date(), 1, 1.08, 1620,
@@ -187,19 +180,6 @@ describe('TransactionService', () => {
     expect(t.year).toBe(2026);
   });
 
-  it('should filter transactions by period and year', async () => {
-    await transactionService.create(accountId, categoryId, 100, new Date('2025-12-22'), 1, null, null, 2026);
-    await transactionService.create(accountId, categoryId, 200, new Date('2024-12-22'), 1, null, null, 2025);
-    await transactionService.create(accountId, categoryId, 300, new Date('2026-02-10'), 2, null, null, 2026);
-
-    const jan26 = await transactionService.getByPeriod(1, 2026);
-    expect(jan26.length).toBe(1);
-    expect(jan26[0].amount).toBe(100);
-
-    const janAll = await transactionService.getByPeriod(1);
-    expect(janAll.length).toBe(2);
-  });
-
   it('should get transactions for a month scope by period and year', async () => {
     await transactionService.create(accountId, categoryId, 100, new Date('2025-12-22'), 1, null, null, 2026);
     await transactionService.create(accountId, categoryId, 200, new Date('2026-02-10'), 2, null, null, 2026);
@@ -218,6 +198,16 @@ describe('TransactionService', () => {
     const year26 = await transactionService.getByScope({ kind: 'year', year: 2026 });
     expect(year26.length).toBe(3);
     expect(year26.map(t => t.amount).sort((a, b) => a - b)).toEqual([100, 200, 300]);
+  });
+
+  it('should leave a transaction with an unrecognizable period out of every scope', async () => {
+    await transactionService.create(accountId, categoryId, 100, new Date('2026-01-05'), 1, null, null, 2026);
+    await db.transactions.add({
+      accountId, categoryId, amount: 999, date: new Date('2026-01-05'), period: 'Enero' as any, year: 2026,
+    } as any);
+
+    const year26 = await transactionService.getByScope({ kind: 'year', year: 2026 });
+    expect(year26.map(t => t.amount)).toEqual([100]);
   });
 
   it('should update the period year', async () => {

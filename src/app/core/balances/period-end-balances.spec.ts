@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { MonthNumber, PeriodScope } from '../types/period.type';
+import { MonthNumber } from '../types/period.type';
+import { PeriodScope } from '../scope/scope';
 import { Account } from '../models/account.model';
 import { Transaction } from '../models/transaction.model';
 import { Transfer } from '../models/transfer.model';

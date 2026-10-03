@@ -11,7 +11,8 @@ import { NetworkService } from '../../core/services/network.service';
 import { LanguageService } from '../../core/services/language.service';
 import { DataVersionService } from '../../core/services/data-version.service';
 import { db } from '../../core/db/database';
-import { MONTH_NAMES, defaultScope, getCurrentPeriod, getCurrentYear } from '../../core/types/period.type';
+import { MONTH_NAMES, MonthNumber, getCurrentPeriod, getCurrentYear } from '../../core/types/period.type';
+import { defaultScope } from '../../core/scope/scope';
 
 /** Keep the Dexie connection open for the whole file and just clear the
  * tables between tests. Closing/recreating the db (delete + open) aborts
@@ -1032,7 +1033,7 @@ describe('DashboardComponent - page header, scope control and restyled cards', (
     await resetDb();
   });
 
-  async function scopeTo(period: number, year: number): Promise<void> {
+  async function scopeTo(period: MonthNumber, year: number): Promise<void> {
     await component.onScopeYearChange(year);
     await component.onScopeMonthChange(period);
   }

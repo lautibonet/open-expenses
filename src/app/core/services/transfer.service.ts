@@ -1,17 +1,17 @@
 import { Injectable, inject } from '@angular/core';
 import { db } from '../db/database';
+import { queryByScope } from '../db/scope-query';
 import { Transfer } from '../models/transfer.model';
 import { Account, isCreditCard } from '../models/account.model';
 import { TranslationError } from '../models/translation-error';
 import { LanguageService } from './language.service';
 import { findOrCreateCategory } from './category.service';
 import {
-  PeriodScope,
   getCurrentYear,
-  getPeriodYear,
   isValidPeriod,
   isValidYear,
 } from '../types/period.type';
+import { PeriodScope } from '../scope/scope';
 
 @Injectable({ providedIn: 'root' })
 export class TransferService {
@@ -188,20 +188,8 @@ export class TransferService {
     return db.transfers.toArray();
   }
 
-  async getByPeriod(period: number, year?: number): Promise<Transfer[]> {
-    const transfers = await db.transfers.where('period').equals(period as any).toArray();
-    if (year === undefined) {
-      return transfers;
-    }
-    return transfers.filter(t => getPeriodYear(t) === year);
-  }
-
   async getByScope(scope: PeriodScope): Promise<Transfer[]> {
-    if (scope.kind === 'year') {
-      const transfers = await db.transfers.toArray();
-      return transfers.filter(t => getPeriodYear(t) === scope.year);
-    }
-    return this.getByPeriod(scope.period, scope.year);
+    return queryByScope(db.transfers, scope);
   }
 
   async getById(id: number): Promise<Transfer | undefined> {

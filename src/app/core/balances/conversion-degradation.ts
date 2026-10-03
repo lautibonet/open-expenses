@@ -1,4 +1,5 @@
-import { PeriodScope, getPeriodYear, movementIsAtOrBeforePeriod } from '../types/period.type';
+import { movementInScope, movementIsAtOrBeforePeriod } from '../types/period.type';
+import { PeriodScope } from '../scope/scope';
 import { Account } from '../models/account.model';
 import { Transaction } from '../models/transaction.model';
 import { isUnconvertedTransaction } from '../stats/cash-basis';
@@ -36,7 +37,8 @@ export function unconvertedTransactionsAffecting(
   return transactions.filter(t => {
     if (!isUnconvertedTransaction(t, accountsById.get(t.accountId), baseCurrency)) return false;
     return (
-      movementIsAtOrBeforePeriod(t, scope) || getPeriodYear(t) === scope.year
+      movementIsAtOrBeforePeriod(t, scope) ||
+      movementInScope(t, { kind: 'year', year: scope.year })
     );
   });
 }

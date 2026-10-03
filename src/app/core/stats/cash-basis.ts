@@ -6,11 +6,12 @@ import { storedBaseAmount } from '../balances/period-end-balances';
 import {
   MONTH_NUMBERS,
   MonthNumber,
-  MonthScope,
-  PeriodScope,
   getPeriodYear,
-  isYearScope,
+  movementInScope,
+  periodInScope,
+  periodIsYearToPeriod,
 } from '../types/period.type';
+import { MonthScope, PeriodScope } from '../scope/scope';
 
 /* The id-keyed Account lookup every cash-basis predicate expects. Shared so
    each caller builds it the same way (an Account without an id is skipped). */
@@ -234,19 +235,16 @@ export function cashBasis(snapshot: CashBasisSnapshot): CashBasis {
     return { income, expenses, net: round2(income - expenses), periodsWithMovements };
   }
 
-  const coversPeriod = (scope: PeriodScope, period: number) =>
-    isYearScope(scope) || period === scope.period;
-
   return {
     ...lookups,
     periods,
-    scopeTotals: scope => sumPeriods(scope.year, period => coversPeriod(scope, period)),
-    yearToPeriodTotals: scope => sumPeriods(scope.year, period => period <= scope.period),
+    scopeTotals: scope => sumPeriods(scope.year, period => periodInScope(scope.year, period, scope)),
+    yearToPeriodTotals: scope =>
+      sumPeriods(scope.year, period => periodIsYearToPeriod(scope.year, period, scope)),
     unconvertedTransactions: scope =>
       counted.filter(
         transaction =>
-          getPeriodYear(transaction) === scope.year &&
-          coversPeriod(scope, transaction.period) &&
+          movementInScope(transaction, scope) &&
           isUnconvertedTransaction(
             transaction,
             accountsById.get(transaction.accountId),

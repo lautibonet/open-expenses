@@ -31,11 +31,11 @@ import {
 import {
   MONTH_NUMBERS,
   MonthNumber,
-  defaultScope,
   getCurrentYear,
   getPeriodYear,
   periodYearFromDate,
 } from '../../../core/types/period.type';
+import { defaultScope } from '../../../core/scope/scope';
 import {
   dateToLocalISO,
   parseLocalDate,
