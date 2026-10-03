@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { yearOverview, accumulatedByPeriod, lastMovementPeriod } from './year-overview';
+import { accumulatedByPeriod, lastMovementPeriod } from './year-overview';
 import { Transaction } from '../models/transaction.model';
 import { Transfer } from '../models/transfer.model';
 import { Account } from '../models/account.model';
@@ -51,114 +51,6 @@ function account(overrides: Partial<Account>): Account {
     ...overrides,
   };
 }
-
-describe('yearOverview', () => {
-  it('returns one entry for every Period of the year, in calendar order', () => {
-    const overview = yearOverview([], () => true, 2026);
-
-    expect(overview.map(o => o.period)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
-  });
-
-  it('keeps months without movements at zero', () => {
-    const overview = yearOverview([txn({ period: 3 })], () => true, 2026);
-
-    expect(overview.find(o => o.period === 3)).toEqual({ period: 3, income: 100, expenses: 0, net: 100 });
-    expect(overview.find(o => o.period === 1)!.net).toBe(0);
-    expect(overview.find(o => o.period === 12)!.net).toBe(0);
-  });
-
-  it('splits Income and Expenses per Period and nets them', () => {
-    const transactions = [
-      txn({ id: 1, period: 1, amount: 3000 }),
-      txn({ id: 2, period: 1, amount: 500 }),
-      txn({ id: 3, period: 2, amount: 700 }),
-    ];
-    const isIncome = (t: Transaction) => t.id !== 2 && t.id !== 3;
-
-    const overview = yearOverview(transactions, isIncome, 2026);
-
-    expect(overview.find(o => o.period === 1)).toEqual({
-      period: 1,
-      income: 3000,
-      expenses: 500,
-      net: 2500,
-    });
-    expect(overview.find(o => o.period === 2)!.net).toBe(-700);
-  });
-
-  it('aggregates by the stored Period year, never the movement date', () => {
-    const december = txn({ period: 1, date: new Date('2025-12-22'), year: 2026, amount: 3000 });
-
-    const overview = yearOverview([december], () => true, 2026);
-    expect(overview.find(o => o.period === 1)!.income).toBe(3000);
-
-    const excluded = yearOverview([december], () => true, 2025);
-    expect(excluded.every(o => o.net === 0)).toBe(true);
-  });
-
-  it('counts cross-currency movements at their stored conversion', () => {
-    const stored = txn({ period: 4, amount: 100, exchangeRate: 1.08, baseCurrencyAmount: 108 });
-
-    const overview = yearOverview([stored], () => true, 2026);
-
-    expect(overview.find(o => o.period === 4)!.income).toBe(108);
-  });
-
-  it('completes the stored base amount from the exchange rate when only the rate persisted', () => {
-    const rateOnly = txn({ period: 4, amount: 100, exchangeRate: 1.08, baseCurrencyAmount: null });
-
-    const overview = yearOverview([rateOnly], () => true, 2026);
-
-    expect(overview.find(o => o.period === 4)!.income).toBe(108);
-  });
-
-  it('rounds each Period figure to cents', () => {
-    const messy = [
-      txn({ id: 1, period: 6, amount: 10.1 }),
-      txn({ id: 2, period: 6, amount: 20.2 }),
-      txn({ id: 3, period: 6, amount: 30.3 }),
-    ];
-
-    const overview = yearOverview(messy, () => true, 2026);
-
-    expect(overview.find(o => o.period === 6)!.income).toBe(60.6);
-  });
-
-  it('counts a Card Payment as an Expense in its Period (ADR 0022)', () => {
-    const payment = transfer({ period: 3, baseCurrencyAmount: 500 });
-
-    const overview = yearOverview([], () => true, 2026, [payment]);
-
-    expect(overview.find(o => o.period === 3)).toEqual({
-      period: 3,
-      income: 0,
-      expenses: 500,
-      net: -500,
-    });
-  });
-
-  it('nets Card Payments against Income for the Period net', () => {
-    const income = txn({ period: 3, amount: 3000 });
-    const payment = transfer({ period: 3, baseCurrencyAmount: 500 });
-
-    const overview = yearOverview([income], () => true, 2026, [payment]);
-
-    expect(overview.find(o => o.period === 3)!.net).toBe(2500);
-  });
-
-  it('aggregates Card Payments by the stored Period year, never the date', () => {
-    const payment = transfer({ period: 1, date: new Date('2025-12-22'), year: 2026, baseCurrencyAmount: 500 });
-
-    expect(yearOverview([], () => true, 2026, [payment]).find(o => o.period === 1)!.expenses).toBe(500);
-    expect(yearOverview([], () => true, 2025, [payment]).every(o => o.expenses === 0)).toBe(true);
-  });
-
-  it('counts Card Payments at their stored base amount', () => {
-    const payment = transfer({ period: 4, baseCurrencyAmount: 108 });
-
-    expect(yearOverview([], () => true, 2026, [payment]).find(o => o.period === 4)!.expenses).toBe(108);
-  });
-});
 
 describe('accumulatedByPeriod', () => {
   it('returns one entry for every Period of the year', () => {

@@ -1,8 +1,6 @@
-import { Account } from '../models/account.model';
-import { Category, isIncomeCategory } from '../models/category.model';
 import { Transaction } from '../models/transaction.model';
 import { storedBaseAmount } from '../balances/period-end-balances';
-import { isCreditCardTransaction } from './cash-basis';
+import { CashBasisLookups } from './cash-basis';
 
 /* One category's spending, split by how it was paid: `cash` is money that
    left a Cash Account, `credit` is spending that consumed a Credit Card's
@@ -25,19 +23,18 @@ export interface CategorySpending {
    is skipped because it cannot be named. */
 export function categorySpending(
   transactions: Transaction[],
-  categoriesById: Map<number, Category>,
-  accountsById: Map<number, Account>,
+  lookups: CashBasisLookups,
   paymentCategoryIds: Set<number> = new Set(),
 ): CategorySpending[] {
   const totals = new Map<number, { cash: number; credit: number }>();
 
   for (const transaction of transactions) {
-    const category = categoriesById.get(transaction.categoryId);
-    if (!category || isIncomeCategory(category.type)) continue;
+    const category = lookups.categoriesById.get(transaction.categoryId);
+    if (!category || lookups.isIncome(transaction)) continue;
     if (paymentCategoryIds.has(transaction.categoryId)) continue;
 
     const entry = totals.get(transaction.categoryId) ?? { cash: 0, credit: 0 };
-    if (isCreditCardTransaction(transaction, accountsById)) {
+    if (lookups.isCreditCardTransaction(transaction)) {
       entry.credit += storedBaseAmount(transaction);
     } else {
       entry.cash += storedBaseAmount(transaction);
@@ -51,7 +48,7 @@ export function categorySpending(
     const credit = Math.round(entry.credit * 100) / 100;
     rows.push({
       categoryId,
-      name: categoriesById.get(categoryId)!.name,
+      name: lookups.categoriesById.get(categoryId)!.name,
       cash,
       credit,
       total: Math.round((cash + credit) * 100) / 100,

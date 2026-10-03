@@ -12,8 +12,8 @@ import { DataVersionService } from '../../core/services/data-version.service';
 import { Transaction } from '../../core/models/transaction.model';
 import { Transfer } from '../../core/models/transfer.model';
 import { Account, paymentCategoryIds } from '../../core/models/account.model';
-import { Category, isIncomeCategory } from '../../core/models/category.model';
-import { isCardPayment, isCreditCardTransaction, buildAccountsById } from '../../core/stats/cash-basis';
+import { Category } from '../../core/models/category.model';
+import { cashBasisLookups } from '../../core/stats/cash-basis';
 import {
   MONTH_NUMBERS,
   MonthNumber,
@@ -111,11 +111,12 @@ export class MovementsComponent implements OnInit, OnDestroy {
   movements = signal<MovementItem[]>([]);
   dataLoaded = signal(false);
   baseCurrency = signal('EUR');
-  /* Every Account keyed by id, for the ADR 0022 cash-basis classification the
-     row treatment shares: is a Transaction on a card, is a Transfer a Card
-     Payment. Built from allAccounts so a Deactivated card keeps its rows. */
-  private accountsById = computed<Map<number, Account>>(() =>
-    buildAccountsById(this.allAccounts()),
+  /* The ADR 0022 cash-basis classification the row treatment shares with the
+     net-flow card: is a Transaction income, is it on a card, is a Transfer a
+     Card Payment. Built from every Account and Category so a Deactivated card
+     or category keeps its rows. */
+  private lookups = computed(() =>
+    cashBasisLookups(this.allAccounts(), this.allCategoriesForNameResolution()),
   );
 
   showForm = signal<'none' | 'transfer' | 'transaction'>('none');
@@ -770,8 +771,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
   }
 
   isIncomeTransaction(txn: Transaction): boolean {
-    const type = this.allCategoriesForNameResolution().find((c) => c.id === txn.categoryId)?.type;
-    return isIncomeCategory(type);
+    return this.lookups().isIncome(txn);
   }
 
   kindLabel(item: MovementItem): string {
@@ -790,13 +790,13 @@ export class MovementsComponent implements OnInit, OnDestroy {
      Card badge so it is never mistaken for a counted cash Expense. The card
      classification reuses the cash-basis seam, orphan rule included. */
   isCardTransaction(txn: Transaction): boolean {
-    return isCreditCardTransaction(txn, this.accountsById());
+    return this.lookups().isCreditCardTransaction(txn);
   }
 
   /* The Expense category a Card Payment is captured under, or null when the
      Transfer is not a Card Payment (or carries no category). */
   cardPaymentCategoryName(tr: Transfer): string | null {
-    if (tr.categoryId == null || !isCardPayment(tr, this.accountsById())) {
+    if (tr.categoryId == null || !this.lookups().isCardPayment(tr)) {
       return null;
     }
     return this.getCategoryName(tr.categoryId);

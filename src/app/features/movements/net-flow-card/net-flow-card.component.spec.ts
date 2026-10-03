@@ -125,6 +125,14 @@ describe('NetFlowCardComponent', () => {
     expect(component.expenseTotal()).toBe(10);
   });
 
+  it('converts an older foreign transaction that stored only its Exchange Rate, as Stats does (#182)', async () => {
+    const period = getCurrentPeriod();
+    await transactionService.create(usdAccountId, expenseCategoryId, 10, new Date(), period, 0.9, null);
+    await render();
+
+    expect(component.expenseTotal()).toBe(9);
+  });
+
   it('excludes transfers from the flow', async () => {
     const period = getCurrentPeriod();
     await transactionService.create(eurAccountId, incomeCategoryId, 1000, new Date(), period);

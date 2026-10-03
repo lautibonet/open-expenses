@@ -22,7 +22,7 @@ import {
 import { Transaction } from '../../core/models/transaction.model';
 import { Transfer } from '../../core/models/transfer.model';
 import { Account, isCreditCard, paymentCategoryIds } from '../../core/models/account.model';
-import { Category, isIncomeCategory } from '../../core/models/category.model';
+import { Category } from '../../core/models/category.model';
 import { DismissibleAlertComponent } from '../../shared/components/dismissible-alert/dismissible-alert.component';
 import { FitTextDirective } from '../../shared/directives/fit-text.directive';
 import {
@@ -33,15 +33,14 @@ import {
 import {
   periodEndBalance,
   periodEndBaseAmount,
-  storedBaseAmount,
 } from '../../core/balances/period-end-balances';
+import { accumulatedByPeriod, lastMovementPeriod } from '../../core/stats/year-overview';
 import {
-  PeriodOverview,
-  yearOverview,
-  accumulatedByPeriod,
-  lastMovementPeriod,
-} from '../../core/stats/year-overview';
-import { cashBasisTransactions, cardPaymentTransfers } from '../../core/stats/cash-basis';
+  PeriodCashFlow,
+  cashBasis,
+  cashBasisLookups,
+  monthlyAverages,
+} from '../../core/stats/cash-basis';
 import {
   CategorySpending,
   categorySpending,
@@ -108,7 +107,7 @@ export class DashboardComponent implements OnInit {
   avgMonthlyIncome = signal(0);
   avgMonthlyExpenses = signal(0);
   avgMonthlyNet = signal(0);
-  yearOverviewData = signal<PeriodOverview[]>([]);
+  yearOverviewData = signal<PeriodCashFlow[]>([]);
   accumulated = signal<number[]>([]);
   /* The last Period of the scope year carrying a Movement; the strip's
      frozen tail starts after it. */
@@ -137,15 +136,14 @@ export class DashboardComponent implements OnInit {
 
     const allCategories = await this.categoryService.getAll();
     this.categories.set(allCategories);
-    const catMap = new Map(allCategories.map(c => [c.id!, c]));
-    const accountsById = new Map(this.accounts().map(a => [a.id!, a]));
+    const lookups = cashBasisLookups(this.accounts(), allCategories);
+    const { accountsById, isIncome } = lookups;
     const base = this.baseCurrency();
 
     this.categoryBreakdown.set(
-      categorySpending(txns, catMap, accountsById, paymentCategoryIds(this.accounts())),
+      categorySpending(txns, lookups, paymentCategoryIds(this.accounts())),
     );
 
-    const isIncome = this.incomeClassifier(catMap);
     const [allTxns, allTransfers] = await Promise.all([
       this.transactionService.getAll(),
       this.transferService.getAll(),
@@ -368,12 +366,6 @@ export class DashboardComponent implements OnInit {
     return this.scope().year;
   }
 
-  private incomeClassifier(
-    catMap: Map<number, Category>,
-  ): (transaction: Transaction) => boolean {
-    return (t: Transaction) => isIncomeCategory(catMap.get(t.categoryId)?.type);
-  }
-
   /* ADR 0022 / #174: a Card Payment's category labels the payment but never
      reaches the spending graph — the settled purchases already report that
      spending. Derived by the shared account-model helper (#174). */
@@ -435,82 +427,40 @@ export class DashboardComponent implements OnInit {
   }
 
   async refreshAverages(): Promise<void> {
-    const allTxns = await this.transactionService.getAll();
-    const allTransfers = await this.transferService.getAll();
-    const allCategories = await this.categoryService.getAll();
-    const accountsById = new Map((await this.accountService.getAll()).map(a => [a.id!, a]));
-    const catMap = new Map(allCategories.map(c => [c.id!, c]));
-
+    const [allTxns, allTransfers, allCategories, allAccounts] = await Promise.all([
+      this.transactionService.getAll(),
+      this.transferService.getAll(),
+      this.categoryService.getAll(),
+      this.accountService.getAll(),
+    ]);
     const scope = this.scope();
-    const selectedYear = String(scope.year);
 
     /* ADR 0022: the year-to-period totals, averages, and overview are
-       cash-basis — Card Purchases never reach them, and a Cash-to-Card Card
-       Payment reaches them as an Expense in its stored Period. The balance
-       strip keeps every movement, so `yearHasMovements` stays on the full
-       set. */
-    const cashTxns = cashBasisTransactions(allTxns, accountsById);
-    const cardPayments = cardPaymentTransfers(allTransfers, accountsById);
-
-    const yearTxns = allTxns.filter(t => String(getPeriodYear(t)) === selectedYear);
-    const filteredTxns = cashTxns.filter(
-      t => String(getPeriodYear(t)) === selectedYear && t.period <= scope.period,
-    );
-    const filteredCardPayments = cardPayments.filter(
-      t => String(getPeriodYear(t)) === selectedYear && t.period <= scope.period,
-    );
-
-    this.yearOverviewData.set(
-      yearOverview(cashTxns, this.incomeClassifier(catMap), scope.year, cardPayments),
-    );
-    /* The balance strip keeps every movement — Transaction or Transfer — so a
-       year whose only movement is a Card Payment still renders the strip. */
+       cash-basis, read from the module the Movements net-flow card reads too.
+       The balance strip keeps every movement, so `yearHasMovements` stays on
+       the full set: a year whose only movement is a Card Purchase or a
+       Cash-to-Cash Transfer still renders the strip. */
+    const ledger = cashBasis({
+      accounts: allAccounts,
+      categories: allCategories,
+      transactions: allTxns,
+      transfers: allTransfers,
+      baseCurrency: this.baseCurrency(),
+    });
+    this.yearOverviewData.set(ledger.periods(scope.year));
     this.yearHasMovements.set(
-      yearTxns.length > 0 ||
-        allTransfers.some(t => String(getPeriodYear(t)) === selectedYear),
+      [...allTxns, ...allTransfers].some(m => getPeriodYear(m) === scope.year),
     );
 
-    const monthsWithData = new Set([
-      ...filteredTxns.map(t => t.period),
-      ...filteredCardPayments.map(t => t.period),
-    ]);
-
-    if (monthsWithData.size === 0) {
-      this.yearTotalIncome.set(0);
-      this.yearTotalExpenses.set(0);
-      this.yearTotalNet.set(0);
-      this.yearHasData.set(false);
-      this.avgMonthlyIncome.set(0);
-      this.avgMonthlyExpenses.set(0);
-      this.avgMonthlyNet.set(0);
-      return;
-    }
-
-    let totalIncome = 0;
-    let totalExpenses = 0;
-
-    for (const t of filteredTxns) {
-      const amount = storedBaseAmount(t);
-      const cat = catMap.get(t.categoryId);
-      if (isIncomeCategory(cat?.type)) {
-        totalIncome += amount;
-      } else {
-        totalExpenses += amount;
-      }
-    }
-
-    for (const payment of filteredCardPayments) {
-      totalExpenses += payment.baseCurrencyAmount;
-    }
-
-    const months = monthsWithData.size;
-    this.yearTotalIncome.set(totalIncome);
-    this.yearTotalExpenses.set(totalExpenses);
-    this.yearTotalNet.set(totalIncome - totalExpenses);
-    this.yearHasData.set(true);
-    this.avgMonthlyIncome.set(Math.round(totalIncome / months * 100) / 100);
-    this.avgMonthlyExpenses.set(Math.round(totalExpenses / months * 100) / 100);
-    this.avgMonthlyNet.set(Math.round((totalIncome - totalExpenses) / months * 100) / 100);
+    const totals = ledger.yearToPeriodTotals(scope);
+    const averages = monthlyAverages(totals);
+    this.yearTotalIncome.set(totals.income);
+    this.yearTotalExpenses.set(totals.expenses);
+    this.yearTotalNet.set(totals.net);
+    this.yearHasData.set(totals.periodsWithMovements > 0);
+    this.avgMonthlyIncome.set(averages.income);
+    this.avgMonthlyExpenses.set(averages.expenses);
+    this.avgMonthlyNet.set(averages.net);
   }
 
   /* The zero line both graphs share positions itself from the Scope year's
@@ -618,7 +568,7 @@ export class DashboardComponent implements OnInit {
   }
 
   /* The accessible figure list: Income, Expenses, and Net per Period. */
-  overviewFigures(item: PeriodOverview): string {
+  overviewFigures(item: PeriodCashFlow): string {
     return [
       `${this.language.t('stats.income')} ${this.formatMoney(item.income)}`,
       `${this.language.t('stats.expenses')} ${this.formatMoney(item.expenses)}`,
