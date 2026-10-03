@@ -44,4 +44,3 @@ node_modules/
 # AI tooling (files stay on disk, not tracked)
 /.claude/
 /.opencode/
-/.impeccable/
