@@ -31,26 +31,33 @@ describe('paymentCategoryName', () => {
 });
 
 describe('resolvePaymentCategory', () => {
-  it('returns the linked category when the link points at an existing category', () => {
+  it('returns the stored category when the link points at an existing Expense category', () => {
     const linked = category(7, 'Tarjeta de crédito');
     const resolution = resolvePaymentCategory(
       card({ paymentCategoryId: 7 }),
       [category(3, 'Visa payment'), linked],
       'en',
     );
-    expect(resolution).toEqual({ kind: 'linked', category: linked });
+    expect(resolution).toEqual({ kind: 'stored', category: linked });
+  });
+
+  it('does not trust a stored link to an Income category, resolving by name instead', () => {
+    const income = category(7, 'Bonus', 'income');
+    const named = category(3, 'Visa payment');
+    const resolution = resolvePaymentCategory(card({ paymentCategoryId: 7 }), [income, named], 'en');
+    expect(resolution).toEqual({ kind: 'linkable', category: named });
   });
 
   it('matches an Expense category named after the card, ignoring letter case', () => {
     const named = category(3, 'visa PAYMENT');
     const resolution = resolvePaymentCategory(card(), [named], 'en');
-    expect(resolution).toEqual({ kind: 'matched', category: named });
+    expect(resolution).toEqual({ kind: 'linkable', category: named });
   });
 
   it('matches by name when the link is dangling', () => {
     const named = category(3, 'Visa payment');
     const resolution = resolvePaymentCategory(card({ paymentCategoryId: 99 }), [named], 'en');
-    expect(resolution).toEqual({ kind: 'matched', category: named });
+    expect(resolution).toEqual({ kind: 'linkable', category: named });
   });
 
   it('proposes a new category named in the given Language when none matches', () => {

@@ -739,14 +739,14 @@
                 </button>
               </div>
             }
-            @if (confirmingCardDelete() === card.id && pairedCategoryWarning()) {
+            @if (confirmingCardDelete() === card.id && pairedCategoryToDelete()) {
               <!-- Issue #175: the paired-deletion pre-check says the payment
                    category goes with the card, so the confirm warns visibly. -->
               <div class="paired-category-warning" role="alert">
                 <p>
                   {{
                     language.t('settings.cardDeletePairedWarning', {
-                      name: pairedCategoryWarning(),
+                      name: pairedCategoryToDelete(),
                     })
                   }}
                 </p>

@@ -113,12 +113,13 @@ export class SettingsComponent implements OnInit {
   cardDeletionPlan = signal<CardDeletionPlan | null>(null);
   /* The paired category's name when the plan deletes it with the card — the
      confirm step warns visibly only then; empty otherwise. */
-  pairedCategoryWarning = computed(() => {
+  pairedCategoryToDelete = computed(() => {
     const plan = this.cardDeletionPlan();
     return plan?.kind === 'proceed' && plan.category === 'delete' ? plan.categoryName : '';
   });
-  /* The card whose deletion plan is being fetched, so a slower plan for a
-     card the user has since moved away from is dropped. */
+  /* The card whose deletion plan is being fetched. Any other delete request
+     or a cancel clears it, so a plan the user has since moved away from is
+     dropped instead of opening a stale confirm. */
   private requestedCardDelete: number | null = null;
   pageNotice = signal('');
 
@@ -353,6 +354,7 @@ export class SettingsComponent implements OnInit {
      item opens the inline delete confirm; an item with movements is refused
      with an explanation that offers Deactivation as the fallback. */
   async requestDeleteAccount(id: number): Promise<void> {
+    this.requestedCardDelete = null;
     this.confirmingCategoryDelete.set(null);
     this.refusedCategory.set(null);
     this.confirmingAccountDelete.set(null);
@@ -587,6 +589,7 @@ export class SettingsComponent implements OnInit {
   }
 
   async requestDeleteCategory(id: number): Promise<void> {
+    this.requestedCardDelete = null;
     this.confirmingAccountDelete.set(null);
     this.refusedAccount.set(null);
     this.confirmingCategoryDelete.set(null);

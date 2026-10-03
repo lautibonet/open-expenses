@@ -6,7 +6,10 @@ import { Transfer } from '../models/transfer.model';
 import { Profile } from '../models/profile.model';
 import { DEFAULT_LANGUAGE, isLanguage, Language } from '../types/language.type';
 import { getPeriodYear, monthNumberFromName } from '../types/period.type';
-import { resolvePaymentCategory } from '../payment-category/payment-category-rules';
+import {
+  newPaymentCategory,
+  resolvePaymentCategory,
+} from '../payment-category/payment-category-rules';
 
 interface LegacyTransfer {
   id?: number;
@@ -194,15 +197,10 @@ export class AppDatabase extends Dexie {
         if (card.paymentCategoryId != null) continue;
         const resolution = resolvePaymentCategory(card, categories, language);
         let categoryId: number;
-        if (resolution.kind === 'matched' || resolution.kind === 'linked') {
+        if (resolution.kind === 'linkable') {
           categoryId = resolution.category.id!;
         } else if (resolution.kind === 'new') {
-          const category: Category = {
-            name: resolution.name,
-            type: 'expense',
-            active: true,
-            createdAt: new Date(),
-          };
+          const category = newPaymentCategory(resolution.name);
           categoryId = await tx.table('categories').add(category);
           categories.push({ ...category, id: categoryId });
         } else {

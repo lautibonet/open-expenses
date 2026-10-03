@@ -14,16 +14,24 @@ export function paymentCategoryName(cardName: string, language: Language): strin
   return translate(language, 'category.cardPayment', { name: cardName.trim() });
 }
 
+/* A fresh Payment Category under the given name, ready to be stored: always
+   an Expense category (amended ADR 0022). */
+export function newPaymentCategory(name: string): Category {
+  return { name, type: 'expense', active: true, createdAt: new Date() };
+}
+
 /* Which category a card's Card Payments wear:
-   - 'linked': the card's stored link points at an existing category;
-   - 'matched': an Expense category already holds the payment name, and will
+   - 'stored': the card's stored link points at an existing Expense category;
+   - 'linkable': an Expense category already holds the payment name, and will
      be linked rather than duplicated;
    - 'new': nothing holds the name, so a category with it will be created;
    - 'taken': an Income category holds the name, so none can be provisioned
-     (amended ADR 0022: only an Expense category can be linked). */
+     (amended ADR 0022: only an Expense category can be linked).
+   A stored link to an Income category predates that rule and is not
+   trusted: the card resolves by name as if the link were dangling. */
 export type PaymentCategoryResolution =
-  | { kind: 'linked'; category: Category }
-  | { kind: 'matched'; category: Category }
+  | { kind: 'stored'; category: Category }
+  | { kind: 'linkable'; category: Category }
   | { kind: 'new'; name: string }
   | { kind: 'taken'; name: string };
 
@@ -37,9 +45,9 @@ export function resolvePaymentCategory(
   language: Language,
 ): PaymentCategoryResolution {
   if (card.paymentCategoryId != null) {
-    const linked = categories.find(c => c.id === card.paymentCategoryId);
-    if (linked) {
-      return { kind: 'linked', category: linked };
+    const stored = categories.find(c => c.id === card.paymentCategoryId);
+    if (stored?.type === 'expense') {
+      return { kind: 'stored', category: stored };
     }
   }
   const name = paymentCategoryName(card.name, language);
@@ -50,5 +58,5 @@ export function resolvePaymentCategory(
   if (named.type !== 'expense') {
     return { kind: 'taken', name };
   }
-  return { kind: 'matched', category: named };
+  return { kind: 'linkable', category: named };
 }

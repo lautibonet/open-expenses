@@ -74,7 +74,7 @@ export class TransferService {
     };
 
     return db.transaction('rw', db.accounts, db.categories, db.transfers, async () => {
-      const paymentCategoryId = await this.resolvePaymentCategory(destAccount);
+      const paymentCategoryId = await this.paymentCategoryIdFor(destAccount);
       const stored: Transfer = {
         ...transfer,
         ...(paymentCategoryId !== undefined ? { categoryId: paymentCategoryId } : {}),
@@ -128,7 +128,7 @@ export class TransferService {
     const newBaseCurrencyAmount = isCrossCurrency ? newDestinationAmount : newSourceAmount;
 
     return db.transaction('rw', db.accounts, db.categories, db.transfers, async () => {
-      const paymentCategoryId = await this.resolvePaymentCategory(destAccount);
+      const paymentCategoryId = await this.paymentCategoryIdFor(destAccount);
       await db.transfers.update(id, {
         ...changes,
         sourceAmount: newSourceAmount,
@@ -145,7 +145,7 @@ export class TransferService {
      card's own Payment Category — the caller never picks one, and redirecting
      the destination re-resolves it. Every other Transfer carries none. The
      Payment Category module resolves it, repairing a dangling link (#184). */
-  private async resolvePaymentCategory(
+  private async paymentCategoryIdFor(
     destination: Account | undefined,
   ): Promise<number | undefined> {
     if (!destination || !isCreditCard(destination)) {

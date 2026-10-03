@@ -1780,7 +1780,7 @@ describe('SettingsComponent - credit cards (ADR 0022)', () => {
     await component.requestDeleteCard(card.id!);
     fixture.detectChanges();
 
-    expect(component.pairedCategoryWarning()).toBe('Visa payment');
+    expect(component.pairedCategoryToDelete()).toBe('Visa payment');
     const row = rowFor('.account-row', 'Visa');
     const warning = row.querySelector('.paired-category-warning') as HTMLElement;
     expect(warning).toBeDefined();
@@ -1807,7 +1807,7 @@ describe('SettingsComponent - credit cards (ADR 0022)', () => {
     await component.refresh();
 
     await component.requestDeleteCard(card.id!);
-    expect(component.pairedCategoryWarning()).toBe('Visa payment');
+    expect(component.pairedCategoryToDelete()).toBe('Visa payment');
 
     await db.transactions.add({
       accountId: cashId,
@@ -1904,6 +1904,19 @@ describe('SettingsComponent - credit cards (ADR 0022)', () => {
     expect(component.pageNotice()).toBe('');
   });
 
+  it('drops a card plan still loading when another delete is requested meanwhile', async () => {
+    const card = await accountService.createCard({ name: 'Visa', currency: 'EUR' });
+    const category = await categoryService.create('Food', 'expense');
+    await component.refresh();
+
+    const cardRequest = component.requestDeleteCard(card.id!);
+    await component.requestDeleteCategory(category.id!);
+    await cardRequest;
+
+    expect(component.confirmingCardDelete()).toBeNull();
+    expect(component.confirmingCategoryDelete()).toBe(category.id);
+  });
+
   it('clears the paired-category warning when the confirm is cancelled', async () => {
     const card = await accountService.createCard({ name: 'Visa', currency: 'EUR' });
     await component.refresh();
@@ -1913,7 +1926,7 @@ describe('SettingsComponent - credit cards (ADR 0022)', () => {
 
     expect(component.confirmingCardDelete()).toBeNull();
     expect(component.cardDeletionPlan()).toBeNull();
-    expect(component.pairedCategoryWarning()).toBe('');
+    expect(component.pairedCategoryToDelete()).toBe('');
   });
 
   it('refuses to delete a card with movements and offers Deactivation', async () => {

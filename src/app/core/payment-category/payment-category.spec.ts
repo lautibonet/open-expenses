@@ -65,6 +65,13 @@ describe('Payment Category module', () => {
       expect((await db.accounts.get(card.id!))?.paymentCategoryId).toBe(category.id);
     });
 
+    it('re-links a card whose stored link points at an Income category', async () => {
+      const card = await addCard('Visa', await addCategory('Bonus', 'income'));
+      const category = await ensurePaymentCategory(card, 'en');
+      expect(category).toMatchObject({ name: 'Visa payment', type: 'expense' });
+      expect((await db.accounts.get(card.id!))?.paymentCategoryId).toBe(category.id);
+    });
+
     it('refuses when an Income category holds the payment name', async () => {
       await addCategory('Visa payment', 'income');
       await expect(ensurePaymentCategory({ name: 'Visa' }, 'en')).rejects.toMatchObject({
@@ -98,6 +105,26 @@ describe('Payment Category module', () => {
         params: { name: 'Amex payment' },
       });
       expect((await db.categories.get(linkedId))?.name).toBe('Visa payment');
+    });
+
+    it('refuses a dangling-link rename when an Expense category already holds the new name', async () => {
+      const takenId = await addCategory('Amex payment');
+      const card = await addCard('Visa', 99);
+      await expect(renamePaymentCategory(card, 'Amex', 'en')).rejects.toMatchObject({
+        key: 'errors.categoryNameTaken',
+        params: { name: 'Amex payment' },
+      });
+      expect((await db.accounts.get(card.id!))?.paymentCategoryId).toBe(99);
+      expect((await db.categories.get(takenId))?.name).toBe('Amex payment');
+    });
+
+    it('never renames a stored Income category, creating the payment category instead', async () => {
+      const incomeId = await addCategory('Bonus', 'income');
+      const card = await addCard('Visa', incomeId);
+      await renamePaymentCategory(card, 'Visa Gold', 'en');
+      expect((await db.categories.get(incomeId))?.name).toBe('Bonus');
+      const linkedId = (await db.accounts.get(card.id!))?.paymentCategoryId;
+      expect((await db.categories.get(linkedId!))?.name).toBe('Visa Gold payment');
     });
 
     it('repairs a dangling link under the new card name', async () => {
