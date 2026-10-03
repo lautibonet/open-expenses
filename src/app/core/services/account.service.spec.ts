@@ -85,6 +85,32 @@ describe('AccountService', () => {
       });
   });
 
+  /* Issue #180: names are unique ignoring letter case, everywhere. */
+  it('rejects a name that differs from an existing one only by case', async () => {
+    await service.create('Cash', 'EUR', 0);
+    await expect(service.create('  cASH ', 'USD', 0)).rejects.toMatchObject({
+      key: 'errors.accountNameTaken',
+      params: { name: 'cASH' },
+    });
+    expect(await db.accounts.count()).toBe(1);
+  });
+
+  it('rejects a rename to another account name under a different case', async () => {
+    await service.create('Cash', 'EUR', 0);
+    const savings = await service.create('Savings', 'EUR', 0);
+    await expect(service.update(savings.id!, { name: 'CASH' })).rejects.toMatchObject({
+      key: 'errors.accountNameTaken',
+      params: { name: 'CASH' },
+    });
+    expect((await service.getById(savings.id!))!.name).toBe('Savings');
+  });
+
+  it('allows a rename to a different capitalisation of its own name', async () => {
+    const account = await service.create('Cash', 'EUR', 0);
+    const updated = await service.update(account.id!, { name: 'CASH' });
+    expect(updated.name).toBe('CASH');
+  });
+
   it('should allow keeping same name on update', async () => {
     const account = await service.create('Cash', 'EUR', 0);
     const updated = await service.update(account.id!, { name: 'Cash' });
@@ -318,6 +344,48 @@ describe('AccountService - credit cards (ADR 0022)', () => {
         key: 'errors.accountNameTaken',
         params: { name: 'Cash' },
       });
+  });
+
+  it('rejects a card name that differs from an existing account only by case', async () => {
+    await expect(service.createCard({ name: 'cash', currency: 'EUR' })).rejects.toMatchObject({
+      key: 'errors.accountNameTaken',
+      params: { name: 'cash' },
+    });
+  });
+
+  it('links the pre-existing category when the payment name is taken under a different case', async () => {
+    const existingId = await db.categories.add({
+      name: 'VISA PAYMENT',
+      type: 'expense',
+      active: true,
+      createdAt: new Date(),
+    });
+    const card = await service.createCard({ name: 'Visa', currency: 'EUR' });
+    expect(card.paymentCategoryId).toBe(existingId);
+    expect(await db.categories.count()).toBe(1);
+  });
+
+  it('fails the card rename when the new payment name is taken under a different case', async () => {
+    const card = await service.createCard({ name: 'Visa', currency: 'EUR' });
+    await db.categories.add({
+      name: 'amex PAYMENT',
+      type: 'expense',
+      active: true,
+      createdAt: new Date(),
+    });
+
+    await expect(service.update(card.id!, { name: 'Amex' })).rejects.toMatchObject({
+      key: 'errors.categoryNameTaken',
+      params: { name: 'Amex payment' },
+    });
+    expect((await service.getById(card.id!))!.name).toBe('Visa');
+  });
+
+  it('renames a card to a different capitalisation of its own name, payment category included', async () => {
+    const card = await service.createCard({ name: 'Visa', currency: 'EUR' });
+    const updated = await service.update(card.id!, { name: 'VISA' });
+    expect(updated.name).toBe('VISA');
+    expect((await db.categories.get(card.paymentCategoryId!))!.name).toBe('VISA payment');
   });
 
   it('rejects a negative limit', async () => {

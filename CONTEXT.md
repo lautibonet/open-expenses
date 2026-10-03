@@ -13,7 +13,7 @@ A movement of money between two of the user's own accounts. Structurally separat
 _Avoid_: Movement, internal transfer
 
 **Account**:
-A named place where the user holds money — a Cash Account — or owes money — a Credit Card. Defined by a name, a currency, and an initial balance; a Credit Card additionally has an optional Limit, and its initial balance is its starting debt. Its currency is chosen at creation and can change only while it has no movements. Its balance is computed from the initial balance plus Transactions and Transfers up to a given point in time; on Stats it is reported as of the end of the Scope's Period.
+A named place where the user holds money — a Cash Account — or owes money — a Credit Card. Defined by a name, a currency, and an initial balance; a Credit Card additionally has an optional Limit, and its initial balance is its starting debt. Its name is unique among Accounts ignoring letter case — "Visa" and "visa" cannot both exist. Its currency is chosen at creation and can change only while it has no movements. Its balance is computed from the initial balance plus Transactions and Transfers up to a given point in time; on Stats it is reported as of the end of the Scope's Period.
 _Avoid_: Wallet, bank account, source
 
 **Credit Card**:
@@ -33,7 +33,7 @@ The monthly summary a card's issuer produces: what was billed, what is due, and 
 _Avoid_: bill, invoice, cycle
 
 **Category**:
-A mandatory classification label applied to every Transaction and to every Card Payment, marked as either Income or Expense. Flat list, no hierarchy. Pre-populated with defaults during onboarding.
+A mandatory classification label applied to every Transaction and to every Card Payment, marked as either Income or Expense. Flat list, no hierarchy. Its name is unique among Categories ignoring letter case. Pre-populated with defaults during onboarding.
 _Avoid_: Type, group, classification
 
 **Period**:

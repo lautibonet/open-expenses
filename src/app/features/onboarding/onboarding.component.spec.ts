@@ -641,6 +641,41 @@ describe('OnboardingComponent', () => {
     expect(accountRows()[0].textContent).toContain('Checking');
   });
 
+  /* Issue #180: the staged checks share the services' rule — names are
+     unique ignoring letter case and surrounding whitespace. */
+  it('refuses staging an account whose name differs from a staged one only by case or spacing', () => {
+    stageAccounts();
+
+    for (const name of ['CASH', '  cash  ']) {
+      component.accountName.set(name);
+      component.addAccount();
+      expect(component.errorMessage()).toContain('already exists');
+    }
+    expect(component.accounts().length).toBe(2);
+  });
+
+  it('refuses renaming a staged account to another staged name under a different case', () => {
+    stageAccounts();
+
+    component.startEditAccount(0);
+    component.editAccountName(' cash ');
+    component.saveAccountEdit();
+
+    expect(component.editError()).toContain('already exists');
+    expect(component.accounts()[0].name).toBe('Checking');
+  });
+
+  it('allows renaming a staged account to a different capitalisation of its own name', () => {
+    stageAccounts();
+
+    component.startEditAccount(1);
+    component.editAccountName('CASH');
+    component.saveAccountEdit();
+
+    expect(component.editError()).toBe('');
+    expect(component.accounts()[1].name).toBe('CASH');
+  });
+
   function stageCategories(): void {
     component.goTo('categories');
     fixture.detectChanges();
@@ -774,6 +809,42 @@ describe('OnboardingComponent', () => {
     expect(alert.textContent).toContain('already exists');
     expect(categoryRows().length).toBe(9);
     expect(component.addingCategory()).toBe(true);
+  });
+
+  /* Issue #180: the staged checks share the services' rule. */
+  it('refuses staging a category whose name differs from a staged one only by case', () => {
+    stageCategories();
+    const staged = component.categories().length;
+
+    component.newCategoryName.set(' TRANSPORT ');
+    component.addCategory();
+
+    expect(component.errorMessage()).toContain('already exists');
+    expect(component.categories().length).toBe(staged);
+  });
+
+  it('allows renaming a staged category to a different capitalisation of its own name', () => {
+    stageCategories();
+    const index = component.categories().findIndex((c) => c.name === 'Transport');
+
+    component.startEditCategory(index);
+    component.editCategoryName('TRANSPORT');
+    component.saveCategoryEdit();
+
+    expect(component.categoryEditError()).toBe('');
+    expect(component.categories()[index].name).toBe('TRANSPORT');
+  });
+
+  it('refuses renaming a staged category to another staged name under a different case', () => {
+    stageCategories();
+    const index = component.categories().findIndex((c) => c.name === 'Transport');
+
+    component.startEditCategory(index);
+    component.editCategoryName('food');
+    component.saveCategoryEdit();
+
+    expect(component.categoryEditError()).toContain('already exists');
+    expect(component.categories()[index].name).toBe('Transport');
   });
 
   it('hides the category form on cancel without staging anything', () => {
