@@ -8,7 +8,7 @@ We rejected the alternatives. Deleting the paired category unconditionally would
 
 ## Consequences
 
-- The confirm step for a card shows the "payment category will be deleted too" warning only when the pre-check (`pairedCategoryDeletion`) says the category is linked, present, and unused; otherwise it shows the plain prompt.
+- The confirm step for a card shows the "payment category will be deleted too" warning only when the card's deletion plan (`planCardDeletion`, issue #184) says the category is linked, present, and unused; otherwise it shows the plain prompt. The delete itself (`deleteCard`) decides by the same plan again inside its transaction, so a movement recorded since the confirm step refuses the delete instead of failing it.
 - The paired deletion happens in the same transaction as the card's deletion: both vanish together or neither does.
 - A paired category with Transactions — active or deactivated — survives, and Settings explains why with a page-level notice that names the category and offers Deactivation.
 - A card whose payment category is already gone deletes without error.

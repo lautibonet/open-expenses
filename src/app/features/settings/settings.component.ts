@@ -1,6 +1,7 @@
 import {
   Component,
   ElementRef,
+  computed,
   effect,
   inject,
   OnInit,
@@ -9,11 +10,12 @@ import {
   WritableSignal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { AccountService, DeleteRefusalReason } from '../../core/services/account.service';
 import {
-  AccountService,
-  DeleteRefusalReason,
-  PairedCategoryDeletion,
-} from '../../core/services/account.service';
+  CardDeletionPlan,
+  deleteCard,
+  planCardDeletion,
+} from '../../core/payment-category/payment-category';
 import { CategoryService } from '../../core/services/category.service';
 import { ProfileService } from '../../core/services/profile.service';
 import { LanguageService } from '../../core/services/language.service';
@@ -107,11 +109,18 @@ export class SettingsComponent implements OnInit {
   refusedAccountReason = signal<DeleteRefusalReason | null>(null);
   refusedCard = signal<number | null>(null);
   refusedCategory = signal<number | null>(null);
-  /* Issue #175: what the paired-deletion pre-check says for the card under
-     confirm, plus the paired category's name for the warning and notice
-     copies — captured up front, since the deletion removes the link. */
-  pairedCardCategory = signal<PairedCategoryDeletion | null>(null);
-  pairedCardCategoryName = signal('');
+  /* Issue #175, #184: the deletion plan for the card under confirm. */
+  cardDeletionPlan = signal<CardDeletionPlan | null>(null);
+  /* The paired category's name when the plan deletes it with the card — the
+     confirm step warns visibly only then; empty otherwise. */
+  pairedCategoryToDelete = computed(() => {
+    const plan = this.cardDeletionPlan();
+    return plan?.kind === 'proceed' && plan.category === 'delete' ? plan.categoryName : '';
+  });
+  /* The card whose deletion plan is being fetched. Any other delete request
+     or a cancel clears it, so a plan the user has since moved away from is
+     dropped instead of opening a stale confirm. */
+  private requestedCardDelete: number | null = null;
   pageNotice = signal('');
 
   accountNameInput = viewChild<ElementRef<HTMLInputElement>>('accountNameInput');
@@ -345,6 +354,7 @@ export class SettingsComponent implements OnInit {
      item opens the inline delete confirm; an item with movements is refused
      with an explanation that offers Deactivation as the fallback. */
   async requestDeleteAccount(id: number): Promise<void> {
+    this.requestedCardDelete = null;
     this.confirmingCategoryDelete.set(null);
     this.refusedCategory.set(null);
     this.confirmingAccountDelete.set(null);
@@ -498,38 +508,23 @@ export class SettingsComponent implements OnInit {
     this.refusedCategory.set(null);
     this.confirmingCardDelete.set(null);
     this.refusedCard.set(null);
-    this.pairedCardCategory.set(null);
-    this.pairedCardCategoryName.set('');
-    if (await this.accountService.hasMovements(id)) {
+    this.cardDeletionPlan.set(null);
+    this.requestedCardDelete = id;
+    const plan = await planCardDeletion(id);
+    if (this.requestedCardDelete !== id) return;
+    this.requestedCardDelete = null;
+    if (plan.kind === 'refused') {
       this.refusedCard.set(id);
       return;
     }
+    this.cardDeletionPlan.set(plan);
     this.confirmingCardDelete.set(id);
-    /* Issue #175: the pre-check decides whether the confirm step warns about
-       the paired payment category — the warning shows only when the category
-       actually will be deleted. */
-    const outcome = await this.accountService.pairedCategoryDeletion(id);
-    if (this.confirmingCardDelete() !== id) return;
-    this.pairedCardCategory.set(outcome);
-    if (outcome !== 'absent') {
-      this.pairedCardCategoryName.set(this.paymentCategoryName(id));
-    }
-  }
-
-  /* The paired category's display name, read from the loaded lists. */
-  private paymentCategoryName(cardId: number): string {
-    const card = this.cards().find((c) => c.id === cardId);
-    const category =
-      card?.paymentCategoryId != null
-        ? this.allCategories().find((c) => c.id === card.paymentCategoryId)
-        : undefined;
-    return category?.name ?? '';
   }
 
   cancelDeleteCard(): void {
+    this.requestedCardDelete = null;
     this.confirmingCardDelete.set(null);
-    this.pairedCardCategory.set(null);
-    this.pairedCardCategoryName.set('');
+    this.cardDeletionPlan.set(null);
   }
 
   cancelRefuseCard(): void {
@@ -540,26 +535,18 @@ export class SettingsComponent implements OnInit {
     const id = this.confirmingCardDelete();
     if (id === null) return;
     this.confirmingCardDelete.set(null);
-    try {
-      const outcome = await this.accountService.delete(id);
-      /* Issue #175: a paired category that carries transactions survives the
-         card; the page-level notice explains why. */
-      if (outcome === 'keep') {
-        this.pageNotice.set(
-          this.language.t('settings.cardDeleteCategoryKept', {
-            name: this.pairedCardCategoryName(),
-          }),
-        );
-      }
-    } catch (e: unknown) {
-      if (e instanceof TranslationError && e.key === 'errors.accountHasMovements') {
-        this.refusedCard.set(id);
-        return;
-      }
-      throw e;
-    } finally {
-      this.pairedCardCategory.set(null);
-      this.pairedCardCategoryName.set('');
+    this.cardDeletionPlan.set(null);
+    const plan = await deleteCard(id);
+    if (plan.kind === 'refused') {
+      this.refusedCard.set(id);
+      return;
+    }
+    /* Issue #175: a paired category that carries transactions survives the
+       card; the page-level notice explains why. */
+    if (plan.category === 'keep') {
+      this.pageNotice.set(
+        this.language.t('settings.cardDeleteCategoryKept', { name: plan.categoryName }),
+      );
     }
     await this.refresh();
   }
@@ -602,6 +589,7 @@ export class SettingsComponent implements OnInit {
   }
 
   async requestDeleteCategory(id: number): Promise<void> {
+    this.requestedCardDelete = null;
     this.confirmingAccountDelete.set(null);
     this.refusedAccount.set(null);
     this.confirmingCategoryDelete.set(null);

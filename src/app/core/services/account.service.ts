@@ -3,7 +3,8 @@ import { db } from '../db/database';
 import { Account, isCashAccount, isCreditCard } from '../models/account.model';
 import { namesMatch } from '../models/name-uniqueness';
 import { TranslationError } from '../models/translation-error';
-import { categoryHasTransactions, findCategoryNamed, findOrCreateCategory } from './category.service';
+import { deleteCard, ensurePaymentCategory, renamePaymentCategory } from '../payment-category/payment-category';
+import { accountHasMovements } from './account-movements';
 import { LanguageService } from './language.service';
 
 export interface CreateCardInput {
@@ -21,13 +22,6 @@ export interface AccountChanges {
 }
 
 export type DeleteRefusalReason = 'movements';
-
-/* Issue #175: what happens to a card's paired payment category when the
-   card is deleted — 'delete' when the linked category is unused and goes
-   with the card, 'keep' when it carries transactions and survives (the
-   caller explains why), 'absent' when there is no link or the link is
-   dangling (a silent no-op). */
-export type PairedCategoryDeletion = 'delete' | 'keep' | 'absent';
 
 /* Issue #180: names are unique ignoring letter case, so the lookup applies
    the shared rule rather than the exact-match name index. */
@@ -70,8 +64,7 @@ export class AccountService {
      explicitly at creation and its initial balance is its starting debt,
      which may be negative. Amended 0022 (ticket #172): the payment category
      is no longer optional — every card owns one, provisioned in the same
-     transaction and named in the active Language; a pre-existing category
-     with that name is linked, not duplicated. */
+     transaction by the Payment Category module (issue #184). */
   async createCard(input: CreateCardInput): Promise<Account> {
     const trimmedName = input.name.trim();
     if (!trimmedName) {
@@ -92,9 +85,9 @@ export class AccountService {
     }
 
     return db.transaction('rw', db.accounts, db.categories, async () => {
-      const paymentCategory = await findOrCreateCategory(
-        this.languageService.t('category.cardPayment', { name: trimmedName }),
-        'expense',
+      const paymentCategory = await ensurePaymentCategory(
+        { name: trimmedName },
+        this.languageService.activeLanguage(),
       );
       const card: Account = {
         name: trimmedName,
@@ -132,17 +125,10 @@ export class AccountService {
       }
       /* Amended 0022: a card owns its payment category, so the category
          follows the name; a collision fails the whole rename atomically. */
-      if (card && account.paymentCategoryId != null) {
-        const paymentName = this.languageService.t('category.cardPayment', {
-          name: trimmedName,
-        });
+      if (card) {
         await db.transaction('rw', db.accounts, db.categories, async () => {
-          const taken = await findCategoryNamed(paymentName);
-          if (taken && taken.id !== account.paymentCategoryId) {
-            throw new TranslationError('errors.categoryNameTaken', { name: paymentName });
-          }
+          await renamePaymentCategory(account, trimmedName, this.languageService.activeLanguage());
           await db.accounts.update(id, { name: trimmedName });
-          await db.categories.update(account.paymentCategoryId!, { name: paymentName });
         });
       } else {
         await db.accounts.update(id, { name: trimmedName });
@@ -193,12 +179,8 @@ export class AccountService {
 
   /* ADR 0018: an Account has movements when any Transaction references it
      or any Transfer references it on either side. */
-  async hasMovements(id: number): Promise<boolean> {
-    const inTransactions = await db.transactions.where('accountId').equals(id).count();
-    if (inTransactions > 0) return true;
-    const asSource = await db.transfers.where('sourceAccountId').equals(id).count();
-    if (asSource > 0) return true;
-    return (await db.transfers.where('destinationAccountId').equals(id).count()) > 0;
+  hasMovements(id: number): Promise<boolean> {
+    return accountHasMovements(id);
   }
 
   /* What would refuse Delete, in the order the explanation is offered. */
@@ -207,56 +189,26 @@ export class AccountService {
     return null;
   }
 
-  /* Pre-check for the card delete confirm step (issue #175): it says what
-     the paired deletion will do before anything is removed, so the confirm
-     can warn about the payment category only when it actually will be
-     deleted. */
-  async pairedCategoryDeletion(id: number): Promise<PairedCategoryDeletion> {
-    const account = await db.accounts.get(id);
-    if (!account || account.paymentCategoryId == null) {
-      return 'absent';
-    }
-    const category = await db.categories.get(account.paymentCategoryId);
-    if (!category) {
-      return 'absent';
-    }
-    if (await categoryHasTransactions(account.paymentCategoryId)) {
-      return 'keep';
-    }
-    return 'delete';
-  }
-
   /* Delete-if-unused, never cascade (ADR 0018): an Account carrying movements
-      is refused; an unused Account is permanently removed. There is no guard
-      on deleting the last Account. Amended 0022 (issue #175): deleting a card
-      also removes its paired payment category in the same transaction — but
-      only when the category itself has no transactions (deactivated
-      categories included); a category with transactions is kept and the
-      caller explains why with a page-level notice. A dangling link (the
-      category is already gone) is a silent no-op. */
-  async delete(id: number): Promise<PairedCategoryDeletion> {
+     is refused; an unused Account is permanently removed. There is no guard
+     on deleting the last Account. A card goes through the Payment Category
+     module (ADR 0024), so its paired category is never left behind. */
+  async delete(id: number): Promise<void> {
     const account = await db.accounts.get(id);
     if (!account) {
       throw new TranslationError('errors.accountNotFound');
     }
+    if (isCreditCard(account)) {
+      const plan = await deleteCard(id);
+      if (plan.kind === 'refused') {
+        throw new TranslationError('errors.accountHasMovements');
+      }
+      return;
+    }
     if (await this.hasMovements(id)) {
       throw new TranslationError('errors.accountHasMovements');
     }
-    return db.transaction('rw', db.accounts, db.categories, db.transactions, async () => {
-      await db.accounts.delete(id);
-      const categoryId = account.paymentCategoryId;
-      if (categoryId == null) {
-        return 'absent';
-      }
-      if (!(await db.categories.get(categoryId))) {
-        return 'absent';
-      }
-      if (await categoryHasTransactions(categoryId)) {
-        return 'keep';
-      }
-      await db.categories.delete(categoryId);
-      return 'delete';
-    });
+    await db.accounts.delete(id);
   }
 
   async getAll(): Promise<Account[]> {

@@ -6,7 +6,10 @@ import { Transfer } from '../models/transfer.model';
 import { Profile } from '../models/profile.model';
 import { DEFAULT_LANGUAGE, isLanguage, Language } from '../types/language.type';
 import { getPeriodYear, monthNumberFromName } from '../types/period.type';
-import { translate } from '../translations/translations';
+import {
+  newPaymentCategory,
+  resolvePaymentCategory,
+} from '../payment-category/payment-category-rules';
 
 interface LegacyTransfer {
   id?: number;
@@ -172,8 +175,11 @@ export class AppDatabase extends Dexie {
       }
     });
     /* Amended ADR 0022: every Credit Card owns its payment category. Cards
-       created before the link was mandatory get one — found by the payment
-       name in the profile's Language, or created — in the same upgrade. */
+       created before the link was mandatory get one, resolved by the Payment
+       Category module's rule in the profile's Language — an Expense category
+       holding the payment name is linked, or one is created. A name held by
+       an Income category leaves the card unlinked; the collision surfaces
+       when the card is first paid (#184). */
     this.version(8).stores({
       accounts: '++id, name, currency, active, kind',
       categories: '++id, name, type, active',
@@ -186,20 +192,21 @@ export class AppDatabase extends Dexie {
       const language: Language =
         profile && isLanguage(profile.language) ? profile.language : DEFAULT_LANGUAGE;
       const cards = await tx.table('accounts').where('kind').equals('credit-card').toArray();
-      for (const card of cards) {
+      const categories = (await tx.table('categories').toArray()) as Category[];
+      for (const card of cards as Account[]) {
         if (card.paymentCategoryId != null) continue;
-        const name = translate(language, 'category.cardPayment', { name: card.name });
-        let category = await tx.table('categories').where('name').equals(name).first();
-        if (!category) {
-          const id = await tx.table('categories').add({
-            name,
-            type: 'expense',
-            active: true,
-            createdAt: new Date(),
-          });
-          category = (await tx.table('categories').get(id)) as Category;
+        const resolution = resolvePaymentCategory(card, categories, language);
+        let categoryId: number;
+        if (resolution.kind === 'linkable') {
+          categoryId = resolution.category.id!;
+        } else if (resolution.kind === 'new') {
+          const category = newPaymentCategory(resolution.name);
+          categoryId = await tx.table('categories').add(category);
+          categories.push({ ...category, id: categoryId });
+        } else {
+          continue;
         }
-        await tx.table('accounts').update(card.id!, { paymentCategoryId: category.id });
+        await tx.table('accounts').update(card.id!, { paymentCategoryId: categoryId });
       }
     });
   }

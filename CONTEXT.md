@@ -25,7 +25,7 @@ A Transfer from a Cash Account into a Credit Card that settles card debt — the
 _Avoid_: statement payment, pay credit card, card settlement
 
 **Payment Category**:
-The system Expense category a Credit Card owns for labeling its Card Payments, named after the card in the active Language ("Visa payment" / "Pago Visa") and provisioned together with the card — created, or linked when that name is already taken. Renaming the card renames it; deleting the card deletes it. The user never curates it directly: it is plumbing for the Card Payment, so it never reaches the category graph, never appears where categories are picked for ordinary work, and never appears in Settings — it is created, renamed, and removed only through its card.
+The system Expense category a Credit Card owns for labeling its Card Payments, named after the card in the active Language ("Visa payment" / "Pago Visa") and provisioned together with the card — created, or linked when an Expense category with that name already exists; a name taken by an Income category refuses the card. Renaming the card renames it; switching Language never does. Deleting the card deletes it when it has no Transactions, and keeps it otherwise. The user never curates it directly: it is plumbing for the Card Payment, so it never reaches the category graph, never appears where categories are picked for ordinary work, and never appears in Settings — it is created, renamed, and removed only through its card.
 _Avoid_: card category, payment type, system category
 
 **Statement**:

@@ -242,6 +242,46 @@ describe('database v8 upgrade (every card owns its payment category)', () => {
     expect((await db.categories.toArray()).length).toBe(1);
   });
 
+  it('links an existing category whose name differs only in letter case', async () => {
+    const existingId = await legacy.table('categories').add({
+      name: 'visa PAYMENT',
+      type: 'expense',
+      active: true,
+      createdAt: new Date(),
+    });
+    await legacy.table('accounts').add({
+      name: 'Visa', currency: 'EUR', initialBalance: -500, active: true,
+      kind: 'credit-card', createdAt: new Date(),
+    });
+    legacy.close();
+
+    await db.open();
+
+    const card = (await db.accounts.toArray()).find((a) => a.name === 'Visa')!;
+    expect(card.paymentCategoryId).toBe(existingId);
+    expect((await db.categories.toArray()).length).toBe(1);
+  });
+
+  it('leaves a card unlinked when an Income category holds its payment name', async () => {
+    await legacy.table('categories').add({
+      name: 'Visa payment',
+      type: 'income',
+      active: true,
+      createdAt: new Date(),
+    });
+    await legacy.table('accounts').add({
+      name: 'Visa', currency: 'EUR', initialBalance: -500, active: true,
+      kind: 'credit-card', createdAt: new Date(),
+    });
+    legacy.close();
+
+    await db.open();
+
+    const card = (await db.accounts.toArray()).find((a) => a.name === 'Visa')!;
+    expect(card.paymentCategoryId).toBeUndefined();
+    expect((await db.categories.toArray()).length).toBe(1);
+  });
+
   it('names the created category in the profile language', async () => {
     await seedProfile('es');
     await legacy.table('accounts').add({

@@ -741,6 +741,21 @@ describe('MovementsComponent - period year', () => {
     expect(txns[0].date.getFullYear()).toBe(2025);
   });
 
+  /* Issue #184: the Transfer Form resolves the payment category over every
+     category, as the service does, so a card linked to a deactivated
+     category shows the one the saved Transfer will wear. */
+  it('shows a deactivated linked payment category in the transfer form', async () => {
+    const card = await accountService.createCard({ name: 'Visa', currency: 'EUR' });
+    await db.categories.update(card.paymentCategoryId!, { name: 'Tarjeta', active: false });
+    await component.ngOnInit();
+    component.openTransferForm();
+    fixture.detectChanges();
+
+    component.transferFormCard()!.onDestChange(card.id!);
+
+    expect(component.transferFormCard()!.paymentCategoryName()).toBe('Tarjeta');
+  });
+
   it('should save the period year from the transfer form', async () => {
     const acc2 = await accountService.create('Savings', 'EUR', 50000);
     await component.ngOnInit();

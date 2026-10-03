@@ -421,6 +421,20 @@ describe('AccountService - credit cards (ADR 0022)', () => {
     expect(await db.accounts.where('kind').equals('credit-card').count()).toBe(1);
   });
 
+  it('refuses the card when an Income category holds the payment name', async () => {
+    await db.categories.add({
+      name: 'Visa payment',
+      type: 'income',
+      active: true,
+      createdAt: new Date(),
+    });
+    await expect(service.createCard({ name: 'Visa', currency: 'EUR' })).rejects.toMatchObject({
+      key: 'errors.categoryNameTaken',
+      params: { name: 'Visa payment' },
+    });
+    expect(await db.accounts.where('kind').equals('credit-card').count()).toBe(0);
+  });
+
   it('renames the payment category when the card is renamed', async () => {
     const card = await service.createCard({ name: 'Visa', currency: 'EUR' });
     await service.update(card.id!, { name: 'Amex' });
@@ -550,12 +564,10 @@ describe('AccountService - credit cards (ADR 0022)', () => {
   });
 });
 
-/* Issue #175: deleting a card also removes its paired payment category in
-   the same transaction — but only when the category itself has no
-   transactions (deactivated categories included). A category with
-   transactions survives, and the caller explains why with a page-level
-   notice; a dangling link is a silent no-op. */
-describe('AccountService - paired payment category deletion (ADR 0022, issue #175)', () => {
+/* Issue #184: card deletion goes through the Payment Category module, whose
+   own spec covers every outcome of the deletion plan; here only the
+   delegation is checked, so no caller can delete a card around it. */
+describe('AccountService - card deletion through the Payment Category module', () => {
   let service: AccountService;
 
   beforeEach(async () => {
@@ -569,97 +581,11 @@ describe('AccountService - paired payment category deletion (ADR 0022, issue #17
     await db.delete();
   });
 
-  function seedTransactionOn(categoryId: number): Promise<number> {
-    /* A far-away accountId: only the categoryId index matters for the guard,
-       and the transaction must not make the card itself look used. */
-    return db.transactions.add({
-      accountId: 9999,
-      categoryId,
-      amount: 1000,
-      date: new Date(),
-      period: 1,
-      year: 2026,
-      exchangeRate: null,
-      baseCurrencyAmount: null,
-      note: '',
-      createdAt: new Date(),
-    });
-  }
-
-  it('pre-checks "delete" when the linked category is unused', async () => {
+  it('removes an unused paired category together with the card', async () => {
     const card = await service.createCard({ name: 'Visa', currency: 'EUR' });
-    expect(await service.pairedCategoryDeletion(card.id!)).toBe('delete');
-  });
-
-  it('pre-checks "keep" when the linked category has transactions', async () => {
-    const card = await service.createCard({ name: 'Visa', currency: 'EUR' });
-    await seedTransactionOn(card.paymentCategoryId!);
-    expect(await service.pairedCategoryDeletion(card.id!)).toBe('keep');
-  });
-
-  it('pre-checks "keep" even when the linked category is deactivated', async () => {
-    const card = await service.createCard({ name: 'Visa', currency: 'EUR' });
-    await seedTransactionOn(card.paymentCategoryId!);
-    await db.categories.update(card.paymentCategoryId!, { active: false });
-    expect(await service.pairedCategoryDeletion(card.id!)).toBe('keep');
-  });
-
-  it('pre-checks "absent" when the linked category no longer exists', async () => {
-    const card = await service.createCard({ name: 'Visa', currency: 'EUR' });
-    await db.categories.delete(card.paymentCategoryId!);
-    expect(await service.pairedCategoryDeletion(card.id!)).toBe('absent');
-  });
-
-  it('pre-checks "absent" for a cash account with no paired category', async () => {
-    const cash = await service.create('Cash', 'EUR', 0);
-    expect(await service.pairedCategoryDeletion(cash.id!)).toBe('absent');
-  });
-
-  it('removes an unused paired category together with the card, reporting "delete"', async () => {
-    const card = await service.createCard({ name: 'Visa', currency: 'EUR' });
-    const categoryId = card.paymentCategoryId!;
-
-    expect(await service.delete(card.id!)).toBe('delete');
+    await service.delete(card.id!);
     expect(await service.getById(card.id!)).toBeUndefined();
-    expect(await db.categories.get(categoryId)).toBeUndefined();
-  });
-
-  it('removes a deactivated paired category that has no transactions', async () => {
-    const card = await service.createCard({ name: 'Visa', currency: 'EUR' });
-    await db.categories.update(card.paymentCategoryId!, { active: false });
-    const categoryId = card.paymentCategoryId!;
-
-    expect(await service.delete(card.id!)).toBe('delete');
-    expect(await db.categories.get(categoryId)).toBeUndefined();
-  });
-
-  it('keeps a paired category that has transactions, reporting "keep"', async () => {
-    const card = await service.createCard({ name: 'Visa', currency: 'EUR' });
-    const categoryId = card.paymentCategoryId!;
-    const transactionId = await seedTransactionOn(categoryId);
-
-    expect(await service.delete(card.id!)).toBe('keep');
-    expect(await service.getById(card.id!)).toBeUndefined();
-    expect(await db.categories.get(categoryId)).toBeDefined();
-    expect(await db.transactions.get(transactionId)).toBeDefined();
-  });
-
-  it('keeps a deactivated paired category that has transactions', async () => {
-    const card = await service.createCard({ name: 'Visa', currency: 'EUR' });
-    const categoryId = card.paymentCategoryId!;
-    await seedTransactionOn(categoryId);
-    await db.categories.update(categoryId, { active: false });
-
-    expect(await service.delete(card.id!)).toBe('keep');
-    expect(await db.categories.get(categoryId)).toBeDefined();
-  });
-
-  it('treats a dangling link as a silent no-op, deleting only the card', async () => {
-    const card = await service.createCard({ name: 'Visa', currency: 'EUR' });
-    await db.categories.delete(card.paymentCategoryId!);
-
-    expect(await service.delete(card.id!)).toBe('absent');
-    expect(await service.getById(card.id!)).toBeUndefined();
+    expect(await db.categories.get(card.paymentCategoryId!)).toBeUndefined();
   });
 
   it('still refuses to delete a card that has movements, leaving the category intact', async () => {
