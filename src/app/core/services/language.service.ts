@@ -7,7 +7,8 @@ import {
   isLanguage,
 } from '../types/language.type';
 import { isCategoryType } from '../models/category.model';
-import { isMonthNumber, PeriodScope } from '../types/period.type';
+import { isMonthNumber } from '../types/period.type';
+import { PeriodScope } from '../scope/scope';
 import { translate } from '../translations/translations';
 import { formatDateIn, formatMoneyIn, formatNumberIn } from '../format/format';
 import { TranslateFn } from '../models/translation-error';

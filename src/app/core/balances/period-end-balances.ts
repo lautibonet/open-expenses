@@ -1,4 +1,5 @@
-import { PeriodScope, movementIsAtOrBeforePeriod } from '../types/period.type';
+import { movementIsAtOrBeforePeriod } from '../types/period.type';
+import { PeriodScope } from '../scope/scope';
 import { Account } from '../models/account.model';
 import { Transaction } from '../models/transaction.model';
 import { Transfer } from '../models/transfer.model';

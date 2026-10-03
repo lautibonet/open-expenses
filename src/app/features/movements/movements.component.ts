@@ -14,17 +14,18 @@ import { Transfer } from '../../core/models/transfer.model';
 import { Account, paymentCategoryIds } from '../../core/models/account.model';
 import { Category } from '../../core/models/category.model';
 import { cashBasisLookups } from '../../core/stats/cash-basis';
+import { MONTH_NUMBERS, MonthNumber, getCurrentYear } from '../../core/types/period.type';
 import {
-  MONTH_NUMBERS,
-  MonthNumber,
   PeriodScope,
+  ScopeOptions,
+  changeMonth,
+  changeYear,
   defaultScope,
-  getCurrentPeriod,
-  getCurrentYear,
-  isMonthNumber,
-  isValidYear,
-  scopeOptionsFromMovements,
-} from '../../core/types/period.type';
+  noScopeOptions,
+  scopeFromQuery,
+  scopeOptions,
+  scopeQuery,
+} from '../../core/scope/scope';
 import { LanguageService } from '../../core/services/language.service';
 import { BottomSheetComponent } from '../../shared/components/bottom-sheet/bottom-sheet.component';
 import {
@@ -82,11 +83,9 @@ export class MovementsComponent implements OnInit, OnDestroy {
   language = inject(LanguageService);
 
   scope = signal<PeriodScope>(defaultScope());
-  scopeYears = signal<number[]>([]);
-  scopeMonths = signal<MonthNumber[]>([]);
-  /* Latest Period with data per year, used to default the month when
-     leaving the All scope for a non-current year. */
-  private latestMonthByYear = signal<Map<number, MonthNumber>>(new Map());
+  private availableScopes = signal<ScopeOptions>(noScopeOptions);
+  scopeYears = computed(() => this.availableScopes().years);
+  scopeMonths = computed(() => this.availableScopes().months);
   scopeAnnouncement = signal('');
   movementAnnouncement = signal('');
   months = MONTH_NUMBERS;
@@ -392,26 +391,12 @@ export class MovementsComponent implements OnInit, OnDestroy {
 
   private scopeFromUrl(): PeriodScope | null {
     const query = this.location.path(true).split('?')[1] ?? '';
-    const params = new URLSearchParams(query);
-    const periodParam = params.get('period');
-    const year = Number(params.get('year'));
-    if (!isValidYear(year)) {
-      return null;
-    }
-    if (periodParam === 'all') {
-      return { kind: 'year', year };
-    }
-    const period = Number(periodParam);
-    if (isMonthNumber(period)) {
-      return { kind: 'month', period, year };
-    }
-    return null;
+    return scopeFromQuery(new URLSearchParams(query));
   }
 
   private reflectScopeInUrl(scope: PeriodScope): void {
     const path = this.location.path().split('?')[0] || '/';
-    const period = scope.kind === 'year' ? 'all' : scope.period;
-    this.location.replaceState(`${path}?period=${period}&year=${scope.year}`);
+    this.location.replaceState(`${path}?${scopeQuery(scope)}`);
   }
 
   async refresh(): Promise<void> {
@@ -439,53 +424,15 @@ export class MovementsComponent implements OnInit, OnDestroy {
   private async applyScopeOptions(): Promise<void> {
     const txns = await this.transactionService.getAll();
     const transfers = await this.transferService.getAll();
-    const all = [
-      ...txns.map((t) => ({ period: t.period, year: t.year, date: t.date })),
-      ...transfers.map((t) => ({ period: t.period, year: t.year, date: t.date })),
-    ];
-    const options = scopeOptionsFromMovements(all);
-    this.scopeYears.set(options.years);
-    this.scopeMonths.set(options.months);
-    const latest = new Map<number, MonthNumber>();
-    for (const movement of all) {
-      if (!isMonthNumber(movement.period)) continue;
-      const year = movement.year ?? new Date(movement.date).getFullYear();
-      const known = latest.get(year);
-      if (known === undefined || movement.period > known) {
-        latest.set(year, movement.period);
-      }
-    }
-    this.latestMonthByYear.set(latest);
+    this.availableScopes.set(scopeOptions([...txns, ...transfers]));
   }
 
   async onScopeYearChange(value: number): Promise<void> {
-    const current = this.scope();
-    if (current.kind === 'year') {
-      await this.setScope({ kind: 'year', year: value });
-      return;
-    }
-    const period = current.year === value ? current.period : getCurrentPeriod();
-    await this.setScope({ kind: 'month', period, year: value });
+    await this.setScope(changeYear(this.scope(), value));
   }
 
   async onScopeMonthChange(value: MonthNumber | 'all' | null): Promise<void> {
-    const year = this.scope().year;
-    if (value === 'all') {
-      await this.setScope({ kind: 'year', year });
-      return;
-    }
-    const period = value ?? this.defaultMonthForYear(year);
-    await this.setScope({ kind: 'month', period, year });
-  }
-
-  /* Month assumed when leaving the All scope without an explicit pick:
-     the current month on the current year, otherwise the latest month
-     with data in that year. */
-  private defaultMonthForYear(year: number): MonthNumber {
-    if (year === getCurrentYear()) {
-      return getCurrentPeriod();
-    }
-    return this.latestMonthByYear().get(year) ?? getCurrentPeriod();
+    await this.setScope(changeMonth(this.scope(), value, this.availableScopes()));
   }
 
   private async setScope(scope: PeriodScope): Promise<void> {

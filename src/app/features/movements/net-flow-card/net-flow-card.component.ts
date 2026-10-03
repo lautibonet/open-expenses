@@ -4,7 +4,7 @@ import { Transfer } from '../../../core/models/transfer.model';
 import { Account } from '../../../core/models/account.model';
 import { Category } from '../../../core/models/category.model';
 import { LanguageService } from '../../../core/services/language.service';
-import { PeriodScope } from '../../../core/types/period.type';
+import { PeriodScope } from '../../../core/scope/scope';
 import { cashBasis } from '../../../core/stats/cash-basis';
 import { DismissibleAlertComponent } from '../../../shared/components/dismissible-alert/dismissible-alert.component';
 

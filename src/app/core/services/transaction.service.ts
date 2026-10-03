@@ -1,14 +1,14 @@
 import { Injectable } from '@angular/core';
 import { db } from '../db/database';
+import { queryByScope } from '../db/scope-query';
 import { Transaction } from '../models/transaction.model';
 import { TranslationError } from '../models/translation-error';
 import {
-  PeriodScope,
   getCurrentYear,
-  getPeriodYear,
   isValidPeriod,
   isValidYear,
 } from '../types/period.type';
+import { PeriodScope } from '../scope/scope';
 
 @Injectable({ providedIn: 'root' })
 export class TransactionService {
@@ -110,20 +110,8 @@ export class TransactionService {
     return db.transactions.toArray();
   }
 
-  async getByPeriod(period: number, year?: number): Promise<Transaction[]> {
-    const transactions = await db.transactions.where('period').equals(period as any).toArray();
-    if (year === undefined) {
-      return transactions;
-    }
-    return transactions.filter(t => getPeriodYear(t) === year);
-  }
-
   async getByScope(scope: PeriodScope): Promise<Transaction[]> {
-    if (scope.kind === 'year') {
-      const transactions = await db.transactions.toArray();
-      return transactions.filter(t => getPeriodYear(t) === scope.year);
-    }
-    return this.getByPeriod(scope.period, scope.year);
+    return queryByScope(db.transactions, scope);
   }
 
   async getByAccount(accountId: number): Promise<Transaction[]> {

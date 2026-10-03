@@ -1,10 +1,9 @@
 import {
   MONTH_NUMBERS,
   MonthNumber,
-  PeriodScope,
-  getPeriodYear,
-  isMonthNumber,
+  movementInScope,
 } from '../types/period.type';
+import { PeriodScope } from '../scope/scope';
 import { Transaction } from '../models/transaction.model';
 import { Transfer } from '../models/transfer.model';
 import { Account } from '../models/account.model';
@@ -63,7 +62,7 @@ export function lastMovementPeriod(
 ): number {
   let last = 0;
   for (const movement of [...transactions, ...transfers]) {
-    if (getPeriodYear(movement) === year && isMonthNumber(movement.period)) {
+    if (movementInScope(movement, { kind: 'year', year })) {
       last = Math.max(last, movement.period);
     }
   }

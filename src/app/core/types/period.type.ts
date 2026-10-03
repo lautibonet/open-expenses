@@ -1,3 +1,5 @@
+import type { MonthScope, PeriodScope } from '../scope/scope';
+
 export const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
@@ -54,68 +56,39 @@ export function periodYearFromDate(date: Date | string): {
   return { period: (parsed.getMonth() + 1) as MonthNumber, year: parsed.getFullYear() };
 }
 
-export interface MonthScope {
-  kind: 'month';
-  period: MonthNumber;
-  year: number;
-}
-
-export interface YearScope {
-  kind: 'year';
-  year: number;
-}
-
-export type PeriodScope = MonthScope | YearScope;
-
-export function isYearScope(scope: PeriodScope): scope is YearScope {
-  return scope.kind === 'year';
-}
-
 export type ScopeAwareMovement = {
   period: number | string;
   year?: number;
   date: Date | string;
 };
 
-export function defaultScope(): MonthScope {
-  return { kind: 'month', period: getCurrentPeriod(), year: getCurrentYear() };
-}
-
-export function yearsFromData(
-  movements: ScopeAwareMovement[],
-  options: { includeCurrentYear?: boolean } = {},
-): number[] {
-  const years = new Set<number>();
-  for (const m of movements) {
-    years.add(getPeriodYear(m));
+/* Whether a (year, Period) bucket falls inside the Scope: its Period on a
+   month Scope, any Period of the year on a year Scope. */
+export function periodInScope(year: number, period: number | string, scope: PeriodScope): boolean {
+  if (!isMonthNumber(period) || year !== scope.year) {
+    return false;
   }
-  if (options.includeCurrentYear !== false) {
-    years.add(getCurrentYear());
-  }
-  return Array.from(years).sort((a, b) => a - b);
+  return scope.kind === 'year' || period === scope.period;
 }
 
-export function monthsFromData(
-  movements: ScopeAwareMovement[],
-  options: { includeCurrentPeriod?: boolean } = {},
-): MonthNumber[] {
-  const present = new Set(movements.map(m => m.period).filter(isMonthNumber));
-  if (options.includeCurrentPeriod !== false) {
-    present.add(getCurrentPeriod());
-  }
-  return MONTH_NUMBERS.filter(m => present.has(m));
+/* Filtering by Scope always uses the stored Period year. A movement whose
+   period is not a month number is in no Scope (ADR 0009). */
+export function movementInScope(movement: ScopeAwareMovement, scope: PeriodScope): boolean {
+  return periodInScope(getPeriodYear(movement), movement.period, scope);
 }
 
-export interface ScopeOptions {
-  years: number[];
-  months: MonthNumber[];
+/* Whether a (year, Period) bucket is year-to-period: January through the
+   Scope's Period of the Scope's year. */
+export function periodIsYearToPeriod(
+  year: number,
+  period: number | string,
+  scope: MonthScope,
+): boolean {
+  return isMonthNumber(period) && year === scope.year && period <= scope.period;
 }
 
-export function scopeOptionsFromMovements(movements: ScopeAwareMovement[]): ScopeOptions {
-  return {
-    years: yearsFromData(movements),
-    months: monthsFromData(movements),
-  };
+export function movementIsYearToPeriod(movement: ScopeAwareMovement, scope: MonthScope): boolean {
+  return periodIsYearToPeriod(getPeriodYear(movement), movement.period, scope);
 }
 
 export function movementIsAtOrBeforePeriod(

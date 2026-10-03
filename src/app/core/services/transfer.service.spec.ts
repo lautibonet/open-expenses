@@ -165,13 +165,6 @@ describe('TransferService', () => {
     ).rejects.toThrow('errors.transferExists');
   });
 
-  it('should get transfers by period', async () => {
-    await transferService.create(cashId, savingsId, 100, new Date(), 1);
-    await transferService.create(cashId, savingsId, 200, new Date(), 2);
-    const jan = await transferService.getByPeriod(1);
-    expect(jan.length).toBe(1);
-  });
-
   it('should default the period year to the current year', async () => {
     const t = await transferService.create(cashId, savingsId, 100, new Date('2025-12-22'), 1);
     expect(t.year).toBe(getCurrentYear());
@@ -183,19 +176,6 @@ describe('TransferService', () => {
     );
     expect(t.date.getFullYear()).toBe(2025);
     expect(t.year).toBe(2026);
-  });
-
-  it('should filter transfers by period and year', async () => {
-    await transferService.create(cashId, savingsId, 100, new Date('2025-12-22'), 1, '', 1, 2026);
-    await transferService.create(cashId, savingsId, 200, new Date('2024-12-22'), 1, '', 1, 2025);
-    await transferService.create(cashId, savingsId, 300, new Date('2026-02-10'), 2, '', 1, 2026);
-
-    const jan26 = await transferService.getByPeriod(1, 2026);
-    expect(jan26.length).toBe(1);
-    expect(jan26[0].sourceAmount).toBe(100);
-
-    const janAll = await transferService.getByPeriod(1);
-    expect(janAll.length).toBe(2);
   });
 
   it('should get transfers for a month scope by period and year', async () => {
@@ -216,6 +196,14 @@ describe('TransferService', () => {
     const year26 = await transferService.getByScope({ kind: 'year', year: 2026 });
     expect(year26.length).toBe(3);
     expect(year26.map(t => t.sourceAmount).sort((a, b) => a - b)).toEqual([100, 200, 300]);
+  });
+
+  it('should leave a transfer with an unrecognizable period out of every scope', async () => {
+    const kept = await transferService.create(cashId, savingsId, 100, new Date('2026-01-05'), 1, '', 1, 2026);
+    await db.transfers.add({ ...kept, id: undefined, sourceAmount: 999, period: 'Enero' as any });
+
+    const year26 = await transferService.getByScope({ kind: 'year', year: 2026 });
+    expect(year26.map(t => t.sourceAmount)).toEqual([100]);
   });
 
   it('should update the period year', async () => {

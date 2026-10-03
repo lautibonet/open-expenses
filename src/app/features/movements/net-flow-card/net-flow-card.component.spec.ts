@@ -6,7 +6,8 @@ import { TransferService } from '../../../core/services/transfer.service';
 import { AccountService } from '../../../core/services/account.service';
 import { CategoryService } from '../../../core/services/category.service';
 import { db } from '../../../core/db/database';
-import { defaultScope, getCurrentPeriod } from '../../../core/types/period.type';
+import { getCurrentPeriod } from '../../../core/types/period.type';
+import { defaultScope } from '../../../core/scope/scope';
 
 describe('NetFlowCardComponent', () => {
   let fixture: ComponentFixture<NetFlowCardComponent>;
