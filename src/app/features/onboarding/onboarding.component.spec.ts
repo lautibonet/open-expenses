@@ -1167,10 +1167,13 @@ describe('OnboardingComponent', () => {
     expect(navigate).toHaveBeenCalledWith(['/movements']);
   });
 
+  const STAGED_ACCOUNT = { name: 'Bank', currency: 'EUR', balance: 100 };
+
+  function stageAccount(): void {
+    component.accounts.set([STAGED_ACCOUNT]);
+  }
+
   describe('when saving a staged item fails while completing (#181)', () => {
-    function stageAccount(): void {
-      component.accounts.set([{ name: 'Bank', currency: 'EUR', balance: 100 }]);
-    }
 
     function failSecondCategory(): void {
       const categoryService = TestBed.inject(CategoryService);
@@ -1220,7 +1223,7 @@ describe('OnboardingComponent', () => {
       fixture.detectChanges();
 
       expect(component.step()).toBe('categories');
-      expect(component.accounts()).toEqual([{ name: 'Bank', currency: 'EUR', balance: 100 }]);
+      expect(component.accounts()).toEqual([STAGED_ACCOUNT]);
       expect(component.categories()).toEqual(stagedCategories);
       expect(component.errorMessage()).toBe('Failed to complete onboarding');
       expect(fixture.nativeElement.textContent).toContain('Failed to complete onboarding');
@@ -1238,20 +1241,20 @@ describe('OnboardingComponent', () => {
 
       expect(await TestBed.inject(ProfileService).isOnboardingCompleted()).toBe(true);
       expect(await db.accounts.count()).toBe(1);
-      expect(await db.categories.count()).toBe(9);
+      expect(await db.categories.count()).toBe(component.categories().length);
       expect(navigate).toHaveBeenCalledWith(['/movements']);
     });
   });
 
   it('saves the profile, staged accounts and categories together on completion', async () => {
     vi.spyOn(router, 'navigate').mockResolvedValue(true);
-    component.accounts.set([{ name: 'Bank', currency: 'EUR', balance: 100 }]);
+    stageAccount();
 
     await component.completeOnboarding();
 
     expect(await TestBed.inject(ProfileService).isOnboardingCompleted()).toBe(true);
     expect((await db.accounts.toArray()).map(a => a.name)).toEqual(['Bank']);
-    expect(await db.categories.count()).toBe(9);
+    expect(await db.categories.count()).toBe(component.categories().length);
   });
 
   it('persists the chosen language to the profile when completing onboarding', async () => {

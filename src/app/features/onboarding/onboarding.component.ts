@@ -9,9 +9,7 @@ import {
 } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { db } from '../../core/db/database';
-import { ProfileService } from '../../core/services/profile.service';
-import { AccountService } from '../../core/services/account.service';
+import { OnboardingService } from '../../core/services/onboarding.service';
 import { CategoryService } from '../../core/services/category.service';
 import { DriveBackupService } from '../../core/services/drive-backup.service';
 import { LanguageService } from '../../core/services/language.service';
@@ -54,9 +52,7 @@ interface CategoryEditState {
   styleUrl: './onboarding.component.scss',
 })
 export class OnboardingComponent {
-  private profileService = inject(ProfileService);
-  private accountService = inject(AccountService);
-  private categoryService = inject(CategoryService);
+  private onboardingService = inject(OnboardingService);
   private driveBackupService = inject(DriveBackupService);
   languageService = inject(LanguageService);
   private router = inject(Router);
@@ -541,19 +537,14 @@ export class OnboardingComponent {
       return;
     }
 
-    /* All-or-nothing (#181): the profile, staged accounts and categories
-       commit in one transaction. Any failure rolls every write back, so the
-       user is never marked onboarded with missing data and stays here with
-       the staged items intact. */
+    /* Nothing is saved unless everything is (#181): on failure the staged
+       items stay listed here with the error. */
     try {
-      await db.transaction('rw', [db.profile, db.accounts, db.categories], async () => {
-        await this.profileService.completeOnboarding(this.baseCurrency(), this.language());
-        for (const acc of this.accounts()) {
-          await this.accountService.create(acc.name, acc.currency, acc.balance);
-        }
-        for (const cat of this.categories()) {
-          await this.categoryService.create(cat.name, cat.type);
-        }
+      await this.onboardingService.complete({
+        baseCurrency: this.baseCurrency(),
+        language: this.language(),
+        accounts: this.accounts(),
+        categories: this.categories(),
       });
       this.router.navigate(['/movements']);
     } catch (e: unknown) {
@@ -567,4 +558,3 @@ export class OnboardingComponent {
     }
   }
 }
-
