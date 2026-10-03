@@ -30,7 +30,7 @@ export class NetFlowCardComponent {
 
   /* ADR 0022: the cash-basis figures come from the same module Stats reads,
      so the two screens always agree. */
-  private cashBasis = computed(() => {
+  private figures = computed(() => {
     const items = this.movements();
     return cashBasis({
       accounts: this.accounts(),
@@ -45,7 +45,7 @@ export class NetFlowCardComponent {
     });
   });
 
-  private totals = computed(() => this.cashBasis().scopeTotals(this.scope()));
+  private totals = computed(() => this.figures().scopeTotals(this.scope()));
 
   incomeTotal(): number {
     return this.totals().income;
@@ -66,7 +66,7 @@ export class NetFlowCardComponent {
   }
 
   conversionWarningMessage(): string {
-    return this.cashBasis().unconvertedTransactions(this.scope()).length > 0
+    return this.figures().unconvertedTransactions(this.scope()).length > 0
       ? this.language.t('stats.conversionWarningUnconverted', { currency: this.baseCurrency() })
       : '';
   }

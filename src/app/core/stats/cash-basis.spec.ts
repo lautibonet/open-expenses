@@ -176,11 +176,11 @@ describe('cashBasis totals (ADR 0022)', () => {
   }
 
   it('converts a foreign Transaction with an Exchange Rate but no stored base amount', () => {
-    const ledger = cashBasis(snapshot({
+    const figures = cashBasis(snapshot({
       transactions: [txn({ accountId: 2, categoryId: 1, amount: 10, exchangeRate: 0.9, baseCurrencyAmount: null })],
     }));
 
-    expect(ledger.scopeTotals({ kind: 'month', period: 1, year: 2026 })).toEqual({
+    expect(figures.scopeTotals({ kind: 'month', period: 1, year: 2026 })).toEqual({
       income: 0,
       expenses: 9,
       net: -9,
@@ -190,32 +190,32 @@ describe('cashBasis totals (ADR 0022)', () => {
 
   it('counts a Transaction on a Base Currency Account at its face amount, ignoring a stale stored base amount', () => {
     /* Recorded while the Base Currency was USD: its stored base amount is in USD. */
-    const ledger = cashBasis(snapshot({
+    const figures = cashBasis(snapshot({
       transactions: [txn({ accountId: 1, categoryId: 1, amount: 50, exchangeRate: 1.1, baseCurrencyAmount: 55 })],
     }));
 
-    expect(ledger.scopeTotals({ kind: 'month', period: 1, year: 2026 }).expenses).toBe(50);
+    expect(figures.scopeTotals({ kind: 'month', period: 1, year: 2026 }).expenses).toBe(50);
   });
 
   it('counts a foreign Transaction at its stored base amount', () => {
-    const ledger = cashBasis(snapshot({
+    const figures = cashBasis(snapshot({
       transactions: [txn({ accountId: 2, categoryId: 2, amount: 100, exchangeRate: 1.08, baseCurrencyAmount: 108 })],
     }));
 
-    expect(ledger.scopeTotals({ kind: 'month', period: 1, year: 2026 }).income).toBe(108);
+    expect(figures.scopeTotals({ kind: 'month', period: 1, year: 2026 }).income).toBe(108);
   });
 
   it('counts a foreign Transaction without any stored conversion at its face amount and reports it', () => {
     const unconverted = txn({ id: 9, accountId: 2, categoryId: 1, amount: 10 });
-    const ledger = cashBasis(snapshot({ transactions: [unconverted] }));
+    const figures = cashBasis(snapshot({ transactions: [unconverted] }));
     const scope = { kind: 'month' as const, period: 1 as const, year: 2026 };
 
-    expect(ledger.scopeTotals(scope).expenses).toBe(10);
-    expect(ledger.unconvertedTransactions(scope).map(t => t.id)).toEqual([9]);
+    expect(figures.scopeTotals(scope).expenses).toBe(10);
+    expect(figures.unconvertedTransactions(scope).map(t => t.id)).toEqual([9]);
   });
 
   it('never reports a converted or Base Currency Transaction as unconverted', () => {
-    const ledger = cashBasis(snapshot({
+    const figures = cashBasis(snapshot({
       transactions: [
         txn({ id: 1, accountId: 1, amount: 10 }),
         txn({ id: 2, accountId: 2, amount: 10, exchangeRate: 0.9 }),
@@ -223,13 +223,13 @@ describe('cashBasis totals (ADR 0022)', () => {
       ],
     }));
 
-    expect(ledger.unconvertedTransactions({ kind: 'month', period: 1, year: 2026 })).toEqual([]);
-    expect(ledger.unconvertedTransactions({ kind: 'year', year: 2026 }).map(t => t.id)).toEqual([3]);
+    expect(figures.unconvertedTransactions({ kind: 'month', period: 1, year: 2026 })).toEqual([]);
+    expect(figures.unconvertedTransactions({ kind: 'year', year: 2026 }).map(t => t.id)).toEqual([3]);
   });
 
   it('leaves Card Purchases out and counts Card Payments as Expenses', () => {
     const card = account({ id: 3, name: 'Visa', kind: 'credit-card', active: false });
-    const ledger = cashBasis(snapshot({
+    const figures = cashBasis(snapshot({
       accounts: [eur, usd, card],
       transactions: [
         txn({ id: 1, accountId: 1, categoryId: 2, amount: 3000 }),
@@ -243,7 +243,7 @@ describe('cashBasis totals (ADR 0022)', () => {
       ],
     }));
 
-    expect(ledger.scopeTotals({ kind: 'month', period: 1, year: 2026 })).toEqual({
+    expect(figures.scopeTotals({ kind: 'month', period: 1, year: 2026 })).toEqual({
       income: 3000,
       expenses: 500,
       net: 2500,
@@ -253,21 +253,21 @@ describe('cashBasis totals (ADR 0022)', () => {
 
   it('splits every Period of a year in calendar order, by the stored Period year', () => {
     const december = txn({ id: 1, accountId: 1, categoryId: 2, period: 1, date: new Date('2025-12-22'), year: 2026, amount: 3000 });
-    const ledger = cashBasis(snapshot({
+    const figures = cashBasis(snapshot({
       transactions: [december, txn({ id: 2, accountId: 1, categoryId: 1, period: 3, amount: 700 })],
     }));
 
-    const periods = ledger.periods(2026);
+    const periods = figures.periods(2026);
 
     expect(periods.map(p => p.period)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
     expect(periods[0]).toEqual({ period: 1, income: 3000, expenses: 0, net: 3000, hasMovements: true });
     expect(periods[1]).toEqual({ period: 2, income: 0, expenses: 0, net: 0, hasMovements: false });
     expect(periods[2].net).toBe(-700);
-    expect(ledger.periods(2025).every(p => !p.hasMovements && p.net === 0)).toBe(true);
+    expect(figures.periods(2025).every(p => !p.hasMovements && p.net === 0)).toBe(true);
   });
 
   it('rounds each Period figure to cents', () => {
-    const ledger = cashBasis(snapshot({
+    const figures = cashBasis(snapshot({
       transactions: [
         txn({ id: 1, accountId: 1, categoryId: 2, amount: 10.1 }),
         txn({ id: 2, accountId: 1, categoryId: 2, amount: 20.2 }),
@@ -275,11 +275,11 @@ describe('cashBasis totals (ADR 0022)', () => {
       ],
     }));
 
-    expect(ledger.periods(2026)[0].income).toBe(60.6);
+    expect(figures.periods(2026)[0].income).toBe(60.6);
   });
 
   it('sums the whole year for a year Scope', () => {
-    const ledger = cashBasis(snapshot({
+    const figures = cashBasis(snapshot({
       transactions: [
         txn({ id: 1, accountId: 1, categoryId: 2, period: 1, amount: 1000 }),
         txn({ id: 2, accountId: 1, categoryId: 1, period: 12, amount: 300 }),
@@ -287,7 +287,7 @@ describe('cashBasis totals (ADR 0022)', () => {
       ],
     }));
 
-    expect(ledger.scopeTotals({ kind: 'year', year: 2026 })).toEqual({
+    expect(figures.scopeTotals({ kind: 'year', year: 2026 })).toEqual({
       income: 1000,
       expenses: 300,
       net: 700,
@@ -296,7 +296,7 @@ describe('cashBasis totals (ADR 0022)', () => {
   });
 
   it('sums January through the Scope Period for the year-to-period totals, and averages over the Periods with movements', () => {
-    const ledger = cashBasis(snapshot({
+    const figures = cashBasis(snapshot({
       transactions: [
         txn({ id: 1, accountId: 1, categoryId: 2, period: 1, amount: 3000 }),
         txn({ id: 2, accountId: 1, categoryId: 1, period: 3, amount: 1000 }),
@@ -304,10 +304,32 @@ describe('cashBasis totals (ADR 0022)', () => {
       ],
     }));
 
-    const totals = ledger.yearToPeriodTotals({ kind: 'month', period: 3, year: 2026 });
+    const totals = figures.yearToPeriodTotals({ kind: 'month', period: 3, year: 2026 });
 
     expect(totals).toEqual({ income: 3000, expenses: 1000, net: 2000, periodsWithMovements: 2 });
     expect(monthlyAverages(totals)).toEqual({ income: 1500, expenses: 500, net: 1000 });
+  });
+
+  it('makes the year-to-period totals equal the sum of the Period figures the year overview shows', () => {
+    const figures = cashBasis(snapshot({
+      transactions: [
+        txn({ id: 1, accountId: 1, categoryId: 2, period: 1, amount: 10.1 }),
+        txn({ id: 2, accountId: 1, categoryId: 2, period: 2, amount: 20.2 }),
+        txn({ id: 3, accountId: 2, categoryId: 1, period: 2, amount: 7, exchangeRate: 0.95 }),
+        txn({ id: 4, accountId: 1, categoryId: 1, period: 5, amount: 1 }),
+      ],
+    }));
+
+    const shown = figures.periods(2026).filter(p => p.period <= 4);
+
+    expect(figures.yearToPeriodTotals({ kind: 'month', period: 4, year: 2026 })).toEqual({
+      income: 30.3,
+      expenses: 6.65,
+      net: 23.65,
+      periodsWithMovements: 2,
+    });
+    expect(shown.reduce((sum, p) => sum + p.income, 0)).toBeCloseTo(30.3, 2);
+    expect(shown.reduce((sum, p) => sum + p.expenses, 0)).toBeCloseTo(6.65, 2);
   });
 
   it('averages to zero when no Period carries movements', () => {
@@ -317,10 +339,10 @@ describe('cashBasis totals (ADR 0022)', () => {
   });
 
   it('classifies income by the Transaction Category, and an unknown Category as an Expense', () => {
-    const ledger = cashBasis(snapshot({}));
+    const figures = cashBasis(snapshot({}));
 
-    expect(ledger.isIncome(txn({ categoryId: 2 }))).toBe(true);
-    expect(ledger.isIncome(txn({ categoryId: 1 }))).toBe(false);
-    expect(ledger.isIncome(txn({ categoryId: 999 }))).toBe(false);
+    expect(figures.isIncome(txn({ categoryId: 2 }))).toBe(true);
+    expect(figures.isIncome(txn({ categoryId: 1 }))).toBe(false);
+    expect(figures.isIncome(txn({ categoryId: 999 }))).toBe(false);
   });
 });

@@ -133,6 +133,15 @@ describe('NetFlowCardComponent', () => {
     expect(component.expenseTotal()).toBe(9);
   });
 
+  it('counts a transaction on a Base Currency account at its face amount, ignoring a stale stored base amount, as Stats does (#182)', async () => {
+    const period = getCurrentPeriod();
+    /* Recorded while the Base Currency was USD: its stored base amount is in USD. */
+    await transactionService.create(eurAccountId, expenseCategoryId, 50, new Date(), period, 1.1, 55);
+    await render();
+
+    expect(component.expenseTotal()).toBe(50);
+  });
+
   it('excludes transfers from the flow', async () => {
     const period = getCurrentPeriod();
     await transactionService.create(eurAccountId, incomeCategoryId, 1000, new Date(), period);

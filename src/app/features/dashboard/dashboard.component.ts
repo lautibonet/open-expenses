@@ -440,19 +440,19 @@ export class DashboardComponent implements OnInit {
        The balance strip keeps every movement, so `yearHasMovements` stays on
        the full set: a year whose only movement is a Card Purchase or a
        Cash-to-Cash Transfer still renders the strip. */
-    const ledger = cashBasis({
+    const figures = cashBasis({
       accounts: allAccounts,
       categories: allCategories,
       transactions: allTxns,
       transfers: allTransfers,
       baseCurrency: this.baseCurrency(),
     });
-    this.yearOverviewData.set(ledger.periods(scope.year));
+    this.yearOverviewData.set(figures.periods(scope.year));
     this.yearHasMovements.set(
       [...allTxns, ...allTransfers].some(m => getPeriodYear(m) === scope.year),
     );
 
-    const totals = ledger.yearToPeriodTotals(scope);
+    const totals = figures.yearToPeriodTotals(scope);
     const averages = monthlyAverages(totals);
     this.yearTotalIncome.set(totals.income);
     this.yearTotalExpenses.set(totals.expenses);

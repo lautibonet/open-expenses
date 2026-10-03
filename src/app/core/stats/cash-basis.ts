@@ -2,6 +2,7 @@ import { Account, isCashAccount, isCreditCard } from '../models/account.model';
 import { Category, isIncomeCategory } from '../models/category.model';
 import { Transaction } from '../models/transaction.model';
 import { Transfer } from '../models/transfer.model';
+import { storedBaseAmount } from '../balances/period-end-balances';
 import {
   MONTH_NUMBERS,
   MonthNumber,
@@ -115,8 +116,6 @@ export interface CashBasisLookups {
 }
 
 export interface CashBasis extends CashBasisLookups {
-  /* A Transaction's amount in Base Currency. */
-  baseAmount(transaction: Transaction): number;
   /* The twelve Periods of a year, in calendar order. */
   periods(year: number): PeriodCashFlow[];
   /* The Movements figures: a single Period, or a whole year. */
@@ -139,10 +138,7 @@ export function transactionBaseAmount(
   account: Account | undefined,
   baseCurrency: string,
 ): number {
-  if (account?.currency === baseCurrency) return transaction.amount;
-  if (transaction.baseCurrencyAmount != null) return transaction.baseCurrencyAmount;
-  if (transaction.exchangeRate != null) return round2(transaction.amount * transaction.exchangeRate);
-  return transaction.amount;
+  return account?.currency === baseCurrency ? transaction.amount : storedBaseAmount(transaction);
 }
 
 /* Whether a Transaction falls back to its face amount inside Base Currency
@@ -238,21 +234,19 @@ export function cashBasis(snapshot: CashBasisSnapshot): CashBasis {
     return { income, expenses, net: round2(income - expenses), periodsWithMovements };
   }
 
-  const inScope = (transaction: Transaction, scope: PeriodScope) =>
-    getPeriodYear(transaction) === scope.year &&
-    (isYearScope(scope) || transaction.period === scope.period);
+  const coversPeriod = (scope: PeriodScope, period: number) =>
+    isYearScope(scope) || period === scope.period;
 
   return {
     ...lookups,
-    baseAmount,
     periods,
-    scopeTotals: scope =>
-      sumPeriods(scope.year, period => isYearScope(scope) || period === scope.period),
+    scopeTotals: scope => sumPeriods(scope.year, period => coversPeriod(scope, period)),
     yearToPeriodTotals: scope => sumPeriods(scope.year, period => period <= scope.period),
     unconvertedTransactions: scope =>
       counted.filter(
         transaction =>
-          inScope(transaction, scope) &&
+          getPeriodYear(transaction) === scope.year &&
+          coversPeriod(scope, transaction.period) &&
           isUnconvertedTransaction(
             transaction,
             accountsById.get(transaction.accountId),

@@ -9,5 +9,6 @@ Every stored conversion — a Transaction's `baseCurrencyAmount`, its `exchangeR
 
 ## Consequences
 
+- The lock itself ships with #191; until then the Base Currency stays editable.
 - Restore is unaffected: it overwrites the Base Currency together with the whole dataset, so the two stay consistent.
 - Data recorded before the lock shipped may already mix Base Currencies. The cash-basis totals mitigate the common case by counting a movement on an Account already in the Base Currency at its face amount; foreign movements stored under an older Base Currency stay stale.
