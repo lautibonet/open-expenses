@@ -9,6 +9,7 @@ import {
 } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { db } from '../../core/db/database';
 import { ProfileService } from '../../core/services/profile.service';
 import { AccountService } from '../../core/services/account.service';
 import { CategoryService } from '../../core/services/category.service';
@@ -540,14 +541,20 @@ export class OnboardingComponent {
       return;
     }
 
+    /* All-or-nothing (#181): the profile, staged accounts and categories
+       commit in one transaction. Any failure rolls every write back, so the
+       user is never marked onboarded with missing data and stays here with
+       the staged items intact. */
     try {
-      await this.profileService.completeOnboarding(this.baseCurrency(), this.language());
-      for (const acc of this.accounts()) {
-        await this.accountService.create(acc.name, acc.currency, acc.balance);
-      }
-      for (const cat of this.categories()) {
-        await this.categoryService.create(cat.name, cat.type);
-      }
+      await db.transaction('rw', [db.profile, db.accounts, db.categories], async () => {
+        await this.profileService.completeOnboarding(this.baseCurrency(), this.language());
+        for (const acc of this.accounts()) {
+          await this.accountService.create(acc.name, acc.currency, acc.balance);
+        }
+        for (const cat of this.categories()) {
+          await this.categoryService.create(cat.name, cat.type);
+        }
+      });
       this.router.navigate(['/movements']);
     } catch (e: unknown) {
       this.errorMessage.set(

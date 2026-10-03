@@ -6,6 +6,8 @@ import { LanguageService } from '../../core/services/language.service';
 import { NoBackupFoundError } from '../../backup/drive-backup-provider';
 import { TranslationError } from '../../core/models/translation-error';
 import { AccountService } from '../../core/services/account.service';
+import { CategoryService } from '../../core/services/category.service';
+import { ProfileService } from '../../core/services/profile.service';
 import { db } from '../../core/db/database';
 
 function stubNavigator(language: string): void {
@@ -1163,6 +1165,93 @@ describe('OnboardingComponent', () => {
     await component.completeOnboarding();
 
     expect(navigate).toHaveBeenCalledWith(['/movements']);
+  });
+
+  describe('when saving a staged item fails while completing (#181)', () => {
+    function stageAccount(): void {
+      component.accounts.set([{ name: 'Bank', currency: 'EUR', balance: 100 }]);
+    }
+
+    function failSecondCategory(): void {
+      const categoryService = TestBed.inject(CategoryService);
+      const create = categoryService.create.bind(categoryService);
+      let calls = 0;
+      vi.spyOn(categoryService, 'create').mockImplementation(async (name, type) => {
+        calls++;
+        if (calls === 2) throw new Error('disk full');
+        return create(name, type);
+      });
+    }
+
+    it('saves nothing: no completed profile, no accounts, no categories', async () => {
+      const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+      stageAccount();
+      failSecondCategory();
+
+      await component.completeOnboarding();
+
+      expect(await TestBed.inject(ProfileService).isOnboardingCompleted()).toBe(false);
+      expect(await db.profile.count()).toBe(0);
+      expect(await db.accounts.count()).toBe(0);
+      expect(await db.categories.count()).toBe(0);
+      expect(navigate).not.toHaveBeenCalled();
+    });
+
+    it('rolls back when saving an account fails', async () => {
+      vi.spyOn(router, 'navigate').mockResolvedValue(true);
+      stageAccount();
+      vi.spyOn(TestBed.inject(AccountService), 'create').mockRejectedValue(new Error('disk full'));
+
+      await component.completeOnboarding();
+
+      expect(await db.profile.count()).toBe(0);
+      expect(await db.accounts.count()).toBe(0);
+      expect(await db.categories.count()).toBe(0);
+    });
+
+    it('keeps the user in Onboarding with staged items and a translated error', async () => {
+      vi.spyOn(router, 'navigate').mockResolvedValue(true);
+      component.goTo('categories');
+      stageAccount();
+      const stagedCategories = component.categories();
+      failSecondCategory();
+
+      await component.completeOnboarding();
+      fixture.detectChanges();
+
+      expect(component.step()).toBe('categories');
+      expect(component.accounts()).toEqual([{ name: 'Bank', currency: 'EUR', balance: 100 }]);
+      expect(component.categories()).toEqual(stagedCategories);
+      expect(component.errorMessage()).toBe('Failed to complete onboarding');
+      expect(fixture.nativeElement.textContent).toContain('Failed to complete onboarding');
+    });
+
+    it('can complete on retry once the failure clears', async () => {
+      vi.spyOn(router, 'navigate').mockResolvedValue(true);
+      stageAccount();
+      failSecondCategory();
+      await component.completeOnboarding();
+      vi.restoreAllMocks();
+      const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+
+      await component.completeOnboarding();
+
+      expect(await TestBed.inject(ProfileService).isOnboardingCompleted()).toBe(true);
+      expect(await db.accounts.count()).toBe(1);
+      expect(await db.categories.count()).toBe(9);
+      expect(navigate).toHaveBeenCalledWith(['/movements']);
+    });
+  });
+
+  it('saves the profile, staged accounts and categories together on completion', async () => {
+    vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    component.accounts.set([{ name: 'Bank', currency: 'EUR', balance: 100 }]);
+
+    await component.completeOnboarding();
+
+    expect(await TestBed.inject(ProfileService).isOnboardingCompleted()).toBe(true);
+    expect((await db.accounts.toArray()).map(a => a.name)).toEqual(['Bank']);
+    expect(await db.categories.count()).toBe(9);
   });
 
   it('persists the chosen language to the profile when completing onboarding', async () => {
