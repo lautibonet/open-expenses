@@ -19,7 +19,8 @@ import { CategoryType, isCategoryType } from '../../core/models/category.model';
 import { isNameTaken } from '../../core/models/name-uniqueness';
 import { isLanguage, LANGUAGES, detectBrowserLanguage, Language } from '../../core/types/language.type';
 import { DismissibleAlertComponent } from '../../shared/components/dismissible-alert/dismissible-alert.component';
-import { errorCopy, TranslationError } from '../../core/models/translation-error';
+import { errorCopy } from '../../core/models/translation-error';
+import { restoreOutcomeOf } from '../../backup/restore-outcome';
 
 const STEPS = ['language', 'restore', 'currency', 'accounts', 'categories'] as const;
 
@@ -212,18 +213,17 @@ export class OnboardingComponent {
       await action();
       this.router.navigate(['/movements']);
     } catch (e: unknown) {
+      /* With no data yet, a missing Backup is an invitation to set up, not
+         a failure: Onboarding keeps its own copy for it. */
       if (e instanceof NoBackupFoundError) {
         this.infoMessage.set(this.languageService.t('onboarding.restore.noBackupFound'));
-      } else if (e instanceof TranslationError && e.key.startsWith('backup.error.oauth.')) {
-        this.infoMessage.set(this.languageService.t(e.key));
+        return;
+      }
+      const outcome = restoreOutcomeOf(e);
+      if (outcome.kind === 'cancelled') {
+        this.infoMessage.set(this.languageService.t(outcome.key));
       } else {
-        this.errorMessage.set(
-          errorCopy(
-            e,
-            this.languageService.translateFn,
-            'backup.error.restoreFailed',
-          ),
-        );
+        this.errorMessage.set(this.languageService.t(outcome.key, outcome.params));
       }
     } finally {
       this.isRestoring.set(false);

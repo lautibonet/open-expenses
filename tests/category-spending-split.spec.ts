@@ -32,7 +32,7 @@ async function completeOnboarding(page: import('@playwright/test').Page) {
   await page.getByRole('button', { name: 'New account' }).click();
   await page.getByLabel('Account name').fill('Checking');
   await page.getByLabel('Initial balance').fill('100');
-  await page.getByRole('button', { name: '+ Add' }).click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('button', { name: 'Continue' }).click();
 
   // 5. Categories: defaults are fine
@@ -50,7 +50,7 @@ test.describe('Spending by Category is split cash/credit (#167)', () => {
     await cards.getByRole('button', { name: 'New card' }).click();
     const cardForm = cards.locator('.inline-form');
     await cardForm.getByLabel('Name').fill('Visa');
-    await cardForm.getByRole('button', { name: '+ Add Card' }).click();
+    await cardForm.getByRole('button', { name: 'Add', exact: true }).click();
     await expect(cards.locator('.account-row').filter({ hasText: 'Visa' })).toBeVisible();
 
     // Cash spending in Food, so the same category bar carries both tones.

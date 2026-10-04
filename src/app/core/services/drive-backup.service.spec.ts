@@ -156,16 +156,16 @@ describe('DriveBackupService', () => {
       expect(parsed.accessToken).toBe('stored-token');
     });
 
-    it('should set error if OAuth returns error', async () => {
+    it('rejects with the sign-in copy and leaves recording the error to the caller', async () => {
       const client = mockTokenClient('test-token', false);
 
-      service.connect().catch(() => {});
+      const connecting = service.connect();
       await new Promise((r) => setTimeout(r, 0));
       client.fireCallback({ error: 'access_denied' });
 
-      await new Promise((r) => setTimeout(r, 0));
+      await expect(connecting).rejects.toThrow('backup.error.oauth.denied');
       expect(service.isConnected()).toBe(false);
-      expect(service.error()).toBe('access_denied');
+      expect(service.error()).toBeNull();
     });
   });
 
@@ -216,6 +216,17 @@ describe('DriveBackupService', () => {
 
       expect(service.isConnected()).toBe(true);
       expect(service.lastBackupAt()).toBeInstanceOf(Date);
+    });
+
+    it('records a declined sign-in as the Backup error', async () => {
+      const client = mockTokenClient('test-token', false);
+
+      const backingUp = service.backupNow();
+      await new Promise((r) => setTimeout(r, 0));
+      client.fireCallback({ error: 'access_denied' });
+
+      await expect(backingUp).rejects.toThrow('backup.error.oauth.denied');
+      expect((service.error() as TranslationError).key).toBe('backup.error.oauth.denied');
     });
 
     it('should throw when offline', async () => {
@@ -408,7 +419,8 @@ describe('DriveBackupService', () => {
       });
 
       await expect(service.restore()).rejects.toThrow('backup.error.newerVersion');
-      expect((service.error() as TranslationError).key).toBe('backup.error.newerVersion');
+      // Restore errors travel through the Restore outcome, not the Backup error.
+      expect(service.error()).toBeNull();
     });
 
     it('bumps the data version after a successful cloud restore', async () => {
@@ -665,6 +677,19 @@ describe('DriveBackupService', () => {
 
       await expect(service.getCloudSnapshot()).rejects.toThrow('No backup found');
     });
+
+    it('leaves an earlier Backup error alone when the fetch fails', async () => {
+      await connectAsTestUser(service);
+      service.error.set(new TranslationError('backup.error.backupFailed'));
+
+      mockFetchByUrl({
+        [FOLDER_SEARCH]: () => ({ files: [{ id: 'folder-1' }] }),
+        [FILE_SEARCH]: () => ({ files: [] }),
+      });
+
+      await expect(service.getCloudSnapshot()).rejects.toThrow('No backup found');
+      expect((service.error() as TranslationError).key).toBe('backup.error.backupFailed');
+    });
   });
 
   describe('parseBackupFile', () => {
@@ -689,6 +714,13 @@ describe('DriveBackupService', () => {
 
     it('throws on invalid JSON', async () => {
       const file = new File(['not json'], 'backup.json', { type: 'application/json' });
+
+      await expect(service.parseBackupFile(file)).rejects.toThrow('backup.error.invalidFile');
+    });
+
+    it('throws the invalid-file copy when the file cannot be read', async () => {
+      const file = new File(['{}'], 'backup.json', { type: 'application/json' });
+      vi.spyOn(file, 'text').mockRejectedValue(new DOMException('unreadable', 'NotReadableError'));
 
       await expect(service.parseBackupFile(file)).rejects.toThrow('backup.error.invalidFile');
     });
