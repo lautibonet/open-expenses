@@ -6,10 +6,9 @@ import { AccountService } from '../../core/services/account.service';
 import { CategoryService } from '../../core/services/category.service';
 import { ProfileService } from '../../core/services/profile.service';
 import { ExchangeRateService } from '../../core/services/exchange-rate.service';
-import { NetworkService } from '../../core/services/network.service';
 import { LanguageService } from '../../core/services/language.service';
 import { DataVersionService } from '../../core/services/data-version.service';
-import { MonthNumber, movementInScope } from '../../core/types/period.type';
+import { MonthNumber } from '../../core/types/period.type';
 import {
   MonthScope,
   ScopeOptions,
@@ -19,46 +18,36 @@ import {
   noScopeOptions,
   scopeOptions,
 } from '../../core/scope/scope';
-import { Transaction } from '../../core/models/transaction.model';
-import { Transfer } from '../../core/models/transfer.model';
-import { Account, isCreditCard, paymentCategoryIds } from '../../core/models/account.model';
-import { Category } from '../../core/models/category.model';
 import { DismissibleAlertComponent } from '../../shared/components/dismissible-alert/dismissible-alert.component';
 import { FitTextDirective } from '../../shared/directives/fit-text.directive';
+import { CashBasisSnapshot, PeriodCashFlow } from '../../core/stats/cash-basis';
+import { CategorySpending, spendingShare } from '../../core/stats/category-spending';
 import {
-  ConversionDegradation,
-  noDegradation,
-  unconvertedTransactionsAffecting,
-} from '../../core/balances/conversion-degradation';
+  AccountBalance,
+  RateOutcome,
+  StatsReport,
+  currenciesNeedingRates,
+  statsReport,
+} from '../../core/stats/stats-report';
 import {
-  periodEndBalance,
-  periodEndBaseAmount,
-} from '../../core/balances/period-end-balances';
-import { accumulatedByPeriod, lastMovementPeriod } from '../../core/stats/year-overview';
-import {
-  PeriodCashFlow,
-  cashBasis,
-  cashBasisLookups,
-  monthlyAverages,
-} from '../../core/stats/cash-basis';
-import {
-  CategorySpending,
-  categorySpending,
-  spendingShare,
-} from '../../core/stats/category-spending';
+  balanceExtremes,
+  categoryBarWidth,
+  fillPct,
+  overviewExtremes,
+  stripScaleAnchor,
+  zeroPct,
+} from '../../core/stats/chart-scale';
 
-/* A graph track's two extremes around the zero line: the largest figure that
-   grows up from it and the largest magnitude that grows below it. */
-interface Extremes {
-  up: number;
-  down: number;
-}
+const noRatesNeeded: RateOutcome = { kind: 'rates', rates: new Map() };
 
-/* An Account paired with its Period-end balance, in the account's currency. */
-interface AccountBalance {
-  account: Account;
-  balance: number;
-}
+/* What the screen shows before the first load. */
+const emptySnapshot: CashBasisSnapshot = {
+  accounts: [],
+  categories: [],
+  transactions: [],
+  transfers: [],
+  baseCurrency: 'EUR',
+};
 
 @Component({
   selector: 'app-dashboard',
@@ -73,7 +62,6 @@ export class DashboardComponent implements OnInit {
   private categoryService = inject(CategoryService);
   private profileService = inject(ProfileService);
   private exchangeRateService = inject(ExchangeRateService);
-  private networkService = inject(NetworkService);
   private dataVersion = inject(DataVersionService);
   language = inject(LanguageService);
 
@@ -83,201 +71,55 @@ export class DashboardComponent implements OnInit {
   scopeMonths = computed(() => this.availableScopes().months);
   scopeAnnouncement = signal('');
 
-  periodTransactions = signal<Transaction[]>([]);
-  periodTransfers = signal<Transfer[]>([]);
-  accounts = signal<Account[]>([]);
-  categories = signal<Category[]>([]);
-  baseCurrency = signal('EUR');
+  /* Everything recorded, loaded once per data version; a Scope change only
+     re-runs the report. */
+  private snapshot = signal<CashBasisSnapshot>(emptySnapshot);
+  baseCurrency = computed(() => this.snapshot().baseCurrency);
+  /* Every figure the screen shows. */
+  report = signal<StatsReport>(statsReport(emptySnapshot, defaultScope(), noRatesNeeded));
 
-  yearTotalIncome = signal(0);
-  yearTotalExpenses = signal(0);
-  yearTotalNet = signal(0);
-  yearHasData = signal(false);
-  yearHasMovements = signal(false);
-  categoryBreakdown = signal<CategorySpending[]>([]);
-  accountBalances = signal<AccountBalance[]>([]);
-  readonly isCreditCard = isCreditCard;
-  totalBalanceBaseCurrency = signal(0);
-  /* ADR 0022 / CONTEXT.md Stats: the sum of negative Credit Card balances,
-     stated as a positive figure. Zero and the flag off when no card is in
-     debt, which collapses the total back to a single figure. */
-  cardDebt = signal(0);
-  hasCardDebt = signal(false);
-  conversionDegraded = signal<ConversionDegradation>({ ...noDegradation });
+  private overviewExtremes = computed(() => overviewExtremes(this.report().yearOverview.periods));
+  private balanceExtremes = computed(() => balanceExtremes(this.report().balanceStrip.accumulated));
 
-  avgMonthlyIncome = signal(0);
-  avgMonthlyExpenses = signal(0);
-  avgMonthlyNet = signal(0);
-  yearOverviewData = signal<PeriodCashFlow[]>([]);
-  accumulated = signal<number[]>([]);
-  /* The last Period of the scope year carrying a Movement; the strip's
-     frozen tail starts after it. */
-  frozenFromPeriod = signal(0);
   async ngOnInit(): Promise<void> {
     await this.loadAll();
   }
 
   private async loadAll(): Promise<void> {
-    this.baseCurrency.set(await this.profileService.getBaseCurrency());
+    const [baseCurrency, accounts, categories, transactions, transfers] = await Promise.all([
+      this.profileService.getBaseCurrency(),
+      this.accountService.getAll(),
+      this.categoryService.getAll(),
+      this.transactionService.getAll(),
+      this.transferService.getAll(),
+    ]);
+    this.snapshot.set({ accounts, categories, transactions, transfers, baseCurrency });
+    this.availableScopes.set(scopeOptions([...transactions, ...transfers]));
     await this.refresh();
-    await this.refreshAverages();
-    await this.applyScopeOptions();
   }
 
   private reloadDataOnVersionChange = this.dataVersion.reloadOnChange(() => this.loadAll());
 
-  async refresh(): Promise<void> {
-    this.conversionDegraded.set({ ...noDegradation });
-    const txns = await this.transactionService.getByScope(this.scope());
-    const transfers = await this.transferService.getByScope(this.scope());
+  /* The screen's one asynchronous step besides loading: the Exchange Rates
+     the foreign Accounts need. The report reads the current Scope once they
+     arrive, so a Scope change during the fetch is never lost. */
+  private async refresh(): Promise<void> {
+    const snapshot = this.snapshot();
+    const rates = await this.fetchRates(snapshot);
+    this.report.set(statsReport(snapshot, this.scope(), rates));
+  }
 
-    this.periodTransactions.set(txns);
-    this.periodTransfers.set(transfers);
-    this.accounts.set(await this.accountService.getAll());
-
-    const allCategories = await this.categoryService.getAll();
-    this.categories.set(allCategories);
-    const lookups = cashBasisLookups(this.accounts(), allCategories);
-    const { accountsById, isIncome } = lookups;
-    const base = this.baseCurrency();
-
-    this.categoryBreakdown.set(
-      categorySpending(txns, lookups, paymentCategoryIds(this.accounts())),
-    );
-
-    const [allTxns, allTransfers] = await Promise.all([
-      this.transactionService.getAll(),
-      this.transferService.getAll(),
-    ]);
-
-    const scope = this.scope();
-    const balances: AccountBalance[] = [];
-    for (const acc of this.accounts()) {
-      const balance = periodEndBalance(
-        { account: acc, transactions: allTxns, transfers: allTransfers, isIncome },
-        scope,
-      );
-      balances.push({ account: acc, balance });
-    }
-    this.accountBalances.set(this.cashAccountsFirst(balances));
-
-    const unconverted = unconvertedTransactionsAffecting(allTxns, accountsById, base, scope);
-    if (unconverted.length > 0) {
-      this.conversionDegraded.update(d => ({ ...d, unconvertedTransactions: true }));
-    }
-
-    const nonBaseCurrencies = [...new Set(
-      balances
-        .map(b => b.account.currency)
-        .filter(c => c !== base),
-    )];
-
-    if (nonBaseCurrencies.length === 0) {
-      this.totalBalanceBaseCurrency.set(this.sumBalances(balances));
-      this.setCardDebt(balances, this.nativeBaseAmounts(balances));
-      this.setAccumulated(
-        allTxns,
-        allTransfers,
-        isIncome,
-        new Map(this.accounts().map(a => [a.id!, a.initialBalance])),
-      );
-      return;
-    }
-
-    if (!this.networkService.isOnline()) {
-      this.excludeForeignAccounts(balances, base, allTxns, allTransfers, isIncome);
-      return;
-    }
-
+  /* Any rejection — offline with nothing cached, or a failed fetch — leaves
+     the rates unavailable; the rate service's cache still answers offline. */
+  private async fetchRates(snapshot: CashBasisSnapshot): Promise<RateOutcome> {
+    const currencies = currenciesNeedingRates(snapshot);
+    if (currencies.length === 0) return noRatesNeeded;
     try {
-      const rates = await this.exchangeRateService.getRates(base, nonBaseCurrencies);
-      const missingRate = balances.some(
-        b => b.account.currency !== base && !rates.rates.has(b.account.currency),
-      );
-      if (missingRate) {
-        this.excludeForeignAccounts(balances, base, allTxns, allTransfers, isIncome);
-        return;
-      }
-
-      const initialsInBase = new Map<number, number>();
-      for (const b of balances) {
-        const acc = b.account;
-        initialsInBase.set(
-          acc.id!,
-          acc.currency === base
-            ? acc.initialBalance
-            : Math.round(acc.initialBalance / rates.rates.get(acc.currency)! * 100) / 100,
-        );
-      }
-      this.setAccumulated(allTxns, allTransfers, isIncome, initialsInBase);
-
-      let total = 0;
-      const baseAmounts = new Map<number, number>();
-      for (const b of balances) {
-        const amount = periodEndBaseAmount(
-          { account: b.account, transactions: allTxns, transfers: allTransfers, isIncome },
-          scope,
-          initialsInBase.get(b.account.id!)!,
-        );
-        baseAmounts.set(b.account.id!, amount);
-        total += amount;
-      }
-      this.totalBalanceBaseCurrency.set(Math.round(total * 100) / 100);
-      this.setCardDebt(balances, baseAmounts);
+      const result = await this.exchangeRateService.getRates(snapshot.baseCurrency, currencies);
+      return { kind: 'rates', rates: result.rates };
     } catch {
-      this.excludeForeignAccounts(balances, base, allTxns, allTransfers, isIncome);
+      return { kind: 'unavailable' };
     }
-  }
-
-  /* Foreign accounts whose Exchange Rate cannot be resolved are left out of
-     the total balance and surface the conversion warning. */
-  private excludeForeignAccounts(
-    balances: AccountBalance[],
-    base: string,
-    allTxns: Transaction[],
-    allTransfers: Transfer[],
-    isIncome: (transaction: Transaction) => boolean,
-  ): void {
-    this.conversionDegraded.update(d => ({ ...d, accountsExcluded: true }));
-    this.totalBalanceBaseCurrency.set(this.sumBalances(balances, base));
-    const included = balances.filter(b => b.account.currency === base);
-    this.setCardDebt(included, this.nativeBaseAmounts(included));
-    /* Degraded Accumulated: Base Currency accounts only, at face amounts. */
-    this.setAccumulated(
-      allTxns,
-      allTransfers,
-      isIncome,
-      new Map(
-        this.accounts()
-          .filter(a => a.currency === base)
-          .map(a => [a.id!, a.initialBalance]),
-      ),
-      true,
-    );
-  }
-
-  /* Accumulated: the total-balance formula evaluated at every Period of the
-     scope's year, so the line's value at the Scope's Period equals the total
-     balance card. */
-  private setAccumulated(
-    allTxns: Transaction[],
-    allTransfers: Transfer[],
-    isIncome: (transaction: Transaction) => boolean,
-    initialInBase: Map<number, number>,
-    nativeAmounts = false,
-  ): void {
-    this.frozenFromPeriod.set(lastMovementPeriod(allTxns, allTransfers, this.scope().year));
-    this.accumulated.set(
-      accumulatedByPeriod({
-        accounts: this.accounts(),
-        transactions: allTxns,
-        transfers: allTransfers,
-        isIncome,
-        year: this.scope().year,
-        initialInBase,
-        nativeAmounts,
-      }),
-    );
   }
 
   async onScopeYearChange(value: number): Promise<void> {
@@ -291,14 +133,7 @@ export class DashboardComponent implements OnInit {
   private async setScope(scope: MonthScope): Promise<void> {
     this.scope.set(scope);
     this.scopeAnnouncement.set(this.language.scopeLabel(scope));
-    await Promise.all([this.refresh(), this.refreshAverages()]);
-    await this.applyScopeOptions();
-  }
-
-  private async applyScopeOptions(): Promise<void> {
-    const txns = await this.transactionService.getAll();
-    const transfers = await this.transferService.getAll();
-    this.availableScopes.set(scopeOptions([...txns, ...transfers]));
+    await this.refresh();
   }
 
   scopeLabelText(): string {
@@ -313,17 +148,8 @@ export class DashboardComponent implements OnInit {
     });
   }
 
-  savingsRate(): number | null {
-    const income = this.avgMonthlyIncome();
-    if (income <= 0) return null;
-    return Math.round((this.avgMonthlyNet() / income) * 100);
-  }
-
   categoryBarWidth(total: number): number {
-    const breakdown = this.categoryBreakdown();
-    const max = breakdown.length > 0 ? Math.max(...breakdown.map(b => b.total)) : 0;
-    if (max <= 0) return 0;
-    return Math.round((total / max) * 10000) / 100;
+    return categoryBarWidth(total, this.report().categorySpending);
   }
 
   /* The two tones inside a category bar: the cash-paid and credit-paid
@@ -337,7 +163,7 @@ export class DashboardComponent implements OnInit {
   }
 
   conversionWarningMessage(): string {
-    const degraded = this.conversionDegraded();
+    const degraded = this.report().degradation;
     const parts: string[] = [];
     if (degraded.accountsExcluded) {
       parts.push(this.language.t('stats.conversionWarning', { currency: this.baseCurrency() }));
@@ -358,205 +184,49 @@ export class DashboardComponent implements OnInit {
     return this.scope().year;
   }
 
-  /* ADR 0022 / #174: a Card Payment's category labels the payment but never
-     reaches the spending graph — the settled purchases already report that
-     spending. Derived by the shared account-model helper (#174). */
-  private sumBalances(balances: AccountBalance[], currency?: string): number {
-    return balances
-      .filter(b => !currency || b.account.currency === currency)
-      .reduce((sum, b) => sum + b.balance, 0);
-  }
-
-  private nativeBaseAmounts(balances: AccountBalance[]): Map<number, number> {
-    return new Map(balances.map(b => [b.account.id!, b.balance]));
-  }
-
-  /* Cards are grouped after Cash Accounts in the balance list (CONTEXT.md,
-     Stats). The sort is stable, so each group keeps its accounts' own order. */
-  private cashAccountsFirst(balances: AccountBalance[]): AccountBalance[] {
-    return [...balances].sort(
-      (a, b) => Number(isCreditCard(a.account)) - Number(isCreditCard(b.account)),
-    );
-  }
-
-  /* The Debt is the sum of the negative Credit Card balances, stated as a
-     positive figure; an overpaid card's positive balance lands in the totals,
-     never in the Debt (CONTEXT.md, Credit Card). Only the accounts that
-     contributed to the total — i.e. that are present in `baseAmounts` — are
-     counted, so a degenerate conversion cannot split the two figures. */
-  private setCardDebt(balances: AccountBalance[], baseAmounts: Map<number, number>): void {
-    let debt = 0;
-    let hasDebt = false;
-    for (const b of balances) {
-      if (!isCreditCard(b.account)) continue;
-      const amount = baseAmounts.get(b.account.id!);
-      if (amount == null || amount >= 0) continue;
-      hasDebt = true;
-      debt += -amount;
-    }
-    this.cardDebt.set(Math.round(debt * 100) / 100);
-    this.hasCardDebt.set(hasDebt);
-  }
-
-  /* The total balance mirrors the Income/Expenses/Net summary when a card is
-     in debt: the debt is added back to the (debt-inclusive) total to state
-     what the user would hold without it. */
-  totalBalanceWithoutDebt(): number {
-    return Math.round((this.totalBalanceBaseCurrency() + this.cardDebt()) * 100) / 100;
-  }
-
-  /* A card row's "used X of limit" caption: the outstanding debt against the
-     optional Limit, in the card's own currency. An overpaid card reads as
-     zero used. */
+  /* A card row's "used X of limit" caption, in the card's own currency. */
   usedOfLimitText(item: AccountBalance): string {
-    const limit = item.account.limit;
-    if (limit == null) return '';
-    const used = Math.max(0, -item.balance);
+    if (item.usedOfLimit == null) return '';
+    const { used, limit } = item.usedOfLimit;
     return this.language.t('stats.usedOfLimit', {
       used: this.formatAccountBalance(used, item.account.currency),
       limit: this.formatAccountBalance(limit, item.account.currency),
     });
   }
 
-  async refreshAverages(): Promise<void> {
-    const [allTxns, allTransfers, allCategories, allAccounts] = await Promise.all([
-      this.transactionService.getAll(),
-      this.transferService.getAll(),
-      this.categoryService.getAll(),
-      this.accountService.getAll(),
-    ]);
-    const scope = this.scope();
-
-    /* ADR 0022: the year-to-period totals, averages, and overview are
-       cash-basis, read from the module the Movements net-flow card reads too.
-       The balance strip keeps every movement, so `yearHasMovements` stays on
-       the full set: a year whose only movement is a Card Purchase or a
-       Cash-to-Cash Transfer still renders the strip. */
-    const figures = cashBasis({
-      accounts: allAccounts,
-      categories: allCategories,
-      transactions: allTxns,
-      transfers: allTransfers,
-      baseCurrency: this.baseCurrency(),
-    });
-    this.yearOverviewData.set(figures.periods(scope.year));
-    this.yearHasMovements.set(
-      [...allTxns, ...allTransfers].some(m => movementInScope(m, { kind: 'year', year: scope.year })),
-    );
-
-    const totals = figures.yearToPeriodTotals(scope);
-    const averages = monthlyAverages(totals);
-    this.yearTotalIncome.set(totals.income);
-    this.yearTotalExpenses.set(totals.expenses);
-    this.yearTotalNet.set(totals.net);
-    this.yearHasData.set(totals.periodsWithMovements > 0);
-    this.avgMonthlyIncome.set(averages.income);
-    this.avgMonthlyExpenses.set(averages.expenses);
-    this.avgMonthlyNet.set(averages.net);
-  }
-
-  /* The zero line both graphs share positions itself from the Scope year's
-     data: its height in the track equals the year's negative share of its
-     extremes. An all-positive year pins the line to the bottom edge and gives
-     the fills the full height; an overdrawn year raises it in proportion, so
-     the tallest figure above reaches the top edge and the deepest below
-     reaches the bottom edge. */
-  private static zeroPct({ up, down }: Extremes): number {
-    if (up + down <= 0) return 0;
-    return Math.round((down / (up + down)) * 10000) / 100;
-  }
-
-  private static fillPct(value: number, { up, down }: Extremes): number {
-    const zero = DashboardComponent.zeroPct({ up, down });
-    if (value > 0 && up > 0) {
-      return Math.round((value / up) * (100 - zero) * 100) / 100;
-    }
-    if (value < 0 && down > 0) {
-      return Math.round((-value / down) * zero * 100) / 100;
-    }
-    return 0;
-  }
-
-  /* Year overview extremes: up is the largest figure among Income, Expenses
-     and positive Net; down is the deepest overdrawn Net. Income and Expenses
-     are magnitudes and never grow below the line — only a negative Net does. */
-  private yearOverviewExtremes(): Extremes {
-    let up = 0;
-    let down = 0;
-    for (const o of this.yearOverviewData()) {
-      up = Math.max(up, o.income, o.expenses, o.net);
-      down = Math.max(down, -o.net);
-    }
-    return { up, down };
-  }
-
-  /* Balance strip extremes: the year's highest balance above the line and the
-     deepest overdrawn balance below it. */
-  private balanceExtremes(): Extremes {
-    let up = 0;
-    let down = 0;
-    for (const balance of this.accumulated()) {
-      if (balance > 0) {
-        up = Math.max(up, balance);
-      } else {
-        down = Math.max(down, -balance);
-      }
-    }
-    return { up, down };
-  }
-
   yearOverviewZeroPct(): number {
-    return DashboardComponent.zeroPct(this.yearOverviewExtremes());
+    return zeroPct(this.overviewExtremes());
   }
 
   balanceZeroPct(): number {
-    return DashboardComponent.zeroPct(this.balanceExtremes());
+    return zeroPct(this.balanceExtremes());
   }
 
   barHeight(value: number): number {
-    return DashboardComponent.fillPct(value, this.yearOverviewExtremes());
-  }
-
-  /* Net of the scope's Period: the one figure the graph hides behind its
-     relative columns, promoted to a visible caption on the card. */
-  selectedPeriodNet(): number {
-    return this.yearOverviewData().find(o => o.period === this.scope().period)?.net ?? 0;
+    return fillPct(value, this.overviewExtremes());
   }
 
   /* Scale anchor: the figures the overview's scale edges are worth — the
-     tallest column above the line (the year's largest magnitude: Income and
-     Expenses magnitudes always dominate any negative Net) and the deepest
-     overdrawn Net below it, signed. Stated so the relative heights get
-     absolute meaning. */
+     tallest column above the line and the deepest overdrawn Net below it,
+     signed. Stated so the relative heights get absolute meaning. */
   overviewScalePeak(): number {
-    return this.yearOverviewExtremes().up;
+    return this.overviewExtremes().up;
   }
 
   overviewScaleOverdrawn(): number {
-    return -this.yearOverviewExtremes().down;
+    return -this.overviewExtremes().down;
   }
 
-  /* Scale anchor: what the strip's track top is worth — the year's highest
-     balance — unless the year's max magnitude is an overdrawn balance, in
-     which case the anchor names that magnitude with its sign instead of
-     letting the deepest fill sit unanchored. */
   stripScaleAnchor(): { label: string; amount: number } {
-    const { up, down } = this.balanceExtremes();
-    return down > up
-      ? { label: this.language.t('stats.scaleOverdrawn'), amount: -down }
-      : { label: this.language.t('stats.stripScaleTop'), amount: up };
-  }
-
-  /* The strip's Scope-Period column: the balance the caption promotes — the
-     figure that equals the total balance headline on the card. */
-  scopePeriodBalance(): number {
-    return this.accumulated()[this.scope().period - 1] ?? 0;
+    const anchor = stripScaleAnchor(this.report().balanceStrip.accumulated);
+    const label = anchor.kind === 'overdrawn' ? 'stats.scaleOverdrawn' : 'stats.stripScaleTop';
+    return { label: this.language.t(label), amount: anchor.amount };
   }
 
   /* Balance strip fills scale against the year's extremes around the
      data-driven zero line, so an overdrawn month grows down from it. */
   balanceFillHeight(balance: number): number {
-    return DashboardComponent.fillPct(balance, this.balanceExtremes());
+    return fillPct(balance, this.balanceExtremes());
   }
 
   /* The accessible figure list: Income, Expenses, and Net per Period. */
