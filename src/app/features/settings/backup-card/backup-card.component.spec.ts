@@ -371,6 +371,50 @@ describe('BackupCardComponent', () => {
     expect(errors[0].textContent).toContain('No backup');
   });
 
+  describe('after a failed Onboarding Restore', () => {
+    /* Onboarding restores in one step (connect, then restore) and reports its
+       own outcome; nothing of it may linger for the card to show later. */
+    function stubSignIn(response: { access_token?: string; expires_in?: number; error?: string }) {
+      (globalThis as any).google = {
+        accounts: {
+          oauth2: {
+            initTokenClient: (config: { callback: (r: unknown) => void }) => ({
+              requestAccessToken: () => config.callback(response),
+            }),
+          },
+        },
+      };
+    }
+
+    afterEach(() => {
+      delete (globalThis as any).google;
+      vi.unstubAllGlobals();
+    });
+
+    function errorAlerts(): NodeListOf<HTMLElement> {
+      fixture.detectChanges();
+      return fixture.nativeElement.querySelectorAll('.alert[class*="-error"]');
+    }
+
+    it('shows no error when the sign-in was declined', async () => {
+      stubSignIn({ error: 'access_denied' });
+
+      await expect(backupService.connect()).rejects.toThrow();
+
+      expect(errorAlerts()).toHaveLength(0);
+    });
+
+    it('shows no error when the cloud Restore itself failed', async () => {
+      stubSignIn({ access_token: 'token', expires_in: 3600 });
+      await backupService.connect();
+      vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
+
+      await expect(backupService.restore()).rejects.toThrow();
+
+      expect(errorAlerts()).toHaveLength(0);
+    });
+  });
+
   it('a blocked sign-in window is a failed Restore', async () => {
     vi.spyOn(backupService, 'getCloudSnapshot').mockRejectedValue(
       new TranslationError('backup.error.oauth.popupBlocked'),
