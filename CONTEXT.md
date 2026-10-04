@@ -119,12 +119,16 @@ _Avoid_: Provider, cloud service, storage
 A user-initiated, full overwrite of local data from a prior Backup — from a cloud provider or an uploaded file. Restore replaces the entire local dataset and never triggers a new Backup.
 _Avoid_: Recovery, import, rollback
 
+**Pending Restore**:
+A Backup fetched from a Backup Method or read from an uploaded file, waiting for the user to confirm the overwrite. There is at most one at a time, and every Restore entry point presents the same one: confirming or declining it from one place settles it everywhere. Onboarding has no Pending Restore — with no data to lose, it restores without a confirm.
+_Avoid_: staged restore, restore preview
+
 **Last Backup**:
 The freshness figure shown in the sidebar caption and the Settings backup card: the time of the most recent Backup whose data this device holds. A Backup sets it to the backup's own time; a Restore sets it to the time the restored snapshot was taken — never to the restoring device's action time, and never inherited from the snapshot's mirrored profile. It answers "how fresh is the data I'm holding", not "when did this device last act".
 _Avoid_: last sync, backup date of this device
 
 **Cancelled Restore**:
-A Restore attempt that ends before any data changes because the user backed out — closing the sign-in window, declining access, or not picking a file. It leaves local data untouched, re-enables the Restore controls, and is not a failed Restore.
+A Restore attempt that ends before any data changes because the user backed out — closing the sign-in window, declining access, not picking a file, or declining a Pending Restore. It leaves local data untouched, re-enables the Restore controls, and is not a failed Restore. A sign-in window the browser blocked, or a sign-in that could not load, is not the user backing out: that Restore failed.
 _Avoid_: Failed restore, restore error
 
 **Deactivate**:
