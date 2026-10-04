@@ -9,7 +9,7 @@ import {
 import { DriveBackupService } from '../../../core/services/drive-backup.service';
 import { NetworkService } from '../../../core/services/network.service';
 import { LanguageService } from '../../../core/services/language.service';
-import { NoBackupFoundError } from '../../../backup/drive-backup-provider';
+import { FetchOutcome, RestoreFlow } from '../../../core/services/restore-flow.service';
 import { downloadBackupFile } from '../../../backup/backup-file-download';
 import { DismissibleAlertComponent } from '../../../shared/components/dismissible-alert/dismissible-alert.component';
 import { formatLastBackupStatus } from '../../../backup/last-backup-status';
@@ -26,12 +26,18 @@ import { TranslationError, errorCopy } from '../../../core/models/translation-er
 export class BackupCardComponent {
   private backupService = inject(DriveBackupService);
   private networkService = inject(NetworkService);
+  private restoreFlow = inject(RestoreFlow);
   language = inject(LanguageService);
 
   method = this.backupService.method;
-  pendingRestore = this.backupService.pendingRestore;
-  isBusy = signal(false);
+  pendingRestore = this.restoreFlow.pending;
+
+  /** The card's own Backup and download work; a Restore's comes from the shared flow. */
+  private working = signal(false);
+
+  isBusy = computed(() => this.working() || this.restoreFlow.restoring());
   message = signal('');
+  infoMessage = signal('');
   errorMessage = signal('');
   statusEpoch = signal(0);
 
@@ -73,6 +79,7 @@ export class BackupCardComponent {
   private newStatusCycle(): void {
     this.statusEpoch.update((n) => n + 1);
     this.message.set('');
+    this.infoMessage.set('');
     this.errorMessage.set('');
   }
 
@@ -80,7 +87,7 @@ export class BackupCardComponent {
     if (this.isBusy() || !this.isOnline()) {
       return;
     }
-    this.isBusy.set(true);
+    this.working.set(true);
     this.newStatusCycle();
 
     try {
@@ -88,7 +95,7 @@ export class BackupCardComponent {
     } catch {
       // Cloud backup errors surface via the service-error alert.
     } finally {
-      this.isBusy.set(false);
+      this.working.set(false);
     }
   }
 
@@ -105,7 +112,7 @@ export class BackupCardComponent {
   });
 
   async downloadBackup(): Promise<void> {
-    this.isBusy.set(true);
+    this.working.set(true);
     this.newStatusCycle();
 
     try {
@@ -116,7 +123,7 @@ export class BackupCardComponent {
         errorCopy(e, this.language.translateFn, 'backup.card.downloadFailed'),
       );
     } finally {
-      this.isBusy.set(false);
+      this.working.set(false);
     }
   }
 
@@ -126,62 +133,36 @@ export class BackupCardComponent {
     if (!file) return;
 
     this.newStatusCycle();
-
-    try {
-      const snapshot = await this.backupService.parseBackupFile(file);
-      this.backupService.pendingRestore.set(snapshot);
-    } catch (e: unknown) {
-      this.backupService.pendingRestore.set(null);
-      this.errorMessage.set(
-        errorCopy(e, this.language.translateFn, 'backup.error.invalidFile'),
-      );
-    } finally {
-      input.value = '';
-    }
+    input.value = '';
+    this.showFetchOutcome(await this.restoreFlow.fetch(() => this.backupService.parseBackupFile(file)));
   }
 
   async restoreFromCloud(): Promise<void> {
-    this.isBusy.set(true);
     this.newStatusCycle();
-    this.backupService.pendingRestore.set(null);
-
-    try {
-      const snapshot = await this.backupService.getCloudSnapshot();
-      this.backupService.pendingRestore.set(snapshot);
-    } catch (e: unknown) {
-      if (e instanceof NoBackupFoundError) {
-        this.errorMessage.set(this.language.t('backup.noCloudBackup'));
-      } else {
-        this.errorMessage.set(
-          errorCopy(e, this.language.translateFn, 'backup.error.restoreFailed'),
-        );
-      }
-    } finally {
-      this.isBusy.set(false);
-    }
+    this.showFetchOutcome(await this.restoreFlow.fetch(() => this.backupService.getCloudSnapshot()));
   }
 
   async confirmRestore(): Promise<void> {
-    const snapshot = this.backupService.pendingRestore();
-    if (!snapshot) return;
+    if (!this.pendingRestore()) return;
 
-    this.isBusy.set(true);
     this.newStatusCycle();
-
-    try {
-      await this.backupService.restoreFromSnapshot(snapshot);
-      this.backupService.pendingRestore.set(null);
+    const outcome = await this.restoreFlow.confirm();
+    if (outcome?.kind === 'restored') {
       this.message.set(this.language.t('backup.restoredOk'));
-    } catch (e: unknown) {
-      this.errorMessage.set(
-        errorCopy(e, this.language.translateFn, 'backup.error.restoreFailed'),
-      );
-    } finally {
-      this.isBusy.set(false);
+    } else if (outcome?.kind === 'failed') {
+      this.errorMessage.set(this.language.t(outcome.key, outcome.params));
     }
   }
 
   cancelRestore(): void {
-    this.backupService.cancelPendingRestore();
+    this.restoreFlow.decline();
+  }
+
+  private showFetchOutcome(outcome: FetchOutcome): void {
+    if (outcome.kind === 'cancelled') {
+      this.infoMessage.set(this.language.t(outcome.key));
+    } else if (outcome.kind === 'failed') {
+      this.errorMessage.set(this.language.t(outcome.key, outcome.params));
+    }
   }
 }

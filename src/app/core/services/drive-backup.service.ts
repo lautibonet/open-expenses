@@ -36,13 +36,8 @@ export class DriveBackupService {
   isConnected = signal(false);
   isBackingUp = signal(false);
   lastBackupAt = signal<Date | null>(null);
+  /** The last Backup error; Restore errors travel through their own outcome instead. */
   error = signal<TranslationError | Error | string | null>(null);
-  /**
-   * The snapshot awaiting confirm in the two-step Restore, shared by the
-   * Settings backup card and the mobile top-bar quick action so both entry
-   * points present one pending Restore.
-   */
-  pendingRestore = signal<BackupSnapshot | null>(null);
 
   private accessToken: string | null = null;
 
@@ -59,27 +54,29 @@ export class DriveBackupService {
     this.error.set(null);
   }
 
-  cancelPendingRestore(): void {
-    this.pendingRestore.set(null);
-  }
-
-  private setAndRethrow(fallbackKey: string, e: unknown): never {
-    const err = e instanceof NewerBackupVersionError
+  private asBackupError(fallbackKey: string, e: unknown): Error {
+    return e instanceof NewerBackupVersionError
       ? new TranslationError('backup.error.newerVersion')
       : e instanceof Error
         ? e
         : new TranslationError(fallbackKey);
+  }
+
+  /** Backup failures are recorded in `error`, which carries Backup errors only. */
+  private setAndRethrow(fallbackKey: string, e: unknown): never {
+    const err = this.asBackupError(fallbackKey, e);
     this.error.set(err);
     throw err;
   }
 
+  /**
+   * Signs in to the Backup Method. A failure rejects with its translated copy
+   * and is left for the caller to record: a Backup records it as the Backup
+   * error, a Restore reports it through its own outcome.
+   */
   async connect(): Promise<void> {
-    this.error.set(null);
-
     if (!this.networkService.isOnline()) {
-      const err = new TranslationError('backup.error.offlineConnect');
-      this.error.set(err);
-      throw err;
+      throw new TranslationError('backup.error.offlineConnect');
     }
 
     await this.loadGoogleIdentityServices();
@@ -91,7 +88,6 @@ export class DriveBackupService {
         scope: this.SCOPES,
         callback: (response: any) => {
           if (response.error) {
-            this.error.set(response.error);
             reject(new TranslationError(oauthErrorKey(response.error)));
             return;
           }
@@ -102,7 +98,6 @@ export class DriveBackupService {
         },
         error_callback: (oauthError: { type?: string }) => {
           const type = oauthError?.type ?? 'popup_closed';
-          this.error.set(type);
           reject(new TranslationError(oauthErrorKey(type)));
         },
       });
@@ -174,13 +169,12 @@ export class DriveBackupService {
     }
 
     this.isBackingUp.set(true);
-    this.error.set(null);
 
     try {
       const snapshot = await this.provider.downloadSnapshot();
       await this.applyRestoredSnapshot(snapshot);
     } catch (e: unknown) {
-      this.setAndRethrow('backup.error.restoreFailed', e);
+      throw this.asBackupError('backup.error.restoreFailed', e);
     } finally {
       this.isBackingUp.set(false);
     }
@@ -196,7 +190,6 @@ export class DriveBackupService {
     }
 
     this.isBackingUp.set(true);
-    this.error.set(null);
 
     try {
       if (!this.accessToken) {
@@ -205,7 +198,7 @@ export class DriveBackupService {
 
       return await this.provider.downloadSnapshot();
     } catch (e: unknown) {
-      this.setAndRethrow('backup.error.restoreFailed', e);
+      throw this.asBackupError('backup.error.restoreFailed', e);
     } finally {
       this.isBackingUp.set(false);
     }
@@ -230,12 +223,11 @@ export class DriveBackupService {
 
   async restoreFromSnapshot(snapshot: BackupSnapshot): Promise<void> {
     this.isBackingUp.set(true);
-    this.error.set(null);
 
     try {
       await this.applyRestoredSnapshot(snapshot);
     } catch (e: unknown) {
-      this.setAndRethrow('backup.error.restoreFailed', e);
+      throw this.asBackupError('backup.error.restoreFailed', e);
     } finally {
       this.isBackingUp.set(false);
     }

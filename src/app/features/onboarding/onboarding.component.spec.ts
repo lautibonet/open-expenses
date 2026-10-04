@@ -1392,6 +1392,18 @@ describe('OnboardingComponent', () => {
     expect(navigate).not.toHaveBeenCalled();
   });
 
+  it('shows a blocked sign-in window as a failed Restore, not a neutral notice', async () => {
+    component.goTo('restore');
+    driveBackupService.connect.mockRejectedValue(
+      new TranslationError('backup.error.oauth.popupBlocked'),
+    );
+
+    await component.restoreFromCloud();
+
+    expect(component.infoMessage()).toBe('');
+    expect(component.errorMessage()).not.toBe('');
+  });
+
   it('restores from an uploaded file and lands on Movements', async () => {
     const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
     const file = new File(['{}'], 'backup.json', { type: 'application/json' });

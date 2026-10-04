@@ -6,6 +6,7 @@ import { routes } from '../../../app.routes';
 import { LanguageService } from '../../../core/services/language.service';
 import { CaptureFormService } from '../../../core/services/capture-form.service';
 import { DriveBackupService } from '../../../core/services/drive-backup.service';
+import { RestoreFlow } from '../../../core/services/restore-flow.service';
 import { NetworkService } from '../../../core/services/network.service';
 import { PwaInstallService } from '../../../core/services/pwa-install.service';
 import { PwaUpdateService } from '../../../core/services/pwa-update.service';
@@ -328,7 +329,7 @@ describe('ShellComponent', () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    expect(backupService.pendingRestore()).not.toBeNull();
+    expect(TestBed.inject(RestoreFlow).pending()).not.toBeNull();
     const sheet = fixture.nativeElement.querySelector('app-bottom-sheet') as HTMLElement;
     expect(sheet).not.toBeNull();
     expect(sheet.textContent).toContain('Restore from Google Drive');
@@ -364,9 +365,8 @@ describe('ShellComponent', () => {
     expect(actions[1].querySelector('svg.spin')).toBeNull();
   });
 
-  it('keeps the restore sheet closed when the pending restore comes from the Settings card', () => {
-    const snapshot = snapshotStub();
-    TestBed.inject(DriveBackupService).pendingRestore.set(snapshot);
+  it('keeps the restore sheet closed when the pending restore comes from the Settings card', async () => {
+    await TestBed.inject(RestoreFlow).fetch(async () => snapshotStub() as never);
     fixture.componentInstance.isMobileLayout.set(true);
     fixture.detectChanges();
 
@@ -402,7 +402,7 @@ describe('ShellComponent', () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    expect(backupService.pendingRestore()).toBeNull();
+    expect(TestBed.inject(RestoreFlow).pending()).toBeNull();
     const strip = fixture.nativeElement.querySelector('.feedback-strip') as HTMLElement;
     expect(strip.textContent).toContain('Restored · Just now');
   });
@@ -426,8 +426,26 @@ describe('ShellComponent', () => {
     cancel.click();
     fixture.detectChanges();
 
-    expect(backupService.pendingRestore()).toBeNull();
+    expect(TestBed.inject(RestoreFlow).pending()).toBeNull();
     expect(restoreSpy).not.toHaveBeenCalled();
+    expect(fixture.nativeElement.querySelector('app-bottom-sheet')).toBeNull();
+  });
+
+  it('a closed sign-in window is a Cancelled Restore: no strip, no sheet', async () => {
+    const backupService = TestBed.inject(DriveBackupService);
+    vi.spyOn(backupService, 'getCloudSnapshot').mockRejectedValue(
+      new TranslationError('backup.error.oauth.cancelled'),
+    );
+    fixture.componentInstance.isMobileLayout.set(true);
+
+    const actions = fixture.nativeElement.querySelectorAll(
+      '.quick-action',
+    ) as NodeListOf<HTMLButtonElement>;
+    actions[1].click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.feedback-strip')).toBeNull();
     expect(fixture.nativeElement.querySelector('app-bottom-sheet')).toBeNull();
   });
 

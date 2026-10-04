@@ -8,6 +8,7 @@ import { LanguageService } from '../../../core/services/language.service';
 import { db } from '../../../core/db/database';
 import { BackupSnapshot } from '../../../backup/backup-snapshot';
 import { NoBackupFoundError } from '../../../backup/drive-backup-provider';
+import { TranslationError } from '../../../core/models/translation-error';
 
 function sampleSnapshot(): BackupSnapshot {
   return {
@@ -344,6 +345,29 @@ describe('BackupCardComponent', () => {
 
     expect(component.pendingRestore()).toBeNull();
     expect(component.errorMessage()).toContain('No backup');
+  });
+
+  it('a closed sign-in window is a Cancelled Restore: a neutral info line, no error', async () => {
+    vi.spyOn(backupService, 'getCloudSnapshot').mockRejectedValue(
+      new TranslationError('backup.error.oauth.cancelled'),
+    );
+
+    await component.restoreFromCloud();
+
+    expect(component.pendingRestore()).toBeNull();
+    expect(component.errorMessage()).toBe('');
+    expect(component.infoMessage()).toContain('sign-in was cancelled');
+  });
+
+  it('a blocked sign-in window is a failed Restore', async () => {
+    vi.spyOn(backupService, 'getCloudSnapshot').mockRejectedValue(
+      new TranslationError('backup.error.oauth.popupBlocked'),
+    );
+
+    await component.restoreFromCloud();
+
+    expect(component.infoMessage()).toBe('');
+    expect(component.errorMessage()).not.toBe('');
   });
 
   it('dismisses the failure note and brings it back on the next failure', async () => {
