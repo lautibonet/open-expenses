@@ -518,21 +518,27 @@ async function completeOnboarding(
 
   // 4. Accounts
   await page.getByRole('button', { name: 'New account' }).click();
-  await page.getByPlaceholder('Account name').fill('Checking');
-  await page.getByPlaceholder('Initial balance').fill('100');
+  await page.getByLabel('Account name').fill('Checking');
+  await page.getByLabel('Initial balance').fill('100');
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   if (opts.secondAccount) {
-    await page.getByRole('button', { name: 'New account' }).click();
-    await page.getByPlaceholder('Account name').fill('Savings');
-    await page.getByPlaceholder('Initial balance').fill('50');
+    // The add form stays open after a successful add.
+    await page.getByLabel('Account name').fill('Savings');
+    await page.getByLabel('Initial balance').fill('50');
     await page.getByRole('button', { name: 'Add', exact: true }).click();
   }
   await page.getByRole('button', { name: 'Continue' }).click();
 
   // 5. Categories: defaults are prefilled; optionally rename one to a very long name
   if (opts.longCategory) {
-    const miscRow = page.getByRole('row', { name: 'Misc Expense' });
-    await miscRow.getByPlaceholder('Category name').fill(LONG_CATEGORY);
+    const miscRow = page
+      .locator('li.category-row')
+      .filter({ has: page.locator('.category-name', { hasText: /^Misc$/ }) });
+    await miscRow.getByRole('button', { name: 'Edit category' }).click();
+    // The row swaps its name for the edit state; only one is open at a time.
+    const edit = page.locator('li.category-row .edit-state');
+    await edit.getByLabel('Category name').fill(LONG_CATEGORY);
+    await edit.getByRole('button', { name: 'Save changes' }).click();
   }
   await page.getByRole('button', { name: 'Start Tracking' }).click();
 

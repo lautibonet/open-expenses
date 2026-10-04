@@ -172,9 +172,9 @@ async function completeOnboarding(page: import('@playwright/test').Page) {
 
   // 4. Accounts
   await page.getByRole('button', { name: 'New account' }).click();
-  await page.getByPlaceholder('Account name').fill('Checking');
+  await page.getByLabel('Account name').fill('Checking');
   await page.getByLabel('Initial balance').fill('100');
-  await page.getByRole('button', { name: '+ Add' }).click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('button', { name: 'Continue' }).click();
 
   // 5. Categories: defaults are prefilled
