@@ -359,6 +359,18 @@ describe('BackupCardComponent', () => {
     expect(component.infoMessage()).toContain('sign-in was cancelled');
   });
 
+  it('a failed Restore after a failed Backup shows exactly one error', async () => {
+    backupService.error.set(new TranslationError('backup.error.backupFailed'));
+    vi.spyOn(backupService, 'getCloudSnapshot').mockRejectedValue(new NoBackupFoundError());
+
+    await component.restoreFromCloud();
+    fixture.detectChanges();
+
+    const errors = fixture.nativeElement.querySelectorAll('.alert[class*="-error"]');
+    expect(errors).toHaveLength(1);
+    expect(errors[0].textContent).toContain('No backup');
+  });
+
   it('a blocked sign-in window is a failed Restore', async () => {
     vi.spyOn(backupService, 'getCloudSnapshot').mockRejectedValue(
       new TranslationError('backup.error.oauth.popupBlocked'),

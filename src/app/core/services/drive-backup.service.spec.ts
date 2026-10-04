@@ -718,6 +718,13 @@ describe('DriveBackupService', () => {
       await expect(service.parseBackupFile(file)).rejects.toThrow('backup.error.invalidFile');
     });
 
+    it('throws the invalid-file copy when the file cannot be read', async () => {
+      const file = new File(['{}'], 'backup.json', { type: 'application/json' });
+      vi.spyOn(file, 'text').mockRejectedValue(new DOMException('unreadable', 'NotReadableError'));
+
+      await expect(service.parseBackupFile(file)).rejects.toThrow('backup.error.invalidFile');
+    });
+
     it('throws when the file is not a backup snapshot', async () => {
       const file = new File([JSON.stringify({ foo: 'bar' })], 'backup.json', {
         type: 'application/json',

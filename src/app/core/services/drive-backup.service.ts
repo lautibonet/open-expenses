@@ -205,11 +205,9 @@ export class DriveBackupService {
   }
 
   async parseBackupFile(file: File): Promise<BackupSnapshot> {
-    const json = await file.text();
-
     let snapshot: BackupSnapshot;
     try {
-      snapshot = parseSnapshot(json);
+      snapshot = parseSnapshot(await file.text());
     } catch {
       throw new TranslationError('backup.error.invalidFile');
     }

@@ -76,6 +76,13 @@ export class BackupCardComponent {
     });
   }
 
+  /* A Restore starts a fresh status cycle for the whole card: a stale Backup
+     error must not sit beside the Restore's own outcome. */
+  private newRestoreCycle(): void {
+    this.backupService.clearError();
+    this.newStatusCycle();
+  }
+
   private newStatusCycle(): void {
     this.statusEpoch.update((n) => n + 1);
     this.message.set('');
@@ -132,20 +139,20 @@ export class BackupCardComponent {
     const file = input.files?.[0] ?? null;
     if (!file) return;
 
-    this.newStatusCycle();
+    this.newRestoreCycle();
     input.value = '';
     this.showFetchOutcome(await this.restoreFlow.fetch(() => this.backupService.parseBackupFile(file)));
   }
 
   async restoreFromCloud(): Promise<void> {
-    this.newStatusCycle();
+    this.newRestoreCycle();
     this.showFetchOutcome(await this.restoreFlow.fetch(() => this.backupService.getCloudSnapshot()));
   }
 
   async confirmRestore(): Promise<void> {
     if (!this.pendingRestore()) return;
 
-    this.newStatusCycle();
+    this.newRestoreCycle();
     const outcome = await this.restoreFlow.confirm();
     if (outcome?.kind === 'restored') {
       this.message.set(this.language.t('backup.restoredOk'));

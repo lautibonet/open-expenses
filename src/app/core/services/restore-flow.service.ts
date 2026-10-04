@@ -9,7 +9,7 @@ export type ConfirmOutcome = { kind: 'restored' } | RestoreFailed;
 
 /**
  * The two-step Restore shared by the Settings backup card and the mobile
- * top-bar quick action: get a snapshot from a source (a Backup Method or an
+ * top-bar quick action: get a Backup from a source (a Backup Method or an
  * uploaded file), hold it as the one Pending Restore, then confirm or decline
  * it. Each entry point keeps its own copy and confirm view; the steps and the
  * outcome of every attempt live here.
@@ -18,19 +18,19 @@ export type ConfirmOutcome = { kind: 'restored' } | RestoreFailed;
 export class RestoreFlow {
   private backupService = inject(DriveBackupService);
 
-  private readonly pendingSnapshot = signal<BackupSnapshot | null>(null);
+  private readonly pendingRestore = signal<BackupSnapshot | null>(null);
   private readonly busy = signal(false);
 
   /** The one Pending Restore, presented by every entry point. */
-  readonly pending = this.pendingSnapshot.asReadonly();
+  readonly pending = this.pendingRestore.asReadonly();
 
   readonly restoring = this.busy.asReadonly();
 
   async fetch(source: () => Promise<BackupSnapshot>): Promise<FetchOutcome> {
     this.busy.set(true);
-    this.pendingSnapshot.set(null);
+    this.pendingRestore.set(null);
     try {
-      this.pendingSnapshot.set(await source());
+      this.pendingRestore.set(await source());
       return { kind: 'pending' };
     } catch (e: unknown) {
       return restoreOutcomeOf(e);
@@ -41,13 +41,13 @@ export class RestoreFlow {
 
   /** Overwrites local data with the Pending Restore; null when none is pending. */
   async confirm(): Promise<ConfirmOutcome | null> {
-    const snapshot = this.pendingSnapshot();
+    const snapshot = this.pendingRestore();
     if (!snapshot) return null;
 
     this.busy.set(true);
     try {
       await this.backupService.restoreFromSnapshot(snapshot);
-      this.pendingSnapshot.set(null);
+      this.pendingRestore.set(null);
       return { kind: 'restored' };
     } catch (e: unknown) {
       /* A confirm is never a cancel: the user already said yes. */
@@ -60,6 +60,6 @@ export class RestoreFlow {
 
   /** Declining the Pending Restore is a Cancelled Restore with nothing to show. */
   decline(): void {
-    this.pendingSnapshot.set(null);
+    this.pendingRestore.set(null);
   }
 }
