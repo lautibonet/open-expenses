@@ -6,7 +6,7 @@ import { Transfer } from '../models/transfer.model';
 import { Profile } from '../models/profile.model';
 import { cleanDataset, Dataset, DATASET_TABLES } from './clean-dataset';
 
-export class AppDatabase extends Dexie {
+class AppDatabase extends Dexie {
   accounts!: Table<Account>;
   categories!: Table<Category>;
   transactions!: Table<Transaction>;

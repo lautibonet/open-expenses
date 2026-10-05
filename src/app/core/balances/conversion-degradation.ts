@@ -16,11 +16,6 @@ export interface ConversionDegradation {
   unconvertedTransactions: boolean;
 }
 
-export const noDegradation: ConversionDegradation = {
-  accountsExcluded: false,
-  unconvertedTransactions: false,
-};
-
 /**
  * Transactions on non-base-currency accounts with neither a stored base
  * amount nor a stored exchange rate, that reach at least one figure the
