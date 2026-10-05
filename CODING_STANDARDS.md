@@ -4,7 +4,7 @@ Judgement calls for review. Mechanical rules are enforced by tools, not listed h
 
 ## Domain language
 
-Names in code, tests and UI copy use the terms defined in `CONTEXT.md`. A synonym listed under a term's _Avoid_ (for example "Entry" for Transaction, "Wallet" for Account) is a finding, as is a new concept the glossary has no term for. The fix is to add the term to `CONTEXT.md` in the same change.
+Names in code, tests and UI copy use the terms defined in `GLOSSARY.md`. A synonym listed under a term's _Avoid_ (for example "Entry" for Transaction, "Wallet" for Account) is a finding, as is a new concept the glossary has no term for. The fix is to add the term to `GLOSSARY.md` in the same change.
 
 ## Decisions
 

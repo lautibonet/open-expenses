@@ -12,7 +12,7 @@ Default five-role vocabulary: `needs-triage`, `needs-info`, `ready-for-agent`, `
 
 ### Domain docs
 
-Single-context layout: one `CONTEXT.md` at repo root + `docs/adr/`. See `docs/agents/domain.md`.
+Single-context layout: one `GLOSSARY.md` at repo root + `docs/adr/`. See `docs/agents/domain.md`.
 
 ### Releases
 

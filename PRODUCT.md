@@ -47,7 +47,7 @@ An open-source, privacy-first personal finance tool that requires zero server, z
 
 - Fully functional Angular 21 app with working features across all three tabs.
 - Complete spec at `docs/spec.md` with 59 user stories and implementation decisions.
-- Domain glossary at `CONTEXT.md`.
+- Domain glossary at `GLOSSARY.md`.
 - 7 architectural decision records in `docs/adr/`.
 - Component-scoped SCSS over a global token layer in `styles.scss` (colors, type, radii, spacing, elevation), with shared style patterns extracted into `src/app/shared/styles/_patterns.scss`; the design system is documented at `DESIGN.md`.
 

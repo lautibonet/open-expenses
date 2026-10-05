@@ -212,4 +212,4 @@ Exchange rate lookups happen directly from the client against a free, key-less p
 
 - This spec supersedes the earlier v2 spec (docs/original-spec/open-expense-tracker-original-spec.md). Domain rules about Transaction/Transfer separation carry over; the period model, navigation structure, and Dashboard scope are new decisions from the grilling session.
 - The primary motivation: having a fully-developed, lightweight, actually-finished app for a currently-empty GitHub portfolio matters more than demonstrating a complete multi-tier stack.
-- Domain glossary is maintained in CONTEXT.md. Architectural decisions are recorded in docs/adr/ (0001 through 0006).
+- Domain glossary is maintained in GLOSSARY.md. Architectural decisions are recorded in docs/adr/ (0001 through 0006).
