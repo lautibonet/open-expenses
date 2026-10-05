@@ -116,7 +116,7 @@ The destination of a cloud Backup — Google Drive today, with Dropbox and iClou
 _Avoid_: Provider, cloud service, storage
 
 **Restore**:
-A user-initiated, full overwrite of local data from a prior Backup — from a cloud provider or an uploaded file. Restore replaces the entire local dataset and never triggers a new Backup.
+A user-initiated, full overwrite of local data from a prior Backup — from a cloud provider or an uploaded file. Restore replaces the entire local dataset and never triggers a new Backup. Restoring an older Backup ends with the same data a device that kept that data all along would hold.
 _Avoid_: Recovery, import, rollback
 
 **Pending Restore**:

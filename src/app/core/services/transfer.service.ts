@@ -1,10 +1,9 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable } from '@angular/core';
 import { db } from '../db/database';
 import { Transfer } from '../models/transfer.model';
 import { Account, isCreditCard } from '../models/account.model';
 import { TranslationError } from '../models/translation-error';
-import { LanguageService } from './language.service';
-import { ensurePaymentCategory } from '../payment-category/payment-category';
+import { paymentCategoryOf } from '../payment-category/payment-category';
 import {
   getCurrentYear,
   isValidPeriod,
@@ -13,8 +12,6 @@ import {
 
 @Injectable({ providedIn: 'root' })
 export class TransferService {
-  private languageService = inject(LanguageService);
-
   async create(
     sourceAccountId: number,
     destinationAccountId: number,
@@ -141,19 +138,15 @@ export class TransferService {
 
   /* Amended ADR 0022 (ticket #173): a Transfer into a Credit Card wears the
      card's own Payment Category — the caller never picks one, and redirecting
-     the destination re-resolves it. Every other Transfer carries none. The
-     Payment Category module resolves it, repairing a dangling link (#184). */
+     the destination re-resolves it. Every other Transfer carries none. Only
+     the card's stored link counts (ADR 0026): a card without one refuses. */
   private async paymentCategoryIdFor(
     destination: Account | undefined,
   ): Promise<number | undefined> {
     if (!destination || !isCreditCard(destination)) {
       return undefined;
     }
-    const category = await ensurePaymentCategory(
-      destination,
-      this.languageService.activeLanguage(),
-    );
-    return category.id;
+    return (await paymentCategoryOf(destination)).id;
   }
 
   async delete(id: number): Promise<void> {

@@ -285,7 +285,7 @@ export class TransactionFormComponent implements OnInit, AfterViewInit {
   private handleEditInput(t: Transaction | null): void {
     if (!t) return;
 
-    const date = dateToLocalISO(new Date(t.date));
+    const date = dateToLocalISO(t.date);
     const fallback = periodYearFromDate(date);
     this.editingId.set(t.id ?? null);
     this.form.set({

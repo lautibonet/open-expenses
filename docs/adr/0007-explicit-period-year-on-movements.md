@@ -5,3 +5,5 @@ Transactions and Transfers each store a `year` alongside their `period` month na
 This supersedes the simplification in ADR 0003 that the year was always implied as the current year. That assumption fails the moment a period and its date fall in different years, which happens every pay cycle that crosses a year boundary. Deriving the year from the date instead of storing it would make the reported figures depend on a calendar detail the user does not control, so the year of the Period is recorded on the movement itself, matching how the user already thinks in the spreadsheet.
 
 New movements default their year to the current year. Pre-existing movements without a stored year fall back to their date's year so reporting keeps working: the Dexie upgrade backfills `year` from `date` on open, and restore normalizes old backups the same way. The cost is a small data migration and one extra number in the movement entry forms.
+
+Amended by ADR 0026: the year backfill is part of the one row cleanup, which derives a missing year only after the Movement Date is shifted to local midnight.

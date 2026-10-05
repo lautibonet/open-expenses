@@ -382,6 +382,46 @@ describe('backup-snapshot', () => {
       expect(transfers.map((t) => t.period)).toEqual([2]);
     });
 
+    it('links every card to its Payment Category when restoring a Backup taken before the card pairing', async () => {
+      const snapshot: BackupSnapshot = {
+        ...sampleSnapshot(),
+        schemaVersion: 3,
+        accounts: [
+          { id: 1, name: 'Cash', currency: 'EUR', initialBalance: 0, active: true, kind: 'cash', createdAt: '2026-01-01T00:00:00.000Z' },
+          { id: 2, name: 'Visa', currency: 'EUR', initialBalance: 0, active: true, kind: 'credit-card', createdAt: '2026-01-01T00:00:00.000Z' },
+        ],
+        profile: [{ id: 1, baseCurrency: 'EUR', language: 'es', onboardingCompleted: true, lastBackupAt: null }],
+      };
+
+      await overwriteLocalDb(snapshot);
+
+      const visa = (await db.accounts.get(2))!;
+      expect((await db.categories.get(visa.paymentCategoryId!))!.name).toBe('Pago Visa');
+    });
+
+    it('restores Movement Dates and creation times as dates, Movement Dates at local midnight', async () => {
+      const snapshot: BackupSnapshot = {
+        ...sampleSnapshot(),
+        schemaVersion: 3,
+        transactions: [{
+          id: 1, accountId: 1, categoryId: 1, amount: 10,
+          date: '2025-01-01T00:00:00.000Z', period: 1,
+          exchangeRate: null, baseCurrencyAmount: null, note: '',
+          createdAt: '2025-01-01T15:20:00.000Z',
+        }],
+      };
+
+      await overwriteLocalDb(snapshot);
+
+      const [txn] = await db.transactions.toArray();
+      expect(txn.date).toBeInstanceOf(Date);
+      expect([txn.date.getFullYear(), txn.date.getMonth(), txn.date.getDate(), txn.date.getHours()])
+        .toEqual([2025, 0, 1, 0]);
+      expect(txn.year).toBe(2025);
+      expect(txn.createdAt).toEqual(new Date('2025-01-01T15:20:00.000Z'));
+      expect((await db.accounts.get(1))!.createdAt).toBeInstanceOf(Date);
+    });
+
     it('rejects a restore of a newer-version snapshot with NewerBackupVersionError', async () => {
       const newer = { ...legacySnapshot(), schemaVersion: BACKUP_SCHEMA_VERSION + 99 };
       await expect(overwriteLocalDb(newer)).rejects.toThrow(NewerBackupVersionError);
@@ -409,20 +449,20 @@ describe('backup-snapshot', () => {
       });
       await db.transactions.add({
         accountId: cardId, categoryId: foodId, amount: 120,
-        date: new Date('2026-01-10'), period: 1, year: 2026,
+        date: new Date(2026, 0, 10), period: 1, year: 2026,
         exchangeRate: null, baseCurrencyAmount: null, note: 'Groceries',
         createdAt: new Date('2026-01-10'),
       });
       await db.transactions.add({
         accountId: cashId, categoryId: foodId, amount: 30,
-        date: new Date('2026-01-11'), period: 1, year: 2026,
+        date: new Date(2026, 0, 11), period: 1, year: 2026,
         exchangeRate: null, baseCurrencyAmount: null, note: 'Snacks',
         createdAt: new Date('2026-01-11'),
       });
       await db.transfers.add({
         sourceAccountId: cashId, destinationAccountId: cardId,
         sourceAmount: 120, destinationAmount: 120, exchangeRate: 1,
-        baseCurrencyAmount: 120, date: new Date('2026-02-01'), period: 2,
+        baseCurrencyAmount: 120, date: new Date(2026, 1, 1), period: 2,
         year: 2026, note: 'Statement', categoryId: paymentCategoryId,
         createdAt: new Date('2026-02-01'),
       });

@@ -253,7 +253,7 @@ export class DriveBackupService {
 
   private async refreshLastBackupStatus(): Promise<void> {
     const profile = await this.profileService.get();
-    this.lastBackupAt.set(profile?.lastBackupAt ? new Date(profile.lastBackupAt) : null);
+    this.lastBackupAt.set(profile?.lastBackupAt ?? null);
   }
 
   async restoreFromFile(file: File): Promise<void> {
@@ -279,7 +279,7 @@ export class DriveBackupService {
 
     this.profileService.get().then((profile) => {
       if (profile?.lastBackupAt) {
-        this.lastBackupAt.set(new Date(profile.lastBackupAt));
+        this.lastBackupAt.set(profile.lastBackupAt);
       }
     });
   }

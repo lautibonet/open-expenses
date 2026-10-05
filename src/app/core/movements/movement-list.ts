@@ -158,7 +158,7 @@ function transferRow(
 /* Newest date first; same-day movements tie-break by id (creation order) so
    the newest creation sorts first (#172). Ascending is the exact reverse. */
 function newestFirst(a: MovementRow, b: MovementRow): number {
-  const byDate = new Date(movementOf(b).date).getTime() - new Date(movementOf(a).date).getTime();
+  const byDate = movementOf(b).date.getTime() - movementOf(a).date.getTime();
   if (byDate !== 0) return byDate;
   return (movementOf(b).id ?? 0) - (movementOf(a).id ?? 0);
 }
@@ -200,7 +200,7 @@ function byDay(rows: MovementRow[]): MovementDaySection[] {
   const sections: MovementDaySection[] = [];
   const byKey = new Map<string, MovementDaySection>();
   for (const row of rows) {
-    const date = new Date(movementOf(row).date);
+    const date = movementOf(row).date;
     const key = dateToLocalISO(date);
     let section = byKey.get(key);
     if (!section) {

@@ -36,7 +36,7 @@
       [transactions]="transactions()"
       [transfers]="transfers()"
       [accounts]="allAccounts()"
-      [categories]="allCategoriesForNameResolution()"
+      [categories]="allCategories()"
       [baseCurrency]="baseCurrency()"
       [scope]="scope()"
     />
@@ -85,7 +85,7 @@
   <ng-template #transferForm>
     <app-transfer-form
       [accounts]="accounts()"
-      [categories]="allCategoriesForNameResolution()"
+      [categories]="allCategories()"
       [editTransfer]="editTransfer()"
       [initialDraft]="transferRestore()"
       [inSheet]="isMobileLayout()"

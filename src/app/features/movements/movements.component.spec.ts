@@ -231,9 +231,9 @@ describe('MovementsComponent - payment categories vanish from ordinary pickers (
     expect(names.some((n) => n.startsWith('Visa payment'))).toBe(false);
   });
 
-  it('keeps the payment category available for name resolution', async () => {
+  it('keeps the Payment Category available to the transfer form and the Movement list', async () => {
     await component.ngOnInit();
-    expect(component.allCategoriesForNameResolution().some((c) => c.id === paymentCategoryId)).toBe(
+    expect(component.allCategories().some((c) => c.id === paymentCategoryId)).toBe(
       true,
     );
   });
@@ -386,27 +386,27 @@ describe('MovementsComponent - category deactivation and income sign', () => {
     expect((component.rows()[0] as TransactionRow).categoryName).toBe('Food');
   });
 
-  it('should use all categories for name resolution but active-only for form', async () => {
+  it('should feed all categories to the Movement list but active-only to the form', async () => {
     await component.ngOnInit();
 
-    expect(component.allCategoriesForNameResolution().length).toBe(2);
+    expect(component.allCategories().length).toBe(2);
     expect(component.categories().length).toBe(2);
 
     await categoryService.setActive(expenseCategoryId, false);
     await component.ngOnInit();
 
-    expect(component.allCategoriesForNameResolution().length).toBe(2);
+    expect(component.allCategories().length).toBe(2);
     expect(component.categories().length).toBe(1);
   });
 
-  it('should use all categories for filter dropdown name resolution', async () => {
+  it('should keep a deactivated category among all categories', async () => {
     const period = getCurrentPeriod();
     await transactionService.create(accountId, expenseCategoryId, 500, new Date(), period);
     await categoryService.setActive(expenseCategoryId, false);
     await component.ngOnInit();
 
     expect(
-      component.allCategoriesForNameResolution().find((c) => c.id === expenseCategoryId),
+      component.allCategories().find((c) => c.id === expenseCategoryId),
     ).toBeDefined();
   });
 

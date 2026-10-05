@@ -841,26 +841,31 @@ describe('TransferFormComponent', () => {
       expect(transfers[0].categoryId).toBe(paymentCategoryId);
     });
 
-    /* Issue #184: the form resolves with the service's own rule, so a card
-       whose link is dangling shows the category the save will create, and
-       the stored Transfer wears exactly that one. */
-    it('shows the category the save will create when the link is dangling', async () => {
-      await db.categories.delete(paymentCategoryId);
+    /* ADR 0026: the form shows only the card's stored link — never a
+       category resolved by name. A card without a usable link cannot be paid:
+       the field stays empty, Save is disabled, and the hint says why. */
+    async function payUnlinkedCard(): Promise<void> {
+      fixture.componentRef.setInput('accounts', await db.accounts.toArray());
       fixture.componentRef.setInput('categories', await db.categories.toArray());
       await component.ngOnInit();
       component.onSourceChange(eurAccountId);
       component.onDestChange(cardAccountId);
       fixture.detectChanges();
-      expect(paymentCategoryInput().value).toBe('Visa payment');
+    }
 
-      component.form.update((f) => ({ ...f, sourceAmount: 150 }));
-      await component.onSubmit();
+    it('disables Save and says why when the card owns no Payment Category', async () => {
+      await db.accounts.update(cardAccountId, { paymentCategoryId: undefined });
+      await payUnlinkedCard();
 
-      const [transfer] = await transferService.getAll();
-      expect((await db.categories.get(transfer.categoryId!))?.name).toBe('Visa payment');
+      // Before any amount is typed: the card is what blocks the save.
+      expect(paymentCategoryInput().value).toBe('');
+      expect(component.canSubmit()).toBe(false);
+      expect(fixture.nativeElement.querySelector('.save-hint').textContent).toContain(
+        'This card has no payment category. Rename the card to give it one.',
+      );
     });
 
-    it('shows the payment name an Income category holds and refuses the save', async () => {
+    it('disables Save when the card link dangles, even with an Income category holding its payment name', async () => {
       await db.categories.delete(paymentCategoryId);
       await db.categories.add({
         name: 'Visa payment',
@@ -868,18 +873,13 @@ describe('TransferFormComponent', () => {
         active: true,
         createdAt: new Date(),
       });
-      fixture.componentRef.setInput('categories', await db.categories.toArray());
-      await component.ngOnInit();
-      component.onSourceChange(eurAccountId);
-      component.onDestChange(cardAccountId);
-      fixture.detectChanges();
-      expect(paymentCategoryInput().value).toBe('Visa payment');
-
+      await payUnlinkedCard();
       component.form.update((f) => ({ ...f, sourceAmount: 150 }));
-      await component.onSubmit();
 
+      expect(paymentCategoryInput().value).toBe('');
+      expect(component.canSubmit()).toBe(false);
+      await component.onSubmit();
       expect(await transferService.getAll()).toHaveLength(0);
-      expect(component.errorMessage()).not.toBe('');
     });
 
     it('re-resolves the category when an edited card payment is reopened with a stale one', async () => {

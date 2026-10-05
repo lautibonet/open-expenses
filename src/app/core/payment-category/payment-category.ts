@@ -11,12 +11,14 @@ import {
   newPaymentCategory,
   paymentCategoryName,
   resolvePaymentCategory,
+  storedPaymentCategory,
 } from './payment-category-rules';
 
 export {
   newPaymentCategory,
   paymentCategoryName,
   resolvePaymentCategory,
+  storedPaymentCategory,
   type PaymentCard,
   type PaymentCategoryResolution,
 } from './payment-category-rules';
@@ -58,6 +60,21 @@ export function ensurePaymentCategory(
     }
     return category;
   });
+}
+
+/* The Payment Category a card's Card Payments wear, read from its stored
+   link only (ADR 0026): every upgrade and Restore already links each card it
+   can, so the payment path never provisions one. A card left without a usable
+   link refuses the payment; renaming the card gives it one. */
+export async function paymentCategoryOf(card: Pick<Account, 'paymentCategoryId'>): Promise<Category> {
+  const linked = card.paymentCategoryId == null
+    ? undefined
+    : await db.categories.get(card.paymentCategoryId);
+  const category = storedPaymentCategory(card, linked ? [linked] : []);
+  if (!category) {
+    throw new TranslationError('errors.cardHasNoPaymentCategory');
+  }
+  return category;
 }
 
 /* A renamed card renames its Payment Category after the new name (amended

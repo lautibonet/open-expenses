@@ -34,11 +34,11 @@ export function isValidYear(year: number): boolean {
   return Number.isInteger(year) && year >= 1000 && year <= 9999;
 }
 
-export function getPeriodYear(movement: { year?: number; date: Date | string }): number {
+export function getPeriodYear(movement: { year?: number; date: Date }): number {
   if (movement.year != null) {
     return movement.year;
   }
-  return new Date(movement.date).getFullYear();
+  return movement.date.getFullYear();
 }
 
 export function periodYearFromDate(date: Date | string): {
@@ -59,7 +59,7 @@ export function periodYearFromDate(date: Date | string): {
 export type ScopeAwareMovement = {
   period: number | string;
   year?: number;
-  date: Date | string;
+  date: Date;
 };
 
 /* Whether a (year, Period) bucket falls inside the Scope: its Period on a
