@@ -598,8 +598,10 @@ describe('SettingsComponent - edit-on-demand rows', () => {
     nameInput.value = 'Wallet';
     nameInput.dispatchEvent(new Event('input'));
     nameInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
-    await flush();
-    fixture.detectChanges();
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(pencilFor(row)).toBeTruthy();
+    });
     expect((await accountService.getById(accountId))?.name).toBe('Wallet');
 
     pencilFor(row).click();
