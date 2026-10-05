@@ -8,7 +8,9 @@
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "test:quiet": "node scripts/test-quiet.mjs",
-    "typecheck": "ng build --configuration=development 2>&1"
+    "typecheck": "ng build --configuration=development 2>&1",
+    "e2e": "playwright test --project=chromium --project=firefox",
+    "knip": "knip --no-progress"
   },
   "private": true,
   "packageManager": "npm@11.19.0",
@@ -33,6 +35,7 @@
     "@types/node": "^26.4.0",
     "fake-indexeddb": "^6.0.0",
     "jsdom": "^28.0.0",
+    "knip": "^6.39.0",
     "prettier": "^3.8.1",
     "typescript": "~5.9.2",
     "vitest": "^4.0.8"

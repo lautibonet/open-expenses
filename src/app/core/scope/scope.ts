@@ -17,7 +17,7 @@ export interface MonthScope {
   year: number;
 }
 
-export interface YearScope {
+interface YearScope {
   kind: 'year';
   year: number;
 }

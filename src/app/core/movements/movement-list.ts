@@ -7,7 +7,7 @@ import { movementInScope } from '../types/period.type';
 import { CashBasisLookups, cashBasisLookups } from '../stats/cash-basis';
 import { dateToLocalISO } from '../format/local-date';
 
-export interface MovementListFilters {
+interface MovementListFilters {
   categoryId: number | null;
   accountId: number | null;
   search: string;
@@ -26,7 +26,7 @@ export interface MovementListInput {
   filters: MovementListFilters;
 }
 
-export interface Money {
+interface Money {
   amount: number;
   currency: string;
 }
@@ -62,7 +62,7 @@ export interface TransferRow {
 
 export type MovementRow = TransactionRow | TransferRow;
 
-export interface MovementDaySection {
+interface MovementDaySection {
   key: string;
   date: Date;
   rows: MovementRow[];

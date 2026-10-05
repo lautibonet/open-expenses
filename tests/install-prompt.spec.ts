@@ -67,7 +67,8 @@ test.describe('install prompt (#115)', () => {
     // Coarse-pointer touch targets stay at the 44px minimum.
     for (const name of ['Install', 'Dismiss']) {
       const box = (await strip.getByRole('button', { name }).boundingBox())!;
-      expect(box.height).toBeGreaterThanOrEqual(44);
+      // Rounded: layout can land a hair under 44 (43.99999…) on subpixel grids.
+      expect(Math.round(box.height)).toBeGreaterThanOrEqual(44);
     }
   });
 

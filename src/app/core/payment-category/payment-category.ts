@@ -15,14 +15,7 @@ import {
   storedPaymentCategory,
 } from './payment-category-rules';
 
-export {
-  newPaymentCategory,
-  paymentCategoryName,
-  resolvePaymentCategory,
-  storedPaymentCategory,
-  type PaymentCard,
-  type PaymentCategoryResolution,
-} from './payment-category-rules';
+export { type PaymentCard } from './payment-category-rules';
 
 /* The Payment Category module (issue #184, amended ADR 0022, ADR 0024): it
    owns the pairing between a Credit Card and the category its Card Payments

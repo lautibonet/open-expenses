@@ -24,7 +24,7 @@ export function buildAccountsById(accounts: Account[]): Map<number, Account> {
 /* ADR 0022: whether a Transaction's spending was paid with credit — it sits on
    a Credit Card. A missing account is treated as cash, the orphan rule the
    cash-basis seam and the spending split share. */
-export function isCreditCardTransaction(
+function isCreditCardTransaction(
   transaction: Transaction,
   accountsById: Map<number, Account>,
 ): boolean {
@@ -134,7 +134,7 @@ const round2 = (value: number) => Math.round(value * 100) / 100;
    Currency counts at its face amount — a stored base amount there can only be
    a stale one from an earlier Base Currency. Otherwise the stored base amount
    wins, then the amount at the stored Exchange Rate, then the face amount. */
-export function transactionBaseAmount(
+function transactionBaseAmount(
   transaction: Transaction,
   account: Account | undefined,
   baseCurrency: string,
