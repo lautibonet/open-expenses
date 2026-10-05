@@ -23,6 +23,11 @@ import {
   getCurrentYear,
 } from '../../core/types/period.type';
 import { defaultScope } from '../../core/scope/scope';
+import { MovementRow, TransactionRow } from '../../core/movements/movement-list';
+
+function movement(row: MovementRow): Transaction | Transfer {
+  return row.kind === 'transaction' ? row.transaction : row.transfer;
+}
 
 function flush(ms = 10): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -79,28 +84,28 @@ describe('MovementsComponent - filtering', () => {
 
   it('should show all movements when no filters are set', async () => {
     await seedMovements();
-    expect(component.filteredMovements().length).toBe(4);
+    expect(component.rows().length).toBe(4);
   });
 
   it('should filter by category', async () => {
     await seedMovements();
     component.filterCategory.set(categoryId1);
-    expect(component.filteredMovements().length).toBe(1);
-    const item = component.filteredMovements()[0];
-    expect(item.type).toBe('transaction');
-    expect((item.data as any).categoryId).toBe(categoryId1);
+    expect(component.rows().length).toBe(1);
+    const item = component.rows()[0];
+    expect(item.kind).toBe('transaction');
+    expect((movement(item) as any).categoryId).toBe(categoryId1);
   });
 
   it('should filter by account', async () => {
     await seedMovements();
     component.filterAccount.set(accountId2);
-    const filtered = component.filteredMovements();
+    const filtered = component.rows();
     expect(filtered.length).toBe(2);
     for (const item of filtered) {
-      if (item.type === 'transaction') {
-        expect((item.data as any).accountId).toBe(accountId2);
+      if (item.kind === 'transaction') {
+        expect((movement(item) as any).accountId).toBe(accountId2);
       } else {
-        const tr = item.data as any;
+        const tr = movement(item) as any;
         expect(tr.sourceAccountId === accountId2 || tr.destinationAccountId === accountId2).toBe(
           true,
         );
@@ -112,17 +117,17 @@ describe('MovementsComponent - filtering', () => {
     await seedMovements();
     component.filterCategory.set(categoryId2);
     component.filterAccount.set(accountId1);
-    expect(component.filteredMovements().length).toBe(1);
-    const item = component.filteredMovements()[0];
-    expect((item.data as any).categoryId).toBe(categoryId2);
-    expect((item.data as any).accountId).toBe(accountId1);
+    expect(component.rows().length).toBe(1);
+    const item = component.rows()[0];
+    expect((movement(item) as any).categoryId).toBe(categoryId2);
+    expect((movement(item) as any).accountId).toBe(accountId1);
   });
 
   it('should return empty when no movements match all filters', async () => {
     await seedMovements();
     component.filterCategory.set(categoryId1);
     component.filterAccount.set(accountId2);
-    expect(component.filteredMovements().length).toBe(0);
+    expect(component.rows().length).toBe(0);
   });
 
   it('should clear all filters', async () => {
@@ -135,7 +140,7 @@ describe('MovementsComponent - filtering', () => {
     expect(component.filterCategory()).toBeNull();
     expect(component.filterAccount()).toBeNull();
     expect(component.searchQuery()).toBe('');
-    expect(component.filteredMovements().length).toBe(4);
+    expect(component.rows().length).toBe(4);
   });
 
   it('should compute activeFilterCount', async () => {
@@ -331,10 +336,10 @@ describe('MovementsComponent - no tag affordances', () => {
     await component.ngOnInit();
 
     component.searchQuery.set('beans');
-    expect(component.filteredMovements().length).toBe(1);
+    expect(component.rows().length).toBe(1);
 
     component.searchQuery.set('nothing-matches-this');
-    expect(component.filteredMovements().length).toBe(0);
+    expect(component.rows().length).toBe(0);
   });
 });
 
@@ -382,8 +387,7 @@ describe('MovementsComponent - category deactivation and income sign', () => {
 
     await component.ngOnInit();
 
-    const txn = component.movements()[0].data as any;
-    expect(component.getCategoryName(txn.categoryId)).toBe('Food');
+    expect((component.rows()[0] as TransactionRow).categoryName).toBe('Food');
   });
 
   it('should use all categories for name resolution but active-only for form', async () => {
@@ -415,9 +419,8 @@ describe('MovementsComponent - category deactivation and income sign', () => {
     await transactionService.create(accountId, incomeCategoryId, 3000, new Date(), period);
     await component.ngOnInit();
 
-    const txn = component.movements()[0].data as any;
-    expect(component.isIncomeTransaction(txn)).toBe(true);
-    expect(component.formatTransactionDisplayAmount(txn)).not.toContain('-');
+    expect((component.rows()[0] as TransactionRow).flow).toBe('income');
+    expect(component.formatAmount(component.rows()[0].amount)).not.toContain('-');
   });
 
   it('should show expense amount as positive without minus prefix', async () => {
@@ -425,9 +428,8 @@ describe('MovementsComponent - category deactivation and income sign', () => {
     await transactionService.create(accountId, expenseCategoryId, 500, new Date(), period);
     await component.ngOnInit();
 
-    const txn = component.movements()[0].data as any;
-    expect(component.isIncomeTransaction(txn)).toBe(false);
-    expect(component.formatTransactionDisplayAmount(txn)).not.toContain('-');
+    expect((component.rows()[0] as TransactionRow).flow).toBe('expense');
+    expect(component.formatAmount(component.rows()[0].amount)).not.toContain('-');
   });
 });
 
@@ -487,9 +489,8 @@ describe('MovementsComponent - direction arrows and display amounts', () => {
     await transactionService.create(eurAccountId, expenseCategoryId, 500, new Date(), period);
     await component.ngOnInit();
 
-    const txn = component.movements()[0].data as any;
-    expect(component.formatTransactionDisplayAmount(txn)).not.toContain('-');
-    expect(component.formatTransactionDisplayAmount(txn)).toContain('500');
+    expect(component.formatAmount(component.rows()[0].amount)).not.toContain('-');
+    expect(component.formatAmount(component.rows()[0].amount)).toContain('500');
   });
 
   it('should show positive amount for income', async () => {
@@ -497,9 +498,8 @@ describe('MovementsComponent - direction arrows and display amounts', () => {
     await transactionService.create(eurAccountId, incomeCategoryId, 3000, new Date(), period);
     await component.ngOnInit();
 
-    const txn = component.movements()[0].data as any;
-    expect(component.formatTransactionDisplayAmount(txn)).not.toContain('-');
-    expect(component.formatTransactionDisplayAmount(txn)).toContain('3,000');
+    expect(component.formatAmount(component.rows()[0].amount)).not.toContain('-');
+    expect(component.formatAmount(component.rows()[0].amount)).toContain('3,000');
   });
 
   it('should show just base currency amount for same-currency transactions', async () => {
@@ -507,8 +507,7 @@ describe('MovementsComponent - direction arrows and display amounts', () => {
     await transactionService.create(eurAccountId, expenseCategoryId, 50, new Date(), period);
     await component.ngOnInit();
 
-    const txn = component.movements()[0].data as any;
-    const display = component.formatTransactionDisplayAmount(txn);
+    const display = component.formatAmount(component.rows()[0].amount);
     expect(display).not.toContain('→');
     expect(display).toContain('50');
   });
@@ -526,20 +525,18 @@ describe('MovementsComponent - direction arrows and display amounts', () => {
     );
     await component.ngOnInit();
 
-    const txn = component.movements()[0].data as any;
-    const display = component.formatTransactionDisplayAmount(txn);
+    const display = component.formatAmount(component.rows()[0].amount);
     expect(display).toContain('→');
     expect(display).toContain('$');
     expect(display).toContain('€');
   });
 
-  it('should return true for foreign currency transactions', async () => {
+  it('should show a foreign currency transaction in its own currency', async () => {
     const period = getCurrentPeriod();
     await transactionService.create(usdAccountId, expenseCategoryId, 10, new Date(), period);
     await component.ngOnInit();
 
-    const txn = component.movements()[0].data as any;
-    expect(component.isForeignCurrencyTransaction(txn)).toBe(true);
+    expect(component.rows()[0].amount).toEqual({ kind: 'single', amount: 10, currency: 'USD' });
   });
 
   it('should fall back to source-only display when baseCurrencyAmount is null', async () => {
@@ -555,28 +552,25 @@ describe('MovementsComponent - direction arrows and display amounts', () => {
     );
     await component.ngOnInit();
 
-    const txn = component.movements()[0].data as any;
-    const display = component.formatTransactionDisplayAmount(txn);
+    const display = component.formatAmount(component.rows()[0].amount);
     expect(display).toContain('$');
     expect(display).not.toContain('→');
   });
 
-  it('should return false for same-currency transactions', async () => {
+  it('should show a same-currency transaction in Base Currency', async () => {
     const period = getCurrentPeriod();
     await transactionService.create(eurAccountId, expenseCategoryId, 50, new Date(), period);
     await component.ngOnInit();
 
-    const txn = component.movements()[0].data as any;
-    expect(component.isForeignCurrencyTransaction(txn)).toBe(false);
+    expect(component.rows()[0].amount).toEqual({ kind: 'single', amount: 50, currency: 'EUR' });
   });
 
-  it('should return source currency for cross-currency transfers', async () => {
+  it('should show a cross-currency transfer from its source currency', async () => {
     const period = getCurrentPeriod();
     await transferService.create(usdAccountId, eurAccountId, 100, new Date(), period, 'test', 1.08);
     await component.ngOnInit();
 
-    const tr = component.movements()[0].data as any;
-    expect(component.getAccountCurrency(tr.sourceAccountId)).toBe('USD');
+    expect(component.rows()[0].amount).toMatchObject({ from: { currency: 'USD' } });
   });
 
   it('should show source → dest amounts for cross-currency transfers', async () => {
@@ -584,8 +578,7 @@ describe('MovementsComponent - direction arrows and display amounts', () => {
     await transferService.create(usdAccountId, eurAccountId, 100, new Date(), period, 'test', 1.08);
     await component.ngOnInit();
 
-    const tr = component.movements()[0].data as any;
-    const display = component.formatTransferDisplayAmount(tr);
+    const display = component.formatAmount(component.rows()[0].amount);
     expect(display).toContain('→');
     expect(display).toContain('$');
     expect(display).toContain('€');
@@ -597,8 +590,7 @@ describe('MovementsComponent - direction arrows and display amounts', () => {
     await transferService.create(eurAccountId, acc2.id!, 500, new Date(), period, 'savings');
     await component.ngOnInit();
 
-    const tr = component.movements()[0].data as any;
-    const display = component.formatTransferDisplayAmount(tr);
+    const display = component.formatAmount(component.rows()[0].amount);
     expect(display).not.toContain('→');
     expect(display).toContain('500');
   });
@@ -711,12 +703,12 @@ describe('MovementsComponent - period year', () => {
     await transactionService.create(accountId, categoryId, 200, new Date(), period);
 
     await component.ngOnInit();
-    expect(component.movements().length).toBe(1);
-    expect((component.movements()[0].data as any).amount).toBe(200);
+    expect(component.rows().length).toBe(1);
+    expect((movement(component.rows()[0]) as any).amount).toBe(200);
 
     await component.onScopeYearChange(getCurrentYear() - 1);
-    expect(component.movements().length).toBe(1);
-    expect((component.movements()[0].data as any).amount).toBe(100);
+    expect(component.rows().length).toBe(1);
+    expect((movement(component.rows()[0]) as any).amount).toBe(100);
   });
 
   it('should save the period year from the transaction form', async () => {
@@ -1091,12 +1083,12 @@ describe('MovementsComponent - shared scope', () => {
       2016,
     );
     await component.ngOnInit();
-    expect(component.movements().length).toBe(0);
+    expect(component.rows().length).toBe(0);
 
     await component.onScopeYearChange(2012);
     await component.onScopeMonthChange(1);
     expect(component.scope()).toEqual({ kind: 'month', period: 1, year: 2012 });
-    expect(component.movements().length).toBe(1);
+    expect(component.rows().length).toBe(1);
   });
 
   it('should include movements older than ten years when their year is selected', async () => {
@@ -1115,8 +1107,8 @@ describe('MovementsComponent - shared scope', () => {
 
     await component.onScopeYearChange(oldYear);
     await component.onScopeMonthChange(1);
-    expect(component.movements().length).toBe(1);
-    expect((component.movements()[0].data as any).year).toBe(oldYear);
+    expect(component.rows().length).toBe(1);
+    expect((movement(component.rows()[0]) as any).year).toBe(oldYear);
   });
 
   it('should switch scope by year while keeping the current period', async () => {
@@ -1136,7 +1128,7 @@ describe('MovementsComponent - shared scope', () => {
 
     await component.onScopeYearChange(getCurrentYear() - 1);
     expect(component.scope()).toEqual({ kind: 'month', period, year: getCurrentYear() - 1 });
-    expect(component.movements().length).toBe(1);
+    expect(component.rows().length).toBe(1);
   });
 
   it('should switch scope month and filter accordingly', async () => {
@@ -1165,7 +1157,7 @@ describe('MovementsComponent - shared scope', () => {
 
     await component.onScopeMonthChange(1);
     expect(component.scope()).toEqual({ kind: 'month', period: 1, year });
-    expect(component.movements().length).toBe(1);
+    expect(component.rows().length).toBe(1);
   });
 
   it('shows the whole selected year when the All option is chosen', async () => {
@@ -1192,11 +1184,11 @@ describe('MovementsComponent - shared scope', () => {
     );
     await component.ngOnInit();
     await component.onScopeMonthChange(1);
-    expect(component.movements().length).toBe(1);
+    expect(component.rows().length).toBe(1);
 
     await component.onScopeMonthChange('all');
     expect(component.scope()).toEqual({ kind: 'year', year });
-    expect(component.movements().length).toBe(2);
+    expect(component.rows().length).toBe(2);
   });
 
   it('keeps the All scope when the year changes', async () => {
@@ -1292,7 +1284,7 @@ describe('MovementsComponent - contextual delete confirmation and undo', () => {
       getCurrentPeriod(),
     );
     await component.ngOnInit();
-    const item = component.movements().find((m) => (m.data as Transaction).id === txn.id)!;
+    const item = component.rows().find((m) => (movement(m) as Transaction).id === txn.id)!;
 
     component.requestDelete(item);
     expect(component.confirmingDelete()).toBe(item);
@@ -1310,7 +1302,7 @@ describe('MovementsComponent - contextual delete confirmation and undo', () => {
       getCurrentPeriod(),
     );
     await component.ngOnInit();
-    const item = component.movements().find((m) => (m.data as Transaction).id === txn.id)!;
+    const item = component.rows().find((m) => (movement(m) as Transaction).id === txn.id)!;
 
     const label = component.deleteConfirmationLabel(item);
     expect(label).toContain('€500.00');
@@ -1321,7 +1313,7 @@ describe('MovementsComponent - contextual delete confirmation and undo', () => {
     const acc2 = await accountService.create('Savings', 'EUR', 50000);
     await transferService.create(accountId, acc2.id!, 1000, new Date(), getCurrentPeriod());
     await component.ngOnInit();
-    const item = component.movements()[0];
+    const item = component.rows()[0];
 
     const label = component.deleteConfirmationLabel(item);
     expect(label).toContain('€1,000.00');
@@ -1338,7 +1330,7 @@ describe('MovementsComponent - contextual delete confirmation and undo', () => {
       getCurrentPeriod(),
     );
     await component.ngOnInit();
-    const item = component.movements().find((m) => (m.data as Transaction).id === txn.id)!;
+    const item = component.rows().find((m) => (movement(m) as Transaction).id === txn.id)!;
 
     expect(await transactionService.getAll()).toHaveLength(1);
 
@@ -1347,7 +1339,7 @@ describe('MovementsComponent - contextual delete confirmation and undo', () => {
 
     expect(await transactionService.getAll()).toHaveLength(0);
     expect(component.confirmingDelete()).toBeNull();
-    expect(component.undo()?.item.data.id).toBe(txn.id);
+    expect((component.undo() && movement(component.undo()!.row).id)).toBe(txn.id);
   });
 
   it('should not delete a transaction until confirmed', async () => {
@@ -1359,7 +1351,7 @@ describe('MovementsComponent - contextual delete confirmation and undo', () => {
       getCurrentPeriod(),
     );
     await component.ngOnInit();
-    const item = component.movements().find((m) => (m.data as Transaction).id === txn.id)!;
+    const item = component.rows().find((m) => (movement(m) as Transaction).id === txn.id)!;
 
     component.requestDelete(item);
     component.cancelDelete();
@@ -1377,7 +1369,7 @@ describe('MovementsComponent - contextual delete confirmation and undo', () => {
       getCurrentPeriod(),
     );
     await component.ngOnInit();
-    const item = component.movements().find((m) => (m.data as Transaction).id === txn.id)!;
+    const item = component.rows().find((m) => (movement(m) as Transaction).id === txn.id)!;
 
     component.requestDelete(item);
     await component.confirmDelete();
@@ -1401,7 +1393,7 @@ describe('MovementsComponent - contextual delete confirmation and undo', () => {
       getCurrentPeriod(),
     );
     await component.ngOnInit();
-    const item = component.movements()[0];
+    const item = component.rows()[0];
 
     component.requestDelete(item);
     await component.confirmDelete();
@@ -1416,8 +1408,7 @@ describe('MovementsComponent - contextual delete confirmation and undo', () => {
   it('should auto-dismiss the undo affordance after the window', async () => {
     component.undoWindowMs = 20;
     component.undo.set({
-      item: { type: 'transaction', data: { id: 1 } as Transaction },
-      snapshot: {} as Transaction,
+      row: { kind: 'transaction', transaction: { id: 1 } as Transaction } as MovementRow,
     });
     component.scheduleUndoAutoDismiss();
     expect(component.undo()).not.toBeNull();
@@ -1436,7 +1427,7 @@ describe('MovementsComponent - contextual delete confirmation and undo', () => {
       getCurrentPeriod(),
     );
     await component.ngOnInit();
-    const item = component.movements().find((m) => (m.data as Transaction).id === txn.id)!;
+    const item = component.rows().find((m) => (movement(m) as Transaction).id === txn.id)!;
 
     component.requestDelete(item);
     await component.confirmDelete();
@@ -1450,8 +1441,7 @@ describe('MovementsComponent - contextual delete confirmation and undo', () => {
   it('announces when the undo window expires', async () => {
     component.undoWindowMs = 20;
     component.undo.set({
-      item: { type: 'transaction', data: { id: 1 } as Transaction },
-      snapshot: {} as Transaction,
+      row: { kind: 'transaction', transaction: { id: 1 } as Transaction } as MovementRow,
     });
     component.scheduleUndoAutoDismiss();
 
@@ -1469,7 +1459,7 @@ describe('MovementsComponent - contextual delete confirmation and undo', () => {
       getCurrentPeriod(),
     );
     await component.ngOnInit();
-    const item = component.movements().find((m) => (m.data as Transaction).id === txn.id)!;
+    const item = component.rows().find((m) => (movement(m) as Transaction).id === txn.id)!;
 
     component.requestDelete(item);
     await component.confirmDelete();
@@ -1489,7 +1479,7 @@ describe('MovementsComponent - contextual delete confirmation and undo', () => {
       getCurrentPeriod(),
     );
     await component.ngOnInit();
-    const item = component.movements().find((m) => (m.data as Transaction).id === txn.id)!;
+    const item = component.rows().find((m) => (movement(m) as Transaction).id === txn.id)!;
 
     component.requestDelete(item);
     await component.confirmDelete();
@@ -1594,7 +1584,7 @@ describe('MovementsComponent - icon row actions', () => {
     const txn = await seedTransaction();
     await component.ngOnInit();
     fixture.detectChanges();
-    const item = component.movements().find((m) => (m.data as Transaction).id === txn.id)!;
+    const item = component.rows().find((m) => (movement(m) as Transaction).id === txn.id)!;
 
     component.requestDelete(item);
     fixture.detectChanges();
@@ -1612,7 +1602,7 @@ describe('MovementsComponent - icon row actions', () => {
     const txn = await seedTransaction();
     await component.ngOnInit();
     fixture.detectChanges();
-    const item = component.movements().find((m) => (m.data as Transaction).id === txn.id)!;
+    const item = component.rows().find((m) => (movement(m) as Transaction).id === txn.id)!;
 
     component.requestDelete(item);
     fixture.detectChanges();
@@ -1631,7 +1621,7 @@ describe('MovementsComponent - icon row actions', () => {
     const txn = await seedTransaction();
     await component.ngOnInit();
     fixture.detectChanges();
-    const item = component.movements().find((m) => (m.data as Transaction).id === txn.id)!;
+    const item = component.rows().find((m) => (movement(m) as Transaction).id === txn.id)!;
 
     component.requestDelete(item);
     fixture.detectChanges();
@@ -1645,7 +1635,7 @@ describe('MovementsComponent - icon row actions', () => {
     const txn = await seedTransaction();
     await component.ngOnInit();
     fixture.detectChanges();
-    const item = component.movements().find((m) => (m.data as Transaction).id === txn.id)!;
+    const item = component.rows().find((m) => (movement(m) as Transaction).id === txn.id)!;
 
     component.requestDelete(item);
     fixture.detectChanges();
@@ -1653,14 +1643,14 @@ describe('MovementsComponent - icon row actions', () => {
     await settle();
 
     expect(await transactionService.getAll()).toHaveLength(0);
-    expect(component.undo()?.item.data.id).toBe(txn.id);
+    expect((component.undo() && movement(component.undo()!.row).id)).toBe(txn.id);
   });
 
   it('cancels from the X button and restores the pencil and trash icons', async () => {
     const txn = await seedTransaction();
     await component.ngOnInit();
     fixture.detectChanges();
-    const item = component.movements().find((m) => (m.data as Transaction).id === txn.id)!;
+    const item = component.rows().find((m) => (movement(m) as Transaction).id === txn.id)!;
 
     component.requestDelete(item);
     fixture.detectChanges();
@@ -1686,7 +1676,7 @@ describe('MovementsComponent - icon row actions', () => {
     );
     await component.ngOnInit();
     fixture.detectChanges();
-    const item = component.movements()[0];
+    const item = component.rows()[0];
 
     component.requestDelete(item);
     fixture.detectChanges();
@@ -1699,7 +1689,7 @@ describe('MovementsComponent - icon row actions', () => {
     await settle();
 
     expect(await transferService.getAll()).toHaveLength(0);
-    expect(component.undo()?.item.data.id).toBe(tr.id);
+    expect((component.undo() && movement(component.undo()!.row).id)).toBe(tr.id);
   });
 });
 
@@ -1804,7 +1794,7 @@ describe('MovementsComponent - assistive tech', () => {
       getCurrentPeriod(),
     );
     await component.ngOnInit();
-    const item = component.movements().find((m) => (m.data as Transaction).id === txn.id)!;
+    const item = component.rows().find((m) => (movement(m) as Transaction).id === txn.id)!;
 
     component.requestDelete(item);
     await component.confirmDelete();
@@ -1870,8 +1860,8 @@ describe('MovementsComponent - transaction-form integration', () => {
     const txns = await transactionService.getAll();
     expect(txns.length).toBe(1);
     expect(txns[0].amount).toBe(42);
-    expect(component.movements().length).toBe(1);
-    expect((component.movements()[0].data as any).amount).toBe(42);
+    expect(component.rows().length).toBe(1);
+    expect((movement(component.rows()[0]) as any).amount).toBe(42);
   });
 
   it('updates an existing transaction when the card is opened for edit', async () => {
@@ -2152,13 +2142,13 @@ describe('MovementsComponent - date header sorting', () => {
 
   function movementAmounts(): number[] {
     return component
-      .movementView()
-      .map((r) => (r.data as Transaction).amount);
+      .rows()
+      .map((r) => (movement(r) as Transaction).amount);
   }
 
   it('orders movements newest first by date (default)', async () => {
     await seedDatedTransactions();
-    const rows = component.movementView();
+    const rows = component.rows();
     expect(movementAmounts()).toEqual([200, 300, 100]);
   });
 
@@ -2553,21 +2543,19 @@ describe('MovementsComponent - async load gate', () => {
     expect(fixture.nativeElement.querySelectorAll('tbody tr').length).toBeGreaterThan(0);
   });
 
-  it('re-enters the busy gate on scope change so the empty state never borrows the old scope', async () => {
+  it('shows the new Scope rows and empty state at once on scope change, never the old Scope', async () => {
+    await transactionServiceStub();
     fixture.detectChanges();
     await component.ngOnInit();
     fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('tbody tr').length).toBeGreaterThan(0);
 
     const otherMonth = ((getCurrentPeriod() % 12) + 1) as MonthNumber;
-    const change = component.onScopeMonthChange(otherMonth);
-    fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('[aria-busy="true"]')).toBeTruthy();
-    expect(fixture.nativeElement.textContent).not.toContain('No movements for');
-
-    await change;
+    component.onScopeMonthChange(otherMonth);
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('[aria-busy="true"]')).toBeNull();
+    expect(fixture.nativeElement.querySelectorAll('tbody tr').length).toBe(0);
     expect(fixture.nativeElement.textContent).toContain('No movements for');
   });
 
@@ -3084,21 +3072,21 @@ describe('MovementsComponent - day sections', () => {
     const today = new Date();
     const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
     expect(sections[0].key).toBe(localDayKey(today));
-    expect(sections[0].items.length).toBe(2);
+    expect(sections[0].rows.length).toBe(2);
     expect(sections[1].key).toBe(localDayKey(yesterday));
-    expect(sections[1].items.length).toBe(1);
+    expect(sections[1].rows.length).toBe(1);
   });
 
   it('preserves the movement order within each day section', async () => {
     await seedAcrossTwoDays();
 
     const today = new Date();
-    const todayItems = component.movementDaySections()[0].items;
-    expect(todayItems.map((i) => (i.data as Transaction).amount)).toEqual(
+    const todayItems = component.movementDaySections()[0].rows;
+    expect(todayItems.map((i) => (movement(i) as Transaction).amount)).toEqual(
       component
-        .movementView()
-        .filter((i) => localDayKey(i.data.date) === localDayKey(today))
-        .map((i) => (i.data as Transaction).amount),
+        .rows()
+        .filter((i) => localDayKey(movement(i).date) === localDayKey(today))
+        .map((i) => (movement(i) as Transaction).amount),
     );
   });
 
@@ -4236,41 +4224,6 @@ describe('MovementsComponent - card movement display treatment (#168)', () => {
 
     const row = fixture.nativeElement.querySelector('tr.transfer-row');
     expect(row.querySelector('.cat-chip')).toBeNull();
-  });
-
-  it('classifies a card-account transaction as a card transaction', async () => {
-    const period = getCurrentPeriod();
-    const purchase = await transactionService.create(
-      cardId,
-      foodCategoryId,
-      300,
-      new Date(),
-      period,
-    );
-    const cash = await transactionService.create(cashId, foodCategoryId, 100, new Date(), period);
-    await component.ngOnInit();
-
-    expect(component.isCardTransaction(purchase)).toBe(true);
-    expect(component.isCardTransaction(cash)).toBe(false);
-  });
-
-  it('returns the payment category name only for a Card Payment', async () => {
-    const savings = await accountService.create('Savings', 'EUR', 0);
-    const period = getCurrentPeriod();
-    const payment = await transferService.create(
-      cashId,
-      cardId,
-      300,
-      new Date(),
-      period,
-      '',
-      1,
-    );
-    const move = await transferService.create(savings.id!, cashId, 100, new Date(), period, '');
-    await component.ngOnInit();
-
-    expect(component.cardPaymentCategoryName(payment)).toBe('Visa payment');
-    expect(component.cardPaymentCategoryName(move)).toBeNull();
   });
 
   it('marks a card refund with the same badge on its income stripe', async () => {

@@ -1,6 +1,5 @@
 import { Injectable } from '@angular/core';
 import { db } from '../db/database';
-import { queryByScope } from '../db/scope-query';
 import { Transaction } from '../models/transaction.model';
 import { TranslationError } from '../models/translation-error';
 import {
@@ -8,7 +7,6 @@ import {
   isValidPeriod,
   isValidYear,
 } from '../types/period.type';
-import { PeriodScope } from '../scope/scope';
 
 @Injectable({ providedIn: 'root' })
 export class TransactionService {
@@ -108,10 +106,6 @@ export class TransactionService {
 
   async getAll(): Promise<Transaction[]> {
     return db.transactions.toArray();
-  }
-
-  async getByScope(scope: PeriodScope): Promise<Transaction[]> {
-    return queryByScope(db.transactions, scope);
   }
 
   async getByAccount(accountId: number): Promise<Transaction[]> {

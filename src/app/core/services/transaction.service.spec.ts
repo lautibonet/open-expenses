@@ -180,36 +180,6 @@ describe('TransactionService', () => {
     expect(t.year).toBe(2026);
   });
 
-  it('should get transactions for a month scope by period and year', async () => {
-    await transactionService.create(accountId, categoryId, 100, new Date('2025-12-22'), 1, null, null, 2026);
-    await transactionService.create(accountId, categoryId, 200, new Date('2026-02-10'), 2, null, null, 2026);
-
-    const jan26 = await transactionService.getByScope({ kind: 'month', period: 1, year: 2026 });
-    expect(jan26.length).toBe(1);
-    expect(jan26[0].amount).toBe(100);
-  });
-
-  it('should get every transaction of the stored period year for a year scope', async () => {
-    await transactionService.create(accountId, categoryId, 100, new Date('2026-01-05'), 1, null, null, 2026);
-    await transactionService.create(accountId, categoryId, 200, new Date('2026-02-10'), 2, null, null, 2026);
-    await transactionService.create(accountId, categoryId, 300, new Date('2025-12-22'), 1, null, null, 2026);
-    await transactionService.create(accountId, categoryId, 400, new Date('2026-03-01'), 3, null, null, 2025);
-
-    const year26 = await transactionService.getByScope({ kind: 'year', year: 2026 });
-    expect(year26.length).toBe(3);
-    expect(year26.map(t => t.amount).sort((a, b) => a - b)).toEqual([100, 200, 300]);
-  });
-
-  it('should leave a transaction with an unrecognizable period out of every scope', async () => {
-    await transactionService.create(accountId, categoryId, 100, new Date('2026-01-05'), 1, null, null, 2026);
-    await db.transactions.add({
-      accountId, categoryId, amount: 999, date: new Date('2026-01-05'), period: 'Enero' as any, year: 2026,
-    } as any);
-
-    const year26 = await transactionService.getByScope({ kind: 'year', year: 2026 });
-    expect(year26.map(t => t.amount)).toEqual([100]);
-  });
-
   it('should update the period year', async () => {
     const t = await transactionService.create(accountId, categoryId, 100, new Date('2025-12-22'), 1);
     const updated = await transactionService.update(t.id!, { year: 2025 });
