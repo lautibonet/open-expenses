@@ -7,6 +7,7 @@ import { db } from '../../../core/db/database';
 import { Account } from '../../../core/models/account.model';
 import { Transfer } from '../../../core/models/transfer.model';
 import { getCurrentPeriod, getCurrentYear } from '../../../core/types/period.type';
+import { todayLocalISO } from '../../../core/format/local-date';
 
 function flush(ms = 10): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -103,7 +104,7 @@ describe('TransferFormComponent', () => {
       const f = component.form();
       expect(f.sourceAccountId).toBe(eurAccountId);
       expect(f.destAccountId).toBe(eur2AccountId);
-      expect(f.date).toBe(new Date().toISOString().split('T')[0]);
+      expect(f.date).toBe(todayLocalISO());
       expect(f.period).toBe(getCurrentPeriod());
       expect(f.year).toBe(getCurrentYear());
       expect(f.sourceAmount).toBeNull();

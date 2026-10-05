@@ -23,10 +23,25 @@ import {
   getCurrentYear,
 } from '../../core/types/period.type';
 import { defaultScope } from '../../core/scope/scope';
-import { MovementRow, TransactionRow, movementOf } from '../../core/movements/movement-list';
+import { TransactionRow, movementOf } from '../../core/movements/movement-list';
+import { todayLocalISO } from '../../core/format/local-date';
 
 function flush(ms = 10): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/* A complete row for tests that set the undo toast directly: the toast
+   renders its amount, so a partial stub throws during change detection. */
+function undoneTransactionRow(): TransactionRow {
+  return {
+    kind: 'transaction',
+    transaction: { id: 1 } as Transaction,
+    categoryName: 'Food',
+    accountName: 'Cash',
+    flow: 'expense',
+    onCard: false,
+    amount: { kind: 'single', amount: 500, currency: 'EUR' },
+  };
 }
 
 describe('MovementsComponent - filtering', () => {
@@ -679,7 +694,7 @@ describe('MovementsComponent - period year', () => {
     component.openTransferForm();
     fixture.detectChanges();
 
-    expect(transferForm().form().date).toBe(new Date().toISOString().split('T')[0]);
+    expect(transferForm().form().date).toBe(todayLocalISO());
     expect(transferForm().form().period).toBe(getCurrentPeriod());
     expect(transferForm().form().year).toBe(getCurrentYear());
   });
@@ -1403,7 +1418,7 @@ describe('MovementsComponent - contextual delete confirmation and undo', () => {
 
   it('should auto-dismiss the undo affordance after the window', async () => {
     component.undoWindowMs = 20;
-    component.undo.set({ kind: 'transaction', transaction: { id: 1 } as Transaction } as MovementRow);
+    component.undo.set(undoneTransactionRow());
     component.scheduleUndoAutoDismiss();
     expect(component.undo()).not.toBeNull();
 
@@ -1434,7 +1449,7 @@ describe('MovementsComponent - contextual delete confirmation and undo', () => {
 
   it('announces when the undo window expires', async () => {
     component.undoWindowMs = 20;
-    component.undo.set({ kind: 'transaction', transaction: { id: 1 } as Transaction } as MovementRow);
+    component.undo.set(undoneTransactionRow());
     component.scheduleUndoAutoDismiss();
 
     await new Promise((resolve) => setTimeout(resolve, 60));

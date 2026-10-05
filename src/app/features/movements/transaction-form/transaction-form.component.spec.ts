@@ -10,6 +10,7 @@ import { Category } from '../../../core/models/category.model';
 import { Transaction } from '../../../core/models/transaction.model';
 import { db } from '../../../core/db/database';
 import { getCurrentPeriod, getCurrentYear } from '../../../core/types/period.type';
+import { todayLocalISO } from '../../../core/format/local-date';
 
 const STORAGE_KEY = 'open-expenses.transaction-form.last-selection';
 
@@ -288,7 +289,7 @@ describe('TransactionFormComponent', () => {
   it('defaults the period and year from today, not any browsed scope', async () => {
     await component.ngOnInit();
 
-    expect(component.form().date).toBe(new Date().toISOString().split('T')[0]);
+    expect(component.form().date).toBe(todayLocalISO());
     expect(component.form().period).toBe(getCurrentPeriod());
     expect(component.form().year).toBe(getCurrentYear());
   });
