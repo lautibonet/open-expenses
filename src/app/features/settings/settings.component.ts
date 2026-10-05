@@ -103,6 +103,8 @@ export class SettingsComponent implements OnInit {
   editingCard = signal<CardEditState | null>(null);
   editingCategory = signal<CategoryEditState | null>(null);
   editingBaseCurrency = signal(false);
+  /* ADR 0025: read-only while any Transaction or Transfer exists. */
+  baseCurrencyLocked = signal(false);
   baseCurrencyDraft = signal('EUR');
   editError = signal('');
   /* Issue #189 (ADR 0018, ADR 0027): one Delete flow for every row, so at
@@ -159,6 +161,7 @@ export class SettingsComponent implements OnInit {
 
   private async loadAll(): Promise<void> {
     this.baseCurrency.set(await this.profileService.getBaseCurrency());
+    this.baseCurrencyLocked.set(await this.profileService.isBaseCurrencyLocked());
     await this.refresh();
   }
 

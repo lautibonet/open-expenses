@@ -349,6 +349,14 @@ app-erase-card {
   }
 }
 
+/* ADR 0025: why the Base Currency shows read-only. */
+.base-currency-lock-note {
+  margin: var(--space-xs) 0 0;
+  font-size: var(--type-caption);
+  line-height: var(--leading-caption);
+  color: var(--on-surface-variant);
+}
+
 .account-side,
 .category-side {
   display: flex;

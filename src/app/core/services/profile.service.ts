@@ -1,7 +1,9 @@
 import { Injectable } from '@angular/core';
 import { db } from '../db/database';
 import { Profile } from '../models/profile.model';
+import { TranslationError } from '../models/translation-error';
 import { DEFAULT_LANGUAGE, Language } from '../types/language.type';
+import { hasAnyMovements } from './account-movements';
 
 @Injectable({ providedIn: 'root' })
 export class ProfileService {
@@ -40,10 +42,23 @@ export class ProfileService {
     return (await db.profile.get(this.PROFILE_ID))!;
   }
 
+  /* ADR 0025: every stored conversion is expressed in the Base Currency, so
+     it locks while any Transaction or Transfer exists. The check and the
+     write share one transaction so a movement recorded meanwhile cannot
+     slip between them. */
   async updateBaseCurrency(currency: string): Promise<void> {
-    await db.profile.update(this.PROFILE_ID, {
-      baseCurrency: currency.toUpperCase(),
+    await db.transaction('rw', db.profile, db.transactions, db.transfers, async () => {
+      if (await hasAnyMovements()) {
+        throw new TranslationError('errors.baseCurrencyHasMovements');
+      }
+      await db.profile.update(this.PROFILE_ID, {
+        baseCurrency: currency.toUpperCase(),
+      });
     });
+  }
+
+  isBaseCurrencyLocked(): Promise<boolean> {
+    return hasAnyMovements();
   }
 
   async updateLastBackupAt(date: Date): Promise<void> {

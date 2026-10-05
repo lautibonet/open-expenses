@@ -11,3 +11,10 @@ export async function accountHasMovements(id: number): Promise<boolean> {
   if (asSource > 0) return true;
   return (await db.transfers.where('destinationAccountId').equals(id).count()) > 0;
 }
+
+/* ADR 0025: the dataset has movements when any Transaction or Transfer
+   exists, on any Account, active or deactivated. */
+export async function hasAnyMovements(): Promise<boolean> {
+  if ((await db.transactions.count()) > 0) return true;
+  return (await db.transfers.count()) > 0;
+}
