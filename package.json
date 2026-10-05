@@ -7,7 +7,7 @@
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "test:single": "ng test --include",
+    "test:quiet": "node scripts/test-quiet.mjs",
     "typecheck": "ng build --configuration=development 2>&1"
   },
   "private": true,

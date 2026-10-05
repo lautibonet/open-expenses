@@ -1,2 +1,3 @@
-# Shell scripts must stay LF or bash fails on checkout under autocrlf.
-*.sh text eol=lf
+# Store and check out text as LF everywhere: git stops warning about CRLF
+# conversion under core.autocrlf, and shell scripts stay runnable by bash.
+* text=auto eol=lf
