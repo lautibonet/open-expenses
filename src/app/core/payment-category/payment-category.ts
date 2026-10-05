@@ -1,6 +1,7 @@
 import { db } from '../db/database';
 import { Account } from '../models/account.model';
 import { Category } from '../models/category.model';
+import { DeletionPlan, REFUSED_FOR_MOVEMENTS } from '../models/deletion-plan';
 import { TranslationError } from '../models/translation-error';
 import { Language } from '../types/language.type';
 import { namesMatch } from '../models/name-uniqueness';
@@ -117,9 +118,17 @@ export function renamePaymentCategory(
    - 'absent' when there is no link or the link is dangling: a silent no-op.
    The category's name travels with the plan so the caller can name it. */
 export type CardDeletionPlan =
-  | { kind: 'refused'; reason: 'movements' }
+  | Extract<DeletionPlan, { kind: 'refused' }>
   | { kind: 'proceed'; category: 'absent' }
   | { kind: 'proceed'; category: 'delete' | 'keep'; categoryName: string };
+
+/* Whether a plan is a card's that names its paired category's fate. Lets a
+   caller holding plans of several kinds read the card's outcome. */
+export function namesPairedCategory(
+  plan: DeletionPlan | CardDeletionPlan | null,
+): plan is Extract<CardDeletionPlan, { categoryName: string }> {
+  return plan !== null && 'categoryName' in plan;
+}
 
 /* The plan for the card delete confirm step: nothing is removed. */
 export function planCardDeletion(cardId: number): Promise<CardDeletionPlan> {
@@ -155,7 +164,7 @@ export function deleteCard(cardId: number): Promise<CardDeletionPlan> {
 
 async function planFor(card: Account): Promise<CardDeletionPlan> {
   if (await accountHasMovements(card.id!)) {
-    return { kind: 'refused', reason: 'movements' };
+    return REFUSED_FOR_MOVEMENTS;
   }
   const category =
     card.paymentCategoryId != null ? await db.categories.get(card.paymentCategoryId) : undefined;

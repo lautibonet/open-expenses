@@ -1,9 +1,16 @@
 import { Injectable, inject } from '@angular/core';
 import { db } from '../db/database';
 import { Account, isCashAccount, isCreditCard } from '../models/account.model';
+import { DeletionPlan, PROCEED, REFUSED_FOR_MOVEMENTS } from '../models/deletion-plan';
 import { namesMatch } from '../models/name-uniqueness';
 import { TranslationError } from '../models/translation-error';
-import { deleteCard, ensurePaymentCategory, renamePaymentCategory } from '../payment-category/payment-category';
+import {
+  CardDeletionPlan,
+  deleteCard,
+  planCardDeletion,
+  ensurePaymentCategory,
+  renamePaymentCategory,
+} from '../payment-category/payment-category';
 import { accountHasMovements } from './account-movements';
 import { LanguageService } from './language.service';
 
@@ -20,8 +27,6 @@ export interface AccountChanges {
   initialBalance?: number;
   limit?: number | null;
 }
-
-export type DeleteRefusalReason = 'movements';
 
 /* Issue #180: names are unique ignoring letter case, so the lookup applies
    the shared rule rather than the exact-match name index. */
@@ -183,32 +188,45 @@ export class AccountService {
     return accountHasMovements(id);
   }
 
-  /* What would refuse Delete, in the order the explanation is offered. */
-  async getDeleteRefusal(id: number): Promise<DeleteRefusalReason | null> {
-    if (await this.hasMovements(id)) return 'movements';
-    return null;
+  /* The plan for the delete confirm step (ADR 0027): nothing is removed. A
+     card is planned by the Payment Category module, like its delete. */
+  planDeletion(id: number): Promise<DeletionPlan | CardDeletionPlan> {
+    return db.transaction('r', db.accounts, db.categories, db.transactions, db.transfers, async () => {
+      const account = await this.accountToDelete(id);
+      return isCreditCard(account) ? planCardDeletion(id) : this.planCashDeletion(id);
+    });
   }
 
   /* Delete-if-unused, never cascade (ADR 0018): an Account carrying movements
      is refused; an unused Account is permanently removed. There is no guard
      on deleting the last Account. A card goes through the Payment Category
-     module (ADR 0024), so its paired category is never left behind. */
-  async delete(id: number): Promise<void> {
+     module (ADR 0024), so its paired category is never left behind. The
+     plan is decided again inside the transaction (ADR 0027), so a movement
+     recorded since the confirm step refuses rather than throws. */
+  delete(id: number): Promise<DeletionPlan | CardDeletionPlan> {
+    return db.transaction('rw', db.accounts, db.categories, db.transactions, db.transfers, async () => {
+      const account = await this.accountToDelete(id);
+      if (isCreditCard(account)) {
+        return deleteCard(id);
+      }
+      const plan = await this.planCashDeletion(id);
+      if (plan.kind === 'proceed') {
+        await db.accounts.delete(id);
+      }
+      return plan;
+    });
+  }
+
+  private async accountToDelete(id: number): Promise<Account> {
     const account = await db.accounts.get(id);
     if (!account) {
       throw new TranslationError('errors.accountNotFound');
     }
-    if (isCreditCard(account)) {
-      const plan = await deleteCard(id);
-      if (plan.kind === 'refused') {
-        throw new TranslationError('errors.accountHasMovements');
-      }
-      return;
-    }
-    if (await this.hasMovements(id)) {
-      throw new TranslationError('errors.accountHasMovements');
-    }
-    await db.accounts.delete(id);
+    return account;
+  }
+
+  private async planCashDeletion(id: number): Promise<DeletionPlan> {
+    return (await this.hasMovements(id)) ? REFUSED_FOR_MOVEMENTS : PROCEED;
   }
 
   async getAll(): Promise<Account[]> {

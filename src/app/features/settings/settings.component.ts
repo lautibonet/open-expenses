@@ -10,10 +10,11 @@ import {
   WritableSignal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { AccountService, DeleteRefusalReason } from '../../core/services/account.service';
+import { AccountService } from '../../core/services/account.service';
 import {
   CardDeletionPlan,
   deleteCard,
+  namesPairedCategory,
   planCardDeletion,
 } from '../../core/payment-category/payment-category';
 import { CategoryService } from '../../core/services/category.service';
@@ -23,11 +24,13 @@ import { DataVersionService } from '../../core/services/data-version.service';
 import { SUPPORTED_CURRENCIES } from '../../core/constants/currencies';
 import { Account, paymentCategoryIds } from '../../core/models/account.model';
 import { Category, CategoryType } from '../../core/models/category.model';
-import { errorCopy, TranslationError } from '../../core/models/translation-error';
+import { errorCopy } from '../../core/models/translation-error';
+import { DeletionPlan } from '../../core/models/deletion-plan';
 import { BackupCardComponent } from './backup-card/backup-card.component';
 import { LanguageCardComponent } from './language-card/language-card.component';
 import { EraseCardComponent } from './erase-card/erase-card.component';
 import { DismissibleAlertComponent } from '../../shared/components/dismissible-alert/dismissible-alert.component';
+import { createDeleteFlow } from './delete-flow';
 
 interface AccountEditState {
   id: number;
@@ -102,25 +105,16 @@ export class SettingsComponent implements OnInit {
   editingBaseCurrency = signal(false);
   baseCurrencyDraft = signal('EUR');
   editError = signal('');
-  confirmingAccountDelete = signal<number | null>(null);
-  confirmingCardDelete = signal<number | null>(null);
-  confirmingCategoryDelete = signal<number | null>(null);
-  refusedAccount = signal<number | null>(null);
-  refusedAccountReason = signal<DeleteRefusalReason | null>(null);
-  refusedCard = signal<number | null>(null);
-  refusedCategory = signal<number | null>(null);
-  /* Issue #175, #184: the deletion plan for the card under confirm. */
-  cardDeletionPlan = signal<CardDeletionPlan | null>(null);
-  /* The paired category's name when the plan deletes it with the card — the
-     confirm step warns visibly only then; empty otherwise. */
+  /* Issue #189 (ADR 0018, ADR 0027): one Delete flow for every row, so at
+     most one account, card or category is confirming or refused. */
+  readonly deleteFlow = createDeleteFlow<DeletionPlan | CardDeletionPlan>();
+  /* Issue #175, #184: the paired category's name when the card under
+     confirm deletes it too — the confirm step warns visibly only then;
+     empty otherwise. */
   pairedCategoryToDelete = computed(() => {
-    const plan = this.cardDeletionPlan();
-    return plan?.kind === 'proceed' && plan.category === 'delete' ? plan.categoryName : '';
+    const plan = this.deleteFlow.plan();
+    return namesPairedCategory(plan) && plan.category === 'delete' ? plan.categoryName : '';
   });
-  /* The card whose deletion plan is being fetched. Any other delete request
-     or a cancel clears it, so a plan the user has since moved away from is
-     dropped instead of opening a stale confirm. */
-  private requestedCardDelete: number | null = null;
   pageNotice = signal('');
 
   accountNameInput = viewChild<ElementRef<HTMLInputElement>>('accountNameInput');
@@ -353,51 +347,36 @@ export class SettingsComponent implements OnInit {
   /* ADR 0018: one remove action per row, branching on the data. An unused
      item opens the inline delete confirm; an item with movements is refused
      with an explanation that offers Deactivation as the fallback. */
-  async requestDeleteAccount(id: number): Promise<void> {
-    this.requestedCardDelete = null;
-    this.confirmingCategoryDelete.set(null);
-    this.refusedCategory.set(null);
-    this.confirmingAccountDelete.set(null);
-    this.refusedAccount.set(null);
-    this.refusedAccountReason.set(null);
-    const reason = await this.accountService.getDeleteRefusal(id);
-    if (reason) {
-      this.refusedAccount.set(id);
-      this.refusedAccountReason.set(reason);
-    } else {
-      this.confirmingAccountDelete.set(id);
-    }
+  requestDeleteAccount(id: number): Promise<void> {
+    return this.deleteFlow.request(
+      { kind: 'account', id },
+      {
+        plan: () => this.accountService.planDeletion(id),
+        remove: () => this.accountService.delete(id),
+      },
+    );
   }
 
-  cancelDeleteAccount(): void {
-    this.confirmingAccountDelete.set(null);
+  /* Closes the open confirm or refusal, whichever row holds it. */
+  cancelDelete(): void {
+    this.deleteFlow.cancel();
   }
 
-  cancelRefuseAccount(): void {
-    this.refusedAccount.set(null);
-    this.refusedAccountReason.set(null);
-  }
-
-  async confirmDeleteAccount(): Promise<void> {
-    const id = this.confirmingAccountDelete();
-    if (id === null) return;
-    this.confirmingAccountDelete.set(null);
-    try {
-      await this.accountService.delete(id);
-    } catch (e: unknown) {
-      if (e instanceof TranslationError && e.key === 'errors.accountHasMovements') {
-        this.refusedAccount.set(id);
-        this.refusedAccountReason.set('movements');
-        return;
-      }
-      throw e;
+  async confirmDelete(): Promise<void> {
+    const deleted = await this.deleteFlow.confirm();
+    if (!deleted) return;
+    /* Issue #175: a paired category that carries transactions survives the
+       card; the page-level notice explains why. */
+    if (namesPairedCategory(deleted) && deleted.category === 'keep') {
+      this.pageNotice.set(
+        this.language.t('settings.cardDeleteCategoryKept', { name: deleted.categoryName }),
+      );
     }
     await this.refresh();
   }
 
   async deactivateInstead(id: number): Promise<void> {
-    this.refusedAccount.set(null);
-    this.refusedAccountReason.set(null);
+    this.deleteFlow.cancel();
     await this.accountService.setActive(id, false);
     await this.refresh();
   }
@@ -502,57 +481,17 @@ export class SettingsComponent implements OnInit {
     }
   }
 
-  async requestDeleteCard(id: number): Promise<void> {
-    this.confirmingAccountDelete.set(null);
-    this.refusedAccount.set(null);
-    this.refusedCategory.set(null);
-    this.confirmingCardDelete.set(null);
-    this.refusedCard.set(null);
-    this.cardDeletionPlan.set(null);
-    this.requestedCardDelete = id;
-    const plan = await planCardDeletion(id);
-    if (this.requestedCardDelete !== id) return;
-    this.requestedCardDelete = null;
-    if (plan.kind === 'refused') {
-      this.refusedCard.set(id);
-      return;
-    }
-    this.cardDeletionPlan.set(plan);
-    this.confirmingCardDelete.set(id);
-  }
-
-  cancelDeleteCard(): void {
-    this.requestedCardDelete = null;
-    this.confirmingCardDelete.set(null);
-    this.cardDeletionPlan.set(null);
-  }
-
-  cancelRefuseCard(): void {
-    this.refusedCard.set(null);
-  }
-
-  async confirmDeleteCard(): Promise<void> {
-    const id = this.confirmingCardDelete();
-    if (id === null) return;
-    this.confirmingCardDelete.set(null);
-    this.cardDeletionPlan.set(null);
-    const plan = await deleteCard(id);
-    if (plan.kind === 'refused') {
-      this.refusedCard.set(id);
-      return;
-    }
-    /* Issue #175: a paired category that carries transactions survives the
-       card; the page-level notice explains why. */
-    if (plan.category === 'keep') {
-      this.pageNotice.set(
-        this.language.t('settings.cardDeleteCategoryKept', { name: plan.categoryName }),
-      );
-    }
-    await this.refresh();
+  /* A card's plan comes from the Payment Category module (ADR 0024), which
+     decides its paired category's fate with it. */
+  requestDeleteCard(id: number): Promise<void> {
+    return this.deleteFlow.request(
+      { kind: 'card', id },
+      { plan: () => planCardDeletion(id), remove: () => deleteCard(id) },
+    );
   }
 
   async deactivateCardInstead(id: number): Promise<void> {
-    this.refusedCard.set(null);
+    this.deleteFlow.cancel();
     await this.accountService.setActive(id, false);
     await this.refresh();
   }
@@ -588,45 +527,18 @@ export class SettingsComponent implements OnInit {
     }
   }
 
-  async requestDeleteCategory(id: number): Promise<void> {
-    this.requestedCardDelete = null;
-    this.confirmingAccountDelete.set(null);
-    this.refusedAccount.set(null);
-    this.confirmingCategoryDelete.set(null);
-    this.refusedCategory.set(null);
-    if (await this.categoryService.hasTransactions(id)) {
-      this.refusedCategory.set(id);
-    } else {
-      this.confirmingCategoryDelete.set(id);
-    }
-  }
-
-  cancelDeleteCategory(): void {
-    this.confirmingCategoryDelete.set(null);
-  }
-
-  cancelRefuseCategory(): void {
-    this.refusedCategory.set(null);
-  }
-
-  async confirmDeleteCategory(): Promise<void> {
-    const id = this.confirmingCategoryDelete();
-    if (id === null) return;
-    this.confirmingCategoryDelete.set(null);
-    try {
-      await this.categoryService.delete(id);
-    } catch (e: unknown) {
-      if (e instanceof TranslationError && e.key === 'errors.categoryHasMovements') {
-        this.refusedCategory.set(id);
-        return;
-      }
-      throw e;
-    }
-    await this.refresh();
+  requestDeleteCategory(id: number): Promise<void> {
+    return this.deleteFlow.request(
+      { kind: 'category', id },
+      {
+        plan: () => this.categoryService.planDeletion(id),
+        remove: () => this.categoryService.delete(id),
+      },
+    );
   }
 
   async deactivateCategoryInstead(id: number): Promise<void> {
-    this.refusedCategory.set(null);
+    this.deleteFlow.cancel();
     await this.categoryService.setActive(id, false);
     await this.refresh();
   }
