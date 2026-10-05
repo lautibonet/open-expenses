@@ -557,13 +557,14 @@ describe('SettingsComponent - edit-on-demand rows', () => {
     fixture.detectChanges();
 
     (editState.querySelector('button[aria-label="Save changes"]') as HTMLButtonElement).click();
-    await flush();
-    fixture.detectChanges();
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(row.querySelector('.edit-state')).toBeNull();
+    });
 
     const updated = await accountService.getById(accountId);
     expect(updated?.name).toBe('Wallet');
     expect(updated?.initialBalance).toBe(250000);
-    expect(row.querySelector('.edit-state')).toBeNull();
     expect(row.querySelector('.account-name')!.textContent!.trim()).toBe('Wallet');
   });
 
@@ -1553,13 +1554,14 @@ describe('SettingsComponent - New-button creation forms', () => {
     fixture.detectChanges();
 
     (form.querySelector('button.btn.primary') as HTMLButtonElement).click();
-    await flush();
-    fixture.detectChanges();
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(card.querySelector('.inline-form')).toBeNull();
+    });
 
     const created = (await accountService.getAll()).find((a) => a.name === 'Wallet');
     expect(created).toBeDefined();
     expect(created?.currency).toBe('EUR');
-    expect(card.querySelector('.inline-form')).toBeNull();
     expect(component.addingAccount()).toBe(false);
   });
 
