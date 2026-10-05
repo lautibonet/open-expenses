@@ -178,34 +178,6 @@ describe('TransferService', () => {
     expect(t.year).toBe(2026);
   });
 
-  it('should get transfers for a month scope by period and year', async () => {
-    await transferService.create(cashId, savingsId, 100, new Date('2025-12-22'), 1, '', 1, 2026);
-    await transferService.create(cashId, savingsId, 200, new Date('2026-02-10'), 2, '', 1, 2026);
-
-    const jan26 = await transferService.getByScope({ kind: 'month', period: 1, year: 2026 });
-    expect(jan26.length).toBe(1);
-    expect(jan26[0].sourceAmount).toBe(100);
-  });
-
-  it('should get every transfer of the stored period year for a year scope', async () => {
-    await transferService.create(cashId, savingsId, 100, new Date('2026-01-05'), 1, '', 1, 2026);
-    await transferService.create(cashId, savingsId, 200, new Date('2026-02-10'), 2, '', 1, 2026);
-    await transferService.create(cashId, savingsId, 300, new Date('2025-12-22'), 1, '', 1, 2026);
-    await transferService.create(cashId, savingsId, 400, new Date('2026-03-01'), 3, '', 1, 2025);
-
-    const year26 = await transferService.getByScope({ kind: 'year', year: 2026 });
-    expect(year26.length).toBe(3);
-    expect(year26.map(t => t.sourceAmount).sort((a, b) => a - b)).toEqual([100, 200, 300]);
-  });
-
-  it('should leave a transfer with an unrecognizable period out of every scope', async () => {
-    const kept = await transferService.create(cashId, savingsId, 100, new Date('2026-01-05'), 1, '', 1, 2026);
-    await db.transfers.add({ ...kept, id: undefined, sourceAmount: 999, period: 'Enero' as any });
-
-    const year26 = await transferService.getByScope({ kind: 'year', year: 2026 });
-    expect(year26.map(t => t.sourceAmount)).toEqual([100]);
-  });
-
   it('should update the period year', async () => {
     const t = await transferService.create(cashId, savingsId, 100, new Date('2025-12-22'), 1);
     const updated = await transferService.update(t.id!, { year: 2025 });

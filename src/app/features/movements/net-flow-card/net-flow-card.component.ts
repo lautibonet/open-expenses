@@ -8,11 +8,6 @@ import { PeriodScope } from '../../../core/scope/scope';
 import { cashBasis } from '../../../core/stats/cash-basis';
 import { DismissibleAlertComponent } from '../../../shared/components/dismissible-alert/dismissible-alert.component';
 
-export interface MovementItem {
-  type: 'transaction' | 'transfer';
-  data: Transaction | Transfer;
-}
-
 @Component({
   selector: 'app-net-flow-card',
   imports: [DismissibleAlertComponent],
@@ -22,7 +17,9 @@ export interface MovementItem {
 export class NetFlowCardComponent {
   language = inject(LanguageService);
 
-  movements = input.required<MovementItem[]>();
+  /* The Ledger's movements across every Period; the Scope narrows them. */
+  transactions = input.required<Transaction[]>();
+  transfers = input.required<Transfer[]>();
   accounts = input.required<Account[]>();
   categories = input.required<Category[]>();
   baseCurrency = input.required<string>();
@@ -30,20 +27,15 @@ export class NetFlowCardComponent {
 
   /* ADR 0022: the cash-basis figures come from the same module Stats reads,
      so the two screens always agree. */
-  private figures = computed(() => {
-    const items = this.movements();
-    return cashBasis({
+  private figures = computed(() =>
+    cashBasis({
       accounts: this.accounts(),
       categories: this.categories(),
-      transactions: items
-        .filter((item) => item.type === 'transaction')
-        .map((item) => item.data as Transaction),
-      transfers: items
-        .filter((item) => item.type === 'transfer')
-        .map((item) => item.data as Transfer),
+      transactions: this.transactions(),
+      transfers: this.transfers(),
       baseCurrency: this.baseCurrency(),
-    });
-  });
+    }),
+  );
 
   private totals = computed(() => this.figures().scopeTotals(this.scope()));
 

@@ -33,7 +33,8 @@
 
   @if (dataLoaded()) {
     <app-net-flow-card
-      [movements]="movements()"
+      [transactions]="transactions()"
+      [transfers]="transfers()"
       [accounts]="allAccounts()"
       [categories]="allCategoriesForNameResolution()"
       [baseCurrency]="baseCurrency()"
@@ -192,7 +193,7 @@
       <p class="loading-state" role="status" aria-busy="true">
         {{ language.t('movements.loading') }}
       </p>
-    } @else if (filteredMovements().length > 0) {
+    } @else if (list().rowCount > 0) {
       <div class="table-scroll">
         <table>
           <caption class="visually-hidden">
@@ -217,39 +218,38 @@
               <tr class="day-divider">
                 <td colspan="5">{{ section.label }}</td>
               </tr>
-              @for (row of section.items; track trackKey(row)) {
-              @let item = row;
-              @if (isTransaction(item)) {
-                @let txn = getTransactionData(item);
-              @let income = isIncomeTransaction(txn);
+              @for (row of section.rows; track trackKey(row)) {
+              @if (row.kind === 'transaction') {
+                @let txn = row.transaction;
+              @let income = row.flow === 'income';
               <tr
                 [class.row-income]="income"
                 [class.row-expense]="!income"
               >
                 <td>
-                  <span class="visually-hidden">{{ kindLabel(item) }}</span>
+                  <span class="visually-hidden">{{ kindLabel(row) }}</span>
                   {{ txn.date | date: 'mediumDate' }}
                 </td>
                 <td [attr.data-label]="language.t('movements.colCategoryTransfer')">
-                  <span class="cat-chip">{{ getCategoryName(txn.categoryId) }}</span>
+                  <span class="cat-chip">{{ nameOrUnknown(row.categoryName) }}</span>
                   @if (txn.note) {
                     <div class="note">{{ txn.note }}</div>
                   }
                 </td>
                 <td
-                  [class.income]="isIncomeTransaction(txn)"
-                  [class.expense]="!isIncomeTransaction(txn)"
+                  [class.income]="income"
+                  [class.expense]="!income"
                 >
-                  {{ formatTransactionDisplayAmount(txn) }}
+                  {{ formatAmount(row.amount) }}
                 </td>
                 <td [attr.data-label]="language.t('movements.colAccount')">
-                  @if (isCardTransaction(txn)) {
+                  @if (row.onCard) {
                     <span class="card-badge">{{ language.t('movements.cardBadge') }}</span>
                   }
-                  <div>{{ getAccountName(txn.accountId) }}</div>
+                  <div>{{ nameOrUnknown(row.accountName) }}</div>
                 </td>
                 <td class="actions-cell">
-                  @if (confirmingDelete() === item) {
+                  @if (isConfirmingDelete(row)) {
                     <span class="visually-hidden" aria-live="polite">
                       {{ deleteConfirmationLabel(confirmingDelete()!) }}
                     </span>
@@ -308,7 +308,7 @@
                     </button>
                     <button
                       class="btn small icon-btn"
-                      (click)="requestDelete(item)"
+                      (click)="requestDelete(row)"
                       [attr.aria-label]="language.t('movements.deleteMovementAria')"
                       [title]="language.t('movements.deleteMovementAria')"
                     >
@@ -327,29 +327,29 @@
                 </td>
               </tr>
             } @else {
-              @let tr = getTransferData(item);
+              @let tr = row.transfer;
               <tr class="transfer-row">
                 <td>
-                  <span class="visually-hidden">{{ kindLabel(item) }}</span>
+                  <span class="visually-hidden">{{ kindLabel(row) }}</span>
                   {{ tr.date | date: 'mediumDate' }}
                 </td>
                 <td [attr.data-label]="language.t('movements.colCategoryTransfer')">
-                  @if (cardPaymentCategoryName(tr); as categoryName) {
+                  @if (row.cardPaymentCategoryName; as categoryName) {
                     <span class="cat-chip">{{ categoryName }}</span>
-                    <div class="route">{{ transferRoute(tr) }}</div>
+                    <div class="route">{{ transferRoute(row) }}</div>
                   } @else {
-                    {{ transferRoute(tr) }}
+                    {{ transferRoute(row) }}
                   }
                   @if (tr.note) {
                     <div class="note">{{ tr.note }}</div>
                   }
                 </td>
                 <td class="amount-cell">
-                  {{ formatTransferDisplayAmount(tr) }}
+                  {{ formatAmount(row.amount) }}
                 </td>
                 <td></td>
                 <td class="actions-cell">
-                  @if (confirmingDelete() === item) {
+                  @if (isConfirmingDelete(row)) {
                     <span class="visually-hidden" aria-live="polite">
                       {{ deleteConfirmationLabel(confirmingDelete()!) }}
                     </span>
@@ -408,7 +408,7 @@
                     </button>
                     <button
                       class="btn small icon-btn"
-                      (click)="requestDelete(item)"
+                      (click)="requestDelete(row)"
                       [attr.aria-label]="language.t('movements.deleteMovementAria')"
                       [title]="language.t('movements.deleteMovementAria')"
                     >

@@ -13,7 +13,13 @@ import { Transaction } from '../../core/models/transaction.model';
 import { Transfer } from '../../core/models/transfer.model';
 import { Account, paymentCategoryIds } from '../../core/models/account.model';
 import { Category } from '../../core/models/category.model';
-import { cashBasisLookups } from '../../core/stats/cash-basis';
+import {
+  DisplayAmount,
+  MovementRow,
+  TransferRow,
+  movementList,
+  movementOf,
+} from '../../core/movements/movement-list';
 import { MONTH_NUMBERS, MonthNumber, getCurrentYear } from '../../core/types/period.type';
 import {
   PeriodScope,
@@ -21,7 +27,6 @@ import {
   changeMonth,
   changeYear,
   defaultScope,
-  noScopeOptions,
   scopeFromQuery,
   scopeOptions,
   scopeQuery,
@@ -36,32 +41,11 @@ import {
   TransferFormComponent,
   TransferDraft,
 } from './transfer-form/transfer-form.component';
-import {
-  NetFlowCardComponent,
-  MovementItem,
-} from './net-flow-card/net-flow-card.component';
-
-interface PendingDelete {
-  item: MovementItem;
-  snapshot: Transaction | Transfer;
-}
-
-interface MovementDaySection {
-  key: string;
-  label: string;
-  items: MovementItem[];
-}
+import { NetFlowCardComponent } from './net-flow-card/net-flow-card.component';
 
 interface FilterChip {
   kind: 'category' | 'account' | 'search';
   label: string;
-}
-
-function localDayKey(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
 }
 
 @Component({
@@ -83,7 +67,13 @@ export class MovementsComponent implements OnInit, OnDestroy {
   language = inject(LanguageService);
 
   scope = signal<PeriodScope>(defaultScope());
-  private availableScopes = signal<ScopeOptions>(noScopeOptions);
+  /* The Ledger's movements across every Period. The list and the scope
+     options both derive from them, so a Scope change never refetches. */
+  transactions = signal<Transaction[]>([]);
+  transfers = signal<Transfer[]>([]);
+  private availableScopes = computed<ScopeOptions>(() =>
+    scopeOptions([...this.transactions(), ...this.transfers()]),
+  );
   scopeYears = computed(() => this.availableScopes().years);
   scopeMonths = computed(() => this.availableScopes().months);
   scopeAnnouncement = signal('');
@@ -107,16 +97,8 @@ export class MovementsComponent implements OnInit, OnDestroy {
     const excluded = paymentCategoryIds(this.allAccounts());
     return this.categories().filter((c) => c.id == null || !excluded.has(c.id));
   });
-  movements = signal<MovementItem[]>([]);
   dataLoaded = signal(false);
   baseCurrency = signal('EUR');
-  /* The ADR 0022 cash-basis classification the row treatment shares with the
-     net-flow card: is a Transaction income, is it on a card, is a Transfer a
-     Card Payment. Built from every Account and Category so a Deactivated card
-     or category keeps its rows. */
-  private lookups = computed(() =>
-    cashBasisLookups(this.allAccounts(), this.allCategoriesForNameResolution()),
-  );
 
   showForm = signal<'none' | 'transfer' | 'transaction'>('none');
   editTransaction = signal<Transaction | null>(null);
@@ -145,8 +127,10 @@ export class MovementsComponent implements OnInit, OnDestroy {
     }
   }
 
-  confirmingDelete = signal<MovementItem | null>(null);
-  undo = signal<PendingDelete | null>(null);
+  confirmingDelete = signal<MovementRow | null>(null);
+  /* The deleted row kept for its undo window; it still holds the movement as
+     it was stored. */
+  undo = signal<MovementRow | null>(null);
   undoAnnouncement = signal('');
   undoWindowMs = 10000;
   private undoHandle: ReturnType<typeof setTimeout> | null = null;
@@ -225,71 +209,41 @@ export class MovementsComponent implements OnInit, OnDestroy {
     );
   }
 
-  filteredMovements = computed(() => {
-    const cat = this.filterCategory();
-    const acc = this.filterAccount();
-    const query = this.searchQuery().trim().toLowerCase();
-    const items = this.movements();
+  /* The Movement list (#187): Scope, filters, search, order, day grouping,
+     and every row's display facts come from one pure module. */
+  list = computed(() =>
+    movementList({
+      transactions: this.transactions(),
+      transfers: this.transfers(),
+      accounts: this.allAccounts(),
+      categories: this.allCategoriesForNameResolution(),
+      baseCurrency: this.baseCurrency(),
+      scope: this.scope(),
+      filters: {
+        categoryId: this.filterCategory(),
+        accountId: this.filterAccount(),
+        search: this.searchQuery(),
+        sortDir: this.sortDir(),
+      },
+    }),
+  );
 
-    if (cat === null && acc === null && !query) {
-      return items;
-    }
+  /* The rendered rows in display order. */
+  rows = computed(() => this.list().sections.flatMap((section) => section.rows));
 
-    return items.filter((item) => {
-      if (cat !== null) {
-        if (item.type === 'transaction') {
-          if ((item.data as Transaction).categoryId !== cat) return false;
-        } else {
-          return false;
-        }
-      }
-      if (acc !== null) {
-        if (item.type === 'transaction') {
-          if ((item.data as Transaction).accountId !== acc) return false;
-        } else {
-          const tr = item.data as Transfer;
-          if (tr.sourceAccountId !== acc && tr.destinationAccountId !== acc) return false;
-        }
-      }
-      if (query && !this.matchesSearch(item, query)) return false;
-      return true;
-    });
-  });
-
-  movementView = computed<MovementItem[]>(() => {
-    const items =
-      this.sortDir() === 'asc' ? [...this.filteredMovements()].reverse() : this.filteredMovements();
-    return items;
-  });
-
-  /* Mobile ledger sections (#101): rows grouped under one divider per day,
-     in movementView order so the date sort direction carries through. The
-     divider announces the day on mobile; the desktop table hides it. */
-  movementDaySections = computed<MovementDaySection[]>(() => {
-    const sections: MovementDaySection[] = [];
-    const byKey = new Map<string, MovementDaySection>();
-    for (const item of this.movementView()) {
-      const date = item.data.date instanceof Date ? item.data.date : new Date(item.data.date);
-      const key = localDayKey(date);
-      let section = byKey.get(key);
-      if (!section) {
-        section = {
-          key,
-          label: this.language.formatDate(date, {
-            weekday: 'long',
-            day: 'numeric',
-            month: 'long',
-            year: 'numeric',
-          }),
-          items: [],
-        };
-        byKey.set(key, section);
-        sections.push(section);
-      }
-      section.items.push(item);
-    }
-    return sections;
-  });
+  /* Mobile ledger sections (#101): one divider per day announces the day on
+     mobile; the desktop table hides it. */
+  movementDaySections = computed(() =>
+    this.list().sections.map((section) => ({
+      ...section,
+      label: this.language.formatDate(section.date, {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      }),
+    })),
+  );
 
   activeFilterCount = computed(() => {
     let count = 0;
@@ -344,27 +298,15 @@ export class MovementsComponent implements OnInit, OnDestroy {
     this.sortDir.update((d) => (d === 'desc' ? 'asc' : 'desc'));
   }
 
-  trackKey(row: MovementItem): string {
-    return `${row.type}:${row.data.id}`;
+  trackKey(row: MovementRow): string {
+    return `${row.kind}:${movementOf(row).id}`;
   }
 
-  private matchesSearch(item: MovementItem, query: string): boolean {
-    if (item.type === 'transaction') {
-      const txn = item.data as Transaction;
-      const haystack = [
-        this.getCategoryName(txn.categoryId),
-        this.getAccountName(txn.accountId),
-        txn.note,
-      ];
-      return haystack.some((part) => part?.toLowerCase().includes(query));
-    }
-    const tr = item.data as Transfer;
-    const haystack = [
-      this.getAccountName(tr.sourceAccountId),
-      this.getAccountName(tr.destinationAccountId),
-      tr.note,
-    ];
-    return haystack.some((part) => part?.toLowerCase().includes(query));
+  /* Compared by key, not identity: the list rebuilds its rows whenever a
+     filter changes, and the confirm step must survive that. */
+  isConfirmingDelete(row: MovementRow): boolean {
+    const confirming = this.confirmingDelete();
+    return confirming !== null && this.trackKey(confirming) === this.trackKey(row);
   }
 
   async ngOnInit(): Promise<void> {
@@ -383,7 +325,6 @@ export class MovementsComponent implements OnInit, OnDestroy {
       this.categories.set(await this.categoryService.getActive());
       this.allCategoriesForNameResolution.set(await this.categoryService.getAll());
       await this.refresh();
-      await this.applyScopeOptions();
     } finally {
       this.dataLoaded.set(true);
     }
@@ -400,54 +341,24 @@ export class MovementsComponent implements OnInit, OnDestroy {
   }
 
   async refresh(): Promise<void> {
-    const txns = await this.transactionService.getByScope(this.scope());
-    const transfers = await this.transferService.getByScope(this.scope());
-
-    const items: MovementItem[] = [
-      ...txns.map((t) => ({ type: 'transaction' as const, data: t })),
-      ...transfers.map((t) => ({ type: 'transfer' as const, data: t })),
-    ].sort((a, b) => {
-      const dateA =
-        a.type === 'transaction' ? (a.data as Transaction).date : (a.data as Transfer).date;
-      const dateB =
-        b.type === 'transaction' ? (b.data as Transaction).date : (b.data as Transfer).date;
-      const byDate = new Date(dateB).getTime() - new Date(dateA).getTime();
-      /* Same-day movements tie-break by id (creation order) so the newest
-         creation sorts first in the default descending view (#172). */
-      if (byDate !== 0) return byDate;
-      return (b.data.id ?? 0) - (a.data.id ?? 0);
-    });
-
-    this.movements.set(items);
+    this.transactions.set(await this.transactionService.getAll());
+    this.transfers.set(await this.transferService.getAll());
   }
 
-  private async applyScopeOptions(): Promise<void> {
-    const txns = await this.transactionService.getAll();
-    const transfers = await this.transferService.getAll();
-    this.availableScopes.set(scopeOptions([...txns, ...transfers]));
+  onScopeYearChange(value: number): void {
+    this.setScope(changeYear(this.scope(), value));
   }
 
-  async onScopeYearChange(value: number): Promise<void> {
-    await this.setScope(changeYear(this.scope(), value));
+  onScopeMonthChange(value: MonthNumber | 'all' | null): void {
+    this.setScope(changeMonth(this.scope(), value, this.availableScopes()));
   }
 
-  async onScopeMonthChange(value: MonthNumber | 'all' | null): Promise<void> {
-    await this.setScope(changeMonth(this.scope(), value, this.availableScopes()));
-  }
-
-  private async setScope(scope: PeriodScope): Promise<void> {
+  /* The whole Ledger is already loaded, so the new Scope's rows and Net
+     figures derive at once — there is no stale Scope to gate. */
+  private setScope(scope: PeriodScope): void {
     this.scope.set(scope);
     this.reflectScopeInUrl(scope);
     this.scopeAnnouncement.set(this.language.scopeLabel(scope));
-    // Re-enter the busy gate so the new scope's empty state and Net figures
-    // never render from the previous scope's data.
-    this.dataLoaded.set(false);
-    try {
-      await this.refresh();
-      await this.applyScopeOptions();
-    } finally {
-      this.dataLoaded.set(true);
-    }
   }
 
   toggleTransferForm(): void {
@@ -541,17 +452,12 @@ export class MovementsComponent implements OnInit, OnDestroy {
     this.searchQuery.set('');
   }
 
-  getAccountCurrency(accountId: number): string {
-    return this.allAccounts().find((a) => a.id === accountId)?.currency ?? '';
-  }
-
   /* Each capture form persists through its own store and reports whether the
      save was an edit; the page only closes the form, refreshes the list, and
      announces the result. */
   async onTransferSaved(wasEdit: boolean): Promise<void> {
     this.cancelTransferForm();
     await this.refresh();
-    await this.applyScopeOptions();
     this.movementAnnouncement.set(
       wasEdit
         ? this.language.t('movements.announcement.transferUpdated')
@@ -562,7 +468,6 @@ export class MovementsComponent implements OnInit, OnDestroy {
   async onTransactionSaved(wasEdit: boolean): Promise<void> {
     this.closeTransactionForm();
     await this.refresh();
-    await this.applyScopeOptions();
     this.movementAnnouncement.set(
       wasEdit
         ? this.language.t('movements.announcement.transactionUpdated')
@@ -570,36 +475,30 @@ export class MovementsComponent implements OnInit, OnDestroy {
     );
   }
 
-  deleteConfirmationLabel(item: MovementItem): string {
-    if (item.type === 'transaction') {
-      const txn = item.data as Transaction;
-      const amount = this.formatTransactionDisplayAmount(txn);
+  deleteConfirmationLabel(row: MovementRow): string {
+    const amount = this.formatAmount(row.amount);
+    if (row.kind === 'transaction') {
       return this.language.t('movements.deleteTransactionConfirm', {
         amount,
-        account: this.getAccountName(txn.accountId),
+        account: this.nameOrUnknown(row.accountName),
       });
     }
-    const tr = item.data as Transfer;
-    const amount = this.formatTransferDisplayAmount(tr);
     return this.language.t('movements.deleteTransferConfirm', {
       amount,
-      source: this.getAccountName(tr.sourceAccountId),
-      destination: this.getAccountName(tr.destinationAccountId),
+      source: this.nameOrUnknown(row.sourceName),
+      destination: this.nameOrUnknown(row.destinationName),
     });
   }
 
-  undoDeleteLabel(pending: PendingDelete): string {
-    const amount =
-      pending.item.type === 'transaction'
-        ? this.formatTransactionDisplayAmount(pending.snapshot as Transaction)
-        : this.formatTransferDisplayAmount(pending.snapshot as Transfer);
-    return pending.item.type === 'transaction'
+  undoDeleteLabel(row: MovementRow): string {
+    const amount = this.formatAmount(row.amount);
+    return row.kind === 'transaction'
       ? this.language.t('movements.deletedTransaction', { amount })
       : this.language.t('movements.deletedTransfer', { amount });
   }
 
-  requestDelete(item: MovementItem): void {
-    this.confirmingDelete.set(item);
+  requestDelete(row: MovementRow): void {
+    this.confirmingDelete.set(row);
   }
 
   cancelDelete(): void {
@@ -607,39 +506,36 @@ export class MovementsComponent implements OnInit, OnDestroy {
   }
 
   async confirmDelete(): Promise<void> {
-    const item = this.confirmingDelete();
-    if (!item) return;
-    const snapshot = item.data;
-    if (item.type === 'transaction') {
-      await this.transactionService.delete(item.data.id!);
+    const row = this.confirmingDelete();
+    if (!row) return;
+    if (row.kind === 'transaction') {
+      await this.transactionService.delete(row.transaction.id!);
     } else {
-      await this.transferService.delete(item.data.id!);
+      await this.transferService.delete(row.transfer.id!);
     }
     this.confirmingDelete.set(null);
-    this.setUndo({ item, snapshot });
+    this.setUndo(row);
     await this.refresh();
-    await this.applyScopeOptions();
   }
 
   async undoDelete(): Promise<void> {
     const pending = this.undo();
     if (!pending) return;
-    if (pending.item.type === 'transaction') {
-      await this.transactionService.restore(pending.snapshot as Transaction);
+    if (pending.kind === 'transaction') {
+      await this.transactionService.restore(pending.transaction);
     } else {
-      await this.transferService.restore(pending.snapshot as Transfer);
+      await this.transferService.restore(pending.transfer);
     }
     this.clearUndo();
     await this.refresh();
-    await this.applyScopeOptions();
   }
 
   dismissUndo(): void {
     this.clearUndo();
   }
 
-  private setUndo(pending: PendingDelete): void {
-    this.undo.set(pending);
+  private setUndo(row: MovementRow): void {
+    this.undo.set(row);
     this.undoAnnouncement.set(
       this.language.t('movements.undoWindow', { seconds: this.undoWindowMs / 1000 }),
     );
@@ -685,19 +581,19 @@ export class MovementsComponent implements OnInit, OnDestroy {
     }
   }
 
-  getAccountName(id: number): string {
-    return this.allAccounts().find((a) => a.id === id)?.name ?? this.language.t('movements.unknown');
+  /* The translated placeholder for an Account or Category the list could not
+     resolve. */
+  nameOrUnknown(name: string | null): string {
+    return name ?? this.language.t('movements.unknown');
   }
 
-  getCategoryName(id: number): string {
-    return (
-      this.allCategoriesForNameResolution().find((c) => c.id === id)?.name ??
-      this.language.t('movements.unknown')
-    );
-  }
-
-  formatMoney(amount: number): string {
-    return this.language.formatMoney(amount, this.baseCurrency());
+  formatAmount(amount: DisplayAmount): string {
+    if (amount.kind === 'converted') {
+      const from = this.language.formatMoney(amount.from.amount, amount.from.currency);
+      const to = this.language.formatMoney(amount.to.amount, amount.to.currency);
+      return `${from} → ${to}`;
+    }
+    return this.language.formatMoney(amount.amount, amount.currency);
   }
 
   scopeLabelText(): string {
@@ -717,86 +613,20 @@ export class MovementsComponent implements OnInit, OnDestroy {
     return this.scope().year;
   }
 
-  isIncomeTransaction(txn: Transaction): boolean {
-    return this.lookups().isIncome(txn);
-  }
-
-  kindLabel(item: MovementItem): string {
-    if (this.isTransaction(item)) {
-      const txn = this.getTransactionData(item);
-      const income = this.isIncomeTransaction(txn);
-      if (this.isCardTransaction(txn)) {
-        return this.language.t(income ? 'type.cardRefund' : 'type.cardPurchase');
-      }
-      return this.language.t(income ? 'type.income' : 'type.expense');
+  /* ADR 0022 / #168: a Transaction on a Credit Card is announced as a Card
+     Purchase or card refund, never as a counted cash Expense or Income. */
+  kindLabel(row: MovementRow): string {
+    if (row.kind === 'transfer') {
+      return this.language.t('type.transfer');
     }
-    return this.language.t('type.transfer');
-  }
-
-  /* ADR 0022 / #168: a Transaction recorded on a Credit Card is shown with a
-     Card badge so it is never mistaken for a counted cash Expense. The card
-     classification reuses the cash-basis seam, orphan rule included. */
-  isCardTransaction(txn: Transaction): boolean {
-    return this.lookups().isCreditCardTransaction(txn);
-  }
-
-  /* The Expense category a Card Payment is captured under, or null when the
-     Transfer is not a Card Payment (or carries no category). */
-  cardPaymentCategoryName(tr: Transfer): string | null {
-    if (tr.categoryId == null || !this.lookups().isCardPayment(tr)) {
-      return null;
+    const income = row.flow === 'income';
+    if (row.onCard) {
+      return this.language.t(income ? 'type.cardRefund' : 'type.cardPurchase');
     }
-    return this.getCategoryName(tr.categoryId);
+    return this.language.t(income ? 'type.income' : 'type.expense');
   }
 
-  transferRoute(tr: Transfer): string {
-    return `${this.getAccountName(tr.sourceAccountId)} → ${this.getAccountName(tr.destinationAccountId)}`;
-  }
-
-  isForeignCurrencyTransaction(txn: Transaction): boolean {
-    const account = this.allAccounts().find((a) => a.id === txn.accountId);
-    return !!account && account.currency !== this.baseCurrency();
-  }
-
-  getTransactionSourceCurrency(txn: Transaction): string {
-    return this.getAccountCurrency(txn.accountId);
-  }
-
-  formatTransactionDisplayAmount(txn: Transaction): string {
-    if (this.isForeignCurrencyTransaction(txn) && txn.baseCurrencyAmount !== null) {
-      const sourceCurrency = this.getTransactionSourceCurrency(txn);
-      const sourceFormatted = this.language.formatMoney(txn.amount, sourceCurrency);
-      const baseFormatted = this.language.formatMoney(txn.baseCurrencyAmount, this.baseCurrency());
-      return `${sourceFormatted} → ${baseFormatted}`;
-    }
-    if (this.isForeignCurrencyTransaction(txn)) {
-      return this.language.formatMoney(txn.amount, this.getTransactionSourceCurrency(txn));
-    }
-    return this.formatMoney(txn.amount);
-  }
-
-  formatTransferDisplayAmount(tr: Transfer): string {
-    const sourceCurrency = this.getAccountCurrency(tr.sourceAccountId);
-    const destCurrency = this.getAccountCurrency(tr.destinationAccountId);
-    const isCrossCurrency = sourceCurrency !== destCurrency;
-    if (isCrossCurrency) {
-      const sourceFormatted = this.language.formatMoney(tr.sourceAmount, sourceCurrency);
-      const destFormatted = this.language.formatMoney(tr.destinationAmount, destCurrency);
-      return `${sourceFormatted} → ${destFormatted}`;
-    }
-    return this.formatMoney(tr.sourceAmount);
-  }
-
-  isTransaction(item: MovementItem): boolean {
-    return item.type === 'transaction';
-  }
-
-  getTransactionData(item: MovementItem): Transaction {
-    return item.data as Transaction;
-  }
-
-  getTransferData(item: MovementItem): Transfer {
-    return item.data as Transfer;
+  transferRoute(row: TransferRow): string {
+    return `${this.nameOrUnknown(row.sourceName)} → ${this.nameOrUnknown(row.destinationName)}`;
   }
 }
-
