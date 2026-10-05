@@ -39,16 +39,26 @@ export type PaymentCategoryResolution =
    a card that is still being created can be resolved before it exists. */
 export type PaymentCard = Pick<Account, 'name' | 'paymentCategoryId'>;
 
+/* The category the card's stored link points at, when it is an Expense
+   category — never looked up by name (ADR 0026). A missing link, a dangling
+   one, or one pointing at an Income category yields none. */
+export function storedPaymentCategory(
+  card: Pick<Account, 'paymentCategoryId'>,
+  categories: readonly Category[],
+): Category | undefined {
+  if (card.paymentCategoryId == null) return undefined;
+  const stored = categories.find(c => c.id === card.paymentCategoryId);
+  return stored?.type === 'expense' ? stored : undefined;
+}
+
 export function resolvePaymentCategory(
   card: PaymentCard,
   categories: readonly Category[],
   language: Language,
 ): PaymentCategoryResolution {
-  if (card.paymentCategoryId != null) {
-    const stored = categories.find(c => c.id === card.paymentCategoryId);
-    if (stored?.type === 'expense') {
-      return { kind: 'stored', category: stored };
-    }
+  const stored = storedPaymentCategory(card, categories);
+  if (stored) {
+    return { kind: 'stored', category: stored };
   }
   const name = paymentCategoryName(card.name, language);
   const named = categories.find(c => namesMatch(c.name, name));

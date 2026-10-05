@@ -1,6 +1,5 @@
 import { db } from '../core/db/database';
-import { categoryTypeFromLegacy } from '../core/models/category.model';
-import { getPeriodYear, monthNumberFromName } from '../core/types/period.type';
+import { cleanDataset, Dataset, DATASET_TABLES } from '../core/db/clean-dataset';
 
 /**
  * Schema version of Backup snapshots. Version 1 snapshots predate the field
@@ -12,13 +11,8 @@ import { getPeriodYear, monthNumberFromName } from '../core/types/period.type';
  */
 export const BACKUP_SCHEMA_VERSION = 3;
 
-export interface BackupSnapshot {
+export interface BackupSnapshot extends Dataset {
   schemaVersion?: number;
-  accounts: any[];
-  categories: any[];
-  transactions: any[];
-  transfers: any[];
-  profile: any[];
   exportedAt: string;
 }
 
@@ -73,88 +67,32 @@ export function snapshotSchemaVersion(snapshot: BackupSnapshot): number {
   return version;
 }
 
-function legacyPeriodToMonthNumber(period: unknown): unknown {
-  // Mirrors the migration in database.ts's v5 upgrade, but for in-memory
-  // snapshot migration: unknown values are passed through unchanged so they
-  // keep the "invisible to Scope filters" behavior instead of being dropped.
-  if (typeof period === 'number') {
-    return period;
-  }
-  if (typeof period === 'string') {
-    const month = monthNumberFromName(period);
-    return month ?? period;
-  }
-  return period;
-}
-
-function migrateLegacyMovement(movement: any): any {
-  return {
-    ...movement,
-    period: legacyPeriodToMonthNumber(movement?.period),
-  };
-}
-
-function migrateLegacyCategory(category: any): any {
-  return {
-    ...category,
-    type: categoryTypeFromLegacy(category?.type) ?? category?.type,
-  };
-}
-
-/* ADR 0022: accounts persisted before the kind field existed are Cash
-   Accounts. Mirrors the v7 upgrade in database.ts. Snapshots from before the
-   Linked Account was dropped carry the orphan field; strip it. */
-function migrateLegacyAccount(account: any): any {
-  const { linkedAccountId: _dropped, ...rest } = account ?? {};
-  return { ...rest, kind: rest?.kind ?? 'cash' };
-}
-
 /**
- * Migrates a snapshot to the current schema version. Legacy snapshots are
- * converted in memory (never rejected); snapshots from a newer schema version
- * are rejected with NewerBackupVersionError so the user is told to update the
+ * Brings a snapshot of any older schema version up to the current rules (ADR
+ * 0026): every snapshot runs the same row cleanup as a database upgrade,
+ * whatever its version, so a Restore ends with the data a device that kept it
+ * all along would hold. Only snapshots from a newer schema version are
+ * rejected, with NewerBackupVersionError, so the user is told to update the
  * app first.
  */
 export function migrateSnapshotToCurrent(snapshot: BackupSnapshot): BackupSnapshot {
-  const version = snapshotSchemaVersion(snapshot);
-  if (version > BACKUP_SCHEMA_VERSION) {
+  if (snapshotSchemaVersion(snapshot) > BACKUP_SCHEMA_VERSION) {
     throw new NewerBackupVersionError();
-  }
-  if (version === BACKUP_SCHEMA_VERSION) {
-    return snapshot;
   }
   return {
     ...snapshot,
+    ...cleanDataset(snapshot),
     schemaVersion: BACKUP_SCHEMA_VERSION,
-    accounts: snapshot.accounts.map(migrateLegacyAccount),
-    categories: snapshot.categories.map(migrateLegacyCategory),
-    transactions: snapshot.transactions.map(migrateLegacyMovement),
-    transfers: snapshot.transfers.map(migrateLegacyMovement),
   };
 }
 
 export async function overwriteLocalDb(snapshot: BackupSnapshot): Promise<void> {
   const migrated = migrateSnapshotToCurrent(snapshot);
 
-  const tables = [
-    { table: db.accounts as any, data: migrated.accounts },
-    { table: db.categories as any, data: migrated.categories },
-    {
-      table: db.transactions as any,
-      data: migrated.transactions.map(({ tags, ...t }: any) => ({
-        ...t,
-        year: getPeriodYear(t),
-      })),
-    },
-    {
-      table: db.transfers as any,
-      data: migrated.transfers.map((t: any) => ({
-        ...t,
-        year: getPeriodYear(t),
-      })),
-    },
-    { table: db.profile as any, data: migrated.profile },
-  ];
+  const tables = DATASET_TABLES.map((name) => ({
+    table: db.table(name),
+    data: migrated[name],
+  }));
 
   await db.transaction(
     'rw',

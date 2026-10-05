@@ -86,13 +86,13 @@ export class MovementsComponent implements OnInit, OnDestroy {
      purchases, which must still stay out of Income, Expenses, and Net. */
   allAccounts = signal<Account[]>([]);
   categories = signal<Category[]>([]);
-  allCategoriesForNameResolution = signal<Category[]>([]);
+  allCategories = signal<Category[]>([]);
   /* #174: a card's Payment Category is plumbing for card payments, so it
      vanishes from every surface that picks categories for ordinary work —
      the transaction form's picker and the movements filter dropdown. Derived
      from every card's link (allAccounts, so a Deactivated card counts too);
-     the transfer form keeps the full list because it resolves the payment
-     category by it, and Settings keeps them visible. */
+     the transfer form keeps the full list because it shows the card's linked
+     Payment Category from it, and Settings keeps them visible. */
   pickableCategories = computed(() => {
     const excluded = paymentCategoryIds(this.allAccounts());
     return this.categories().filter((c) => c.id == null || !excluded.has(c.id));
@@ -216,7 +216,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
       transactions: this.transactions(),
       transfers: this.transfers(),
       accounts: this.allAccounts(),
-      categories: this.allCategoriesForNameResolution(),
+      categories: this.allCategories(),
       baseCurrency: this.baseCurrency(),
       scope: this.scope(),
       filters: {
@@ -323,7 +323,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
       this.accounts.set(await this.accountService.getActive());
       this.allAccounts.set(await this.accountService.getAll());
       this.categories.set(await this.categoryService.getActive());
-      this.allCategoriesForNameResolution.set(await this.categoryService.getAll());
+      this.allCategories.set(await this.categoryService.getAll());
       await this.refresh();
     } finally {
       this.dataLoaded.set(true);

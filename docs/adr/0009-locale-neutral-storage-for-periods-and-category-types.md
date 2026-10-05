@@ -24,3 +24,5 @@ Storing display strings made the storage layer locale-sensitive: the "spelling" 
 The alternative — keeping English names in storage and translating at the display boundary via a name-lookup table — was rejected: it keeps the storage locale-sensitive, requires a lossy mapping table for every additional language, and breaks the moment any writer stores a non-English name.
 
 Supersedes the storage-format aspect of ADR 0003 (Periods as a text field): Periods are still a field on the movement, not an entity, but the field now holds an integer month number instead of a month name.
+
+Amended by ADR 0026: the v4 → v5 migration and the in-memory snapshot conversion are now the same row cleanup, run on every Dexie upgrade and on every Restore whatever the snapshot version. `schemaVersion` only rejects newer Backups.

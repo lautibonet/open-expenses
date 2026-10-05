@@ -234,11 +234,29 @@ describe('TransferService', () => {
       expect(updated.categoryId).toBe(expenseId);
     });
 
-    it('resolves by name for a legacy card that owns no stored link', async () => {
+    it('refuses a Card Payment into a card that owns no Payment Category, never resolving one by name', async () => {
       await db.accounts.update(cardId, { paymentCategoryId: undefined });
-      const t = await transferService.create(cashId, cardId, 500, new Date(), 1);
-      const category = await db.categories.get(t.categoryId!);
-      expect(category?.name).toBe('Visa payment');
+
+      await expect(transferService.create(cashId, cardId, 500, new Date(), 1))
+        .rejects.toThrow('errors.cardHasNoPaymentCategory');
+      expect(await db.transfers.count()).toBe(0);
+      expect((await db.accounts.get(cardId))!.paymentCategoryId).toBeUndefined();
+    });
+
+    it('refuses a Card Payment into a card whose Payment Category link dangles', async () => {
+      await db.categories.delete(expenseId);
+
+      await expect(transferService.create(cashId, cardId, 500, new Date(), 1))
+        .rejects.toThrow('errors.cardHasNoPaymentCategory');
+    });
+
+    it('refuses redirecting a Transfer into a card that owns no Payment Category', async () => {
+      const t = await transferService.create(cashId, savingsId, 500, new Date(), 1);
+      await db.accounts.update(cardId, { paymentCategoryId: undefined });
+
+      await expect(transferService.update(t.id!, { destinationAccountId: cardId }))
+        .rejects.toThrow('errors.cardHasNoPaymentCategory');
+      expect((await db.transfers.get(t.id!))!.destinationAccountId).toBe(savingsId);
     });
 
     it('carries no category on a Cash-to-Cash Transfer', async () => {

@@ -20,7 +20,7 @@ import { Transfer } from '../../../core/models/transfer.model';
 import { Transaction } from '../../../core/models/transaction.model';
 import { Account, isCreditCard } from '../../../core/models/account.model';
 import { Category, isIncomeCategory } from '../../../core/models/category.model';
-import { resolvePaymentCategory } from '../../../core/payment-category/payment-category-rules';
+import { storedPaymentCategory } from '../../../core/payment-category/payment-category-rules';
 import { periodEndBalance } from '../../../core/balances/period-end-balances';
 import {
   ExchangeRateWellComponent,
@@ -150,20 +150,22 @@ export class TransferFormComponent implements AfterViewInit {
     return dst && isCreditCard(dst) ? dst : null;
   });
 
-  /* The name shown in the readonly payment category field. Issue #184: the
-     form resolves it with the Payment Category module's own rule, so it is
-     always the category the saved Transfer will wear — including one the
-     save is about to link or create, and a name an Income category holds. */
-  paymentCategoryName = computed(() => {
+  /* The destination card's Payment Category: its stored link only, never a
+     category resolved by name (ADR 0026). */
+  private cardPaymentCategory = computed(() => {
     const card = this.cardDestination();
-    if (!card) return '';
-    const resolution = resolvePaymentCategory(
-      card,
-      this.categories(),
-      this.language.activeLanguage(),
-    );
-    return 'category' in resolution ? resolution.category.name : resolution.name;
+    return card ? storedPaymentCategory(card, this.categories()) : undefined;
   });
+
+  /* The name shown in the readonly payment category field. */
+  paymentCategoryName = computed(() => this.cardPaymentCategory()?.name ?? '');
+
+  /* A destination card without a usable link cannot be paid until it is
+     renamed: Save stays disabled and the hint says why, ahead of any other
+     reason, since no amount would make the save possible. */
+  cardWithoutPaymentCategory = computed(
+    () => !!this.cardDestination() && !this.cardPaymentCategory(),
+  );
 
   isForeignCurrency = computed(() => {
     const { src, dst } = this.selectedAccounts();
@@ -186,6 +188,7 @@ export class TransferFormComponent implements AfterViewInit {
     if (f.sourceAccountId === f.destAccountId) return false;
     if (!((f.sourceAmount ?? 0) > 0)) return false;
     if (this.isForeignCurrency() && this.rateState().loading) return false;
+    if (this.cardWithoutPaymentCategory()) return false;
     return !this.saving();
   });
 
@@ -197,6 +200,9 @@ export class TransferFormComponent implements AfterViewInit {
     }
     if (f.sourceAccountId === f.destAccountId) {
       return this.language.t('movements.saveDisabled.distinct');
+    }
+    if (this.cardWithoutPaymentCategory()) {
+      return this.language.t('errors.cardHasNoPaymentCategory');
     }
     if (!((f.sourceAmount ?? 0) > 0)) return this.language.t('movements.saveDisabled.amount');
     if (this.isForeignCurrency() && this.rateState().loading) {
@@ -360,7 +366,7 @@ export class TransferFormComponent implements AfterViewInit {
 
   private handleEditInput(t: Transfer | null): void {
     if (!t) return;
-    const date = dateToLocalISO(new Date(t.date));
+    const date = dateToLocalISO(t.date);
     this.editingId.set(t.id ?? null);
     /* Ticket #173: the payment category always comes from the destination
        card, never from the stored transfer — reopening a payment with a stale
