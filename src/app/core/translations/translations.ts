@@ -116,6 +116,8 @@ const en: Record<string, string> = {
   'errors.currencyRequired': 'Choose a currency for this account',
   'errors.currencyHasMovements':
     "This account has movements, so its currency can't be changed.",
+  'errors.baseCurrencyHasMovements':
+    "Movements exist, so the base currency can't be changed.",
   'errors.cardLimitNegative': 'Limit cannot be negative',
   'errors.categoryHasMovements':
     "This category has movements, so it can't be deleted. Deactivate it instead.",
@@ -126,6 +128,7 @@ const en: Record<string, string> = {
   'settings.failedUpdateLanguage': 'Failed to update language',
   'settings.baseCurrency': 'Base Currency',
   'settings.baseCurrencyAria': 'Base currency',
+  'settings.baseCurrencyLocked': "Can't be changed once movements exist.",
   'settings.accounts': 'Accounts',
   'settings.creditCards': 'Credit Cards',
   'settings.newCard': 'New card',
@@ -535,6 +538,8 @@ const es: Record<string, string> = {
   'errors.currencyRequired': 'Elige una moneda para esta cuenta',
   'errors.currencyHasMovements':
     'Esta cuenta tiene movimientos, así que no se puede cambiar su moneda.',
+  'errors.baseCurrencyHasMovements':
+    'Ya hay movimientos, así que no se puede cambiar la moneda base.',
   'errors.cardLimitNegative': 'El límite no puede ser negativo',
   'errors.categoryHasMovements':
     'Esta categoría tiene movimientos, así que no se puede eliminar. Desactívala en su lugar.',
@@ -545,6 +550,7 @@ const es: Record<string, string> = {
   'settings.failedUpdateLanguage': 'Error al actualizar el idioma',
   'settings.baseCurrency': 'Moneda base',
   'settings.baseCurrencyAria': 'Moneda base',
+  'settings.baseCurrencyLocked': 'No se puede cambiar cuando ya hay movimientos.',
   'settings.accounts': 'Cuentas',
   'settings.creditCards': 'Tarjetas de crédito',
   'settings.newCard': 'Nueva tarjeta',

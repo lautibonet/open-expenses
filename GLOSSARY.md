@@ -45,7 +45,7 @@ The reporting window chosen on the Stats and Movements screens. On Stats it is a
 _Avoid_: Filter, range, timeframe, selection, All Time
 
 **Base Currency**:
-The single currency in which the Stats total balance and all period totals/averages are reported. Set during onboarding, and changeable only while no Transaction or Transfer has been recorded — every stored conversion is expressed in it, so changing it afterwards would silently reinterpret history. Accounts may hold different currencies; amounts are converted using exchange rates recorded at transaction/transfer time. In the Income, Expenses, and Net figures a Transaction on an Account already in the Base Currency counts at its face amount, and Movements and Stats always report the same Income, Expenses, and Net for the same movements.
+The single currency in which the Stats total balance and all period totals/averages are reported. Set during onboarding, and changeable only while no Transaction or Transfer exists — on any Account, active or deactivated — since every stored conversion is expressed in it and changing it would silently reinterpret history. Deleting the last movement makes it changeable again; Accounts, their initial balances, and Categories never lock it. Accounts may hold different currencies; amounts are converted using exchange rates recorded at transaction/transfer time. In the Income, Expenses, and Net figures a Transaction on an Account already in the Base Currency counts at its face amount, and Movements and Stats always report the same Income, Expenses, and Net for the same movements.
 _Avoid_: Report currency, display currency
 
 **Exchange Rate**:

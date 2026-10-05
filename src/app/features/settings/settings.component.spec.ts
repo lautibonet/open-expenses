@@ -557,13 +557,14 @@ describe('SettingsComponent - edit-on-demand rows', () => {
     fixture.detectChanges();
 
     (editState.querySelector('button[aria-label="Save changes"]') as HTMLButtonElement).click();
-    await flush();
-    fixture.detectChanges();
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(row.querySelector('.edit-state')).toBeNull();
+    });
 
     const updated = await accountService.getById(accountId);
     expect(updated?.name).toBe('Wallet');
     expect(updated?.initialBalance).toBe(250000);
-    expect(row.querySelector('.edit-state')).toBeNull();
     expect(row.querySelector('.account-name')!.textContent!.trim()).toBe('Wallet');
   });
 
@@ -597,8 +598,10 @@ describe('SettingsComponent - edit-on-demand rows', () => {
     nameInput.value = 'Wallet';
     nameInput.dispatchEvent(new Event('input'));
     nameInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
-    await flush();
-    fixture.detectChanges();
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(pencilFor(row)).toBeTruthy();
+    });
     expect((await accountService.getById(accountId))?.name).toBe('Wallet');
 
     pencilFor(row).click();
@@ -928,6 +931,68 @@ describe('SettingsComponent - base currency card', () => {
     expect(inlineError.getAttribute('role')).toBe('alert');
     expect(inlineError.textContent).toContain('Failed to save currency');
     expect(card.querySelector('select')).toBeTruthy();
+  });
+
+  function seedTransaction(): Promise<number> {
+    return db.transactions.add({
+      accountId: 1,
+      categoryId: 1,
+      amount: 1000,
+      date: new Date(),
+      period: 1,
+      year: 2026,
+      exchangeRate: null,
+      baseCurrencyAmount: null,
+      note: '',
+      createdAt: new Date(),
+    });
+  }
+
+  it('shows the base currency read-only with an explanation once movements exist (ADR 0025)', async () => {
+    await seedTransaction();
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const card = currencyCard();
+    expect(card.querySelector('.card-value')!.textContent).toContain('EUR');
+    expect(pencil(card)).toBeNull();
+    expect(card.textContent).toContain("Can't be changed once movements exist.");
+  });
+
+  it('offers the pencil again once the last movement is deleted', async () => {
+    const id = await seedTransaction();
+    await component.ngOnInit();
+    fixture.detectChanges();
+    expect(pencil(currencyCard())).toBeNull();
+
+    await db.transactions.delete(id);
+    await component.ngOnInit();
+    fixture.detectChanges();
+
+    const card = currencyCard();
+    expect(pencil(card)).toBeTruthy();
+    expect(card.textContent).not.toContain("Can't be changed once movements exist.");
+  });
+
+  it('refuses a save from an editor opened before the lock started', async () => {
+    const card = currencyCard();
+    pencil(card).click();
+    fixture.detectChanges();
+    await flush();
+    fixture.detectChanges();
+
+    await seedTransaction();
+    const select = card.querySelector('select') as HTMLSelectElement;
+    select.value = 'USD';
+    select.dispatchEvent(new Event('change'));
+    (card.querySelector('button[aria-label="Save changes"]') as HTMLButtonElement).click();
+    await flush();
+    fixture.detectChanges();
+
+    expect((await profileService.get())!.baseCurrency).toBe('EUR');
+    expect(card.querySelector('.edit-error')!.textContent).toContain(
+      "Movements exist, so the base currency can't be changed.",
+    );
   });
 });
 
@@ -1491,13 +1556,14 @@ describe('SettingsComponent - New-button creation forms', () => {
     fixture.detectChanges();
 
     (form.querySelector('button.btn.primary') as HTMLButtonElement).click();
-    await flush();
-    fixture.detectChanges();
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(card.querySelector('.inline-form')).toBeNull();
+    });
 
     const created = (await accountService.getAll()).find((a) => a.name === 'Wallet');
     expect(created).toBeDefined();
     expect(created?.currency).toBe('EUR');
-    expect(card.querySelector('.inline-form')).toBeNull();
     expect(component.addingAccount()).toBe(false);
   });
 

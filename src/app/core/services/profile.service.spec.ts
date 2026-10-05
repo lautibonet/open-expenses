@@ -39,6 +39,81 @@ describe('ProfileService', () => {
     expect(currency).toBe('USD');
   });
 
+  function seedTransaction(): Promise<number> {
+    return db.transactions.add({
+      accountId: 1,
+      categoryId: 1,
+      amount: 1000,
+      date: new Date(),
+      period: 1,
+      year: 2026,
+      exchangeRate: null,
+      baseCurrencyAmount: null,
+      note: '',
+      createdAt: new Date(),
+    });
+  }
+
+  it('refuses a base currency change once a Transaction exists', async () => {
+    await service.completeOnboarding('EUR');
+    await seedTransaction();
+
+    await expect(service.updateBaseCurrency('USD')).rejects.toThrow(
+      'errors.baseCurrencyHasMovements',
+    );
+    expect(await service.getBaseCurrency()).toBe('EUR');
+  });
+
+  it('locks the base currency once a Transfer exists, even between deactivated accounts', async () => {
+    await service.completeOnboarding('EUR');
+    const sourceAccountId = await db.accounts.add({
+      name: 'Old', kind: 'cash', currency: 'EUR', initialBalance: 0, active: false, createdAt: new Date(),
+    });
+    const destinationAccountId = await db.accounts.add({
+      name: 'Older', kind: 'cash', currency: 'EUR', initialBalance: 0, active: false, createdAt: new Date(),
+    });
+    await db.transfers.add({
+      sourceAccountId,
+      destinationAccountId,
+      sourceAmount: 1000,
+      destinationAmount: 1000,
+      exchangeRate: 1,
+      baseCurrencyAmount: 1000,
+      date: new Date(),
+      period: 1,
+      year: 2026,
+      note: '',
+      createdAt: new Date(),
+    });
+
+    expect(await service.isBaseCurrencyLocked()).toBe(true);
+    await expect(service.updateBaseCurrency('USD')).rejects.toThrow(
+      'errors.baseCurrencyHasMovements',
+    );
+  });
+
+  it('unlocks the base currency once the last movement is deleted', async () => {
+    await service.completeOnboarding('EUR');
+    const id = await seedTransaction();
+    await db.transactions.delete(id);
+
+    expect(await service.isBaseCurrencyLocked()).toBe(false);
+    await service.updateBaseCurrency('USD');
+    expect(await service.getBaseCurrency()).toBe('USD');
+  });
+
+  it('leaves the base currency editable when only accounts and categories exist', async () => {
+    await service.completeOnboarding('EUR');
+    await db.accounts.add({
+      name: 'Cash', kind: 'cash', currency: 'USD', initialBalance: 500, active: true, createdAt: new Date(),
+    });
+    await db.categories.add({ name: 'Food', type: 'expense', active: true, createdAt: new Date() });
+
+    expect(await service.isBaseCurrencyLocked()).toBe(false);
+    await service.updateBaseCurrency('USD');
+    expect(await service.getBaseCurrency()).toBe('USD');
+  });
+
   it('should default to EUR when no profile', async () => {
     const currency = await service.getBaseCurrency();
     expect(currency).toBe('EUR');
