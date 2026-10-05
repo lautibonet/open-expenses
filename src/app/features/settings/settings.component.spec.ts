@@ -230,26 +230,26 @@ describe('SettingsComponent - account delete-if-unused (ADR 0018)', () => {
 
   it('branches on the data: an unused account gets the inline delete confirm', async () => {
     await component.requestDeleteAccount(accountId);
-    expect(component.confirmingAccountDelete()).toBe(accountId);
-    expect(component.refusedAccount()).toBeNull();
+    expect(component.deleteFlow.isConfirming({ kind: 'account', id: accountId })).toBe(true);
+    expect(component.deleteFlow.isRefused({ kind: 'account', id: accountId })).toBe(false);
 
-    component.cancelDeleteAccount();
-    expect(component.confirmingAccountDelete()).toBeNull();
+    component.cancelDelete();
+    expect(component.deleteFlow.isConfirming({ kind: 'account', id: accountId })).toBe(false);
   });
 
   it('does not delete an unused account until confirmed', async () => {
     await component.requestDeleteAccount(accountId);
-    component.cancelDeleteAccount();
+    component.cancelDelete();
 
     expect(await accountService.getById(accountId)).toBeDefined();
   });
 
   it('deletes an unused account only after confirming', async () => {
     await component.requestDeleteAccount(accountId);
-    await component.confirmDeleteAccount();
+    await component.confirmDelete();
 
     expect(await accountService.getById(accountId)).toBeUndefined();
-    expect(component.confirmingAccountDelete()).toBeNull();
+    expect(component.deleteFlow.isConfirming({ kind: 'account', id: accountId })).toBe(false);
     expect(component.accounts().some((a) => a.id === accountId)).toBe(false);
   });
 
@@ -273,26 +273,26 @@ describe('SettingsComponent - account delete-if-unused (ADR 0018)', () => {
     });
 
     await component.requestDeleteAccount(accountId);
-    expect(component.refusedAccount()).toBe(accountId);
-    expect(component.confirmingAccountDelete()).toBeNull();
+    expect(component.deleteFlow.isRefused({ kind: 'account', id: accountId })).toBe(true);
+    expect(component.deleteFlow.isConfirming({ kind: 'account', id: accountId })).toBe(false);
 
     expect(await accountService.getById(accountId)).toBeDefined();
   });
 
   it('clears the refusal target on cancel', async () => {
     await component.requestDeleteAccount(accountId);
-    component.cancelRefuseAccount();
-    expect(component.refusedAccount()).toBeNull();
+    component.cancelDelete();
+    expect(component.deleteFlow.isRefused({ kind: 'account', id: accountId })).toBe(false);
   });
 
   it('does nothing when confirming with no target', async () => {
-    await component.confirmDeleteAccount();
+    await component.confirmDelete();
     expect(await accountService.getById(accountId)).toBeDefined();
   });
 
   it('refuses at confirm time when movements appear after the request', async () => {
     await component.requestDeleteAccount(accountId);
-    expect(component.confirmingAccountDelete()).toBe(accountId);
+    expect(component.deleteFlow.isConfirming({ kind: 'account', id: accountId })).toBe(true);
 
     const category = await db.categories.add({
       name: 'Food',
@@ -313,8 +313,8 @@ describe('SettingsComponent - account delete-if-unused (ADR 0018)', () => {
       createdAt: new Date(),
     });
 
-    await component.confirmDeleteAccount();
-    expect(component.refusedAccount()).toBe(accountId);
+    await component.confirmDelete();
+    expect(component.deleteFlow.isRefused({ kind: 'account', id: accountId })).toBe(true);
     expect(await accountService.getById(accountId)).toBeDefined();
   });
 });
@@ -347,26 +347,26 @@ describe('SettingsComponent - category delete-if-unused (ADR 0018)', () => {
 
   it('branches on the data: an unused category gets the inline delete confirm', async () => {
     await component.requestDeleteCategory(categoryId);
-    expect(component.confirmingCategoryDelete()).toBe(categoryId);
-    expect(component.refusedCategory()).toBeNull();
+    expect(component.deleteFlow.isConfirming({ kind: 'category', id: categoryId })).toBe(true);
+    expect(component.deleteFlow.isRefused({ kind: 'category', id: categoryId })).toBe(false);
 
-    component.cancelDeleteCategory();
-    expect(component.confirmingCategoryDelete()).toBeNull();
+    component.cancelDelete();
+    expect(component.deleteFlow.isConfirming({ kind: 'category', id: categoryId })).toBe(false);
   });
 
   it('does not delete an unused category until confirmed', async () => {
     await component.requestDeleteCategory(categoryId);
-    component.cancelDeleteCategory();
+    component.cancelDelete();
 
     expect(await categoryService.getById(categoryId)).toBeDefined();
   });
 
   it('deletes an unused category only after confirming', async () => {
     await component.requestDeleteCategory(categoryId);
-    await component.confirmDeleteCategory();
+    await component.confirmDelete();
 
     expect(await categoryService.getById(categoryId)).toBeUndefined();
-    expect(component.confirmingCategoryDelete()).toBeNull();
+    expect(component.deleteFlow.isConfirming({ kind: 'category', id: categoryId })).toBe(false);
   });
 
   it('refuses to delete a category referenced by a transaction and records the refusal target', async () => {
@@ -392,21 +392,21 @@ describe('SettingsComponent - category delete-if-unused (ADR 0018)', () => {
     });
 
     await component.requestDeleteCategory(categoryId);
-    expect(component.refusedCategory()).toBe(categoryId);
-    expect(component.confirmingCategoryDelete()).toBeNull();
+    expect(component.deleteFlow.isRefused({ kind: 'category', id: categoryId })).toBe(true);
+    expect(component.deleteFlow.isConfirming({ kind: 'category', id: categoryId })).toBe(false);
 
     expect(await categoryService.getById(categoryId)).toBeDefined();
   });
 
   it('does nothing when confirming with no target', async () => {
-    await component.confirmDeleteCategory();
+    await component.confirmDelete();
     expect(await categoryService.getById(categoryId)).toBeDefined();
   });
 
   it('clears the refusal target on cancel', async () => {
     await component.requestDeleteCategory(categoryId);
-    component.cancelRefuseCategory();
-    expect(component.refusedCategory()).toBeNull();
+    component.cancelDelete();
+    expect(component.deleteFlow.isRefused({ kind: 'category', id: categoryId })).toBe(false);
   });
 });
 
@@ -1765,8 +1765,8 @@ describe('SettingsComponent - credit cards (ADR 0022)', () => {
     await component.refresh();
 
     await component.requestDeleteCard(card.id!);
-    expect(component.confirmingCardDelete()).toBe(card.id);
-    await component.confirmDeleteCard();
+    expect(component.deleteFlow.isConfirming({ kind: 'card', id: card.id! })).toBe(true);
+    await component.confirmDelete();
     expect(await accountService.getById(card.id!)).toBeUndefined();
   });
 
@@ -1792,7 +1792,7 @@ describe('SettingsComponent - credit cards (ADR 0022)', () => {
     await component.refresh();
     await component.requestDeleteCard(card.id!);
 
-    await component.confirmDeleteCard();
+    await component.confirmDelete();
     fixture.detectChanges();
 
     expect(await accountService.getById(card.id!)).toBeUndefined();
@@ -1822,7 +1822,7 @@ describe('SettingsComponent - credit cards (ADR 0022)', () => {
       createdAt: new Date(),
     });
 
-    await component.confirmDeleteCard();
+    await component.confirmDelete();
     fixture.detectChanges();
 
     expect(await accountService.getById(card.id!)).toBeUndefined();
@@ -1836,7 +1836,7 @@ describe('SettingsComponent - credit cards (ADR 0022)', () => {
     const card = await accountService.createCard({ name: 'Visa', currency: 'EUR' });
     await component.refresh();
     await component.requestDeleteCard(card.id!);
-    expect(component.confirmingCardDelete()).toBe(card.id);
+    expect(component.deleteFlow.isConfirming({ kind: 'card', id: card.id! })).toBe(true);
 
     await db.transactions.add({
       accountId: card.id!,
@@ -1851,9 +1851,9 @@ describe('SettingsComponent - credit cards (ADR 0022)', () => {
       createdAt: new Date(),
     });
 
-    await component.confirmDeleteCard();
+    await component.confirmDelete();
 
-    expect(component.refusedCard()).toBe(card.id);
+    expect(component.deleteFlow.isRefused({ kind: 'card', id: card.id! })).toBe(true);
     expect(await accountService.getById(card.id!)).toBeDefined();
     expect(await categoryService.getById(card.paymentCategoryId!)).toBeDefined();
   });
@@ -1876,10 +1876,10 @@ describe('SettingsComponent - credit cards (ADR 0022)', () => {
 
     await component.requestDeleteCard(card.id!);
     fixture.detectChanges();
-    expect(component.cardDeletionPlan()).toMatchObject({ kind: 'proceed', category: 'keep' });
+    expect(component.deleteFlow.plan()).toMatchObject({ kind: 'proceed', category: 'keep' });
     expect(rowFor('.account-row', 'Visa').querySelector('.paired-category-warning')).toBeNull();
 
-    await component.confirmDeleteCard();
+    await component.confirmDelete();
     fixture.detectChanges();
 
     expect(await accountService.getById(card.id!)).toBeUndefined();
@@ -1894,10 +1894,10 @@ describe('SettingsComponent - credit cards (ADR 0022)', () => {
 
     await component.requestDeleteCard(card.id!);
     fixture.detectChanges();
-    expect(component.cardDeletionPlan()).toEqual({ kind: 'proceed', category: 'absent' });
+    expect(component.deleteFlow.plan()).toEqual({ kind: 'proceed', category: 'absent' });
     expect(rowFor('.account-row', 'Visa').querySelector('.paired-category-warning')).toBeNull();
 
-    await component.confirmDeleteCard();
+    await component.confirmDelete();
     fixture.detectChanges();
 
     expect(await accountService.getById(card.id!)).toBeUndefined();
@@ -1913,8 +1913,31 @@ describe('SettingsComponent - credit cards (ADR 0022)', () => {
     await component.requestDeleteCategory(category.id!);
     await cardRequest;
 
-    expect(component.confirmingCardDelete()).toBeNull();
-    expect(component.confirmingCategoryDelete()).toBe(category.id);
+    expect(component.deleteFlow.isConfirming({ kind: 'card', id: card.id! })).toBe(false);
+    expect(component.deleteFlow.isConfirming({ kind: 'category', id: category.id! })).toBe(true);
+  });
+
+  /* Issue #189: one delete at a time across every list on the page. */
+  it('closes an open card confirm when an account delete starts', async () => {
+    const card = await accountService.createCard({ name: 'Visa', currency: 'EUR' });
+    await component.refresh();
+
+    await component.requestDeleteCard(card.id!);
+    await component.requestDeleteAccount(cashId);
+
+    expect(component.deleteFlow.isConfirming({ kind: 'card', id: card.id! })).toBe(false);
+    expect(component.deleteFlow.isConfirming({ kind: 'account', id: cashId })).toBe(true);
+  });
+
+  it('closes an open account confirm when a card delete starts', async () => {
+    const card = await accountService.createCard({ name: 'Visa', currency: 'EUR' });
+    await component.refresh();
+
+    await component.requestDeleteAccount(cashId);
+    await component.requestDeleteCard(card.id!);
+
+    expect(component.deleteFlow.isConfirming({ kind: 'account', id: cashId })).toBe(false);
+    expect(component.deleteFlow.isConfirming({ kind: 'card', id: card.id! })).toBe(true);
   });
 
   it('clears the paired-category warning when the confirm is cancelled', async () => {
@@ -1922,10 +1945,10 @@ describe('SettingsComponent - credit cards (ADR 0022)', () => {
     await component.refresh();
 
     await component.requestDeleteCard(card.id!);
-    component.cancelDeleteCard();
+    component.cancelDelete();
 
-    expect(component.confirmingCardDelete()).toBeNull();
-    expect(component.cardDeletionPlan()).toBeNull();
+    expect(component.deleteFlow.isConfirming({ kind: 'card', id: card.id! })).toBe(false);
+    expect(component.deleteFlow.plan()).toBeNull();
     expect(component.pairedCategoryToDelete()).toBe('');
   });
 
@@ -1947,8 +1970,8 @@ describe('SettingsComponent - credit cards (ADR 0022)', () => {
     await component.refresh();
 
     await component.requestDeleteCard(card.id!);
-    expect(component.refusedCard()).toBe(card.id);
-    expect(component.confirmingCardDelete()).toBeNull();
+    expect(component.deleteFlow.isRefused({ kind: 'card', id: card.id! })).toBe(true);
+    expect(component.deleteFlow.isConfirming({ kind: 'card', id: card.id! })).toBe(false);
     expect(await accountService.getById(card.id!)).toBeDefined();
 
     await component.deactivateCardInstead(card.id!);
@@ -1969,9 +1992,9 @@ describe('SettingsComponent - credit cards (ADR 0022)', () => {
     await component.refresh();
 
     await component.requestDeleteAccount(cashId);
-    expect(component.confirmingAccountDelete()).toBe(cashId);
-    expect(component.refusedAccount()).toBeNull();
-    await component.confirmDeleteAccount();
+    expect(component.deleteFlow.isConfirming({ kind: 'account', id: cashId })).toBe(true);
+    expect(component.deleteFlow.isRefused({ kind: 'account', id: cashId })).toBe(false);
+    await component.confirmDelete();
     expect(await accountService.getById(cashId)).toBeUndefined();
   });
 

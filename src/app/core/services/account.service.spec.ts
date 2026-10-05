@@ -225,9 +225,35 @@ describe('AccountService - delete-if-unused (ADR 0018)', () => {
     expect(await service.hasMovements(destination.id!)).toBe(true);
   });
 
+  it('plans to proceed with deleting an unused account', async () => {
+    const account = await service.create('Cash', 'EUR', 0);
+    expect(await service.planDeletion(account.id!)).toEqual({ kind: 'proceed' });
+  });
+
+  it('plans to refuse deleting an account referenced by a transfer', async () => {
+    const source = await service.create('Cash', 'EUR', 0);
+    const destination = await service.create('Bank', 'EUR', 0);
+    await seedTransfer(source.id!, destination.id!);
+    expect(await service.planDeletion(destination.id!)).toEqual({
+      kind: 'refused',
+      reason: 'movements',
+    });
+  });
+
+  it('refuses rather than throws when a movement is recorded between plan and delete', async () => {
+    const source = await service.create('Cash', 'EUR', 0);
+    const destination = await service.create('Bank', 'EUR', 0);
+    expect(await service.planDeletion(source.id!)).toEqual({ kind: 'proceed' });
+
+    await seedTransfer(source.id!, destination.id!);
+
+    expect(await service.delete(source.id!)).toEqual({ kind: 'refused', reason: 'movements' });
+    expect(await service.getById(source.id!)).toBeDefined();
+  });
+
   it('permanently deletes an unused account', async () => {
     const account = await service.create('Cash', 'EUR', 0);
-    await service.delete(account.id!);
+    expect(await service.delete(account.id!)).toEqual({ kind: 'proceed' });
     expect(await service.getById(account.id!)).toBeUndefined();
     expect((await service.getAll()).length).toBe(0);
   });
@@ -259,9 +285,7 @@ describe('AccountService - delete-if-unused (ADR 0018)', () => {
     });
     const transactionId = await seedTransaction(account.id!, category);
 
-    await expect(service.delete(account.id!)).rejects.toMatchObject({
-      key: 'errors.accountHasMovements',
-    });
+    expect(await service.delete(account.id!)).toEqual({ kind: 'refused', reason: 'movements' });
 
     expect(await service.getById(account.id!)).toBeDefined();
     expect(await db.transactions.get(transactionId)).toBeDefined();
@@ -272,7 +296,7 @@ describe('AccountService - delete-if-unused (ADR 0018)', () => {
     const destination = await service.create('Bank', 'EUR', 0);
     const transferId = await seedTransfer(source.id!, destination.id!);
 
-    await expect(service.delete(source.id!)).rejects.toBeInstanceOf(TranslationError);
+    expect(await service.delete(source.id!)).toEqual({ kind: 'refused', reason: 'movements' });
 
     expect(await service.getById(source.id!)).toBeDefined();
     expect(await db.transfers.get(transferId)).toBeDefined();
@@ -559,8 +583,8 @@ describe('AccountService - credit cards (ADR 0022)', () => {
       createdAt: new Date(),
     });
 
-    expect(await service.getDeleteRefusal(card.id!)).toBe('movements');
-    await expect(service.delete(card.id!)).rejects.toThrow('errors.accountHasMovements');
+    expect(await service.planDeletion(card.id!)).toEqual({ kind: 'refused', reason: 'movements' });
+    expect(await service.delete(card.id!)).toEqual({ kind: 'refused', reason: 'movements' });
   });
 });
 
@@ -579,6 +603,15 @@ describe('AccountService - card deletion through the Payment Category module', (
 
   afterEach(async () => {
     await db.delete();
+  });
+
+  it('plans an unused card by the card plan, naming the category it deletes', async () => {
+    const card = await service.createCard({ name: 'Visa', currency: 'EUR' });
+    expect(await service.planDeletion(card.id!)).toEqual({
+      kind: 'proceed',
+      category: 'delete',
+      categoryName: 'Visa payment',
+    });
   });
 
   it('removes an unused paired category together with the card', async () => {
@@ -609,7 +642,7 @@ describe('AccountService - card deletion through the Payment Category module', (
       createdAt: new Date(),
     });
 
-    await expect(service.delete(card.id!)).rejects.toThrow('errors.accountHasMovements');
+    expect(await service.delete(card.id!)).toEqual({ kind: 'refused', reason: 'movements' });
     expect(await service.getById(card.id!)).toBeDefined();
     expect(await db.categories.get(card.paymentCategoryId!)).toBeDefined();
   });

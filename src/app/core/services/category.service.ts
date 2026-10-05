@@ -4,6 +4,7 @@ import { Category, CategoryType, isCategoryType } from '../models/category.model
 import { DEFAULT_LANGUAGE, Language } from '../types/language.type';
 import { translate } from '../translations/translations';
 import { TranslationError } from '../models/translation-error';
+import { DeletionPlan, PROCEED, REFUSED_FOR_MOVEMENTS } from '../models/deletion-plan';
 import { namesMatch } from '../models/name-uniqueness';
 
 const DEFAULT_CATEGORIES: { key: string; type: CategoryType }[] = [
@@ -126,17 +127,30 @@ export class CategoryService {
     return categoryHasTransactions(id);
   }
 
+  /* The plan for the delete confirm step (ADR 0027): nothing is removed. */
+  planDeletion(id: number): Promise<DeletionPlan> {
+    return db.transaction('r', db.categories, db.transactions, () => this.planFor(id));
+  }
+
   /* Delete-if-unused, never cascade (ADR 0018): a Category referenced by a
-      Transaction is refused; an unused Category is permanently removed. */
-  async delete(id: number): Promise<void> {
-    const category = await db.categories.get(id);
-    if (!category) {
+      Transaction is refused; an unused Category is permanently removed. The
+      plan is decided again inside the transaction (ADR 0027), so a
+      Transaction recorded since the confirm step refuses rather than throws. */
+  delete(id: number): Promise<DeletionPlan> {
+    return db.transaction('rw', db.categories, db.transactions, async () => {
+      const plan = await this.planFor(id);
+      if (plan.kind === 'proceed') {
+        await db.categories.delete(id);
+      }
+      return plan;
+    });
+  }
+
+  private async planFor(id: number): Promise<DeletionPlan> {
+    if (!(await db.categories.get(id))) {
       throw new TranslationError('errors.categoryNotFound');
     }
-    if (await this.hasTransactions(id)) {
-      throw new TranslationError('errors.categoryHasMovements');
-    }
-    await db.categories.delete(id);
+    return (await this.hasTransactions(id)) ? REFUSED_FOR_MOVEMENTS : PROCEED;
   }
 
   async getAll(): Promise<Category[]> {

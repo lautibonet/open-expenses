@@ -310,14 +310,14 @@
                     />
                   </svg>
                 </button>
-                @if (confirmingAccountDelete() === acc.id) {
+                @if (deleteFlow.isConfirming({ kind: 'account', id: acc.id! })) {
                   <span class="visually-hidden" aria-live="polite">
                     {{ language.t('settings.accountDeletePrompt') }}
                   </span>
                   <button
                     type="button"
                     class="btn small danger icon-btn"
-                    (click)="confirmDeleteAccount()"
+                    (click)="confirmDelete()"
                     [attr.aria-label]="language.t('settings.confirmDeletionAria')"
                     [title]="language.t('settings.confirmDeletionAria')"
                   >
@@ -335,7 +335,7 @@
                   <button
                     type="button"
                     class="btn small icon-btn"
-                    (click)="cancelDeleteAccount()"
+                    (click)="cancelDelete()"
                     [attr.aria-label]="language.t('settings.cancelDeletionAria')"
                     [title]="language.t('settings.cancelDeletionAria')"
                   >
@@ -394,7 +394,7 @@
                 </button>
               }
             </div>
-            @if (refusedAccount() === acc.id) {
+            @if (deleteFlow.isRefused({ kind: 'account', id: acc.id! })) {
               <div class="delete-refusal" role="alert">
                 <p>{{ language.t('errors.accountHasMovements') }}</p>
                 @if (acc.active) {
@@ -402,7 +402,7 @@
                     {{ language.t('settings.deactivateInstead') }}
                   </button>
                 }
-                <button type="button" class="btn small" (click)="cancelRefuseAccount()">
+                <button type="button" class="btn small" (click)="cancelDelete()">
                   {{ language.t('settings.cancel') }}
                 </button>
               </div>
@@ -642,14 +642,14 @@
                     />
                   </svg>
                 </button>
-                @if (confirmingCardDelete() === card.id) {
+                @if (deleteFlow.isConfirming({ kind: 'card', id: card.id! })) {
                   <span class="visually-hidden" aria-live="polite">
                     {{ language.t('settings.cardDeletePrompt') }}
                   </span>
                   <button
                     type="button"
                     class="btn small danger icon-btn"
-                    (click)="confirmDeleteCard()"
+                    (click)="confirmDelete()"
                     [attr.aria-label]="language.t('settings.confirmDeletionAria')"
                     [title]="language.t('settings.confirmDeletionAria')"
                   >
@@ -667,7 +667,7 @@
                   <button
                     type="button"
                     class="btn small icon-btn"
-                    (click)="cancelDeleteCard()"
+                    (click)="cancelDelete()"
                     [attr.aria-label]="language.t('settings.cancelDeletionAria')"
                     [title]="language.t('settings.cancelDeletionAria')"
                   >
@@ -726,7 +726,7 @@
                 </button>
               }
             </div>
-            @if (refusedCard() === card.id) {
+            @if (deleteFlow.isRefused({ kind: 'card', id: card.id! })) {
               <div class="delete-refusal" role="alert">
                 <p>{{ language.t('errors.accountHasMovements') }}</p>
                 @if (card.active) {
@@ -734,12 +734,12 @@
                     {{ language.t('settings.deactivateInstead') }}
                   </button>
                 }
-                <button type="button" class="btn small" (click)="cancelRefuseCard()">
+                <button type="button" class="btn small" (click)="cancelDelete()">
                   {{ language.t('settings.cancel') }}
                 </button>
               </div>
             }
-            @if (confirmingCardDelete() === card.id && pairedCategoryToDelete()) {
+            @if (deleteFlow.isConfirming({ kind: 'card', id: card.id! }) && pairedCategoryToDelete()) {
               <!-- Issue #175: the paired-deletion pre-check says the payment
                    category goes with the card, so the confirm warns visibly. -->
               <div class="paired-category-warning" role="alert">
@@ -900,14 +900,14 @@
                     />
                   </svg>
                 </button>
-                @if (confirmingCategoryDelete() === cat.id) {
+                @if (deleteFlow.isConfirming({ kind: 'category', id: cat.id! })) {
                   <span class="visually-hidden" aria-live="polite">
                     {{ language.t('settings.categoryDeletePrompt') }}
                   </span>
                   <button
                     type="button"
                     class="btn small danger icon-btn"
-                    (click)="confirmDeleteCategory()"
+                    (click)="confirmDelete()"
                     [attr.aria-label]="language.t('settings.confirmDeletionAria')"
                     [title]="language.t('settings.confirmDeletionAria')"
                   >
@@ -925,7 +925,7 @@
                   <button
                     type="button"
                     class="btn small icon-btn"
-                    (click)="cancelDeleteCategory()"
+                    (click)="cancelDelete()"
                     [attr.aria-label]="language.t('settings.cancelDeletionAria')"
                     [title]="language.t('settings.cancelDeletionAria')"
                   >
@@ -985,7 +985,7 @@
                 </button>
               }
             </div>
-            @if (refusedCategory() === cat.id) {
+            @if (deleteFlow.isRefused({ kind: 'category', id: cat.id! })) {
               <div class="delete-refusal" role="alert">
                 <p>{{ language.t('errors.categoryHasMovements') }}</p>
                 @if (cat.active) {
@@ -993,7 +993,7 @@
                     {{ language.t('settings.deactivateInstead') }}
                   </button>
                 }
-                <button type="button" class="btn small" (click)="cancelRefuseCategory()">
+                <button type="button" class="btn small" (click)="cancelDelete()">
                   {{ language.t('settings.cancel') }}
                 </button>
               </div>
