@@ -23,11 +23,7 @@ import {
   getCurrentYear,
 } from '../../core/types/period.type';
 import { defaultScope } from '../../core/scope/scope';
-import { MovementRow, TransactionRow } from '../../core/movements/movement-list';
-
-function movement(row: MovementRow): Transaction | Transfer {
-  return row.kind === 'transaction' ? row.transaction : row.transfer;
-}
+import { MovementRow, TransactionRow, movementOf } from '../../core/movements/movement-list';
 
 function flush(ms = 10): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -93,7 +89,7 @@ describe('MovementsComponent - filtering', () => {
     expect(component.rows().length).toBe(1);
     const item = component.rows()[0];
     expect(item.kind).toBe('transaction');
-    expect((movement(item) as any).categoryId).toBe(categoryId1);
+    expect((movementOf(item) as any).categoryId).toBe(categoryId1);
   });
 
   it('should filter by account', async () => {
@@ -103,9 +99,9 @@ describe('MovementsComponent - filtering', () => {
     expect(filtered.length).toBe(2);
     for (const item of filtered) {
       if (item.kind === 'transaction') {
-        expect((movement(item) as any).accountId).toBe(accountId2);
+        expect((movementOf(item) as any).accountId).toBe(accountId2);
       } else {
-        const tr = movement(item) as any;
+        const tr = movementOf(item) as any;
         expect(tr.sourceAccountId === accountId2 || tr.destinationAccountId === accountId2).toBe(
           true,
         );
@@ -119,8 +115,8 @@ describe('MovementsComponent - filtering', () => {
     component.filterAccount.set(accountId1);
     expect(component.rows().length).toBe(1);
     const item = component.rows()[0];
-    expect((movement(item) as any).categoryId).toBe(categoryId2);
-    expect((movement(item) as any).accountId).toBe(accountId1);
+    expect((movementOf(item) as any).categoryId).toBe(categoryId2);
+    expect((movementOf(item) as any).accountId).toBe(accountId1);
   });
 
   it('should return empty when no movements match all filters', async () => {
@@ -704,11 +700,11 @@ describe('MovementsComponent - period year', () => {
 
     await component.ngOnInit();
     expect(component.rows().length).toBe(1);
-    expect((movement(component.rows()[0]) as any).amount).toBe(200);
+    expect((movementOf(component.rows()[0]) as any).amount).toBe(200);
 
     await component.onScopeYearChange(getCurrentYear() - 1);
     expect(component.rows().length).toBe(1);
-    expect((movement(component.rows()[0]) as any).amount).toBe(100);
+    expect((movementOf(component.rows()[0]) as any).amount).toBe(100);
   });
 
   it('should save the period year from the transaction form', async () => {
@@ -1108,7 +1104,7 @@ describe('MovementsComponent - shared scope', () => {
     await component.onScopeYearChange(oldYear);
     await component.onScopeMonthChange(1);
     expect(component.rows().length).toBe(1);
-    expect((movement(component.rows()[0]) as any).year).toBe(oldYear);
+    expect((movementOf(component.rows()[0]) as any).year).toBe(oldYear);
   });
 
   it('should switch scope by year while keeping the current period', async () => {
@@ -1284,7 +1280,7 @@ describe('MovementsComponent - contextual delete confirmation and undo', () => {
       getCurrentPeriod(),
     );
     await component.ngOnInit();
-    const item = component.rows().find((m) => (movement(m) as Transaction).id === txn.id)!;
+    const item = component.rows().find((m) => (movementOf(m) as Transaction).id === txn.id)!;
 
     component.requestDelete(item);
     expect(component.confirmingDelete()).toBe(item);
@@ -1302,7 +1298,7 @@ describe('MovementsComponent - contextual delete confirmation and undo', () => {
       getCurrentPeriod(),
     );
     await component.ngOnInit();
-    const item = component.rows().find((m) => (movement(m) as Transaction).id === txn.id)!;
+    const item = component.rows().find((m) => (movementOf(m) as Transaction).id === txn.id)!;
 
     const label = component.deleteConfirmationLabel(item);
     expect(label).toContain('€500.00');
@@ -1330,7 +1326,7 @@ describe('MovementsComponent - contextual delete confirmation and undo', () => {
       getCurrentPeriod(),
     );
     await component.ngOnInit();
-    const item = component.rows().find((m) => (movement(m) as Transaction).id === txn.id)!;
+    const item = component.rows().find((m) => (movementOf(m) as Transaction).id === txn.id)!;
 
     expect(await transactionService.getAll()).toHaveLength(1);
 
@@ -1339,7 +1335,7 @@ describe('MovementsComponent - contextual delete confirmation and undo', () => {
 
     expect(await transactionService.getAll()).toHaveLength(0);
     expect(component.confirmingDelete()).toBeNull();
-    expect((component.undo() && movement(component.undo()!.row).id)).toBe(txn.id);
+    expect((component.undo() && movementOf(component.undo()!).id)).toBe(txn.id);
   });
 
   it('should not delete a transaction until confirmed', async () => {
@@ -1351,7 +1347,7 @@ describe('MovementsComponent - contextual delete confirmation and undo', () => {
       getCurrentPeriod(),
     );
     await component.ngOnInit();
-    const item = component.rows().find((m) => (movement(m) as Transaction).id === txn.id)!;
+    const item = component.rows().find((m) => (movementOf(m) as Transaction).id === txn.id)!;
 
     component.requestDelete(item);
     component.cancelDelete();
@@ -1369,7 +1365,7 @@ describe('MovementsComponent - contextual delete confirmation and undo', () => {
       getCurrentPeriod(),
     );
     await component.ngOnInit();
-    const item = component.rows().find((m) => (movement(m) as Transaction).id === txn.id)!;
+    const item = component.rows().find((m) => (movementOf(m) as Transaction).id === txn.id)!;
 
     component.requestDelete(item);
     await component.confirmDelete();
@@ -1407,9 +1403,7 @@ describe('MovementsComponent - contextual delete confirmation and undo', () => {
 
   it('should auto-dismiss the undo affordance after the window', async () => {
     component.undoWindowMs = 20;
-    component.undo.set({
-      row: { kind: 'transaction', transaction: { id: 1 } as Transaction } as MovementRow,
-    });
+    component.undo.set({ kind: 'transaction', transaction: { id: 1 } as Transaction } as MovementRow);
     component.scheduleUndoAutoDismiss();
     expect(component.undo()).not.toBeNull();
 
@@ -1427,7 +1421,7 @@ describe('MovementsComponent - contextual delete confirmation and undo', () => {
       getCurrentPeriod(),
     );
     await component.ngOnInit();
-    const item = component.rows().find((m) => (movement(m) as Transaction).id === txn.id)!;
+    const item = component.rows().find((m) => (movementOf(m) as Transaction).id === txn.id)!;
 
     component.requestDelete(item);
     await component.confirmDelete();
@@ -1440,9 +1434,7 @@ describe('MovementsComponent - contextual delete confirmation and undo', () => {
 
   it('announces when the undo window expires', async () => {
     component.undoWindowMs = 20;
-    component.undo.set({
-      row: { kind: 'transaction', transaction: { id: 1 } as Transaction } as MovementRow,
-    });
+    component.undo.set({ kind: 'transaction', transaction: { id: 1 } as Transaction } as MovementRow);
     component.scheduleUndoAutoDismiss();
 
     await new Promise((resolve) => setTimeout(resolve, 60));
@@ -1459,7 +1451,7 @@ describe('MovementsComponent - contextual delete confirmation and undo', () => {
       getCurrentPeriod(),
     );
     await component.ngOnInit();
-    const item = component.rows().find((m) => (movement(m) as Transaction).id === txn.id)!;
+    const item = component.rows().find((m) => (movementOf(m) as Transaction).id === txn.id)!;
 
     component.requestDelete(item);
     await component.confirmDelete();
@@ -1479,7 +1471,7 @@ describe('MovementsComponent - contextual delete confirmation and undo', () => {
       getCurrentPeriod(),
     );
     await component.ngOnInit();
-    const item = component.rows().find((m) => (movement(m) as Transaction).id === txn.id)!;
+    const item = component.rows().find((m) => (movementOf(m) as Transaction).id === txn.id)!;
 
     component.requestDelete(item);
     await component.confirmDelete();
@@ -1584,7 +1576,7 @@ describe('MovementsComponent - icon row actions', () => {
     const txn = await seedTransaction();
     await component.ngOnInit();
     fixture.detectChanges();
-    const item = component.rows().find((m) => (movement(m) as Transaction).id === txn.id)!;
+    const item = component.rows().find((m) => (movementOf(m) as Transaction).id === txn.id)!;
 
     component.requestDelete(item);
     fixture.detectChanges();
@@ -1602,7 +1594,7 @@ describe('MovementsComponent - icon row actions', () => {
     const txn = await seedTransaction();
     await component.ngOnInit();
     fixture.detectChanges();
-    const item = component.rows().find((m) => (movement(m) as Transaction).id === txn.id)!;
+    const item = component.rows().find((m) => (movementOf(m) as Transaction).id === txn.id)!;
 
     component.requestDelete(item);
     fixture.detectChanges();
@@ -1621,7 +1613,7 @@ describe('MovementsComponent - icon row actions', () => {
     const txn = await seedTransaction();
     await component.ngOnInit();
     fixture.detectChanges();
-    const item = component.rows().find((m) => (movement(m) as Transaction).id === txn.id)!;
+    const item = component.rows().find((m) => (movementOf(m) as Transaction).id === txn.id)!;
 
     component.requestDelete(item);
     fixture.detectChanges();
@@ -1635,7 +1627,7 @@ describe('MovementsComponent - icon row actions', () => {
     const txn = await seedTransaction();
     await component.ngOnInit();
     fixture.detectChanges();
-    const item = component.rows().find((m) => (movement(m) as Transaction).id === txn.id)!;
+    const item = component.rows().find((m) => (movementOf(m) as Transaction).id === txn.id)!;
 
     component.requestDelete(item);
     fixture.detectChanges();
@@ -1643,14 +1635,14 @@ describe('MovementsComponent - icon row actions', () => {
     await settle();
 
     expect(await transactionService.getAll()).toHaveLength(0);
-    expect((component.undo() && movement(component.undo()!.row).id)).toBe(txn.id);
+    expect((component.undo() && movementOf(component.undo()!).id)).toBe(txn.id);
   });
 
   it('cancels from the X button and restores the pencil and trash icons', async () => {
     const txn = await seedTransaction();
     await component.ngOnInit();
     fixture.detectChanges();
-    const item = component.rows().find((m) => (movement(m) as Transaction).id === txn.id)!;
+    const item = component.rows().find((m) => (movementOf(m) as Transaction).id === txn.id)!;
 
     component.requestDelete(item);
     fixture.detectChanges();
@@ -1689,7 +1681,7 @@ describe('MovementsComponent - icon row actions', () => {
     await settle();
 
     expect(await transferService.getAll()).toHaveLength(0);
-    expect((component.undo() && movement(component.undo()!.row).id)).toBe(tr.id);
+    expect((component.undo() && movementOf(component.undo()!).id)).toBe(tr.id);
   });
 });
 
@@ -1794,7 +1786,7 @@ describe('MovementsComponent - assistive tech', () => {
       getCurrentPeriod(),
     );
     await component.ngOnInit();
-    const item = component.rows().find((m) => (movement(m) as Transaction).id === txn.id)!;
+    const item = component.rows().find((m) => (movementOf(m) as Transaction).id === txn.id)!;
 
     component.requestDelete(item);
     await component.confirmDelete();
@@ -1861,7 +1853,7 @@ describe('MovementsComponent - transaction-form integration', () => {
     expect(txns.length).toBe(1);
     expect(txns[0].amount).toBe(42);
     expect(component.rows().length).toBe(1);
-    expect((movement(component.rows()[0]) as any).amount).toBe(42);
+    expect((movementOf(component.rows()[0]) as any).amount).toBe(42);
   });
 
   it('updates an existing transaction when the card is opened for edit', async () => {
@@ -2143,7 +2135,7 @@ describe('MovementsComponent - date header sorting', () => {
   function movementAmounts(): number[] {
     return component
       .rows()
-      .map((r) => (movement(r) as Transaction).amount);
+      .map((r) => (movementOf(r) as Transaction).amount);
   }
 
   it('orders movements newest first by date (default)', async () => {
@@ -3082,11 +3074,11 @@ describe('MovementsComponent - day sections', () => {
 
     const today = new Date();
     const todayItems = component.movementDaySections()[0].rows;
-    expect(todayItems.map((i) => (movement(i) as Transaction).amount)).toEqual(
+    expect(todayItems.map((i) => (movementOf(i) as Transaction).amount)).toEqual(
       component
         .rows()
-        .filter((i) => localDayKey(movement(i).date) === localDayKey(today))
-        .map((i) => (movement(i) as Transaction).amount),
+        .filter((i) => localDayKey(movementOf(i).date) === localDayKey(today))
+        .map((i) => (movementOf(i) as Transaction).amount),
     );
   });
 

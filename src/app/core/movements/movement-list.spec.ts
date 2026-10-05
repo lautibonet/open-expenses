@@ -201,10 +201,10 @@ describe('movementList - filters', () => {
   });
 
   it('the account filter keeps Transactions on it and Transfers from or to it', () => {
-    const wallet = account({ id: 3, name: 'Wallet' });
+    const brokerage = account({ id: 3, name: 'Brokerage' });
     const list = movementList(
       input({
-        accounts: [cash, savings, wallet],
+        accounts: [cash, savings, brokerage],
         transactions: [txn({ id: 1, accountId: 1 }), txn({ id: 2, accountId: 2 })],
         transfers: [
           transfer({ id: 1, sourceAccountId: 1, destinationAccountId: 2 }),
@@ -438,6 +438,20 @@ describe('movementList - display amounts', () => {
       kind: 'converted',
       from: { amount: 10, currency: 'USD' },
       to: { amount: 8.5, currency: 'EUR' },
+    });
+  });
+
+  it('a Transfer with one Account that cannot be resolved shows both legs, the missing currency empty', () => {
+    const row = only({
+      transfers: [
+        transfer({ sourceAccountId: 5, destinationAccountId: 99, sourceAmount: 10, destinationAmount: 9 }),
+      ],
+    });
+
+    expect(row.amount).toEqual({
+      kind: 'converted',
+      from: { amount: 10, currency: 'USD' },
+      to: { amount: 9, currency: '' },
     });
   });
 

@@ -73,7 +73,8 @@ export interface MovementList {
   rowCount: number;
 }
 
-function movementOf(row: MovementRow): Transaction | Transfer {
+/* The Transaction or Transfer a row shows. */
+export function movementOf(row: MovementRow): Transaction | Transfer {
   return row.kind === 'transaction' ? row.transaction : row.transfer;
 }
 

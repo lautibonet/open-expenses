@@ -18,6 +18,7 @@ import {
   MovementRow,
   TransferRow,
   movementList,
+  movementOf,
 } from '../../core/movements/movement-list';
 import { MONTH_NUMBERS, MonthNumber, getCurrentYear } from '../../core/types/period.type';
 import {
@@ -41,12 +42,6 @@ import {
   TransferDraft,
 } from './transfer-form/transfer-form.component';
 import { NetFlowCardComponent } from './net-flow-card/net-flow-card.component';
-
-/* A deleted row kept for its undo window; the row still holds the movement
-   as it was stored. */
-interface PendingDelete {
-  row: MovementRow;
-}
 
 interface FilterChip {
   kind: 'category' | 'account' | 'search';
@@ -133,7 +128,9 @@ export class MovementsComponent implements OnInit, OnDestroy {
   }
 
   confirmingDelete = signal<MovementRow | null>(null);
-  undo = signal<PendingDelete | null>(null);
+  /* The deleted row kept for its undo window; it still holds the movement as
+     it was stored. */
+  undo = signal<MovementRow | null>(null);
   undoAnnouncement = signal('');
   undoWindowMs = 10000;
   private undoHandle: ReturnType<typeof setTimeout> | null = null;
@@ -302,9 +299,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
   }
 
   trackKey(row: MovementRow): string {
-    return row.kind === 'transaction'
-      ? `transaction:${row.transaction.id}`
-      : `transfer:${row.transfer.id}`;
+    return `${row.kind}:${movementOf(row).id}`;
   }
 
   /* Compared by key, not identity: the list rebuilds its rows whenever a
@@ -495,9 +490,9 @@ export class MovementsComponent implements OnInit, OnDestroy {
     });
   }
 
-  undoDeleteLabel(pending: PendingDelete): string {
-    const amount = this.formatAmount(pending.row.amount);
-    return pending.row.kind === 'transaction'
+  undoDeleteLabel(row: MovementRow): string {
+    const amount = this.formatAmount(row.amount);
+    return row.kind === 'transaction'
       ? this.language.t('movements.deletedTransaction', { amount })
       : this.language.t('movements.deletedTransfer', { amount });
   }
@@ -519,17 +514,17 @@ export class MovementsComponent implements OnInit, OnDestroy {
       await this.transferService.delete(row.transfer.id!);
     }
     this.confirmingDelete.set(null);
-    this.setUndo({ row });
+    this.setUndo(row);
     await this.refresh();
   }
 
   async undoDelete(): Promise<void> {
     const pending = this.undo();
     if (!pending) return;
-    if (pending.row.kind === 'transaction') {
-      await this.transactionService.restore(pending.row.transaction);
+    if (pending.kind === 'transaction') {
+      await this.transactionService.restore(pending.transaction);
     } else {
-      await this.transferService.restore(pending.row.transfer);
+      await this.transferService.restore(pending.transfer);
     }
     this.clearUndo();
     await this.refresh();
@@ -539,8 +534,8 @@ export class MovementsComponent implements OnInit, OnDestroy {
     this.clearUndo();
   }
 
-  private setUndo(pending: PendingDelete): void {
-    this.undo.set(pending);
+  private setUndo(row: MovementRow): void {
+    this.undo.set(row);
     this.undoAnnouncement.set(
       this.language.t('movements.undoWindow', { seconds: this.undoWindowMs / 1000 }),
     );
