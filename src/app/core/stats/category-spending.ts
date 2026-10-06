@@ -1,5 +1,5 @@
 import { Transaction } from '../models/transaction.model';
-import { storedBaseAmount } from '../balances/period-end-balances';
+import { transactionBaseAmount } from '../balances/period-end-balances';
 import { CashBasisLookups } from './cash-basis';
 
 /* One category's spending, split by how it was paid: `cash` is money that
@@ -20,10 +20,12 @@ export interface CategorySpending {
    purchases they settle already report the same spending. A Transaction whose
    account is unknown counts as cash, mirroring the cash-basis seam so an
    orphaned reference is never silently dropped; one whose category is unknown
-   is skipped because it cannot be named. */
+   is skipped because it cannot be named. Amounts are in the Base Currency, a
+   Transaction on an Account already in it at its face amount (ADR 0013). */
 export function categorySpending(
   transactions: Transaction[],
   lookups: CashBasisLookups,
+  baseCurrency: string,
   paymentCategoryIds: Set<number> = new Set(),
 ): CategorySpending[] {
   const totals = new Map<number, { cash: number; credit: number }>();
@@ -34,10 +36,15 @@ export function categorySpending(
     if (paymentCategoryIds.has(transaction.categoryId)) continue;
 
     const entry = totals.get(transaction.categoryId) ?? { cash: 0, credit: 0 };
+    const amount = transactionBaseAmount(
+      transaction,
+      lookups.accountsById.get(transaction.accountId),
+      baseCurrency,
+    );
     if (lookups.isCreditCardTransaction(transaction)) {
-      entry.credit += storedBaseAmount(transaction);
+      entry.credit += amount;
     } else {
-      entry.cash += storedBaseAmount(transaction);
+      entry.cash += amount;
     }
     totals.set(transaction.categoryId, entry);
   }

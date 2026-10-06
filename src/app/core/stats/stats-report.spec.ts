@@ -429,3 +429,44 @@ describe('statsReport balance strip Exchange Rate paths', () => {
     expect(report.balanceStrip.scopePeriodBalance).toBe(report.balances.total);
   });
 });
+
+describe('statsReport Base Currency Accounts at face amount (#199)', () => {
+  const eur = account({ id: 1, name: 'Cash EUR', currency: 'EUR', initialBalance: 100 });
+  const usd = account({ id: 2, name: 'Cash USD', currency: 'USD', initialBalance: 0 });
+  /* A stale stored base amount from an earlier Base Currency: 30 EUR counts as 30, never 99. */
+  const stale = txn({ id: 1, accountId: 1, categoryId: 1, amount: 30, baseCurrencyAmount: 99, period: 1 });
+  /* A foreign expense keeps its stored conversion: 50 USD were 40 EUR. */
+  const foreign = txn({ id: 2, accountId: 2, categoryId: 1, amount: 50, baseCurrencyAmount: 40, period: 1 });
+
+  it('counts the same whether or not a foreign Account exists', () => {
+    const alone = statsReport(snapshot({ accounts: [eur], transactions: [stale] }), scope(1), noRatesNeeded);
+    const converted = statsReport(
+      snapshot({ accounts: [eur, usd], transactions: [stale, foreign] }),
+      scope(1),
+      usdRates,
+    );
+    const excluded = statsReport(
+      snapshot({ accounts: [eur, usd], transactions: [stale, foreign] }),
+      scope(1),
+      unavailable,
+    );
+
+    expect(alone.balances.total).toBe(70);
+    expect(alone.balanceStrip.accumulated[0]).toBe(70);
+    /* 70 EUR + (0 − 40) EUR from the foreign Account's stored conversion. */
+    expect(converted.balances.total).toBe(30);
+    expect(converted.balanceStrip.accumulated[0]).toBe(30);
+    expect(excluded.balances.total).toBe(70);
+    expect(excluded.balanceStrip.accumulated[0]).toBe(70);
+  });
+
+  it('counts the category spending at face amount, and foreign spending at its stored conversion', () => {
+    const report = statsReport(
+      snapshot({ accounts: [eur, usd], transactions: [stale, foreign] }),
+      scope(1),
+      usdRates,
+    );
+
+    expect(report.categorySpending).toEqual([{ categoryId: 1, name: 'Food', cash: 70, credit: 0, total: 70 }]);
+  });
+});

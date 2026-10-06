@@ -12,7 +12,7 @@ import {
   AfterViewInit,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Account, isCreditCard } from '../../../core/models/account.model';
+import { Account, isBaseCurrencyAccount, isCreditCard } from '../../../core/models/account.model';
 import { Category } from '../../../core/models/category.model';
 import { Transaction } from '../../../core/models/transaction.model';
 import {
@@ -141,7 +141,7 @@ export class TransactionFormComponent implements OnInit, AfterViewInit {
 
   isForeignCurrency = computed(() => {
     const account = this.selectedAccount();
-    return !!account && account.currency !== this.baseCurrency();
+    return !!account && !isBaseCurrencyAccount(account, this.baseCurrency());
   });
 
   canSubmit = computed(() => {

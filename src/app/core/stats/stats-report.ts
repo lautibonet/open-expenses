@@ -1,4 +1,4 @@
-import { Account, isCreditCard, paymentCategoryIds } from '../models/account.model';
+import { Account, isBaseCurrencyAccount, isCreditCard, paymentCategoryIds } from '../models/account.model';
 import { MonthScope } from '../scope/scope';
 import { movementInScope } from '../types/period.type';
 import { periodEndBalance, periodEndBaseAmount } from '../balances/period-end-balances';
@@ -15,7 +15,7 @@ import {
   cashBasis,
   monthlyAverages,
 } from './cash-basis';
-import { AccumulatedInput, accumulatedByPeriod, lastMovementPeriod } from './year-overview';
+import { accumulatedByPeriod, lastMovementPeriod } from './year-overview';
 import { CategorySpending, categorySpending } from './category-spending';
 
 /* The outcome of fetching Exchange Rates for the foreign Account currencies,
@@ -72,16 +72,16 @@ export interface StatsReport {
   categorySpending: CategorySpending[];
 }
 
-/* How the foreign Accounts reach the Base Currency figures:
-   - `native`: every Account is already in the Base Currency.
-   - `converted`: initial balances converted at the fetched rates; movements
-     keep their stored conversions (ADR 0013).
-   - `excluded`: a rate is unavailable or missing, so the foreign Accounts are
-     left out of the total balance. */
-type Conversion =
-  | { kind: 'native' }
-  | { kind: 'converted'; initialsInBase: Map<number, number> }
-  | { kind: 'excluded' };
+/* How the Accounts reach the Base Currency figures. `initialsInBase` holds
+   the initial balance, in Base Currency, of every Account that counts in the
+   total balance and the Accumulated line alike: foreign ones converted at the
+   fetched rates, while their movements keep their stored conversions (ADR
+   0013). `hasExcludedAccounts` means a rate is unavailable or missing, so the foreign
+   Accounts are left out. */
+interface Conversion {
+  hasExcludedAccounts: boolean;
+  initialsInBase: Map<number, number>;
+}
 
 const round2 = (value: number) => Math.round(value * 100) / 100;
 
@@ -110,6 +110,7 @@ export function statsReport(
     transactions: snapshot.transactions,
     transfers: snapshot.transfers,
     isIncome,
+    baseCurrency: base,
   });
 
   const accounts = cashAccountsFirst(
@@ -120,15 +121,10 @@ export function statsReport(
   );
 
   const baseAmounts = new Map<Account, number>();
-  for (const { account, balance } of accounts) {
-    if (conversion.kind === 'converted') {
-      baseAmounts.set(
-        account,
-        periodEndBaseAmount(balanceInput(account), scope, conversion.initialsInBase.get(account.id!)!),
-      );
-    } else if (countsInTotal(account, conversion, base)) {
-      baseAmounts.set(account, balance);
-    }
+  for (const { account } of accounts) {
+    const initial = conversion.initialsInBase.get(account.id!);
+    if (initial == null) continue;
+    baseAmounts.set(account, periodEndBaseAmount(balanceInput(account), scope, initial));
   }
 
   const totals = figures.yearToPeriodTotals(scope);
@@ -140,14 +136,15 @@ export function statsReport(
     transfers: snapshot.transfers,
     isIncome,
     year: scope.year,
-    ...accumulatedInitials(snapshot, conversion),
+    baseCurrency: base,
+    initialInBase: conversion.initialsInBase,
   });
   const frozenFromPeriod = lastMovementPeriod(snapshot.transactions, snapshot.transfers, scope.year);
 
   return {
     balances: { accounts, ...totalBalance(baseAmounts) },
     degradation: {
-      accountsExcluded: conversion.kind === 'excluded',
+      accountsExcluded: conversion.hasExcludedAccounts,
       unconvertedMovements:
         unconvertedTransactionsAffecting(snapshot.transactions, accountsById, base, scope).length > 0
         || unconvertedTransfersAffecting(snapshot.transfers, accountsById, scope).length > 0,
@@ -173,51 +170,25 @@ export function statsReport(
     categorySpending: categorySpending(
       snapshot.transactions.filter(t => movementInScope(t, scope)),
       figures,
+      base,
       paymentCategoryIds(snapshot.accounts),
     ),
   };
 }
 
-/* Accumulated evaluates the total-balance formula at every Period, so it
-   takes the same Accounts and amounts the total does: converted initials,
-   or — degraded — the Base Currency Accounts alone at face amounts. */
-function accumulatedInitials(
-  snapshot: CashBasisSnapshot,
-  conversion: Conversion,
-): Pick<AccumulatedInput, 'initialInBase' | 'nativeAmounts'> {
-  if (conversion.kind === 'converted') {
-    return { initialInBase: conversion.initialsInBase, nativeAmounts: false };
-  }
-  const included = snapshot.accounts.filter(a => countsInTotal(a, conversion, snapshot.baseCurrency));
-  return {
-    initialInBase: new Map(included.map(a => [a.id!, a.initialBalance])),
-    nativeAmounts: conversion.kind === 'excluded',
-  };
-}
-
-/* Whether an Account counts in the total balance and the Accumulated line
-   alike: every Account once converted, only the Base Currency ones when a
-   rate could not be resolved. */
-function countsInTotal(account: Account, conversion: Conversion, baseCurrency: string): boolean {
-  return conversion.kind !== 'excluded' || account.currency === baseCurrency;
-}
-
 function resolveConversion(snapshot: CashBasisSnapshot, rates: RateOutcome): Conversion {
   const foreign = currenciesNeedingRates(snapshot);
-  if (foreign.length === 0) return { kind: 'native' };
-  if (rates.kind === 'unavailable' || foreign.some(c => !rates.rates.has(c))) {
-    return { kind: 'excluded' };
-  }
+  const fetched = rates.kind === 'rates' ? rates.rates : new Map<string, number>();
+  const hasExcludedAccounts = foreign.some(c => !fetched.has(c));
   const initialsInBase = new Map<number, number>();
   for (const account of snapshot.accounts) {
-    initialsInBase.set(
-      account.id!,
-      account.currency === snapshot.baseCurrency
-        ? account.initialBalance
-        : round2(account.initialBalance / rates.rates.get(account.currency)!),
-    );
+    if (isBaseCurrencyAccount(account, snapshot.baseCurrency)) {
+      initialsInBase.set(account.id!, account.initialBalance);
+    } else if (!hasExcludedAccounts) {
+      initialsInBase.set(account.id!, round2(account.initialBalance / fetched.get(account.currency)!));
+    }
   }
-  return { kind: 'converted', initialsInBase };
+  return { hasExcludedAccounts, initialsInBase };
 }
 
 /* The total balance and the Debt, from the Base Currency amount of every
