@@ -13,6 +13,7 @@ import { FormsModule } from '@angular/forms';
 import { AccountService } from '../../core/services/account.service';
 import {
   CardDeletionPlan,
+  KeptPaymentCategory,
   deleteCard,
   namesPairedCategory,
   planCardDeletion,
@@ -376,6 +377,19 @@ export class SettingsComponent implements OnInit {
       );
     }
     await this.refresh();
+  }
+
+  /* Issue #196: a Language switch never fails over a Payment Category; each
+     card whose category kept its name is named in the page-level notice. */
+  onLanguageChanged(kept: KeptPaymentCategory[]): void {
+    this.clearStatus();
+    this.pageNotice.set(
+      kept
+        .map(({ cardName, takenName }) =>
+          this.language.t('settings.languagePaymentCategoryKept', { card: cardName, name: takenName }),
+        )
+        .join(' '),
+    );
   }
 
   async deactivateInstead(id: number): Promise<void> {

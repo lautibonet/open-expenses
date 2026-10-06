@@ -172,6 +172,10 @@ const en: Record<string, string> = {
      it carries transactions. */
   'settings.cardDeleteCategoryKept':
     'The payment category "{name}" has transactions, so it was kept. Deactivate it instead if you no longer need it.',
+  /* Issue #196: page-level notice when a card's payment category keeps its
+     name on a Language switch because the translated name is taken. */
+  'settings.languagePaymentCategoryKept':
+    'The payment category of "{card}" kept its name because another category already uses "{name}". Rename the card to fix it.',
   'settings.categoryDeletePrompt': 'Delete this category? This is permanent.',
   'settings.confirmDeletionAria': 'Confirm deletion',
   'settings.cancelDeletionAria': 'Cancel deletion',
@@ -592,6 +596,8 @@ const es: Record<string, string> = {
     'Esto también elimina permanentemente la categoría de pago "{name}".',
   'settings.cardDeleteCategoryKept':
     'La categoría de pago "{name}" tiene transacciones, así que se conservó. Desactívala en su lugar si ya no la necesitas.',
+  'settings.languagePaymentCategoryKept':
+    'La categoría de pago de "{card}" conservó su nombre porque otra categoría ya usa "{name}". Renombra la tarjeta para solucionarlo.',
   'settings.categoryDeletePrompt': '¿Eliminar esta categoría? Es permanente.',
   'settings.confirmDeletionAria': 'Confirmar eliminación',
   'settings.cancelDeletionAria': 'Cancelar eliminación',

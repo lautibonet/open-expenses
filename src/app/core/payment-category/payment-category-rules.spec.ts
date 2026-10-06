@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { Account } from '../models/account.model';
 import { Category } from '../models/category.model';
-import { paymentCategoryName, resolvePaymentCategory } from './payment-category-rules';
+import {
+  paymentCategoryName,
+  paymentCategoryRenames,
+  resolvePaymentCategory,
+} from './payment-category-rules';
 
 function card(overrides: Partial<Account> = {}): Account {
   return {
@@ -69,5 +73,64 @@ describe('resolvePaymentCategory', () => {
     const income = category(4, 'Visa payment', 'income');
     const resolution = resolvePaymentCategory(card(), [income], 'en');
     expect(resolution).toEqual({ kind: 'taken', name: 'Visa payment' });
+  });
+});
+
+describe('paymentCategoryRenames', () => {
+  it('renames a linked Payment Category to the card payment name in the new Language', () => {
+    const result = paymentCategoryRenames(
+      [card({ paymentCategoryId: 3 })],
+      [category(3, 'Visa payment'), category(4, 'Food')],
+      'es',
+    );
+    expect(result).toEqual({ renamed: [{ id: 3, name: 'Pago Visa' }], kept: [] });
+  });
+
+  it('leaves a Payment Category already named in the new Language untouched', () => {
+    const result = paymentCategoryRenames(
+      [card({ paymentCategoryId: 3 })],
+      [category(3, 'Pago Visa')],
+      'es',
+    );
+    expect(result).toEqual({ renamed: [], kept: [] });
+  });
+
+  it('keeps the current name when another category holds the translated name, ignoring letter case', () => {
+    const result = paymentCategoryRenames(
+      [card({ paymentCategoryId: 3 })],
+      [category(3, 'Visa payment'), category(4, 'pago visa', 'income')],
+      'es',
+    );
+    expect(result).toEqual({ renamed: [], kept: [{ cardName: 'Visa', takenName: 'Pago Visa' }] });
+  });
+
+  it('checks collisions against the renamed names, so two cards may trade names', () => {
+    const result = paymentCategoryRenames(
+      [card({ id: 1, name: 'Visa', paymentCategoryId: 3 }), card({ id: 2, name: 'Amex', paymentCategoryId: 4 })],
+      [category(3, 'Amex payment'), category(4, 'Visa payment')],
+      'en',
+    );
+    expect(result).toEqual({
+      renamed: [
+        { id: 3, name: 'Visa payment' },
+        { id: 4, name: 'Amex payment' },
+      ],
+      kept: [],
+    });
+  });
+
+  it('keeps a card whose translated name stays held by a category that keeps its own name', () => {
+    const result = paymentCategoryRenames(
+      [card({ id: 1, name: 'Visa', paymentCategoryId: 3 }), card({ id: 2, name: 'Amex', paymentCategoryId: 4 })],
+      [category(3, 'Pago Visa'), category(4, 'Visa payment'), category(5, 'Amex payment')],
+      'en',
+    );
+    expect(result).toEqual({
+      renamed: [],
+      kept: [
+        { cardName: 'Visa', takenName: 'Visa payment' },
+        { cardName: 'Amex', takenName: 'Amex payment' },
+      ],
+    });
   });
 });

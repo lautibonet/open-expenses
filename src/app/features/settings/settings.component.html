@@ -14,7 +14,8 @@
   />
 
   <!-- Issue #175: page-level notice explaining why a card's paired payment
-       category survived its deletion. -->
+       category survived its deletion; issue #196: why one kept its name on a
+       Language switch. -->
   <app-dismissible-alert
     role="status"
     variant="info"
@@ -120,7 +121,7 @@
       }
     </section>
 
-    <app-language-card />
+    <app-language-card (languageChanged)="onLanguageChanged($event)" />
   </div>
 
   <section class="card">

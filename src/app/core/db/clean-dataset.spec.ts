@@ -191,8 +191,39 @@ describe('cleanDataset', () => {
 
       expect(cleaned.accounts.map((a) => a.paymentCategoryId)).toEqual([7, 8, 9]);
       expect(cleaned.categories.map((c) => c.name)).toEqual([
-        'Mine', 'Master payment', 'Amex payment',
+        'Visa payment', 'Master payment', 'Amex payment',
       ]);
+    });
+  });
+
+  describe('Payment Category name (issue #196)', () => {
+    it('renames a linked Payment Category to the card payment name in the dataset Language', () => {
+      const cleaned = cleanDataset({
+        ...emptyDataset(),
+        accounts: [{ id: 1, name: 'Visa', kind: 'credit-card', active: false, paymentCategoryId: 3 }],
+        categories: [{ id: 3, name: 'Visa payment', type: 'expense' }],
+        profile: [{ id: 1, language: 'es' }],
+      });
+
+      expect(cleaned.categories.map((c) => c.name)).toEqual(['Pago Visa']);
+      expect(cleaned.accounts[0].paymentCategoryId).toBe(3);
+    });
+
+    it('keeps the current name when another category holds the translated name', () => {
+      const dataset = {
+        ...emptyDataset(),
+        accounts: [{ id: 1, name: 'Visa', kind: 'credit-card', paymentCategoryId: 3 }],
+        categories: [
+          { id: 3, name: 'Visa payment', type: 'expense' },
+          { id: 4, name: 'Pago Visa', type: 'income' },
+        ],
+        profile: [{ id: 1, language: 'es' }],
+      };
+
+      const cleaned = cleanDataset(dataset);
+
+      expect(cleaned.categories.map((c) => c.name)).toEqual(['Visa payment', 'Pago Visa']);
+      expect(cleanDataset(cleaned)).toEqual(cleaned);
     });
   });
 

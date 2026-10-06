@@ -10,12 +10,14 @@ import { categoryHasTransactions } from '../services/category.service';
 import {
   PaymentCard,
   newPaymentCategory,
+  KeptPaymentCategory,
   paymentCategoryName,
+  paymentCategoryRenames,
   resolvePaymentCategory,
   storedPaymentCategory,
 } from './payment-category-rules';
 
-export { type PaymentCard } from './payment-category-rules';
+export { type KeptPaymentCategory, type PaymentCard } from './payment-category-rules';
 
 /* The Payment Category module (issue #184, amended ADR 0022, ADR 0024): it
    owns the pairing between a Credit Card and the category its Card Payments
@@ -100,6 +102,24 @@ export function renamePaymentCategory(
       throw new TranslationError('errors.categoryNameTaken', { name });
     }
     await ensurePaymentCategory(renamed, language);
+  });
+}
+
+/* A Language switch renames every card's Payment Category, active or
+   deactivated, to its payment name in the new Language (issue #196). A card
+   whose new name another category would hold keeps its category's name and
+   is returned, so the caller can name it; nothing is refused. */
+export function renamePaymentCategoriesFor(language: Language): Promise<KeptPaymentCategory[]> {
+  return db.transaction('rw', db.accounts, db.categories, async () => {
+    const { renamed, kept } = paymentCategoryRenames(
+      await db.accounts.toArray(),
+      await db.categories.toArray(),
+      language,
+    );
+    for (const { id, name } of renamed) {
+      await db.categories.update(id, { name });
+    }
+    return kept;
   });
 }
 
