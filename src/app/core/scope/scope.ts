@@ -9,7 +9,7 @@ import {
   isValidYear,
 } from '../types/period.type';
 
-/* The reporting window of the Stats and Movements screens (see CONTEXT.md):
+/* The reporting window of the Stats and Movements screens (see GLOSSARY.md):
    a single Period, or — on Movements only — a whole year. */
 export interface MonthScope {
   kind: 'month';

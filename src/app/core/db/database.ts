@@ -103,7 +103,7 @@ class AppDatabase extends Dexie {
 
 export const db = new AppDatabase();
 
-/** Erase (CONTEXT.md): a permanent wipe of all local data. Atomic, irreversible. */
+/** Erase (GLOSSARY.md): a permanent wipe of all local data. Atomic, irreversible. */
 export async function eraseAllLocalData(): Promise<void> {
   await db.transaction(
     'rw',
