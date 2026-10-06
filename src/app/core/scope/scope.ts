@@ -28,15 +28,29 @@ export function defaultScope(): MonthScope {
   return { kind: 'month', period: getCurrentPeriod(), year: getCurrentYear() };
 }
 
-/* A new year keeps the kind of Scope. A month Scope keeps its month within
-   the same year and otherwise moves to the current month. */
-export function changeYear(scope: MonthScope, year: number): MonthScope;
-export function changeYear(scope: PeriodScope, year: number): PeriodScope;
-export function changeYear(scope: PeriodScope, year: number): PeriodScope {
+/* Issue #194: a new year keeps the kind of Scope. A month Scope keeps its
+   month within the same year and otherwise lands on the current month on
+   the current year, else on the latest month with data in that year. */
+export function changeYear(
+  scope: MonthScope,
+  year: number,
+  options: Pick<ScopeOptions, 'latestMonthByYear'>,
+): MonthScope;
+export function changeYear(
+  scope: PeriodScope,
+  year: number,
+  options: Pick<ScopeOptions, 'latestMonthByYear'>,
+): PeriodScope;
+export function changeYear(
+  scope: PeriodScope,
+  year: number,
+  options: Pick<ScopeOptions, 'latestMonthByYear'>,
+): PeriodScope {
   if (scope.kind === 'year') {
     return { kind: 'year', year };
   }
-  const period = scope.year === year ? scope.period : getCurrentPeriod();
+  const period =
+    scope.year === year ? scope.period : defaultMonthForYear(year, options.latestMonthByYear);
   return { kind: 'month', period, year };
 }
 
@@ -125,10 +139,11 @@ export interface ScopeOptions {
   latestMonthByYear: ReadonlyMap<number, MonthNumber>;
 }
 
-/* What the selectors offer before the movements have loaded. */
-export const noScopeOptions: ScopeOptions = { years: [], months: [], latestMonthByYear: new Map() };
-
-export function scopeOptions(movements: ScopeAwareMovement[]): ScopeOptions {
+/* Issue #194: the months on offer follow the Scope's year: its months with
+   data, plus the current month on the current year. The selected month and
+   year are always on offer, so a Scope with no data behind it — a deep
+   link, or a Period whose last movement was deleted — stays put. */
+export function scopeOptions(movements: ScopeAwareMovement[], scope: PeriodScope): ScopeOptions {
   const latestMonthByYear = new Map<number, MonthNumber>();
   for (const movement of movements) {
     if (!isMonthNumber(movement.period)) continue;
@@ -138,9 +153,18 @@ export function scopeOptions(movements: ScopeAwareMovement[]): ScopeOptions {
       latestMonthByYear.set(year, movement.period);
     }
   }
+  const months = new Set(
+    monthsFromData(
+      movements.filter(m => getPeriodYear(m) === scope.year),
+      { includeCurrentPeriod: scope.year === getCurrentYear() },
+    ),
+  );
+  if (scope.kind === 'month') {
+    months.add(scope.period);
+  }
   return {
-    years: yearsFromData(movements),
-    months: monthsFromData(movements),
+    years: [...new Set([...yearsFromData(movements), scope.year])].sort((a, b) => a - b),
+    months: MONTH_NUMBERS.filter(m => months.has(m)),
     latestMonthByYear,
   };
 }
