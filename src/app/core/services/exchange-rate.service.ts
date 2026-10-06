@@ -5,6 +5,9 @@ import { TranslationError } from '../models/translation-error';
 import { dateToLocalISO } from '../format/local-date';
 
 const FRANKFURTER_BASE = 'https://api.frankfurter.dev/v2';
+/* A batch fetch that has not answered by then rejects, so a screen waiting on
+   it falls back to its no-rates path instead of waiting forever. */
+const RATES_TIMEOUT_MS = 8000;
 
 export interface ExchangeRateResult {
   rate: number;
@@ -94,7 +97,7 @@ export class ExchangeRateService {
       url += `&date=${date}`;
     }
 
-    const response = await fetch(url);
+    const response = await fetch(url, { signal: AbortSignal.timeout(RATES_TIMEOUT_MS) });
     if (!response.ok) {
       throw new TranslationError('errors.rateApiFailed', { status: response.statusText });
     }
