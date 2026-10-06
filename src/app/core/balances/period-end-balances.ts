@@ -11,6 +11,10 @@ export interface PeriodEndBalanceInput {
   isIncome: (transaction: Transaction) => boolean;
 }
 
+export interface PeriodEndBaseInput extends PeriodEndBalanceInput {
+  baseCurrency: string;
+}
+
 function periodEndAmount(
   input: PeriodEndBalanceInput,
   scope: PeriodScope,
@@ -57,6 +61,19 @@ export function storedBaseAmount(transaction: Transaction): number {
   return transaction.amount;
 }
 
+/* ADR 0013, amended by #182 and #199: a Transaction on an Account already in
+   the Base Currency counts at its face amount, since a stored base amount
+   there can only be a stale one from an earlier Base Currency. Otherwise the
+   stored base amount wins, then the amount at the stored Exchange Rate, then
+   the face amount. */
+export function transactionBaseAmount(
+  transaction: Transaction,
+  account: Account | undefined,
+  baseCurrency: string,
+): number {
+  return account?.currency === baseCurrency ? transaction.amount : storedBaseAmount(transaction);
+}
+
 /* ADR 0028: a Transfer's source side in Base Currency, or its face source
    amount when no conversion could be stored. */
 export function storedTransferBaseAmount(transfer: Transfer): number {
@@ -64,7 +81,7 @@ export function storedTransferBaseAmount(transfer: Transfer): number {
 }
 
 export function periodEndBaseAmount(
-  input: PeriodEndBalanceInput,
+  input: PeriodEndBaseInput,
   scope: PeriodScope,
   initialInBase: number,
 ): number {
@@ -72,7 +89,10 @@ export function periodEndBaseAmount(
     input,
     scope,
     initialInBase,
-    t => (input.isIncome(t) ? storedBaseAmount(t) : -storedBaseAmount(t)),
+    t => {
+      const amount = transactionBaseAmount(t, input.account, input.baseCurrency);
+      return input.isIncome(t) ? amount : -amount;
+    },
     storedTransferBaseAmount,
     storedTransferBaseAmount,
   );

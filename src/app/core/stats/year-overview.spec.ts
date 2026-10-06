@@ -60,6 +60,7 @@ describe('accumulatedByPeriod', () => {
       transfers: [],
       isIncome: () => true,
       year: 2026,
+      baseCurrency: 'EUR',
       initialInBase: new Map(),
     });
 
@@ -78,6 +79,7 @@ describe('accumulatedByPeriod', () => {
       transfers: [],
       isIncome: (t: Transaction) => t.id === 1,
       year: 2026,
+      baseCurrency: 'EUR',
       initialInBase: new Map([[1, 1000]]),
     });
 
@@ -96,6 +98,7 @@ describe('accumulatedByPeriod', () => {
       transfers: [],
       isIncome: () => true,
       year: 2026,
+      baseCurrency: 'EUR',
       initialInBase: new Map([[1, 1000]]),
     });
 
@@ -110,6 +113,7 @@ describe('accumulatedByPeriod', () => {
       transfers: [transfer({ period: 2 })],
       isIncome: () => true,
       year: 2026,
+      baseCurrency: 'EUR',
       initialInBase: new Map([
         [1, 100],
         [2, 100],
@@ -123,11 +127,12 @@ describe('accumulatedByPeriod', () => {
     const stored = txn({ period: 1, amount: 100, exchangeRate: 1.08, baseCurrencyAmount: 108 });
 
     const series = accumulatedByPeriod({
-      accounts: [account({ id: 1, initialBalance: 1000 })],
+      accounts: [account({ id: 1, currency: 'USD' })],
       transactions: [stored],
       transfers: [],
       isIncome: () => true,
       year: 2026,
+      baseCurrency: 'EUR',
       initialInBase: new Map([[1, 1000]]),
     });
 
@@ -141,13 +146,14 @@ describe('accumulatedByPeriod', () => {
       transfers: [],
       isIncome: () => true,
       year: 2026,
+      baseCurrency: 'EUR',
       initialInBase: new Map([[1, 1000]]),
     });
 
     expect(series[0]).toBe(1000);
   });
 
-  it('counts movements at face amounts in native mode', () => {
+  it('counts movements on a Base Currency Account at face amounts, ignoring a stale stored conversion', () => {
     const stored = txn({ period: 1, amount: 100, exchangeRate: 2, baseCurrencyAmount: 200 });
 
     const series = accumulatedByPeriod({
@@ -156,8 +162,8 @@ describe('accumulatedByPeriod', () => {
       transfers: [],
       isIncome: () => true,
       year: 2026,
+      baseCurrency: 'EUR',
       initialInBase: new Map([[1, 1000]]),
-      nativeAmounts: true,
     });
 
     expect(series[0]).toBe(1100);
@@ -176,6 +182,7 @@ describe('accumulatedByPeriod', () => {
       transfers: [],
       isIncome: (t: Transaction) => t.id === 1,
       year: 2026,
+      baseCurrency: 'EUR',
       initialInBase: new Map([[1, 1000]]),
     });
 

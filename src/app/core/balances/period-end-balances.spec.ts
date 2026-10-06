@@ -188,14 +188,14 @@ describe('storedBaseAmount', () => {
 
 describe('periodEndBaseAmount', () => {
   it('should combine the converted initial balance with stored movement conversions', () => {
-    const acc = account({ initialBalance: 1000 });
+    const acc = account({ initialBalance: 1000, currency: 'USD' });
     const txns = [
       transaction({ id: 1, categoryId: 1, amount: 100, exchangeRate: 1.08, baseCurrencyAmount: 108, period: 8, year: 2026 }),
       transaction({ id: 2, categoryId: 2, amount: 50, exchangeRate: null, baseCurrencyAmount: null, period: 9, year: 2026 }),
     ];
 
     const baseAmount = periodEndBaseAmount(
-      { account: acc, transactions: txns, transfers: [], isIncome },
+      { account: acc, transactions: txns, transfers: [], isIncome, baseCurrency: 'EUR' },
       scope(9, 2026),
       909.09,
     );
@@ -210,7 +210,7 @@ describe('periodEndBaseAmount', () => {
       transfer({ sourceAccountId: 2, destinationAccountId: 1, sourceAmount: 100, destinationAmount: 85, baseCurrencyAmount: 85, period: 5, year: 2026 }),
     ];
 
-    const inputs = (acc: Account) => ({ account: acc, transactions: [], transfers, isIncome });
+    const inputs = (acc: Account) => ({ account: acc, transactions: [], transfers, isIncome, baseCurrency: 'EUR' });
 
     expect(periodEndBaseAmount(inputs(destination), scope(9, 2026), 0)).toBe(-85);
     expect(periodEndBaseAmount(inputs(source), scope(9, 2026), 0)).toBe(85);
@@ -221,7 +221,7 @@ describe('periodEndBaseAmount', () => {
     const txns = [transaction({ categoryId: 1, amount: 100, baseCurrencyAmount: 108, period: 10, year: 2026 })];
 
     const baseAmount = periodEndBaseAmount(
-      { account: acc, transactions: txns, transfers: [], isIncome },
+      { account: acc, transactions: txns, transfers: [], isIncome, baseCurrency: 'EUR' },
       scope(9, 2026),
       0,
     );

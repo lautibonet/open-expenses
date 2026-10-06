@@ -2,7 +2,7 @@ import { Account, isCashAccount, isCreditCard } from '../models/account.model';
 import { Category, isIncomeCategory } from '../models/category.model';
 import { Transaction } from '../models/transaction.model';
 import { Transfer } from '../models/transfer.model';
-import { storedBaseAmount, storedTransferBaseAmount } from '../balances/period-end-balances';
+import { storedTransferBaseAmount, transactionBaseAmount } from '../balances/period-end-balances';
 import {
   MONTH_NUMBERS,
   MonthNumber,
@@ -132,18 +132,6 @@ export interface CashBasis extends CashBasisLookups {
 }
 
 const round2 = (value: number) => Math.round(value * 100) / 100;
-
-/* ADR 0013, amended by #182: a Transaction on an Account already in the Base
-   Currency counts at its face amount — a stored base amount there can only be
-   a stale one from an earlier Base Currency. Otherwise the stored base amount
-   wins, then the amount at the stored Exchange Rate, then the face amount. */
-function transactionBaseAmount(
-  transaction: Transaction,
-  account: Account | undefined,
-  baseCurrency: string,
-): number {
-  return account?.currency === baseCurrency ? transaction.amount : storedBaseAmount(transaction);
-}
 
 /* Whether a Transaction falls back to its face amount inside Base Currency
    sums although its Account holds another currency. An unknown account is

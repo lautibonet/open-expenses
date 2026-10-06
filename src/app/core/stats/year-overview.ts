@@ -7,10 +7,7 @@ import { PeriodScope } from '../scope/scope';
 import { Transaction } from '../models/transaction.model';
 import { Transfer } from '../models/transfer.model';
 import { Account } from '../models/account.model';
-import {
-  periodEndBalance,
-  periodEndBaseAmount,
-} from '../balances/period-end-balances';
+import { periodEndBaseAmount } from '../balances/period-end-balances';
 
 export interface AccumulatedInput {
   accounts: Account[];
@@ -18,13 +15,11 @@ export interface AccumulatedInput {
   transfers: Transfer[];
   isIncome: (transaction: Transaction) => boolean;
   year: number;
+  baseCurrency: string;
   /* Initial balance per account id, already in Base Currency. Accounts absent
      from the map are left out — the degraded path when an Exchange Rate
      cannot be resolved. */
   initialInBase: Map<number, number>;
-  /* Degraded mode: accounts are all Base Currency, so movements count at
-     their face amounts instead of their stored conversions. */
-  nativeAmounts?: boolean;
 }
 
 /* Accumulated: money held at the end of each Period of the year — initial
@@ -43,10 +38,9 @@ export function accumulatedByPeriod(input: AccumulatedInput): number[] {
         transactions: input.transactions,
         transfers: input.transfers,
         isIncome: input.isIncome,
+        baseCurrency: input.baseCurrency,
       };
-      total += input.nativeAmounts
-        ? periodEndBalance(balanceInput, scope)
-        : periodEndBaseAmount(balanceInput, scope, initial);
+      total += periodEndBaseAmount(balanceInput, scope, initial);
     }
     return Math.round(total * 100) / 100;
   });
