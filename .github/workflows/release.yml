@@ -40,5 +40,5 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: ${{ github.ref_name }}
+          name: Open Expenses ${{ github.ref_name }}
           body_path: release-notes.md
