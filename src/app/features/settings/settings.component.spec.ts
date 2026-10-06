@@ -717,6 +717,27 @@ describe('SettingsComponent - edit-on-demand rows', () => {
     expect(rowFor('.account-row', 'Cash')).toBeUndefined();
   });
 
+  it('deletes an inactive unused account through the same confirm step', async () => {
+    await accountService.setActive(accountId, false);
+    await component.refresh();
+    fixture.detectChanges();
+
+    const row = rowFor('.account-row', 'Cash');
+    (row.querySelector('button[aria-label="Delete account"]') as HTMLButtonElement).click();
+    await flush();
+    fixture.detectChanges();
+    expect(row.querySelector('button[aria-label="Cancel deletion"]')).toBeTruthy();
+
+    (
+      row.querySelector('button[aria-label="Confirm deletion"]') as HTMLButtonElement
+    ).click();
+    await flush();
+    fixture.detectChanges();
+
+    expect(await accountService.getById(accountId)).toBeUndefined();
+    expect(rowFor('.account-row', 'Cash')).toBeUndefined();
+  });
+
   it('refuses to delete an account with movements with an inline explanation and Deactivate fallback', async () => {
     await db.transactions.add({
       accountId,

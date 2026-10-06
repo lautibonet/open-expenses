@@ -32,6 +32,8 @@ import { LanguageCardComponent } from './language-card/language-card.component';
 import { EraseCardComponent } from './erase-card/erase-card.component';
 import { DismissibleAlertComponent } from '../../shared/components/dismissible-alert/dismissible-alert.component';
 import { createDeleteFlow } from './delete-flow';
+import { DeleteControlsComponent } from './delete-controls/delete-controls.component';
+import { DeleteRefusalComponent } from './delete-controls/delete-refusal.component';
 
 interface AccountEditState {
   id: number;
@@ -61,7 +63,15 @@ type PencilTarget = { kind: 'account' | 'card' | 'category' | 'base-currency'; i
 
 @Component({
   selector: 'app-settings',
-  imports: [FormsModule, BackupCardComponent, LanguageCardComponent, EraseCardComponent, DismissibleAlertComponent],
+  imports: [
+    FormsModule,
+    BackupCardComponent,
+    LanguageCardComponent,
+    EraseCardComponent,
+    DismissibleAlertComponent,
+    DeleteControlsComponent,
+    DeleteRefusalComponent,
+  ],
   templateUrl: './settings.component.html',
   styleUrl: './settings.component.scss',
 })
