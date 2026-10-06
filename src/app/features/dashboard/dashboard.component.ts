@@ -168,7 +168,7 @@ export class DashboardComponent implements OnInit {
     if (degraded.accountsExcluded) {
       parts.push(this.language.t('stats.conversionWarning', { currency: this.baseCurrency() }));
     }
-    if (degraded.unconvertedTransactions) {
+    if (degraded.unconvertedMovements) {
       parts.push(
         this.language.t('stats.conversionWarningUnconverted', { currency: this.baseCurrency() }),
       );

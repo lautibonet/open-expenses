@@ -1796,7 +1796,7 @@ describe('DashboardComponent - conversion degradation warnings', () => {
     await component.ngOnInit();
 
     expect(component.report().kpis.totals.income).toBe(108);
-    expect(component.report().degradation.unconvertedTransactions).toBe(false);
+    expect(component.report().degradation.unconvertedMovements).toBe(false);
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.conversion-warning .alert')).toBeNull();
   });

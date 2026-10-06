@@ -57,6 +57,12 @@ export function storedBaseAmount(transaction: Transaction): number {
   return transaction.amount;
 }
 
+/* ADR 0028: a Transfer's source side in Base Currency, or its face source
+   amount when no conversion could be stored. */
+export function storedTransferBaseAmount(transfer: Transfer): number {
+  return transfer.baseCurrencyAmount ?? transfer.sourceAmount;
+}
+
 export function periodEndBaseAmount(
   input: PeriodEndBalanceInput,
   scope: PeriodScope,
@@ -67,8 +73,8 @@ export function periodEndBaseAmount(
     scope,
     initialInBase,
     t => (input.isIncome(t) ? storedBaseAmount(t) : -storedBaseAmount(t)),
-    tr => tr.baseCurrencyAmount,
-    tr => tr.baseCurrencyAmount,
+    storedTransferBaseAmount,
+    storedTransferBaseAmount,
   );
   return Math.round(amount * 100) / 100;
 }

@@ -16,7 +16,7 @@ import { TransactionService } from '../../../core/services/transaction.service';
 import { CategoryService } from '../../../core/services/category.service';
 import { LanguageService } from '../../../core/services/language.service';
 import { TranslationError, errorCopy } from '../../../core/models/translation-error';
-import { Transfer } from '../../../core/models/transfer.model';
+import { Transfer, needsBaseExchangeRate, transferBaseAmount } from '../../../core/models/transfer.model';
 import { Transaction } from '../../../core/models/transaction.model';
 import { Account, isCreditCard } from '../../../core/models/account.model';
 import { Category, isIncomeCategory } from '../../../core/models/category.model';
@@ -49,6 +49,9 @@ export interface TransferFormState {
   sourceAmount: number | null;
   destinationAmount: number | null;
   exchangeRate: number;
+  /* ADR 0028: the source-to-base rate, used only when neither account is in
+     the Base Currency; null until the well supplies one. */
+  baseExchangeRate: number | null;
   date: string;
   period: MonthNumber;
   year: number;
@@ -59,6 +62,7 @@ export interface TransferDraft {
   form: TransferFormState;
   editingId: number | null;
   rateState: RateState;
+  baseRateState: RateState;
 }
 
 /* The well renders the Transfer Form's own copy; the aria labels are shared
@@ -74,6 +78,15 @@ const RATE_LABELS: ExchangeRateWellLabels = {
   errorFetch: 'movements.error.rateFetch',
 };
 
+/* ADR 0028: the second well, converting the source amount to the Base
+   Currency when neither account is in it. */
+const BASE_RATE_LABELS: ExchangeRateWellLabels = {
+  ...RATE_LABELS,
+  heading: 'movements.baseExchangeRate',
+};
+
+const EMPTY_RATE_STATE: RateState = { loading: false, error: '', rate: null, date: '' };
+
 const today = todayLocalISO;
 
 function defaultFormState(accounts: Account[]): TransferFormState {
@@ -86,6 +99,7 @@ function defaultFormState(accounts: Account[]): TransferFormState {
     sourceAmount: null,
     destinationAmount: null,
     exchangeRate: 1,
+    baseExchangeRate: null,
     date,
     ...periodYearFromDate(date),
     note: '',
@@ -108,6 +122,7 @@ export class TransferFormComponent implements AfterViewInit {
 
   accounts = input<Account[]>([]);
   categories = input<Category[]>([]);
+  baseCurrency = input('EUR');
   editTransfer = input<Transfer | null>(null);
   initialDraft = input<TransferDraft | null>(null);
   /* Hosted inside the mobile capture bottom sheet (#104): the sheet already
@@ -128,9 +143,12 @@ export class TransferFormComponent implements AfterViewInit {
   /* The selected card's outstanding debt, shown as a Card Payment hint. */
   cardBalance = signal<number | null>(null);
 
-  rateState = signal<RateState>({ loading: false, error: '', rate: null, date: '' });
+  rateState = signal<RateState>(EMPTY_RATE_STATE);
   rateSeed = signal<RateSeed | null>(null);
   rateLabels = RATE_LABELS;
+  baseRateState = signal<RateState>(EMPTY_RATE_STATE);
+  baseRateSeed = signal<RateSeed | null>(null);
+  baseRateLabels = BASE_RATE_LABELS;
   errorMessage = signal('');
   errorDetail = signal('');
   saving = signal(false);
@@ -172,6 +190,42 @@ export class TransferFormComponent implements AfterViewInit {
     return !!src && !!dst && src.currency !== dst.currency;
   });
 
+  /* ADR 0028: neither account is in the Base Currency, so the Transfer needs
+     its own rate to express the source side in it. */
+  needsBaseRate = computed(() => {
+    const { src, dst } = this.selectedAccounts();
+    return !!src && !!dst && needsBaseExchangeRate(src.currency, dst.currency, this.baseCurrency());
+  });
+
+  /* The second well's target: empty hides it. */
+  baseRateTarget = computed(() => (this.needsBaseRate() ? this.baseCurrency() : ''));
+
+  baseCurrencyAmount = computed(() => {
+    const f = this.form();
+    if (!this.needsBaseRate() || f.sourceAmount === null) return null;
+    return transferBaseAmount(
+      {
+        sourceAmount: f.sourceAmount,
+        destinationAmount: f.destinationAmount ?? 0,
+        baseExchangeRate: f.baseExchangeRate ?? undefined,
+      },
+      this.sourceCurrency(),
+      this.destCurrency(),
+      this.baseCurrency(),
+    );
+  });
+
+  /* Either well is still fetching its rate. */
+  private isRateLoading = computed(
+    () =>
+      (this.isForeignCurrency() && this.rateState().loading) ||
+      (this.needsBaseRate() && this.baseRateState().loading),
+  );
+
+  private isBaseRateMissing = computed(
+    () => this.needsBaseRate() && !this.baseRateState().loading && !(this.form().baseExchangeRate! > 0),
+  );
+
   sourceCurrency = computed(() => this.selectedAccounts().src?.currency ?? '');
 
   destCurrency = computed(() => this.selectedAccounts().dst?.currency ?? '');
@@ -187,7 +241,8 @@ export class TransferFormComponent implements AfterViewInit {
     if (!f.sourceAccountId || !f.destAccountId) return false;
     if (f.sourceAccountId === f.destAccountId) return false;
     if (!((f.sourceAmount ?? 0) > 0)) return false;
-    if (this.isForeignCurrency() && this.rateState().loading) return false;
+    if (this.isRateLoading()) return false;
+    if (this.isBaseRateMissing()) return false;
     if (this.cardWithoutPaymentCategory()) return false;
     return !this.saving();
   });
@@ -205,8 +260,11 @@ export class TransferFormComponent implements AfterViewInit {
       return this.language.t('errors.cardHasNoPaymentCategory');
     }
     if (!((f.sourceAmount ?? 0) > 0)) return this.language.t('movements.saveDisabled.amount');
-    if (this.isForeignCurrency() && this.rateState().loading) {
+    if (this.isRateLoading()) {
       return this.language.t('movements.saveDisabled.rate');
+    }
+    if (this.isBaseRateMissing()) {
+      return this.language.t('errors.baseExchangeRateRequired');
     }
     return '';
   });
@@ -220,6 +278,11 @@ export class TransferFormComponent implements AfterViewInit {
         rate: draft.rateState.rate,
         date: draft.rateState.date,
         error: draft.rateState.error || undefined,
+      });
+      this.baseRateSeed.set({
+        rate: draft.baseRateState.rate,
+        date: draft.baseRateState.date,
+        error: draft.baseRateState.error || undefined,
       });
       void this.refreshCardBalance();
       return;
@@ -244,6 +307,7 @@ export class TransferFormComponent implements AfterViewInit {
       form: this.form(),
       editingId: this.editingId(),
       rateState: this.rateState(),
+      baseRateState: this.baseRateState(),
     };
   }
 
@@ -308,6 +372,11 @@ export class TransferFormComponent implements AfterViewInit {
     this.computeDestinationAmount();
   }
 
+  onBaseWellStateChange(state: RateState): void {
+    this.baseRateState.set(state);
+    this.form.update((f) => ({ ...f, baseExchangeRate: state.rate }));
+  }
+
   private computeDestinationAmount(): void {
     this.form.update((f) => ({
       ...f,
@@ -334,6 +403,7 @@ export class TransferFormComponent implements AfterViewInit {
           sourceAmount: f.sourceAmount!,
           destinationAmount: f.destinationAmount!,
           exchangeRate: f.exchangeRate,
+          baseExchangeRate: this.submittedBaseRate(),
           date: parseLocalDate(f.date),
           period: f.period,
           year: f.year,
@@ -349,6 +419,7 @@ export class TransferFormComponent implements AfterViewInit {
           f.note,
           f.exchangeRate,
           f.year,
+          this.submittedBaseRate(),
         );
       }
       this.saving.set(false);
@@ -362,6 +433,10 @@ export class TransferFormComponent implements AfterViewInit {
         e instanceof TranslationError ? '' : e instanceof Error ? e.message : String(e),
       );
     }
+  }
+
+  private submittedBaseRate(): number | undefined {
+    return this.needsBaseRate() ? (this.form().baseExchangeRate ?? undefined) : undefined;
   }
 
   private handleEditInput(t: Transfer | null): void {
@@ -378,6 +453,7 @@ export class TransferFormComponent implements AfterViewInit {
       sourceAmount: t.sourceAmount,
       destinationAmount: t.destinationAmount,
       exchangeRate: t.exchangeRate,
+      baseExchangeRate: t.baseExchangeRate ?? null,
       date,
       period: t.period,
       year: getPeriodYear(t),
@@ -387,7 +463,12 @@ export class TransferFormComponent implements AfterViewInit {
     this.rateSeed.set(
       src && dst && src.currency !== dst.currency ? { rate: t.exchangeRate, date: 'stored' } : null,
     );
-    this.rateState.set({ loading: false, error: '', rate: null, date: '' });
+    this.rateState.set(EMPTY_RATE_STATE);
+    /* An old Transfer without a stored base rate fetches a suggestion. */
+    this.baseRateSeed.set(
+      t.baseExchangeRate != null ? { rate: t.baseExchangeRate, date: 'stored' } : null,
+    );
+    this.baseRateState.set(EMPTY_RATE_STATE);
     this.errorMessage.set('');
     this.errorDetail.set('');
     void this.refreshCardBalance();

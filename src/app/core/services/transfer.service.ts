@@ -1,8 +1,9 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { db } from '../db/database';
-import { Transfer } from '../models/transfer.model';
+import { Transfer, needsBaseExchangeRate, transferBaseAmount } from '../models/transfer.model';
 import { Account, isCreditCard } from '../models/account.model';
 import { TranslationError } from '../models/translation-error';
+import { ProfileService } from './profile.service';
 import { paymentCategoryOf } from '../payment-category/payment-category';
 import {
   getCurrentYear,
@@ -12,6 +13,8 @@ import {
 
 @Injectable({ providedIn: 'root' })
 export class TransferService {
+  private readonly profileService = inject(ProfileService);
+
   async create(
     sourceAccountId: number,
     destinationAccountId: number,
@@ -21,6 +24,7 @@ export class TransferService {
     note: string = '',
     exchangeRate: number = 1,
     year: number = getCurrentYear(),
+    baseExchangeRate?: number,
   ): Promise<Transfer> {
     if (sourceAccountId === destinationAccountId) {
       throw new TranslationError('errors.accountsMustDiffer');
@@ -50,9 +54,11 @@ export class TransferService {
 
     const sourceAmount = amount;
     const destinationAmount = Math.round(amount * exchangeRate * 100) / 100;
-    const baseCurrencyAmount = sourceAccount.currency !== destAccount.currency
-      ? destinationAmount
-      : sourceAmount;
+    const baseFields = await this.baseAmountFor(
+      { sourceAmount, destinationAmount, baseExchangeRate },
+      sourceAccount,
+      destAccount,
+    );
 
     const transfer: Transfer = {
       sourceAccountId,
@@ -60,7 +66,7 @@ export class TransferService {
       sourceAmount,
       destinationAmount,
       exchangeRate,
-      baseCurrencyAmount,
+      ...baseFields,
       date,
       period,
       year,
@@ -118,9 +124,18 @@ export class TransferService {
     const newSourceAccountId = changes.sourceAccountId ?? existing.sourceAccountId;
     const sourceAccount = await db.accounts.get(newSourceAccountId);
     const destAccount = await db.accounts.get(newDestinationAccountId);
-    const isCrossCurrency = sourceAccount && destAccount && sourceAccount.currency !== destAccount.currency;
     const newDestinationAmount = Math.round(newSourceAmount * newExchangeRate * 100) / 100;
-    const newBaseCurrencyAmount = isCrossCurrency ? newDestinationAmount : newSourceAmount;
+    const baseFields = sourceAccount && destAccount
+      ? await this.baseAmountFor(
+        {
+          sourceAmount: newSourceAmount,
+          destinationAmount: newDestinationAmount,
+          baseExchangeRate: changes.baseExchangeRate ?? existing.baseExchangeRate,
+        },
+        sourceAccount,
+        destAccount,
+      )
+      : {};
 
     return db.transaction('rw', db.accounts, db.categories, db.transfers, async () => {
       const paymentCategoryId = await this.paymentCategoryIdFor(destAccount);
@@ -129,11 +144,38 @@ export class TransferService {
         sourceAmount: newSourceAmount,
         destinationAmount: newDestinationAmount,
         exchangeRate: newExchangeRate,
-        baseCurrencyAmount: newBaseCurrencyAmount,
+        ...baseFields,
         categoryId: paymentCategoryId,
       });
       return (await db.transfers.get(id))!;
     });
+  }
+
+  /* ADR 0028: the base amount is the source side in Base Currency. When
+     neither account is in base it needs the caller's base rate, which is the
+     only case one is stored. */
+  private async baseAmountFor(
+    amounts: Pick<Transfer, 'sourceAmount' | 'destinationAmount' | 'baseExchangeRate'>,
+    source: Account,
+    destination: Account,
+  ): Promise<Pick<Transfer, 'baseCurrencyAmount' | 'baseExchangeRate'>> {
+    const baseCurrency = await this.profileService.getBaseCurrency();
+    if (!needsBaseExchangeRate(source.currency, destination.currency, baseCurrency)) {
+      return {
+        baseCurrencyAmount: transferBaseAmount(amounts, source.currency, destination.currency, baseCurrency),
+        baseExchangeRate: undefined,
+      };
+    }
+    if (amounts.baseExchangeRate == null) {
+      throw new TranslationError('errors.baseExchangeRateRequired');
+    }
+    if (amounts.baseExchangeRate <= 0) {
+      throw new TranslationError('errors.exchangeRatePositive');
+    }
+    return {
+      baseCurrencyAmount: transferBaseAmount(amounts, source.currency, destination.currency, baseCurrency),
+      baseExchangeRate: amounts.baseExchangeRate,
+    };
   }
 
   /* Amended ADR 0022 (ticket #173): a Transfer into a Credit Card wears the

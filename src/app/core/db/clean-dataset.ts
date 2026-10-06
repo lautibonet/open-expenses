@@ -1,4 +1,5 @@
 import { Category, categoryTypeFromLegacy } from '../models/category.model';
+import { needsBaseExchangeRate, transferBaseAmount } from '../models/transfer.model';
 import { monthNumberFromName } from '../types/period.type';
 import { DEFAULT_LANGUAGE, isLanguage, Language } from '../types/language.type';
 import {
@@ -81,7 +82,9 @@ function cleanTransaction(transaction: any): any {
 }
 
 /* Transfers stored before currency-aware amounts (ADR 0005) carry a single
-   `amount`: the same figure on both sides, at rate 1. */
+   `amount`: the same figure on both sides, at rate 1. Its base amount is
+   re-derived from the accounts afterwards (ADR 0028); where they cannot be
+   resolved it stays unconverted. */
 function cleanTransfer(transfer: any): any {
   const { amount, ...rest } = transfer;
   const cleaned = cleanMovement(rest);
@@ -89,9 +92,35 @@ function cleanTransfer(transfer: any): any {
     cleaned.sourceAmount = amount;
     cleaned.destinationAmount = amount;
     cleaned.exchangeRate = 1;
-    cleaned.baseCurrencyAmount = amount;
+    cleaned.baseCurrencyAmount = null;
   }
   return cleaned;
+}
+
+/* ADR 0028: a Transfer's base amount is its source side in the dataset's Base
+   Currency. A transfer with an account in base is re-derived and loses any
+   base rate; one between two foreign accounts keeps a captured base rate's
+   figure, or becomes unconverted (null) without one. A transfer whose
+   accounts or Base Currency cannot be resolved is left as is. */
+function repairTransferBaseAmounts(
+  transfers: any[],
+  accounts: any[],
+  baseCurrency: unknown,
+): any[] {
+  if (typeof baseCurrency !== 'string') return transfers;
+  const currencyOf = new Map(accounts.map(account => [account.id, account.currency]));
+  return transfers.map(transfer => {
+    const source = currencyOf.get(transfer.sourceAccountId);
+    const destination = currencyOf.get(transfer.destinationAccountId);
+    if (typeof source !== 'string' || typeof destination !== 'string') return transfer;
+    const { baseExchangeRate, ...rest } = transfer;
+    const keepsRate = needsBaseExchangeRate(source, destination, baseCurrency) && baseExchangeRate != null;
+    const repaired = keepsRate ? { ...rest, baseExchangeRate } : rest;
+    return {
+      ...repaired,
+      baseCurrencyAmount: transferBaseAmount(repaired, source, destination, baseCurrency),
+    };
+  });
 }
 
 /* ADR 0022: an account without a kind is a Cash Account. The Linked Account
@@ -161,7 +190,11 @@ export function cleanDataset(dataset: Dataset): Dataset {
     accounts,
     categories,
     transactions: dataset.transactions.map(cleanTransaction),
-    transfers: dataset.transfers.map(cleanTransfer),
+    transfers: repairTransferBaseAmounts(
+      dataset.transfers.map(cleanTransfer),
+      accounts,
+      dataset.profile[0]?.baseCurrency,
+    ),
     profile: dataset.profile.map(cleanProfile),
   };
 }

@@ -5,6 +5,7 @@ import { periodEndBalance, periodEndBaseAmount } from '../balances/period-end-ba
 import {
   ConversionDegradation,
   unconvertedTransactionsAffecting,
+  unconvertedTransfersAffecting,
 } from '../balances/conversion-degradation';
 import {
   CashBasisSnapshot,
@@ -147,8 +148,9 @@ export function statsReport(
     balances: { accounts, ...totalBalance(baseAmounts) },
     degradation: {
       accountsExcluded: conversion.kind === 'excluded',
-      unconvertedTransactions:
-        unconvertedTransactionsAffecting(snapshot.transactions, accountsById, base, scope).length > 0,
+      unconvertedMovements:
+        unconvertedTransactionsAffecting(snapshot.transactions, accountsById, base, scope).length > 0
+        || unconvertedTransfersAffecting(snapshot.transfers, accountsById, scope).length > 0,
     },
     kpis: {
       totals,

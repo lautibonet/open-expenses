@@ -2,7 +2,7 @@ import { Account, isCashAccount, isCreditCard } from '../models/account.model';
 import { Category, isIncomeCategory } from '../models/category.model';
 import { Transaction } from '../models/transaction.model';
 import { Transfer } from '../models/transfer.model';
-import { storedBaseAmount } from '../balances/period-end-balances';
+import { storedBaseAmount, storedTransferBaseAmount } from '../balances/period-end-balances';
 import {
   MONTH_NUMBERS,
   MonthNumber,
@@ -126,6 +126,9 @@ export interface CashBasis extends CashBasisLookups {
   /* The counted Transactions in a Scope that fell back to their face amount
      for lack of a stored conversion. */
   unconvertedTransactions(scope: PeriodScope): Transaction[];
+  /* The Card Payments in a Scope counted at their face source amount for
+     lack of a stored conversion (ADR 0028). */
+  unconvertedCardPayments(scope: PeriodScope): Transfer[];
 }
 
 const round2 = (value: number) => Math.round(value * 100) / 100;
@@ -154,10 +157,12 @@ export function isUnconvertedTransaction(
   return transaction.baseCurrencyAmount == null && transaction.exchangeRate == null;
 }
 
-/* ADR 0022: a Card Payment counts as an Expense at its stored amount. That
-   amount is not always in Base Currency (#192); this is where the fix lands. */
-function cardPaymentBaseAmount(transfer: Transfer): number {
-  return transfer.baseCurrencyAmount;
+
+/* ADR 0028: a Transfer whose base amount could not be stored — neither
+   account in the Base Currency and no base rate — counts at its face source
+   amount. */
+export function isUnconvertedTransfer(transfer: Transfer): boolean {
+  return transfer.baseCurrencyAmount == null;
 }
 
 /* The lookups alone, for callers that classify movements without totalling
@@ -207,7 +212,7 @@ export function cashBasis(snapshot: CashBasisSnapshot): CashBasis {
     for (const payment of cardPayments) {
       const sum = sums.get(payment.period);
       if (!sum || getPeriodYear(payment) !== year) continue;
-      sum.expenses += cardPaymentBaseAmount(payment);
+      sum.expenses += storedTransferBaseAmount(payment);
       sum.hasMovements = true;
     }
     const result = MONTH_NUMBERS.map(period => {
@@ -251,6 +256,8 @@ export function cashBasis(snapshot: CashBasisSnapshot): CashBasis {
             snapshot.baseCurrency,
           ),
       ),
+    unconvertedCardPayments: scope =>
+      cardPayments.filter(payment => movementInScope(payment, scope) && isUnconvertedTransfer(payment)),
   };
 }
 

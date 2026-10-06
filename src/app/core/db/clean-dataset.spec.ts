@@ -89,7 +89,7 @@ describe('cleanDataset', () => {
         transfer.destinationAmount,
         transfer.exchangeRate,
         transfer.baseCurrencyAmount,
-      ]).toEqual([150, 150, 1, 150]);
+      ]).toEqual([150, 150, 1, null]);
       expect('amount' in transfer).toBe(false);
     });
 
@@ -206,6 +206,88 @@ describe('cleanDataset', () => {
     });
 
     expect(cleanDataset(once)).toEqual(once);
+  });
+
+  describe('Transfer base amount (ADR 0028)', () => {
+    /* Base Currency USD: account 1 is EUR cash, 2 a EUR card, 3 USD cash, 4 GBP cash. */
+    function datasetWith(transfers: any[]): Dataset {
+      return {
+        ...emptyDataset(),
+        accounts: [
+          { id: 1, name: 'Euros', currency: 'EUR', kind: 'cash', initialBalance: 0 },
+          { id: 2, name: 'Visa', currency: 'EUR', kind: 'credit-card', initialBalance: 0, paymentCategoryId: 1 },
+          { id: 3, name: 'Dollars', currency: 'USD', kind: 'cash', initialBalance: 0 },
+          { id: 4, name: 'Pounds', currency: 'GBP', kind: 'cash', initialBalance: 0 },
+        ],
+        categories: [{ id: 1, name: 'Visa payment', type: 'expense', system: true }],
+        profile: [{ id: 1, baseCurrency: 'USD', language: 'en' }],
+        transfers,
+      };
+    }
+
+    function transfer(fields: any): any {
+      return { id: 1, date: '2026-02-01T00:00:00.000Z', period: 2, year: 2026, exchangeRate: 1, ...fields };
+    }
+
+    it('repairs a transfer whose source is in the Base Currency to its source amount', () => {
+      const cleaned = cleanDataset(datasetWith([transfer({
+        sourceAccountId: 3, destinationAccountId: 1,
+        sourceAmount: 105, destinationAmount: 100, exchangeRate: 0.9524, baseCurrencyAmount: 100,
+      })]));
+      expect(cleaned.transfers[0].baseCurrencyAmount).toBe(105);
+    });
+
+    it('repairs a transfer whose destination is in the Base Currency to its destination amount', () => {
+      const cleaned = cleanDataset(datasetWith([transfer({
+        sourceAccountId: 1, destinationAccountId: 3,
+        sourceAmount: 95, destinationAmount: 100, exchangeRate: 1.0526, baseCurrencyAmount: 95,
+      })]));
+      expect(cleaned.transfers[0].baseCurrencyAmount).toBe(100);
+    });
+
+    it('marks a transfer between two foreign accounts without a base rate as unconverted', () => {
+      const cleaned = cleanDataset(datasetWith([transfer({
+        sourceAccountId: 1, destinationAccountId: 2,
+        sourceAmount: 100, destinationAmount: 100, baseCurrencyAmount: 100,
+      })]));
+      expect(cleaned.transfers[0].baseCurrencyAmount).toBeNull();
+    });
+
+    it('keeps the captured base amount of a transfer carrying a base rate', () => {
+      const cleaned = cleanDataset(datasetWith([transfer({
+        sourceAccountId: 1, destinationAccountId: 4,
+        sourceAmount: 100, destinationAmount: 85, exchangeRate: 0.85,
+        baseExchangeRate: 1.1, baseCurrencyAmount: 110,
+      })]));
+      expect(cleaned.transfers[0].baseCurrencyAmount).toBe(110);
+      expect(cleaned.transfers[0].baseExchangeRate).toBe(1.1);
+    });
+
+    it('drops a base rate left on a transfer with an account in the Base Currency', () => {
+      const cleaned = cleanDataset(datasetWith([transfer({
+        sourceAccountId: 3, destinationAccountId: 1,
+        sourceAmount: 100, destinationAmount: 90, exchangeRate: 0.9,
+        baseExchangeRate: 1.3, baseCurrencyAmount: 130,
+      })]));
+      expect(cleaned.transfers[0].baseCurrencyAmount).toBe(100);
+      expect('baseExchangeRate' in cleaned.transfers[0]).toBe(false);
+    });
+
+    it('marks a single-amount legacy transfer between two foreign accounts as unconverted', () => {
+      const cleaned = cleanDataset(datasetWith([
+        { id: 1, sourceAccountId: 1, destinationAccountId: 2, amount: 150, date: '2026-02-01T00:00:00.000Z', period: 2, year: 2026 },
+      ]));
+      expect(cleaned.transfers[0].baseCurrencyAmount).toBeNull();
+    });
+
+    it('changes nothing when cleaning the repaired transfers again', () => {
+      const once = cleanDataset(datasetWith([
+        transfer({ id: 1, sourceAccountId: 3, destinationAccountId: 1, sourceAmount: 105, destinationAmount: 100, baseCurrencyAmount: 100 }),
+        transfer({ id: 2, sourceAccountId: 1, destinationAccountId: 2, sourceAmount: 100, destinationAmount: 100, baseCurrencyAmount: 100 }),
+        transfer({ id: 3, sourceAccountId: 1, destinationAccountId: 4, sourceAmount: 100, destinationAmount: 85, baseExchangeRate: 1.1, baseCurrencyAmount: 110 }),
+      ]));
+      expect(cleanDataset(once)).toEqual(once);
+    });
   });
 
   describe('creation and backup times', () => {
