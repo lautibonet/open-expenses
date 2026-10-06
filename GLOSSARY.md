@@ -9,7 +9,7 @@ A recorded movement of money linked to an account, a category, an amount, a date
 _Avoid_: Entry, record, line item
 
 **Transfer**:
-A movement of money between two of the user's own accounts. Structurally separate from Transactions. Counts as an Expense only when it moves money from a Cash Account into a Credit Card — a Card Payment; every other Transfer (Cash to Cash, Card to Cash, Card to Card) never counts as Income or Expense. Stores `sourceAmount`, `destinationAmount`, `exchangeRate`, and `baseCurrencyAmount` — and, on a Transfer into a Credit Card, the destination card's Payment Category. For same-currency transfers, `sourceAmount` equals `destinationAmount`.
+A movement of money between two of the user's own accounts. Structurally separate from Transactions. Counts as an Expense only when it moves money from a Cash Account into a Credit Card — a Card Payment; every other Transfer (Cash to Cash, Card to Cash, Card to Card) never counts as Income or Expense. Stores `sourceAmount`, `destinationAmount`, `exchangeRate`, and `baseCurrencyAmount` — and, on a Transfer into a Credit Card, the destination card's Payment Category. For same-currency transfers, `sourceAmount` equals `destinationAmount`. Its base amount is always the source side — the money that left the source Account — expressed in the Base Currency, whatever the currencies of its two Accounts. When neither Account is in the Base Currency, the Transfer carries a second Exchange Rate, from the source currency to the Base Currency, captured with it; an older Transfer without one counts at its face source amount and is flagged as unconverted.
 _Avoid_: Movement, internal transfer
 
 **Account**:
@@ -21,7 +21,7 @@ An Account that represents money the user owes rather than holds: spending on it
 _Avoid_: credit line, revolving credit
 
 **Card Payment**:
-A Transfer from a Cash Account into a Credit Card that settles card debt — the moment the user pays a Statement, in full or in part, from any Account, possibly several times in one Period. It counts as an Expense in the Income and Expenses totals and in Net, under the card's Payment Category. That category labels the payment but never reaches the category graph, where it would double-count what the settled purchases already report. Interest and fees ride inside the Statement total and reach Expenses the same way — never recorded separately.
+A Transfer from a Cash Account into a Credit Card that settles card debt — the moment the user pays a Statement, in full or in part, from any Account, possibly several times in one Period. It counts as an Expense in the Income and Expenses totals and in Net, under the card's Payment Category, at the cash that left the Cash Account expressed in the Base Currency — not at the debt it settled, which differs when the payment crosses currencies. That category labels the payment but never reaches the category graph, where it would double-count what the settled purchases already report. Interest and fees ride inside the Statement total and reach Expenses the same way — never recorded separately.
 _Avoid_: statement payment, pay credit card, card settlement
 
 **Payment Category**:
