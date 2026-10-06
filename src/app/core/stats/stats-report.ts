@@ -223,7 +223,7 @@ function resolveConversion(snapshot: CashBasisSnapshot, rates: RateOutcome): Con
 /* The total balance and the Debt, from the Base Currency amount of every
    Account that made it into the total. The Debt is the sum of the negative
    Credit Card balances, stated as a positive figure; an overpaid card's
-   positive balance lands in the total, never in the Debt (CONTEXT.md, Credit
+   positive balance lands in the total, never in the Debt (GLOSSARY.md, Credit
    Card). Counting only the Accounts in the total keeps a degraded conversion
    from splitting the two figures. */
 function totalBalance(
@@ -253,7 +253,7 @@ function usedOfLimit(account: Account, balance: number): AccountBalance['usedOfL
   return { used: Math.max(0, -balance), limit: account.limit };
 }
 
-/* Cards are grouped after Cash Accounts in the balance list (CONTEXT.md,
+/* Cards are grouped after Cash Accounts in the balance list (GLOSSARY.md,
    Stats). The sort is stable, so each group keeps its accounts' own order. */
 function cashAccountsFirst(balances: AccountBalance[]): AccountBalance[] {
   return [...balances].sort(

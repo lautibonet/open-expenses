@@ -72,7 +72,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
   transactions = signal<Transaction[]>([]);
   transfers = signal<Transfer[]>([]);
   private availableScopes = computed<ScopeOptions>(() =>
-    scopeOptions([...this.transactions(), ...this.transfers()]),
+    scopeOptions([...this.transactions(), ...this.transfers()], this.scope()),
   );
   scopeYears = computed(() => this.availableScopes().years);
   scopeMonths = computed(() => this.availableScopes().months);
@@ -346,7 +346,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
   }
 
   onScopeYearChange(value: number): void {
-    this.setScope(changeYear(this.scope(), value));
+    this.setScope(changeYear(this.scope(), value, this.availableScopes()));
   }
 
   onScopeMonthChange(value: MonthNumber | 'all' | null): void {

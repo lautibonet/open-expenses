@@ -15,7 +15,6 @@ import {
   changeMonth,
   changeYear,
   defaultScope,
-  noScopeOptions,
   scopeOptions,
 } from '../../core/scope/scope';
 import { DismissibleAlertComponent } from '../../shared/components/dismissible-alert/dismissible-alert.component';
@@ -66,14 +65,17 @@ export class DashboardComponent implements OnInit {
   language = inject(LanguageService);
 
   scope = signal<MonthScope>(defaultScope());
-  private availableScopes = signal<ScopeOptions>(noScopeOptions);
+  /* Everything recorded, loaded once per data version; a Scope change only
+     re-runs the report. */
+  private snapshot = signal<CashBasisSnapshot>(emptySnapshot);
+  private availableScopes = computed<ScopeOptions>(() => {
+    const { transactions, transfers } = this.snapshot();
+    return scopeOptions([...transactions, ...transfers], this.scope());
+  });
   scopeYears = computed(() => this.availableScopes().years);
   scopeMonths = computed(() => this.availableScopes().months);
   scopeAnnouncement = signal('');
 
-  /* Everything recorded, loaded once per data version; a Scope change only
-     re-runs the report. */
-  private snapshot = signal<CashBasisSnapshot>(emptySnapshot);
   baseCurrency = computed(() => this.snapshot().baseCurrency);
   /* Every figure the screen shows. */
   report = signal<StatsReport>(statsReport(emptySnapshot, defaultScope(), noRatesNeeded));
@@ -94,7 +96,6 @@ export class DashboardComponent implements OnInit {
       this.transferService.getAll(),
     ]);
     this.snapshot.set({ accounts, categories, transactions, transfers, baseCurrency });
-    this.availableScopes.set(scopeOptions([...transactions, ...transfers]));
     await this.refresh();
   }
 
@@ -123,7 +124,7 @@ export class DashboardComponent implements OnInit {
   }
 
   async onScopeYearChange(value: number): Promise<void> {
-    await this.setScope(changeYear(this.scope(), value));
+    await this.setScope(changeYear(this.scope(), value, this.availableScopes()));
   }
 
   async onScopeMonthChange(period: MonthNumber): Promise<void> {
