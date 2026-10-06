@@ -58,7 +58,10 @@ export class NetFlowCardComponent {
   }
 
   conversionWarningMessage(): string {
-    return this.figures().unconvertedTransactions(this.scope()).length > 0
+    const figures = this.figures();
+    const scope = this.scope();
+    return figures.unconvertedTransactions(scope).length > 0
+      || figures.unconvertedCardPayments(scope).length > 0
       ? this.language.t('stats.conversionWarningUnconverted', { currency: this.baseCurrency() })
       : '';
   }

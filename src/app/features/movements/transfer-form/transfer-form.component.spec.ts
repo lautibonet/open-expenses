@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { TransferFormComponent, TransferDraft } from './transfer-form.component';
 import { ExchangeRateService } from '../../../core/services/exchange-rate.service';
 import { TransferService } from '../../../core/services/transfer.service';
+import { ProfileService } from '../../../core/services/profile.service';
 import { LanguageService } from '../../../core/services/language.service';
 import { db } from '../../../core/db/database';
 import { Account } from '../../../core/models/account.model';
@@ -601,6 +602,7 @@ describe('TransferFormComponent', () => {
           sourceAmount: 90,
           destinationAmount: 90,
           exchangeRate: 1,
+          baseExchangeRate: null,
           date: '2026-08-01',
           period: 8,
           year: 2026,
@@ -608,6 +610,7 @@ describe('TransferFormComponent', () => {
         },
         editingId: null,
         rateState: { loading: false, error: '', rate: null, date: '' },
+        baseRateState: { loading: false, error: '', rate: null, date: '' },
       };
       fixture.componentRef.setInput('initialDraft', draft);
 
@@ -636,6 +639,7 @@ describe('TransferFormComponent', () => {
           sourceAmount: 750,
           destinationAmount: 750,
           exchangeRate: 1,
+          baseExchangeRate: null,
           date: '2025-12-22',
           period: 1,
           year: 2026,
@@ -643,6 +647,7 @@ describe('TransferFormComponent', () => {
         },
         editingId: t.id!,
         rateState: { loading: false, error: '', rate: 1, date: 'stored' },
+        baseRateState: { loading: false, error: '', rate: null, date: '' },
       };
       fixture.componentRef.setInput('initialDraft', draft);
 
@@ -894,6 +899,78 @@ describe('TransferFormComponent', () => {
       fixture.detectChanges();
 
       expect(paymentCategoryInput().value).toBe('Visa payment');
+    });
+  });
+
+  describe('base rate (ADR 0028)', () => {
+    function rateSections(): Element[] {
+      return Array.from(fixture.nativeElement.querySelectorAll('.exchange-rate-section'));
+    }
+
+    beforeEach(async () => {
+      await TestBed.inject(ProfileService).completeOnboarding('GBP');
+      fixture.componentRef.setInput('baseCurrency', 'GBP');
+      exchangeRateService.getRate.mockImplementation(async (from: string, to: string) => ({
+        rate: to === 'GBP' ? 0.85 : 1.08, from, to, date: '2026-08-20',
+      }));
+    });
+
+    it('asks for the rate to the Base Currency when neither account is in it, and saves it', async () => {
+      await component.ngOnInit();
+      fixture.detectChanges();
+      component.form.update((f) => ({ ...f, sourceAccountId: eurAccountId, destAccountId: eur2AccountId, sourceAmount: 100 }));
+      component.onDateChange('2026-08-20');
+      fixture.detectChanges();
+      await flush();
+      fixture.detectChanges();
+
+      expect(exchangeRateService.getRate).toHaveBeenCalledWith('EUR', 'GBP', '2026-08-20');
+      expect(rateSections()).toHaveLength(1);
+      expect(rateSections()[0].textContent).toContain('85');
+
+      await component.onSubmit();
+
+      const [saved] = await transferService.getAll();
+      expect(saved.baseExchangeRate).toBe(0.85);
+      expect(saved.baseCurrencyAmount).toBe(85);
+    });
+
+    it('asks for no base rate when an account is already in the Base Currency', async () => {
+      fixture.componentRef.setInput('baseCurrency', 'EUR');
+      await component.ngOnInit();
+      fixture.detectChanges();
+      component.form.update((f) => ({ ...f, sourceAccountId: usdAccountId, destAccountId: eurAccountId }));
+      fixture.detectChanges();
+      await flush();
+      fixture.detectChanges();
+
+      expect(rateSections()).toHaveLength(1);
+      expect(exchangeRateService.getRate).not.toHaveBeenCalledWith('USD', 'GBP', expect.anything());
+    });
+
+    it('holds the save until a base rate is entered and states why', async () => {
+      exchangeRateService.getRate.mockRejectedValue(new Error('down'));
+      await component.ngOnInit();
+      fixture.detectChanges();
+      component.form.update((f) => ({ ...f, sourceAccountId: eurAccountId, destAccountId: eur2AccountId, sourceAmount: 100 }));
+      fixture.detectChanges();
+      await flush();
+
+      expect(component.canSubmit()).toBe(false);
+      expect(component.disabledReason()).toBe('Enter the exchange rate to your base currency.');
+    });
+
+    it('seeds the stored base rate when editing, without fetching', async () => {
+      const t = await transferService.create(
+        eurAccountId, eur2AccountId, 100, new Date('2025-12-22'), 1, '', 1, 2025, 0.9,
+      );
+      fixture.componentRef.setInput('editTransfer', t);
+      await flush();
+      fixture.detectChanges();
+      await flush();
+
+      expect(exchangeRateService.getRate).not.toHaveBeenCalled();
+      expect(component.form().baseExchangeRate).toBe(0.9);
     });
   });
 });

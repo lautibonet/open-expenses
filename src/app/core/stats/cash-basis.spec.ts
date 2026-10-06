@@ -251,6 +251,24 @@ describe('cashBasis totals (ADR 0022)', () => {
     });
   });
 
+  it('counts a Card Payment without a stored conversion at its face source amount and reports it (ADR 0028)', () => {
+    const card = account({ id: 3, name: 'Visa', kind: 'credit-card', currency: 'GBP' });
+    const figures = cashBasis(snapshot({
+      accounts: [eur, usd, card],
+      baseCurrency: 'CHF',
+      transfers: [
+        transfer({ id: 7, sourceAccountId: 2, destinationAccountId: 3, sourceAmount: 120, baseCurrencyAmount: null }),
+        transfer({ id: 8, sourceAccountId: 1, destinationAccountId: 3, sourceAmount: 50, baseCurrencyAmount: 48 }),
+        transfer({ id: 9, sourceAccountId: 1, destinationAccountId: 2, sourceAmount: 10, baseCurrencyAmount: null }),
+      ],
+    }));
+    const scope = { kind: 'month' as const, period: 1 as const, year: 2026 };
+
+    expect(figures.scopeTotals(scope).expenses).toBe(168);
+    expect(figures.unconvertedCardPayments(scope).map(t => t.id)).toEqual([7]);
+    expect(figures.unconvertedCardPayments({ kind: 'month', period: 2, year: 2026 })).toEqual([]);
+  });
+
   it('splits every Period of a year in calendar order, by the stored Period year', () => {
     const december = txn({ id: 1, accountId: 1, categoryId: 2, period: 1, date: new Date('2025-12-22'), year: 2026, amount: 3000 });
     const figures = cashBasis(snapshot({

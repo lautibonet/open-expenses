@@ -80,6 +80,14 @@ class AppDatabase extends Dexie {
       transactions: '++id, accountId, categoryId, date, period, year',
       transfers: '++id, sourceAccountId, destinationAccountId, date, period, year',
       profile: 'id',
+    });
+    /* ADR 0028: reruns the cleanup to repair every Transfer's base amount. */
+    this.version(10).stores({
+      accounts: '++id, name, currency, active, kind',
+      categories: '++id, name, type, active',
+      transactions: '++id, accountId, categoryId, date, period, year',
+      transfers: '++id, sourceAccountId, destinationAccountId, date, period, year',
+      profile: 'id',
     }).upgrade(async tx => {
       const dataset = {} as Dataset;
       for (const name of DATASET_TABLES) {

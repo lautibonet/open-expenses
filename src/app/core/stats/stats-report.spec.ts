@@ -208,7 +208,7 @@ describe('statsReport Exchange Rate paths', () => {
     expect(report.balances.total).toBe(50);
     expect(report.balances.debt).toBe(110);
     expect(report.balances.totalWithoutDebt).toBe(160);
-    expect(report.degradation).toEqual({ accountsExcluded: false, unconvertedTransactions: false });
+    expect(report.degradation).toEqual({ accountsExcluded: false, unconvertedMovements: false });
   });
 
   it('keeps each Account row in its own currency whatever the rates', () => {
@@ -264,16 +264,60 @@ describe('statsReport Exchange Rate paths', () => {
   it('warns about a foreign Transaction with no stored conversion at or before the Scope Period', () => {
     const unconverted = { ...ledger, transactions: [txn({ id: 9, accountId: 2, amount: 5, period: 1 })] };
 
-    expect(statsReport(unconverted, scope(1), usdRates).degradation.unconvertedTransactions).toBe(true);
-    expect(statsReport(ledger, scope(1), usdRates).degradation.unconvertedTransactions).toBe(false);
+    expect(statsReport(unconverted, scope(1), usdRates).degradation.unconvertedMovements).toBe(true);
+    expect(statsReport(ledger, scope(1), usdRates).degradation.unconvertedMovements).toBe(false);
+  });
+
+  it('moves the Debt by the base amount a Card Payment adds to Expenses (ADR 0028)', () => {
+    /* 50 USD from cash settle 50 USD of card debt; at the captured base rate they were 40 EUR. */
+    const paid = {
+      ...ledger,
+      transfers: [transfer({
+        id: 1, sourceAccountId: 2, destinationAccountId: 3,
+        sourceAmount: 50, destinationAmount: 50, baseExchangeRate: 0.8, baseCurrencyAmount: 40,
+      })],
+    };
+    const before = statsReport(ledger, scope(1), usdRates);
+    const after = statsReport(paid, scope(1), usdRates);
+
+    expect(after.kpis.totals.expenses - before.kpis.totals.expenses).toBe(40);
+    expect(before.balances.debt! - after.balances.debt!).toBe(40);
+    expect(after.balances.total).toBe(before.balances.total);
+  });
+
+  it('counts an unconverted Card Payment at its face source amount and warns about it', () => {
+    const paid = {
+      ...ledger,
+      transfers: [transfer({
+        id: 1, sourceAccountId: 2, destinationAccountId: 3,
+        sourceAmount: 50, destinationAmount: 50, baseCurrencyAmount: null,
+      })],
+    };
+    const before = statsReport(ledger, scope(1), usdRates);
+    const after = statsReport(paid, scope(1), usdRates);
+
+    expect(before.balances.debt! - after.balances.debt!).toBe(50);
+    expect(after.kpis.totals.expenses - before.kpis.totals.expenses).toBe(50);
+    expect(after.degradation.unconvertedMovements).toBe(true);
+  });
+
+  it('never warns about an unconverted Transfer that stays among Cash Accounts, which the figures cancel out', () => {
+    const gbp = account({ id: 5, name: 'Cash GBP', currency: 'GBP' });
+    const moved = {
+      ...ledger,
+      accounts: [...ledger.accounts, gbp],
+      transfers: [transfer({ id: 1, sourceAccountId: 2, destinationAccountId: 5, baseCurrencyAmount: null })],
+    };
+
+    expect(statsReport(moved, scope(1), noRatesNeeded).degradation.unconvertedMovements).toBe(false);
   });
 
   it('warns about an unconverted Transaction later in the Scope year, which the year figures count', () => {
     const later = { ...ledger, transactions: [txn({ id: 9, accountId: 2, amount: 5, period: 6 })] };
 
-    expect(statsReport(later, scope(1), usdRates).degradation.unconvertedTransactions).toBe(true);
-    expect(statsReport(later, scope(1, 2027), usdRates).degradation.unconvertedTransactions).toBe(true);
-    expect(statsReport(later, scope(1, 2025), usdRates).degradation.unconvertedTransactions).toBe(false);
+    expect(statsReport(later, scope(1), usdRates).degradation.unconvertedMovements).toBe(true);
+    expect(statsReport(later, scope(1, 2027), usdRates).degradation.unconvertedMovements).toBe(true);
+    expect(statsReport(later, scope(1, 2025), usdRates).degradation.unconvertedMovements).toBe(false);
   });
 });
 
