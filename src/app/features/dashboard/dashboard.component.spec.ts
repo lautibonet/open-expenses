@@ -60,6 +60,8 @@ describe('DashboardComponent', () => {
   it('should format account balance with the account currency', async () => {
     const eur = await accountService.create('Cash', 'EUR', 100000);
     const usd = await accountService.create('USD Account', 'USD', 50000);
+    /* Account rows need no rates; keep the test off the network. */
+    vi.spyOn(globalThis, 'fetch').mockRejectedValue(new TypeError('Failed to fetch'));
 
     await component.ngOnInit();
 
@@ -201,6 +203,39 @@ describe('DashboardComponent', () => {
 
       expect(fetchSpy).not.toHaveBeenCalled();
       expect(component.report().balances.total).toBe(100000);
+    });
+
+    it('shows every figure while the rates are on their way, holding only the total back', async () => {
+      const cash = await accountService.create('Cash', 'EUR', 100000);
+      await accountService.create('USD Account', 'USD', 50000);
+      const food = await categoryService.create('Food', 'expense');
+      await transactionService.create(cash.id!, food.id!, 2500, new Date(), getCurrentPeriod());
+      let answer!: (response: Response) => void;
+      vi.spyOn(globalThis, 'fetch').mockReturnValue(
+        new Promise<Response>(resolve => (answer = resolve)),
+      );
+
+      const loading = component.ngOnInit();
+      await vi.waitFor(() => expect(globalThis.fetch).toHaveBeenCalled());
+      fixture.detectChanges();
+      const el: HTMLElement = fixture.nativeElement;
+
+      expect(component.report().kpis.totals.expenses).toBe(2500);
+      expect(el.querySelector('.kpi-ledger')).not.toBeNull();
+      expect(el.querySelectorAll('.category-bar-row')).toHaveLength(1);
+      expect(el.querySelectorAll('.balance-row')).toHaveLength(2);
+      expect(el.querySelector('.total-balance-card .rates-pending')).not.toBeNull();
+      expect(component.conversionWarningMessage()).toBe('');
+
+      answer({
+        ok: true,
+        json: async () => [{ base: 'EUR', quote: 'USD', date: '2026-01-15', rate: 1.25 }],
+      } as Response);
+      await loading;
+      fixture.detectChanges();
+
+      expect(el.querySelector('.total-balance-card .rates-pending')).toBeNull();
+      expect(component.report().balances.total).toBe(137500);
     });
 
     it('keeps converting with the rates already fetched after going offline', async () => {

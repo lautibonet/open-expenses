@@ -87,6 +87,7 @@ function scope(period: MonthScope['period'], year = 2026): MonthScope {
 
 const noRatesNeeded: RateOutcome = { kind: 'rates', rates: new Map() };
 const unavailable: RateOutcome = { kind: 'unavailable' };
+const pending: RateOutcome = { kind: 'pending' };
 
 /* Rates are quoted per unit of Base Currency: 1 EUR buys 1.25 USD. */
 const usdRates: RateOutcome = { kind: 'rates', rates: new Map([['USD', 1.25]]) };
@@ -230,6 +231,27 @@ describe('statsReport Exchange Rate paths', () => {
     expect(report.balances.totalWithoutDebt).toBe(100);
     expect(report.degradation.accountsExcluded).toBe(true);
     expect(report.balances.accounts).toHaveLength(4);
+  });
+
+  it('leaves foreign Accounts out of the total, without the warning, while rates are pending', () => {
+    const report = statsReport(ledger, scope(1), pending);
+
+    expect(report.balances.ratesPending).toBe(true);
+    expect(report.balances.total).toBe(70);
+    expect(report.degradation.accountsExcluded).toBe(false);
+    expect(report.balances.accounts).toHaveLength(4);
+  });
+
+  it('has nothing pending when every Account is in the Base Currency', () => {
+    const report = statsReport(snapshot({ accounts: [eur, eurCard] }), scope(1), pending);
+
+    expect(report.balances.ratesPending).toBe(false);
+    expect(report.degradation.accountsExcluded).toBe(false);
+  });
+
+  it('settles the total once the rates arrive', () => {
+    expect(statsReport(ledger, scope(1), usdRates).balances.ratesPending).toBe(false);
+    expect(statsReport(ledger, scope(1), unavailable).balances.ratesPending).toBe(false);
   });
 
   it('treats a missing rate for any foreign currency like unavailable rates', () => {

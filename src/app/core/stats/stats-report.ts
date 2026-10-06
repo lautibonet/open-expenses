@@ -20,10 +20,11 @@ import { CategorySpending, categorySpending } from './category-spending';
 
 /* The outcome of fetching Exchange Rates for the foreign Account currencies,
    quoted per unit of Base Currency. With no foreign Account the screen passes
-   an empty `rates` map; `unavailable` is any fetch that did not return rates
-   (offline, failed). */
+   an empty `rates` map; `pending` is a fetch still on its way; `unavailable`
+   is any fetch that did not return rates (offline, failed, timed out). */
 export type RateOutcome =
   | { kind: 'rates'; rates: Map<string, number> }
+  | { kind: 'pending' }
   | { kind: 'unavailable' };
 
 /* An Account paired with its Period-end balance, in the account's currency. */
@@ -44,6 +45,9 @@ export interface StatsReport {
     totalWithoutDebt: number;
     /* The Debt, stated positive; null when no card is in debt. */
     debt: number | null;
+    /* The foreign Accounts' Exchange Rates are still being fetched: the
+       total, the Debt and the balance strip are not final yet. */
+    ratesPending: boolean;
   };
   degradation: ConversionDegradation;
   /* Cash-basis Income, Expenses, and Net, January through the Scope Period. */
@@ -77,9 +81,11 @@ export interface StatsReport {
    total balance and the Accumulated line alike: foreign ones converted at the
    fetched rates, while their movements keep their stored conversions (ADR
    0013). `hasExcludedAccounts` means a rate is unavailable or missing, so the foreign
-   Accounts are left out. */
+   Accounts are left out; `ratesPending` leaves them out too, without the
+   warning, until the fetch settles. */
 interface Conversion {
   hasExcludedAccounts: boolean;
+  ratesPending: boolean;
   initialsInBase: Map<number, number>;
 }
 
@@ -142,7 +148,7 @@ export function statsReport(
   const frozenFromPeriod = lastMovementPeriod(snapshot.transactions, snapshot.transfers, scope.year);
 
   return {
-    balances: { accounts, ...totalBalance(baseAmounts) },
+    balances: { accounts, ...totalBalance(baseAmounts), ratesPending: conversion.ratesPending },
     degradation: {
       accountsExcluded: conversion.hasExcludedAccounts,
       unconvertedMovements:
@@ -179,16 +185,17 @@ export function statsReport(
 function resolveConversion(snapshot: CashBasisSnapshot, rates: RateOutcome): Conversion {
   const foreign = currenciesNeedingRates(snapshot);
   const fetched = rates.kind === 'rates' ? rates.rates : new Map<string, number>();
-  const hasExcludedAccounts = foreign.some(c => !fetched.has(c));
+  const ratesPending = rates.kind === 'pending' && foreign.length > 0;
+  const hasExcludedAccounts = !ratesPending && foreign.some(c => !fetched.has(c));
   const initialsInBase = new Map<number, number>();
   for (const account of snapshot.accounts) {
     if (isBaseCurrencyAccount(account, snapshot.baseCurrency)) {
       initialsInBase.set(account.id!, account.initialBalance);
-    } else if (!hasExcludedAccounts) {
+    } else if (!hasExcludedAccounts && !ratesPending) {
       initialsInBase.set(account.id!, round2(account.initialBalance / fetched.get(account.currency)!));
     }
   }
-  return { hasExcludedAccounts, initialsInBase };
+  return { hasExcludedAccounts, ratesPending, initialsInBase };
 }
 
 /* The total balance and the Debt, from the Base Currency amount of every
@@ -199,7 +206,7 @@ function resolveConversion(snapshot: CashBasisSnapshot, rates: RateOutcome): Con
    from splitting the two figures. */
 function totalBalance(
   baseAmounts: Map<Account, number>,
-): Omit<StatsReport['balances'], 'accounts'> {
+): Omit<StatsReport['balances'], 'accounts' | 'ratesPending'> {
   let total = 0;
   let debt = 0;
   let hasDebt = false;

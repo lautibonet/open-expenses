@@ -38,6 +38,7 @@ import {
 } from '../../core/stats/chart-scale';
 
 const noRatesNeeded: RateOutcome = { kind: 'rates', rates: new Map() };
+const ratesPending: RateOutcome = { kind: 'pending' };
 
 /* What the screen shows before the first load. */
 const emptySnapshot: CashBasisSnapshot = {
@@ -68,6 +69,9 @@ export class DashboardComponent implements OnInit {
   /* Everything recorded, loaded once per data version; a Scope change only
      re-runs the report. */
   private snapshot = signal<CashBasisSnapshot>(emptySnapshot);
+  /* The foreign Accounts' Exchange Rates, fetched once per load. Until they
+     arrive the report already shows every figure that does not need them. */
+  private rates = signal<RateOutcome>(noRatesNeeded);
   private availableScopes = computed<ScopeOptions>(() => {
     const { transactions, transfers } = this.snapshot();
     return scopeOptions([...transactions, ...transfers], this.scope());
@@ -78,7 +82,7 @@ export class DashboardComponent implements OnInit {
 
   baseCurrency = computed(() => this.snapshot().baseCurrency);
   /* Every figure the screen shows. */
-  report = signal<StatsReport>(statsReport(emptySnapshot, defaultScope(), noRatesNeeded));
+  report = computed<StatsReport>(() => statsReport(this.snapshot(), this.scope(), this.rates()));
 
   private overviewExtremes = computed(() => overviewExtremes(this.report().yearOverview.periods));
   private balanceExtremes = computed(() => balanceExtremes(this.report().balanceStrip.accumulated));
@@ -95,23 +99,19 @@ export class DashboardComponent implements OnInit {
       this.transactionService.getAll(),
       this.transferService.getAll(),
     ]);
-    this.snapshot.set({ accounts, categories, transactions, transfers, baseCurrency });
-    await this.refresh();
+    const snapshot: CashBasisSnapshot = { accounts, categories, transactions, transfers, baseCurrency };
+    this.snapshot.set(snapshot);
+    this.rates.set(currenciesNeedingRates(snapshot).length === 0 ? noRatesNeeded : ratesPending);
+    const rates = await this.fetchRates(snapshot);
+    /* A newer load owns the screen now; its own fetch settles the rates. */
+    if (this.snapshot() === snapshot) this.rates.set(rates);
   }
 
   private reloadDataOnVersionChange = this.dataVersion.reloadOnChange(() => this.loadAll());
 
-  /* The screen's one asynchronous step besides loading: the Exchange Rates
-     the foreign Accounts need. The report reads the current Scope once they
-     arrive, so a Scope change during the fetch is never lost. */
-  private async refresh(): Promise<void> {
-    const snapshot = this.snapshot();
-    const rates = await this.fetchRates(snapshot);
-    this.report.set(statsReport(snapshot, this.scope(), rates));
-  }
-
-  /* Any rejection — offline with nothing cached, or a failed fetch — leaves
-     the rates unavailable; the rate service's cache still answers offline. */
+  /* The screen's one asynchronous step besides loading. Any rejection —
+     offline with nothing cached, a failed or timed-out fetch — leaves the
+     rates unavailable; the rate service's cache still answers offline. */
   private async fetchRates(snapshot: CashBasisSnapshot): Promise<RateOutcome> {
     const currencies = currenciesNeedingRates(snapshot);
     if (currencies.length === 0) return noRatesNeeded;
@@ -123,18 +123,17 @@ export class DashboardComponent implements OnInit {
     }
   }
 
-  async onScopeYearChange(value: number): Promise<void> {
-    await this.setScope(changeYear(this.scope(), value, this.availableScopes()));
+  onScopeYearChange(value: number): void {
+    this.setScope(changeYear(this.scope(), value, this.availableScopes()));
   }
 
-  async onScopeMonthChange(period: MonthNumber): Promise<void> {
-    await this.setScope(changeMonth(this.scope(), period));
+  onScopeMonthChange(period: MonthNumber): void {
+    this.setScope(changeMonth(this.scope(), period));
   }
 
-  private async setScope(scope: MonthScope): Promise<void> {
+  private setScope(scope: MonthScope): void {
     this.scope.set(scope);
     this.scopeAnnouncement.set(this.language.scopeLabel(scope));
-    await this.refresh();
   }
 
   scopeLabelText(): string {

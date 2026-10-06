@@ -87,6 +87,24 @@ describe('ExchangeRateService', () => {
   });
 
   describe('getRates (batch)', () => {
+    it('gives up on a fetch that never answers, so callers fall back to no rates', async () => {
+      const timeout = new AbortController();
+      const timeoutSpy = vi.spyOn(AbortSignal, 'timeout').mockReturnValue(timeout.signal);
+      vi.spyOn(globalThis, 'fetch').mockImplementation(
+        (_url, init) =>
+          new Promise((_resolve, reject) => {
+            init!.signal!.addEventListener('abort', () => reject(init!.signal!.reason));
+          }),
+      );
+
+      const pending = service.getRates('EUR', ['USD']);
+      timeout.abort(new DOMException('The operation timed out.', 'TimeoutError'));
+
+      await expect(pending).rejects.toThrow('timed out');
+      expect(timeoutSpy).toHaveBeenCalledWith(8000);
+      timeoutSpy.mockRestore();
+    });
+
     it('should fetch multiple rates in one call', async () => {
       const mockResponse = {
         ok: true,
@@ -101,6 +119,7 @@ describe('ExchangeRateService', () => {
 
       expect(globalThis.fetch).toHaveBeenCalledWith(
         'https://api.frankfurter.dev/v2/rates?base=EUR&quotes=USD,GBP&date=2026-01-15',
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
       );
       expect(result.base).toBe('EUR');
       expect(result.date).toBe('2026-01-15');
@@ -122,6 +141,7 @@ describe('ExchangeRateService', () => {
 
       expect(globalThis.fetch).toHaveBeenCalledWith(
         'https://api.frankfurter.dev/v2/rates?base=EUR&quotes=USD',
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
       );
     });
 
