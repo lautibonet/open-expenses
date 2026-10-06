@@ -107,31 +107,6 @@ export function scopeFromQuery(params: URLSearchParams): PeriodScope | null {
   return isMonthNumber(period) ? { kind: 'month', period, year } : null;
 }
 
-export function yearsFromData(
-  movements: ScopeAwareMovement[],
-  options: { includeCurrentYear?: boolean } = {},
-): number[] {
-  const years = new Set<number>();
-  for (const m of movements) {
-    years.add(getPeriodYear(m));
-  }
-  if (options.includeCurrentYear !== false) {
-    years.add(getCurrentYear());
-  }
-  return Array.from(years).sort((a, b) => a - b);
-}
-
-export function monthsFromData(
-  movements: ScopeAwareMovement[],
-  options: { includeCurrentPeriod?: boolean } = {},
-): MonthNumber[] {
-  const present = new Set(movements.map(m => m.period).filter(isMonthNumber));
-  if (options.includeCurrentPeriod !== false) {
-    present.add(getCurrentPeriod());
-  }
-  return MONTH_NUMBERS.filter(m => present.has(m));
-}
-
 export interface ScopeOptions {
   years: number[];
   months: MonthNumber[];
@@ -144,26 +119,30 @@ export interface ScopeOptions {
    year are always on offer, so a Scope with no data behind it — a deep
    link, or a Period whose last movement was deleted — stays put. */
 export function scopeOptions(movements: ScopeAwareMovement[], scope: PeriodScope): ScopeOptions {
+  const currentYear = getCurrentYear();
+  const years = new Set([currentYear, scope.year]);
+  const months = new Set<MonthNumber>();
+  if (scope.year === currentYear) {
+    months.add(getCurrentPeriod());
+  }
+  if (scope.kind === 'month') {
+    months.add(scope.period);
+  }
   const latestMonthByYear = new Map<number, MonthNumber>();
   for (const movement of movements) {
-    if (!isMonthNumber(movement.period)) continue;
     const year = getPeriodYear(movement);
+    years.add(year);
+    if (!isMonthNumber(movement.period)) continue;
+    if (year === scope.year) {
+      months.add(movement.period);
+    }
     const known = latestMonthByYear.get(year);
     if (known === undefined || movement.period > known) {
       latestMonthByYear.set(year, movement.period);
     }
   }
-  const months = new Set(
-    monthsFromData(
-      movements.filter(m => getPeriodYear(m) === scope.year),
-      { includeCurrentPeriod: scope.year === getCurrentYear() },
-    ),
-  );
-  if (scope.kind === 'month') {
-    months.add(scope.period);
-  }
   return {
-    years: [...new Set([...yearsFromData(movements), scope.year])].sort((a, b) => a - b),
+    years: Array.from(years).sort((a, b) => a - b),
     months: MONTH_NUMBERS.filter(m => months.has(m)),
     latestMonthByYear,
   };
