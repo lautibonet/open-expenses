@@ -81,8 +81,17 @@ class AppDatabase extends Dexie {
       transfers: '++id, sourceAccountId, destinationAccountId, date, period, year',
       profile: 'id',
     });
-    /* ADR 0028: reruns the cleanup to repair every Transfer's base amount. */
+    /* ADR 0028: reran the cleanup to repair every Transfer's base amount. */
     this.version(10).stores({
+      accounts: '++id, name, currency, active, kind',
+      categories: '++id, name, type, active',
+      transactions: '++id, accountId, categoryId, date, period, year',
+      transfers: '++id, sourceAccountId, destinationAccountId, date, period, year',
+      profile: 'id',
+    });
+    /* Issue #196: reruns the cleanup to name every Payment Category in the
+       profile's Language. */
+    this.version(11).stores({
       accounts: '++id, name, currency, active, kind',
       categories: '++id, name, type, active',
       transactions: '++id, accountId, categoryId, date, period, year',

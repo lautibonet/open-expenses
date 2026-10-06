@@ -4,6 +4,7 @@ import {
   computed,
   effect,
   inject,
+  output,
   signal,
   viewChild,
 } from '@angular/core';
@@ -11,6 +12,7 @@ import { FormsModule } from '@angular/forms';
 import { LanguageService } from '../../../core/services/language.service';
 import { Language, isLanguage, LANGUAGES } from '../../../core/types/language.type';
 import { errorCopy } from '../../../core/models/translation-error';
+import { KeptPaymentCategory } from '../../../core/payment-category/payment-category';
 
 @Component({
   selector: 'app-language-card',
@@ -27,6 +29,9 @@ export class LanguageCardComponent {
   editing = signal(false);
   editError = signal('');
   languageSelect = viewChild<ElementRef<HTMLSelectElement>>('languageSelect');
+  /* Issue #196: the cards whose Payment Category kept its name on the
+     switch, for the page-level notice. */
+  languageChanged = output<KeptPaymentCategory[]>();
 
   activeLabel = computed(
     () => LANGUAGES.find((l) => l.code === this.language.activeLanguage())?.label ?? '',
@@ -55,7 +60,8 @@ export class LanguageCardComponent {
     const value = this.selected();
     if (!isLanguage(value)) return;
     try {
-      await this.language.setLanguage(value);
+      const kept = await this.language.setLanguage(value);
+      this.languageChanged.emit(kept);
       this.editing.set(false);
       this.editError.set('');
       this.returnToPencil();

@@ -4,6 +4,7 @@ import { monthNumberFromName } from '../types/period.type';
 import { DEFAULT_LANGUAGE, isLanguage, Language } from '../types/language.type';
 import {
   newPaymentCategory,
+  paymentCategoryRenames,
   resolvePaymentCategory,
 } from '../payment-category/payment-category-rules';
 
@@ -175,20 +176,34 @@ function linkPaymentCategories(
   return { accounts: linkedAccounts, categories: linkedCategories };
 }
 
+/* Issue #196: every linked Payment Category is named in the dataset's own
+   Language, so a Restore ends in the restored Language and an upgrade catches
+   up with Language switches made before the rule existed. A category whose
+   translated name another category would hold keeps its name, silently: the
+   cleanup cannot refuse. */
+function namePaymentCategories(accounts: any[], categories: any[], language: Language): any[] {
+  const { renamed } = paymentCategoryRenames(accounts, categories as Category[], language);
+  const names = new Map(renamed.map(({ id, name }) => [id, name]));
+  return categories.map(category =>
+    names.has(category.id) ? { ...category, name: names.get(category.id) } : category,
+  );
+}
+
 function datasetLanguage(profile: any[]): Language {
   const language = profile[0]?.language;
   return isLanguage(language) ? language : DEFAULT_LANGUAGE;
 }
 
 export function cleanDataset(dataset: Dataset): Dataset {
+  const language = datasetLanguage(dataset.profile);
   const { accounts, categories } = linkPaymentCategories(
     dataset.accounts.map(cleanAccount),
     dataset.categories.map(cleanCategory),
-    datasetLanguage(dataset.profile),
+    language,
   );
   return {
     accounts,
-    categories,
+    categories: namePaymentCategories(accounts, categories, language),
     transactions: dataset.transactions.map(cleanTransaction),
     transfers: repairTransferBaseAmounts(
       dataset.transfers.map(cleanTransfer),
