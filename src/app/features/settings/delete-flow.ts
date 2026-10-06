@@ -75,3 +75,5 @@ export function createDeleteFlow<P extends DeletionPlan = DeletionPlan>() {
     isRefused: (target: DeleteTarget) => holds(target, 'refused'),
   };
 }
+
+export type DeleteFlow = ReturnType<typeof createDeleteFlow>;

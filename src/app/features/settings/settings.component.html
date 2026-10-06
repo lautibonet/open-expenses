@@ -316,103 +316,24 @@
                     />
                   </svg>
                 </button>
-                @if (deleteFlow.isConfirming({ kind: 'account', id: acc.id! })) {
-                  <span class="visually-hidden" aria-live="polite">
-                    {{ language.t('settings.accountDeletePrompt') }}
-                  </span>
-                  <button
-                    type="button"
-                    class="btn small danger icon-btn"
-                    (click)="confirmDelete()"
-                    [attr.aria-label]="language.t('settings.confirmDeletionAria')"
-                    [title]="language.t('settings.confirmDeletionAria')"
-                  >
-                    <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
-                      <path
-                        d="M20 6 9 17l-5-5"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      />
-                    </svg>
-                  </button>
-                  <button
-                    type="button"
-                    class="btn small icon-btn"
-                    (click)="cancelDelete()"
-                    [attr.aria-label]="language.t('settings.cancelDeletionAria')"
-                    [title]="language.t('settings.cancelDeletionAria')"
-                  >
-                    <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
-                      <path
-                        d="M18 6 6 18M6 6l12 12"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      />
-                    </svg>
-                  </button>
-                } @else {
-                  <button
-                    type="button"
-                    class="btn small icon-btn"
-                    (click)="requestDeleteAccount(acc.id!)"
-                    [attr.aria-label]="language.t('settings.deleteAccountAria')"
-                    [title]="language.t('settings.deleteAccountAria')"
-                  >
-                    <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
-                      <path
-                        d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      />
-                    </svg>
-                  </button>
-                }
               } @else {
                 <button class="btn small" (click)="reactivateAccount(acc.id!)">
                   {{ language.t('settings.reactivate') }}
                 </button>
-                <button
-                  type="button"
-                  class="btn small icon-btn"
-                  (click)="requestDeleteAccount(acc.id!)"
-                  [attr.aria-label]="language.t('settings.deleteAccountAria')"
-                  [title]="language.t('settings.deleteAccountAria')"
-                >
-                  <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
-                    <path
-                      d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                  </svg>
-                </button>
               }
+              <app-delete-controls
+                [flow]="deleteFlow"
+                [target]="{ kind: 'account', id: acc.id! }"
+                (requested)="requestDeleteAccount(acc.id!)"
+                (confirmed)="confirmDelete()"
+              />
             </div>
-            @if (deleteFlow.isRefused({ kind: 'account', id: acc.id! })) {
-              <div class="delete-refusal" role="alert">
-                <p>{{ language.t('errors.accountHasMovements') }}</p>
-                @if (acc.active) {
-                  <button type="button" class="btn small" (click)="deactivateInstead(acc.id!)">
-                    {{ language.t('settings.deactivateInstead') }}
-                  </button>
-                }
-                <button type="button" class="btn small" (click)="cancelDelete()">
-                  {{ language.t('settings.cancel') }}
-                </button>
-              </div>
-            }
+            <app-delete-refusal
+              [flow]="deleteFlow"
+              [target]="{ kind: 'account', id: acc.id! }"
+              [active]="acc.active"
+              (deactivate)="deactivateInstead(acc.id!)"
+            />
           }
         </li>
       }
@@ -648,103 +569,24 @@
                     />
                   </svg>
                 </button>
-                @if (deleteFlow.isConfirming({ kind: 'card', id: card.id! })) {
-                  <span class="visually-hidden" aria-live="polite">
-                    {{ language.t('settings.cardDeletePrompt') }}
-                  </span>
-                  <button
-                    type="button"
-                    class="btn small danger icon-btn"
-                    (click)="confirmDelete()"
-                    [attr.aria-label]="language.t('settings.confirmDeletionAria')"
-                    [title]="language.t('settings.confirmDeletionAria')"
-                  >
-                    <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
-                      <path
-                        d="M20 6 9 17l-5-5"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      />
-                    </svg>
-                  </button>
-                  <button
-                    type="button"
-                    class="btn small icon-btn"
-                    (click)="cancelDelete()"
-                    [attr.aria-label]="language.t('settings.cancelDeletionAria')"
-                    [title]="language.t('settings.cancelDeletionAria')"
-                  >
-                    <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
-                      <path
-                        d="M18 6 6 18M6 6l12 12"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      />
-                    </svg>
-                  </button>
-                } @else {
-                  <button
-                    type="button"
-                    class="btn small icon-btn"
-                    (click)="requestDeleteCard(card.id!)"
-                    [attr.aria-label]="language.t('settings.deleteCardAria')"
-                    [title]="language.t('settings.deleteCardAria')"
-                  >
-                    <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
-                      <path
-                        d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      />
-                    </svg>
-                  </button>
-                }
               } @else {
                 <button class="btn small" (click)="reactivateCard(card.id!)">
                   {{ language.t('settings.reactivate') }}
                 </button>
-                <button
-                  type="button"
-                  class="btn small icon-btn"
-                  (click)="requestDeleteCard(card.id!)"
-                  [attr.aria-label]="language.t('settings.deleteCardAria')"
-                  [title]="language.t('settings.deleteCardAria')"
-                >
-                  <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
-                    <path
-                      d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                  </svg>
-                </button>
               }
+              <app-delete-controls
+                [flow]="deleteFlow"
+                [target]="{ kind: 'card', id: card.id! }"
+                (requested)="requestDeleteCard(card.id!)"
+                (confirmed)="confirmDelete()"
+              />
             </div>
-            @if (deleteFlow.isRefused({ kind: 'card', id: card.id! })) {
-              <div class="delete-refusal" role="alert">
-                <p>{{ language.t('errors.accountHasMovements') }}</p>
-                @if (card.active) {
-                  <button type="button" class="btn small" (click)="deactivateCardInstead(card.id!)">
-                    {{ language.t('settings.deactivateInstead') }}
-                  </button>
-                }
-                <button type="button" class="btn small" (click)="cancelDelete()">
-                  {{ language.t('settings.cancel') }}
-                </button>
-              </div>
-            }
+            <app-delete-refusal
+              [flow]="deleteFlow"
+              [target]="{ kind: 'card', id: card.id! }"
+              [active]="card.active"
+              (deactivate)="deactivateCardInstead(card.id!)"
+            />
             @if (deleteFlow.isConfirming({ kind: 'card', id: card.id! }) && pairedCategoryToDelete()) {
               <!-- Issue #175: the paired-deletion pre-check says the payment
                    category goes with the card, so the confirm warns visibly. -->
@@ -906,104 +748,25 @@
                     />
                   </svg>
                 </button>
-                @if (deleteFlow.isConfirming({ kind: 'category', id: cat.id! })) {
-                  <span class="visually-hidden" aria-live="polite">
-                    {{ language.t('settings.categoryDeletePrompt') }}
-                  </span>
-                  <button
-                    type="button"
-                    class="btn small danger icon-btn"
-                    (click)="confirmDelete()"
-                    [attr.aria-label]="language.t('settings.confirmDeletionAria')"
-                    [title]="language.t('settings.confirmDeletionAria')"
-                  >
-                    <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
-                      <path
-                        d="M20 6 9 17l-5-5"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      />
-                    </svg>
-                  </button>
-                  <button
-                    type="button"
-                    class="btn small icon-btn"
-                    (click)="cancelDelete()"
-                    [attr.aria-label]="language.t('settings.cancelDeletionAria')"
-                    [title]="language.t('settings.cancelDeletionAria')"
-                  >
-                    <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
-                      <path
-                        d="M18 6 6 18M6 6l12 12"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      />
-                    </svg>
-                  </button>
-                } @else {
-                  <button
-                    type="button"
-                    class="btn small icon-btn"
-                    (click)="requestDeleteCategory(cat.id!)"
-                    [attr.aria-label]="language.t('settings.deleteCategoryAria')"
-                    [title]="language.t('settings.deleteCategoryAria')"
-                  >
-                    <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
-                      <path
-                        d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      />
-                    </svg>
-                  </button>
-                }
               } @else {
                 <span class="category-status">{{ language.t('settings.inactive') }}</span>
                 <button class="btn small" (click)="reactivateCategory(cat.id!)">
                   {{ language.t('settings.reactivate') }}
                 </button>
-                <button
-                  type="button"
-                  class="btn small icon-btn"
-                  (click)="requestDeleteCategory(cat.id!)"
-                  [attr.aria-label]="language.t('settings.deleteCategoryAria')"
-                  [title]="language.t('settings.deleteCategoryAria')"
-                >
-                  <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
-                    <path
-                      d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                  </svg>
-                </button>
               }
+              <app-delete-controls
+                [flow]="deleteFlow"
+                [target]="{ kind: 'category', id: cat.id! }"
+                (requested)="requestDeleteCategory(cat.id!)"
+                (confirmed)="confirmDelete()"
+              />
             </div>
-            @if (deleteFlow.isRefused({ kind: 'category', id: cat.id! })) {
-              <div class="delete-refusal" role="alert">
-                <p>{{ language.t('errors.categoryHasMovements') }}</p>
-                @if (cat.active) {
-                  <button type="button" class="btn small" (click)="deactivateCategoryInstead(cat.id!)">
-                    {{ language.t('settings.deactivateInstead') }}
-                  </button>
-                }
-                <button type="button" class="btn small" (click)="cancelDelete()">
-                  {{ language.t('settings.cancel') }}
-                </button>
-              </div>
-            }
+            <app-delete-refusal
+              [flow]="deleteFlow"
+              [target]="{ kind: 'category', id: cat.id! }"
+              [active]="cat.active"
+              (deactivate)="deactivateCategoryInstead(cat.id!)"
+            />
           }
         </li>
       }
