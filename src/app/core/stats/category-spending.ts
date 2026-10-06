@@ -1,8 +1,6 @@
-import { Account } from '../models/account.model';
-import { Category, isIncomeCategory } from '../models/category.model';
 import { Transaction } from '../models/transaction.model';
-import { storedBaseAmount } from '../balances/period-end-balances';
-import { isCreditCardTransaction } from './cash-basis';
+import { transactionBaseAmount } from '../balances/period-end-balances';
+import { CashBasisLookups } from './cash-basis';
 
 /* One category's spending, split by how it was paid: `cash` is money that
    left a Cash Account, `credit` is spending that consumed a Credit Card's
@@ -22,25 +20,31 @@ export interface CategorySpending {
    purchases they settle already report the same spending. A Transaction whose
    account is unknown counts as cash, mirroring the cash-basis seam so an
    orphaned reference is never silently dropped; one whose category is unknown
-   is skipped because it cannot be named. */
+   is skipped because it cannot be named. Amounts are in the Base Currency, a
+   Transaction on an Account already in it at its face amount (ADR 0013). */
 export function categorySpending(
   transactions: Transaction[],
-  categoriesById: Map<number, Category>,
-  accountsById: Map<number, Account>,
+  lookups: CashBasisLookups,
+  baseCurrency: string,
   paymentCategoryIds: Set<number> = new Set(),
 ): CategorySpending[] {
   const totals = new Map<number, { cash: number; credit: number }>();
 
   for (const transaction of transactions) {
-    const category = categoriesById.get(transaction.categoryId);
-    if (!category || isIncomeCategory(category.type)) continue;
+    const category = lookups.categoriesById.get(transaction.categoryId);
+    if (!category || lookups.isIncome(transaction)) continue;
     if (paymentCategoryIds.has(transaction.categoryId)) continue;
 
     const entry = totals.get(transaction.categoryId) ?? { cash: 0, credit: 0 };
-    if (isCreditCardTransaction(transaction, accountsById)) {
-      entry.credit += storedBaseAmount(transaction);
+    const amount = transactionBaseAmount(
+      transaction,
+      lookups.accountsById.get(transaction.accountId),
+      baseCurrency,
+    );
+    if (lookups.isCreditCardTransaction(transaction)) {
+      entry.credit += amount;
     } else {
-      entry.cash += storedBaseAmount(transaction);
+      entry.cash += amount;
     }
     totals.set(transaction.categoryId, entry);
   }
@@ -51,7 +55,7 @@ export function categorySpending(
     const credit = Math.round(entry.credit * 100) / 100;
     rows.push({
       categoryId,
-      name: categoriesById.get(categoryId)!.name,
+      name: lookups.categoriesById.get(categoryId)!.name,
       cash,
       credit,
       total: Math.round((cash + credit) * 100) / 100,

@@ -3,6 +3,7 @@ import { categorySpending, spendingShare } from './category-spending';
 import { Account } from '../models/account.model';
 import { Category } from '../models/category.model';
 import { Transaction } from '../models/transaction.model';
+import { cashBasisLookups } from './cash-basis';
 
 function account(overrides: Partial<Account>): Account {
   return {
@@ -45,6 +46,10 @@ function txn(overrides: Partial<Transaction>): Transaction {
   };
 }
 
+function lookups(categoriesById: Map<number, Category>, accountsById: Map<number, Account>) {
+  return cashBasisLookups([...accountsById.values()], [...categoriesById.values()]);
+}
+
 describe('category spending split (ADR 0022)', () => {
   const cash = account({ id: 1, name: 'Cash' });
   const card = account({ id: 2, name: 'Visa', kind: 'credit-card' });
@@ -61,14 +66,14 @@ describe('category spending split (ADR 0022)', () => {
     ];
 
     expect(
-      categorySpending(transactions, new Map([[1, groceries]]), accountsById),
+      categorySpending(transactions, lookups(new Map([[1, groceries]]), accountsById), 'EUR'),
     ).toEqual([{ categoryId: 1, name: 'Groceries', cash: 200, credit: 500, total: 700 }]);
   });
 
   it('counts a card Transaction as credit under its real category', () => {
     const transactions = [txn({ accountId: 2, categoryId: 1, amount: 500 })];
 
-    const rows = categorySpending(transactions, new Map([[1, groceries]]), accountsById);
+    const rows = categorySpending(transactions, lookups(new Map([[1, groceries]]), accountsById), 'EUR');
 
     expect(rows).toEqual([{ categoryId: 1, name: 'Groceries', cash: 0, credit: 500, total: 500 }]);
   });
@@ -76,7 +81,7 @@ describe('category spending split (ADR 0022)', () => {
   it('treats a Transaction whose account is unknown as cash rather than dropping it', () => {
     const transactions = [txn({ accountId: 999, categoryId: 1, amount: 100 })];
 
-    const rows = categorySpending(transactions, new Map([[1, groceries]]), accountsById);
+    const rows = categorySpending(transactions, lookups(new Map([[1, groceries]]), accountsById), 'EUR');
 
     expect(rows).toEqual([{ categoryId: 1, name: 'Groceries', cash: 100, credit: 0, total: 100 }]);
   });
@@ -85,7 +90,7 @@ describe('category spending split (ADR 0022)', () => {
     const payroll = category({ id: 2, name: 'Payroll', type: 'income' });
     const transactions = [txn({ categoryId: 2, amount: 3000 })];
 
-    expect(categorySpending(transactions, new Map([[2, payroll]]), accountsById)).toEqual([]);
+    expect(categorySpending(transactions, lookups(new Map([[2, payroll]]), accountsById), 'EUR')).toEqual([]);
   });
 
   it('excludes the Card Payment categories from the spending graph', () => {
@@ -93,7 +98,7 @@ describe('category spending split (ADR 0022)', () => {
     const transactions = [txn({ categoryId: 2, amount: 500 })];
 
     expect(
-      categorySpending(transactions, new Map([[2, payment]]), accountsById, new Set([2])),
+      categorySpending(transactions, lookups(new Map([[2, payment]]), accountsById), 'EUR', new Set([2])),
     ).toEqual([]);
   });
 
@@ -103,7 +108,7 @@ describe('category spending split (ADR 0022)', () => {
     const withUsd = new Map(accountsById);
     withUsd.set(usd.id!, usd);
 
-    const rows = categorySpending(transactions, new Map([[1, groceries]]), withUsd);
+    const rows = categorySpending(transactions, lookups(new Map([[1, groceries]]), withUsd), 'EUR');
 
     expect(rows[0]).toEqual({ categoryId: 1, name: 'Groceries', cash: 108, credit: 0, total: 108 });
   });
@@ -116,7 +121,7 @@ describe('category spending split (ADR 0022)', () => {
       txn({ id: 2, categoryId: 2, amount: 1500 }),
     ];
 
-    const rows = categorySpending(transactions, new Map([[1, food], [2, rent]]), accountsById);
+    const rows = categorySpending(transactions, lookups(new Map([[1, food], [2, rent]]), accountsById), 'EUR');
 
     expect(rows.map(r => r.name)).toEqual(['Rent', 'Food']);
   });
@@ -124,7 +129,7 @@ describe('category spending split (ADR 0022)', () => {
   it('skips a Transaction whose category cannot be resolved', () => {
     const transactions = [txn({ categoryId: 999, amount: 100 })];
 
-    expect(categorySpending(transactions, new Map([[1, groceries]]), accountsById)).toEqual([]);
+    expect(categorySpending(transactions, lookups(new Map([[1, groceries]]), accountsById), 'EUR')).toEqual([]);
   });
 });
 

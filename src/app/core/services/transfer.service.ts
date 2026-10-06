@@ -1,21 +1,19 @@
 import { Injectable, inject } from '@angular/core';
 import { db } from '../db/database';
-import { Transfer } from '../models/transfer.model';
+import { Transfer, needsBaseExchangeRate, transferBaseAmount } from '../models/transfer.model';
 import { Account, isCreditCard } from '../models/account.model';
 import { TranslationError } from '../models/translation-error';
-import { LanguageService } from './language.service';
-import { findOrCreateCategory } from './category.service';
+import { ProfileService } from './profile.service';
+import { paymentCategoryOf } from '../payment-category/payment-category';
 import {
-  PeriodScope,
   getCurrentYear,
-  getPeriodYear,
   isValidPeriod,
   isValidYear,
 } from '../types/period.type';
 
 @Injectable({ providedIn: 'root' })
 export class TransferService {
-  private languageService = inject(LanguageService);
+  private readonly profileService = inject(ProfileService);
 
   async create(
     sourceAccountId: number,
@@ -26,6 +24,7 @@ export class TransferService {
     note: string = '',
     exchangeRate: number = 1,
     year: number = getCurrentYear(),
+    baseExchangeRate?: number,
   ): Promise<Transfer> {
     if (sourceAccountId === destinationAccountId) {
       throw new TranslationError('errors.accountsMustDiffer');
@@ -53,13 +52,13 @@ export class TransferService {
       throw new TranslationError('errors.destinationAccountNotFound');
     }
 
-    const paymentCategoryId = await this.resolvePaymentCategory(destAccount);
-
     const sourceAmount = amount;
     const destinationAmount = Math.round(amount * exchangeRate * 100) / 100;
-    const baseCurrencyAmount = sourceAccount.currency !== destAccount.currency
-      ? destinationAmount
-      : sourceAmount;
+    const baseFields = await this.baseAmountFor(
+      { sourceAmount, destinationAmount, baseExchangeRate },
+      sourceAccount,
+      destAccount,
+    );
 
     const transfer: Transfer = {
       sourceAccountId,
@@ -67,17 +66,23 @@ export class TransferService {
       sourceAmount,
       destinationAmount,
       exchangeRate,
-      baseCurrencyAmount,
+      ...baseFields,
       date,
       period,
       year,
       note,
       createdAt: new Date(),
-      ...(paymentCategoryId !== undefined ? { categoryId: paymentCategoryId } : {}),
     };
 
-    const id = await db.transfers.add(transfer);
-    return { ...transfer, id };
+    return db.transaction('rw', db.accounts, db.categories, db.transfers, async () => {
+      const paymentCategoryId = await this.paymentCategoryIdFor(destAccount);
+      const stored: Transfer = {
+        ...transfer,
+        ...(paymentCategoryId !== undefined ? { categoryId: paymentCategoryId } : {}),
+      };
+      const id = await db.transfers.add(stored);
+      return { ...stored, id };
+    });
   }
 
   async update(
@@ -119,48 +124,71 @@ export class TransferService {
     const newSourceAccountId = changes.sourceAccountId ?? existing.sourceAccountId;
     const sourceAccount = await db.accounts.get(newSourceAccountId);
     const destAccount = await db.accounts.get(newDestinationAccountId);
-    const isCrossCurrency = sourceAccount && destAccount && sourceAccount.currency !== destAccount.currency;
     const newDestinationAmount = Math.round(newSourceAmount * newExchangeRate * 100) / 100;
-    const newBaseCurrencyAmount = isCrossCurrency ? newDestinationAmount : newSourceAmount;
+    const baseFields = sourceAccount && destAccount
+      ? await this.baseAmountFor(
+        {
+          sourceAmount: newSourceAmount,
+          destinationAmount: newDestinationAmount,
+          baseExchangeRate: changes.baseExchangeRate ?? existing.baseExchangeRate,
+        },
+        sourceAccount,
+        destAccount,
+      )
+      : {};
 
-    const paymentCategoryId = await this.resolvePaymentCategory(destAccount);
+    return db.transaction('rw', db.accounts, db.categories, db.transfers, async () => {
+      const paymentCategoryId = await this.paymentCategoryIdFor(destAccount);
+      await db.transfers.update(id, {
+        ...changes,
+        sourceAmount: newSourceAmount,
+        destinationAmount: newDestinationAmount,
+        exchangeRate: newExchangeRate,
+        ...baseFields,
+        categoryId: paymentCategoryId,
+      });
+      return (await db.transfers.get(id))!;
+    });
+  }
 
-    const mergedChanges = {
-      ...changes,
-      sourceAmount: newSourceAmount,
-      destinationAmount: newDestinationAmount,
-      exchangeRate: newExchangeRate,
-      baseCurrencyAmount: newBaseCurrencyAmount,
-      categoryId: paymentCategoryId,
+  /* ADR 0028: the base amount is the source side in Base Currency. When
+     neither account is in base it needs the caller's base rate, which is the
+     only case one is stored. */
+  private async baseAmountFor(
+    amounts: Pick<Transfer, 'sourceAmount' | 'destinationAmount' | 'baseExchangeRate'>,
+    source: Account,
+    destination: Account,
+  ): Promise<Pick<Transfer, 'baseCurrencyAmount' | 'baseExchangeRate'>> {
+    const baseCurrency = await this.profileService.getBaseCurrency();
+    if (!needsBaseExchangeRate(source.currency, destination.currency, baseCurrency)) {
+      return {
+        baseCurrencyAmount: transferBaseAmount(amounts, source.currency, destination.currency, baseCurrency),
+        baseExchangeRate: undefined,
+      };
+    }
+    if (amounts.baseExchangeRate == null) {
+      throw new TranslationError('errors.baseExchangeRateRequired');
+    }
+    if (amounts.baseExchangeRate <= 0) {
+      throw new TranslationError('errors.exchangeRatePositive');
+    }
+    return {
+      baseCurrencyAmount: transferBaseAmount(amounts, source.currency, destination.currency, baseCurrency),
+      baseExchangeRate: amounts.baseExchangeRate,
     };
-
-    await db.transfers.update(id, mergedChanges);
-    return (await db.transfers.get(id))!;
   }
 
   /* Amended ADR 0022 (ticket #173): a Transfer into a Credit Card wears the
      card's own Payment Category — the caller never picks one, and redirecting
-     the destination re-resolves it. Every other Transfer carries none. The
-     stored link wins; a card without one (legacy, un-migrated) still resolves
-     by its payment name, linked rather than duplicated, exactly as
-     provisioning does. */
-  private async resolvePaymentCategory(
+     the destination re-resolves it. Every other Transfer carries none. Only
+     the card's stored link counts (ADR 0026): a card without one refuses. */
+  private async paymentCategoryIdFor(
     destination: Account | undefined,
   ): Promise<number | undefined> {
     if (!destination || !isCreditCard(destination)) {
       return undefined;
     }
-    if (destination.paymentCategoryId != null) {
-      const linked = await db.categories.get(destination.paymentCategoryId);
-      if (linked) {
-        return linked.id;
-      }
-    }
-    const category = await findOrCreateCategory(
-      this.languageService.t('category.cardPayment', { name: destination.name }),
-      'expense',
-    );
-    return category.id;
+    return (await paymentCategoryOf(destination)).id;
   }
 
   async delete(id: number): Promise<void> {
@@ -186,22 +214,6 @@ export class TransferService {
 
   async getAll(): Promise<Transfer[]> {
     return db.transfers.toArray();
-  }
-
-  async getByPeriod(period: number, year?: number): Promise<Transfer[]> {
-    const transfers = await db.transfers.where('period').equals(period as any).toArray();
-    if (year === undefined) {
-      return transfers;
-    }
-    return transfers.filter(t => getPeriodYear(t) === year);
-  }
-
-  async getByScope(scope: PeriodScope): Promise<Transfer[]> {
-    if (scope.kind === 'year') {
-      const transfers = await db.transfers.toArray();
-      return transfers.filter(t => getPeriodYear(t) === scope.year);
-    }
-    return this.getByPeriod(scope.period, scope.year);
   }
 
   async getById(id: number): Promise<Transfer | undefined> {

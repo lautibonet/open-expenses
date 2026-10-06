@@ -32,7 +32,7 @@ export interface RateSeed {
 }
 
 /**
- * The Suggested Rate (CONTEXT.md): the rate fetched for the currency pair
+ * The Suggested Rate (GLOSSARY.md): the rate fetched for the currency pair
  * and the movement's date. A manual rate is an override and never becomes
  * the suggestion.
  */

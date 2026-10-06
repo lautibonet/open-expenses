@@ -16,11 +16,11 @@ import { TransactionService } from '../../../core/services/transaction.service';
 import { CategoryService } from '../../../core/services/category.service';
 import { LanguageService } from '../../../core/services/language.service';
 import { TranslationError, errorCopy } from '../../../core/models/translation-error';
-import { Transfer } from '../../../core/models/transfer.model';
+import { Transfer, needsBaseExchangeRate, transferBaseAmount } from '../../../core/models/transfer.model';
 import { Transaction } from '../../../core/models/transaction.model';
 import { Account, isCreditCard } from '../../../core/models/account.model';
 import { Category, isIncomeCategory } from '../../../core/models/category.model';
-import { namesMatch } from '../../../core/models/name-uniqueness';
+import { storedPaymentCategory } from '../../../core/payment-category/payment-category-rules';
 import { periodEndBalance } from '../../../core/balances/period-end-balances';
 import {
   ExchangeRateWellComponent,
@@ -31,11 +31,11 @@ import {
 import {
   MONTH_NUMBERS,
   MonthNumber,
-  defaultScope,
   getCurrentYear,
   getPeriodYear,
   periodYearFromDate,
 } from '../../../core/types/period.type';
+import { defaultScope } from '../../../core/scope/scope';
 import {
   dateToLocalISO,
   parseLocalDate,
@@ -49,18 +49,20 @@ export interface TransferFormState {
   sourceAmount: number | null;
   destinationAmount: number | null;
   exchangeRate: number;
+  /* ADR 0028: the source-to-base rate, used only when neither account is in
+     the Base Currency; null until the well supplies one. */
+  baseExchangeRate: number | null;
   date: string;
   period: MonthNumber;
   year: number;
   note: string;
-  /* The Card Payment's Expense category; null on every other Transfer kind. */
-  categoryId: number | null;
 }
 
 export interface TransferDraft {
   form: TransferFormState;
   editingId: number | null;
   rateState: RateState;
+  baseRateState: RateState;
 }
 
 /* The well renders the Transfer Form's own copy; the aria labels are shared
@@ -76,6 +78,15 @@ const RATE_LABELS: ExchangeRateWellLabels = {
   errorFetch: 'movements.error.rateFetch',
 };
 
+/* ADR 0028: the second well, converting the source amount to the Base
+   Currency when neither account is in it. */
+const BASE_RATE_LABELS: ExchangeRateWellLabels = {
+  ...RATE_LABELS,
+  heading: 'movements.baseExchangeRate',
+};
+
+const EMPTY_RATE_STATE: RateState = { loading: false, error: '', rate: null, date: '' };
+
 const today = todayLocalISO;
 
 function defaultFormState(accounts: Account[]): TransferFormState {
@@ -88,10 +99,10 @@ function defaultFormState(accounts: Account[]): TransferFormState {
     sourceAmount: null,
     destinationAmount: null,
     exchangeRate: 1,
+    baseExchangeRate: null,
     date,
     ...periodYearFromDate(date),
     note: '',
-    categoryId: null,
   };
 }
 
@@ -111,6 +122,7 @@ export class TransferFormComponent implements AfterViewInit {
 
   accounts = input<Account[]>([]);
   categories = input<Category[]>([]);
+  baseCurrency = input('EUR');
   editTransfer = input<Transfer | null>(null);
   initialDraft = input<TransferDraft | null>(null);
   /* Hosted inside the mobile capture bottom sheet (#104): the sheet already
@@ -131,9 +143,12 @@ export class TransferFormComponent implements AfterViewInit {
   /* The selected card's outstanding debt, shown as a Card Payment hint. */
   cardBalance = signal<number | null>(null);
 
-  rateState = signal<RateState>({ loading: false, error: '', rate: null, date: '' });
+  rateState = signal<RateState>(EMPTY_RATE_STATE);
   rateSeed = signal<RateSeed | null>(null);
   rateLabels = RATE_LABELS;
+  baseRateState = signal<RateState>(EMPTY_RATE_STATE);
+  baseRateSeed = signal<RateSeed | null>(null);
+  baseRateLabels = BASE_RATE_LABELS;
   errorMessage = signal('');
   errorDetail = signal('');
   saving = signal(false);
@@ -153,17 +168,63 @@ export class TransferFormComponent implements AfterViewInit {
     return dst && isCreditCard(dst) ? dst : null;
   });
 
-  /* The name shown in the readonly payment category field: the resolved
-     category of the form state, which the destination card owns. */
-  paymentCategoryName = computed(() => {
-    const id = this.form().categoryId;
-    return id == null ? '' : (this.categories().find((c) => c.id === id)?.name ?? '');
+  /* The destination card's Payment Category: its stored link only, never a
+     category resolved by name (ADR 0026). */
+  private cardPaymentCategory = computed(() => {
+    const card = this.cardDestination();
+    return card ? storedPaymentCategory(card, this.categories()) : undefined;
   });
+
+  /* The name shown in the readonly payment category field. */
+  paymentCategoryName = computed(() => this.cardPaymentCategory()?.name ?? '');
+
+  /* A destination card without a usable link cannot be paid until it is
+     renamed: Save stays disabled and the hint says why, ahead of any other
+     reason, since no amount would make the save possible. */
+  cardWithoutPaymentCategory = computed(
+    () => !!this.cardDestination() && !this.cardPaymentCategory(),
+  );
 
   isForeignCurrency = computed(() => {
     const { src, dst } = this.selectedAccounts();
     return !!src && !!dst && src.currency !== dst.currency;
   });
+
+  /* ADR 0028: neither account is in the Base Currency, so the Transfer needs
+     its own rate to express the source side in it. */
+  needsBaseRate = computed(() => {
+    const { src, dst } = this.selectedAccounts();
+    return !!src && !!dst && needsBaseExchangeRate(src.currency, dst.currency, this.baseCurrency());
+  });
+
+  /* The second well's target: empty hides it. */
+  baseRateTarget = computed(() => (this.needsBaseRate() ? this.baseCurrency() : ''));
+
+  baseCurrencyAmount = computed(() => {
+    const f = this.form();
+    if (!this.needsBaseRate() || f.sourceAmount === null) return null;
+    return transferBaseAmount(
+      {
+        sourceAmount: f.sourceAmount,
+        destinationAmount: f.destinationAmount ?? 0,
+        baseExchangeRate: f.baseExchangeRate ?? undefined,
+      },
+      this.sourceCurrency(),
+      this.destCurrency(),
+      this.baseCurrency(),
+    );
+  });
+
+  /* Either well is still fetching its rate. */
+  private isRateLoading = computed(
+    () =>
+      (this.isForeignCurrency() && this.rateState().loading) ||
+      (this.needsBaseRate() && this.baseRateState().loading),
+  );
+
+  private isBaseRateMissing = computed(
+    () => this.needsBaseRate() && !this.baseRateState().loading && !(this.form().baseExchangeRate! > 0),
+  );
 
   sourceCurrency = computed(() => this.selectedAccounts().src?.currency ?? '');
 
@@ -180,7 +241,9 @@ export class TransferFormComponent implements AfterViewInit {
     if (!f.sourceAccountId || !f.destAccountId) return false;
     if (f.sourceAccountId === f.destAccountId) return false;
     if (!((f.sourceAmount ?? 0) > 0)) return false;
-    if (this.isForeignCurrency() && this.rateState().loading) return false;
+    if (this.isRateLoading()) return false;
+    if (this.isBaseRateMissing()) return false;
+    if (this.cardWithoutPaymentCategory()) return false;
     return !this.saving();
   });
 
@@ -193,9 +256,15 @@ export class TransferFormComponent implements AfterViewInit {
     if (f.sourceAccountId === f.destAccountId) {
       return this.language.t('movements.saveDisabled.distinct');
     }
+    if (this.cardWithoutPaymentCategory()) {
+      return this.language.t('errors.cardHasNoPaymentCategory');
+    }
     if (!((f.sourceAmount ?? 0) > 0)) return this.language.t('movements.saveDisabled.amount');
-    if (this.isForeignCurrency() && this.rateState().loading) {
+    if (this.isRateLoading()) {
       return this.language.t('movements.saveDisabled.rate');
+    }
+    if (this.isBaseRateMissing()) {
+      return this.language.t('errors.baseExchangeRateRequired');
     }
     return '';
   });
@@ -210,15 +279,15 @@ export class TransferFormComponent implements AfterViewInit {
         date: draft.rateState.date,
         error: draft.rateState.error || undefined,
       });
+      this.baseRateSeed.set({
+        rate: draft.baseRateState.rate,
+        date: draft.baseRateState.date,
+        error: draft.baseRateState.error || undefined,
+      });
       void this.refreshCardBalance();
       return;
     }
-    const form = defaultFormState(this.accounts());
-    const dest = this.accounts().find((a) => a.id === form.destAccountId);
-    if (dest && isCreditCard(dest)) {
-      form.categoryId = this.paymentCategoryIdFor(dest);
-    }
-    this.form.set(form);
+    this.form.set(defaultFormState(this.accounts()));
     void this.refreshCardBalance();
   }
 
@@ -238,6 +307,7 @@ export class TransferFormComponent implements AfterViewInit {
       form: this.form(),
       editingId: this.editingId(),
       rateState: this.rateState(),
+      baseRateState: this.baseRateState(),
     };
   }
 
@@ -248,34 +318,18 @@ export class TransferFormComponent implements AfterViewInit {
         ...f,
         sourceAccountId: sourceId,
         destAccountId: destChanged ? 0 : f.destAccountId,
-        categoryId: destChanged ? null : f.categoryId,
       };
     });
     void this.refreshCardBalance();
   }
 
   onDestChange(destId: number): void {
-    const dest = this.accounts().find((a) => a.id === destId);
-    const categoryId = dest && isCreditCard(dest) ? this.paymentCategoryIdFor(dest) : null;
-    this.form.update((f) => ({ ...f, destAccountId: destId, categoryId }));
+    this.form.update((f) => ({ ...f, destAccountId: destId }));
     void this.refreshCardBalance();
   }
 
   formatMoney(amount: number, currency: string): string {
     return this.language.formatMoney(amount, currency);
-  }
-
-  /* The card's payment category. Prefer the stored link so the pre-fill
-     survives a rename or a Language change; fall back to the category named
-     after the card for cards created before the link was stored — matched
-     ignoring letter case, as the Category Service links it (#180). */
-  private paymentCategoryIdFor(card: Account): number | null {
-    if (card.paymentCategoryId != null && this.categories().some((c) => c.id === card.paymentCategoryId)) {
-      return card.paymentCategoryId;
-    }
-    const name = this.language.t('category.cardPayment', { name: card.name });
-    const match = this.categories().find((c) => namesMatch(c.name, name) && c.type === 'expense');
-    return match?.id ?? null;
   }
 
   /* The destination card's outstanding debt: its balance accumulated over
@@ -318,6 +372,11 @@ export class TransferFormComponent implements AfterViewInit {
     this.computeDestinationAmount();
   }
 
+  onBaseWellStateChange(state: RateState): void {
+    this.baseRateState.set(state);
+    this.form.update((f) => ({ ...f, baseExchangeRate: state.rate }));
+  }
+
   private computeDestinationAmount(): void {
     this.form.update((f) => ({
       ...f,
@@ -344,6 +403,7 @@ export class TransferFormComponent implements AfterViewInit {
           sourceAmount: f.sourceAmount!,
           destinationAmount: f.destinationAmount!,
           exchangeRate: f.exchangeRate,
+          baseExchangeRate: this.submittedBaseRate(),
           date: parseLocalDate(f.date),
           period: f.period,
           year: f.year,
@@ -359,6 +419,7 @@ export class TransferFormComponent implements AfterViewInit {
           f.note,
           f.exchangeRate,
           f.year,
+          this.submittedBaseRate(),
         );
       }
       this.saving.set(false);
@@ -374,32 +435,40 @@ export class TransferFormComponent implements AfterViewInit {
     }
   }
 
+  private submittedBaseRate(): number | undefined {
+    return this.needsBaseRate() ? (this.form().baseExchangeRate ?? undefined) : undefined;
+  }
+
   private handleEditInput(t: Transfer | null): void {
     if (!t) return;
-    const date = dateToLocalISO(new Date(t.date));
+    const date = dateToLocalISO(t.date);
     this.editingId.set(t.id ?? null);
     /* Ticket #173: the payment category always comes from the destination
-       card, never from the stored transfer — redirecting the destination or
-       reopening a payment with a stale category silently re-resolves. */
+       card, never from the stored transfer — reopening a payment with a stale
+       category shows the one the save will re-resolve. */
     const dst = this.accounts().find((a) => a.id === t.destinationAccountId);
-    const categoryId = dst && isCreditCard(dst) ? this.paymentCategoryIdFor(dst) : null;
     this.form.set({
       sourceAccountId: t.sourceAccountId,
       destAccountId: t.destinationAccountId,
       sourceAmount: t.sourceAmount,
       destinationAmount: t.destinationAmount,
       exchangeRate: t.exchangeRate,
+      baseExchangeRate: t.baseExchangeRate ?? null,
       date,
       period: t.period,
       year: getPeriodYear(t),
       note: t.note,
-      categoryId,
     });
     const src = this.accounts().find((a) => a.id === t.sourceAccountId);
     this.rateSeed.set(
       src && dst && src.currency !== dst.currency ? { rate: t.exchangeRate, date: 'stored' } : null,
     );
-    this.rateState.set({ loading: false, error: '', rate: null, date: '' });
+    this.rateState.set(EMPTY_RATE_STATE);
+    /* An old Transfer without a stored base rate fetches a suggestion. */
+    this.baseRateSeed.set(
+      t.baseExchangeRate != null ? { rate: t.baseExchangeRate, date: 'stored' } : null,
+    );
+    this.baseRateState.set(EMPTY_RATE_STATE);
     this.errorMessage.set('');
     this.errorDetail.set('');
     void this.refreshCardBalance();

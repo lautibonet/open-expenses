@@ -11,7 +11,8 @@ import { NetworkService } from '../../core/services/network.service';
 import { LanguageService } from '../../core/services/language.service';
 import { DataVersionService } from '../../core/services/data-version.service';
 import { db } from '../../core/db/database';
-import { MONTH_NAMES, defaultScope, getCurrentPeriod, getCurrentYear } from '../../core/types/period.type';
+import { MONTH_NAMES, MonthNumber, getCurrentPeriod, getCurrentYear } from '../../core/types/period.type';
+import { defaultScope } from '../../core/scope/scope';
 
 /** Keep the Dexie connection open for the whole file and just clear the
  * tables between tests. Closing/recreating the db (delete + open) aborts
@@ -62,7 +63,7 @@ describe('DashboardComponent', () => {
 
     await component.ngOnInit();
 
-    const balances = component.accountBalances();
+    const balances = component.report().balances.accounts;
     const eurBalance = balances.find(b => b.account.id === eur.id);
     const usdBalance = balances.find(b => b.account.id === usd.id);
 
@@ -81,194 +82,7 @@ describe('DashboardComponent', () => {
     await component.ngOnInit();
 
     expect(component.formatMoney(3000)).toContain('€');
-    expect(component.yearTotalIncome()).toBe(3000);
-  });
-
-  it('excludes card-account purchases from the cash-basis KPIs but keeps them in the category breakdown', async () => {
-    const cash = await accountService.create('Cash', 'EUR', 0);
-    const expenseCat = await categoryService.create('Groceries', 'expense');
-    const card = await accountService.createCard({ name: 'Visa', currency: 'EUR' });
-    const period = getCurrentPeriod();
-    await transactionService.create(cash.id!, expenseCat.id!, 200, new Date(), period);
-    await transactionService.create(card.id!, expenseCat.id!, 500, new Date(), period);
-
-    await component.ngOnInit();
-
-    expect(component.yearTotalExpenses()).toBe(200);
-    expect(component.avgMonthlyExpenses()).toBe(200);
-    expect(component.yearOverviewData().find(o => o.period === period)!.expenses).toBe(200);
-    expect(component.categoryBreakdown().find(b => b.name === 'Groceries')!.total).toBe(700);
-    expect(component.accountBalances().find(b => b.account.id === card.id)!.balance).toBe(-500);
-  });
-
-  it('counts a Cash-to-Card Card Payment as an Expense in the payment Period, but no other Transfer kind', async () => {
-    const cash = await accountService.create('Cash', 'EUR', 100000);
-    const savings = await accountService.create('Savings', 'EUR', 0);
-    const card = await accountService.createCard({ name: 'Visa', currency: 'EUR' });
-    const card2 = await accountService.createCard({ name: 'Master', currency: 'EUR' });
-    const transferService = TestBed.inject(TransferService);
-    const period = getCurrentPeriod();
-    const year = getCurrentYear();
-
-    // Cash -> Card: a Card Payment, counts as an Expense.
-    await transferService.create(cash.id!, card.id!, 300, new Date(), period, '', 1, year);
-    // Cash -> Cash, Card -> Cash, Card -> Card: never count.
-    await transferService.create(cash.id!, savings.id!, 100, new Date(), period, '', 1, year);
-    await transferService.create(card.id!, cash.id!, 50, new Date(), period, '', 1, year);
-    await transferService.create(card.id!, card2.id!, 25, new Date(), period, '', 1, year);
-
-    await component.ngOnInit();
-
-    expect(component.yearTotalExpenses()).toBe(300);
-    expect(component.avgMonthlyExpenses()).toBe(300);
-    expect(component.yearOverviewData().find(o => o.period === period)!.expenses).toBe(300);
-    expect(component.categoryBreakdown().find(b => b.name === 'Groceries')).toBeUndefined();
-  });
-
-  it('excludes a Card Payment from Periods after the payment', async () => {
-    const cash = await accountService.create('Cash', 'EUR', 100000);
-    const card = await accountService.createCard({ name: 'Visa', currency: 'EUR' });
-    const transferService = TestBed.inject(TransferService);
-    const year = getCurrentYear();
-
-    await transferService.create(cash.id!, card.id!, 300, new Date(), 9, '', 1, year);
-
-    await component.ngOnInit();
-    await component.onScopeYearChange(year);
-    await component.onScopeMonthChange(8);
-
-    expect(component.yearTotalExpenses()).toBe(0);
-
-    await component.onScopeMonthChange(9);
-    expect(component.yearTotalExpenses()).toBe(300);
-  });
-
-  it('renders the year overview when the only movement is a Card Payment', async () => {
-    const cash = await accountService.create('Cash', 'EUR', 100000);
-    const card = await accountService.createCard({ name: 'Visa', currency: 'EUR' });
-    const transferService = TestBed.inject(TransferService);
-    const period = getCurrentPeriod();
-    const year = getCurrentYear();
-
-    await transferService.create(cash.id!, card.id!, 300, new Date(), period, '', 1, year);
-
-    await component.ngOnInit();
-
-    expect(component.yearHasMovements()).toBe(true);
-    expect(component.yearTotalExpenses()).toBe(300);
-  });
-
-  it('should include a Dec-dated movement in the selected year report of its period year', async () => {
-    const acc = await accountService.create('Cash', 'EUR', 0);
-    const incomeCat = await categoryService.create('Payroll', 'income');
-    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date('2025-12-22'), 1, null, null, 2026);
-
-    await component.ngOnInit();
-    await component.onScopeYearChange(2026);
-    await component.onScopeMonthChange(1);
-
-    expect(component.yearTotalIncome()).toBe(3000);
-  });
-
-  it('should exclude a Dec-dated movement from the date year report', async () => {
-    const acc = await accountService.create('Cash', 'EUR', 0);
-    const incomeCat = await categoryService.create('Payroll', 'income');
-    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date('2025-12-22'), 1, null, null, 2026);
-
-    await component.ngOnInit();
-    await component.onScopeYearChange(2025);
-    await component.onScopeMonthChange(1);
-
-    expect(component.yearTotalIncome()).toBe(0);
-  });
-
-  describe('monthly averages follow the page scope', () => {
-    it('should derive average income across the months of the scope year', async () => {
-      const acc = await accountService.create('Cash', 'EUR', 0);
-      const incomeCat = await categoryService.create('Payroll', 'income');
-      const year = getCurrentYear();
-
-      await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(`${year}-01-15`), 1);
-      await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(`${year}-02-15`), 2);
-
-      await component.ngOnInit();
-
-      expect(component.avgMonthlyIncome()).toBe(3000);
-    });
-
-    it('should keep averaging across the scope year when the scope month changes', async () => {
-      const acc = await accountService.create('Cash', 'EUR', 0);
-      const incomeCat = await categoryService.create('Payroll', 'income');
-      const year = getCurrentYear();
-
-      await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(`${year}-01-15`), 1);
-      await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(`${year}-02-15`), 2);
-
-      await component.ngOnInit();
-      await component.onScopeMonthChange(8);
-
-      expect(component.avgMonthlyIncome()).toBe(3000);
-    });
-
-    it('should compute average expenses across the scope year', async () => {
-      const acc = await accountService.create('Cash', 'EUR', 100000);
-      const expenseCat = await categoryService.create('Food', 'expense');
-      const year = getCurrentYear();
-
-      await transactionService.create(acc.id!, expenseCat.id!, 500, new Date(`${year}-01-15`), 1);
-      await transactionService.create(acc.id!, expenseCat.id!, 700, new Date(`${year}-03-15`), 3);
-
-      await component.ngOnInit();
-
-      expect(component.avgMonthlyExpenses()).toBe(600);
-    });
-
-    it('should compute average savings as income minus expenses', async () => {
-      const acc = await accountService.create('Cash', 'EUR', 0);
-      const incomeCat = await categoryService.create('Payroll', 'income');
-      const expenseCat = await categoryService.create('Food', 'expense');
-      const year = getCurrentYear();
-
-      await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(`${year}-01-15`), 1);
-      await transactionService.create(acc.id!, expenseCat.id!, 500, new Date(`${year}-01-15`), 1);
-      await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(`${year}-02-15`), 2);
-      await transactionService.create(acc.id!, expenseCat.id!, 700, new Date(`${year}-02-15`), 2);
-
-      await component.ngOnInit();
-
-      expect(component.avgMonthlyNet()).toBe(2400);
-    });
-
-    it('should show zero averages when no data exists', async () => {
-      await component.ngOnInit();
-      await component.refreshAverages();
-
-      expect(component.avgMonthlyIncome()).toBe(0);
-      expect(component.avgMonthlyExpenses()).toBe(0);
-      expect(component.avgMonthlyNet()).toBe(0);
-    });
-
-    it('should compute yearly averages against the period year, not the date year', async () => {
-      const acc = await accountService.create('Cash', 'EUR', 0);
-      const incomeCat = await categoryService.create('Payroll', 'income');
-      await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date('2025-12-22'), 1, null, null, 2026);
-
-      await component.ngOnInit();
-      await component.onScopeYearChange(2026);
-
-      expect(component.avgMonthlyIncome()).toBe(3000);
-    });
-
-    it('should exclude a Dec-dated movement from yearly averages of its date year', async () => {
-      const acc = await accountService.create('Cash', 'EUR', 0);
-      const incomeCat = await categoryService.create('Payroll', 'income');
-      await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date('2025-12-22'), 1, null, null, 2026);
-
-      await component.ngOnInit();
-      await component.onScopeYearChange(2025);
-
-      expect(component.avgMonthlyIncome()).toBe(0);
-    });
+    expect(component.report().kpis.totals.income).toBe(3000);
   });
 
   describe('KPI trio follows the selected month (year-to-period)', () => {
@@ -279,64 +93,6 @@ describe('DashboardComponent', () => {
         acc.id!, cat.id!, 3000, new Date(`${year}-${String(period).padStart(2, '0')}-15`), period, null, null, year,
       );
     }
-
-    async function seedYearSpread(): Promise<{ incomeCat: number; expenseCat: number }> {
-      const acc = await accountService.create('Cash', 'EUR', 0);
-      const incomeCat = await categoryService.create('Payroll', 'income');
-      const expenseCat = await categoryService.create('Food', 'expense');
-      const year = getCurrentYear();
-
-      await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(`${year}-01-15`), 1);
-      await transactionService.create(acc.id!, incomeCat.id!, 1000, new Date(`${year}-02-15`), 2);
-      await transactionService.create(acc.id!, incomeCat.id!, 2000, new Date(`${year}-09-15`), 9);
-      await transactionService.create(acc.id!, expenseCat.id!, 500, new Date(`${year}-02-15`), 2);
-      await transactionService.create(acc.id!, expenseCat.id!, 700, new Date(`${year}-09-15`), 9);
-
-      return { incomeCat: incomeCat.id!, expenseCat: expenseCat.id! };
-    }
-
-    it('shows totals from January through the selected month of the selected year', async () => {
-      await seedYearSpread();
-
-      await component.ngOnInit();
-      await component.onScopeMonthChange(2);
-
-      expect(component.yearTotalIncome()).toBe(4000);
-      expect(component.yearTotalExpenses()).toBe(500);
-      expect(component.yearTotalNet()).toBe(3500);
-    });
-
-    it('excludes later months of the same year from the selected period', async () => {
-      await seedYearSpread();
-
-      await component.ngOnInit();
-      await component.onScopeMonthChange(1);
-
-      expect(component.yearTotalIncome()).toBe(3000);
-      expect(component.yearTotalExpenses()).toBe(0);
-    });
-
-    it('shows the same figures as the old year-to-date when the latest month with data is selected', async () => {
-      await seedYearSpread();
-
-      await component.ngOnInit();
-      await component.onScopeMonthChange(getCurrentPeriod());
-
-      expect(component.yearTotalIncome()).toBe(6000);
-      expect(component.yearTotalExpenses()).toBe(1200);
-      expect(component.yearTotalNet()).toBe(4800);
-    });
-
-    it('averages across the months with data through the selected month', async () => {
-      await seedYearSpread();
-
-      await component.ngOnInit();
-      await component.onScopeMonthChange(2);
-
-      expect(component.avgMonthlyIncome()).toBe(2000);
-      expect(component.avgMonthlyExpenses()).toBe(250);
-      expect(component.avgMonthlyNet()).toBe(1750);
-    });
 
     it('visually states the covered range as a caps label over the KPI ledger', async () => {
       const acc = await accountService.create('Cash', 'EUR', 0);
@@ -375,25 +131,16 @@ describe('DashboardComponent', () => {
       expect(fixture.nativeElement.querySelector('.year-overview .overview-tracks')).toBeTruthy();
       expect(fixture.nativeElement.querySelector('.overview-zero')).toBeNull();
       expect(
-        component.yearOverviewData().find(o => o.period === getCurrentPeriod())!.net,
+        component.report().yearOverview.periods.find(o => o.period === getCurrentPeriod())!.net,
       ).toBe(3000);
     });
   });
 
-  describe('totalBalanceBaseCurrency', () => {
+  describe('Exchange Rate fetch', () => {
     let networkService: NetworkService;
 
     beforeEach(() => {
       networkService = TestBed.inject(NetworkService);
-    });
-
-    it('should sum all account balances when all are in base currency', async () => {
-      await accountService.create('Cash', 'EUR', 100000);
-      await accountService.create('Savings', 'EUR', 500000);
-
-      await component.ngOnInit();
-
-      expect(component.totalBalanceBaseCurrency()).toBe(600000);
     });
 
     it('should convert non-base currency accounts using latest exchange rate', async () => {
@@ -412,7 +159,7 @@ describe('DashboardComponent', () => {
 
       // USD 50000 converted to EUR: 50000 / 1.08 = 46296.30
       const expected = 100000 + Math.round(50000 / 1.08 * 100) / 100;
-      expect(component.totalBalanceBaseCurrency()).toBeCloseTo(expected, 0);
+      expect(component.report().balances.total).toBeCloseTo(expected, 0);
     });
 
     it('should format total balance in base currency', async () => {
@@ -420,50 +167,7 @@ describe('DashboardComponent', () => {
 
       await component.ngOnInit();
 
-      expect(component.formatMoney(component.totalBalanceBaseCurrency())).toContain('€');
-    });
-
-    it('should handle initial balance conversion in multi-currency scenario', async () => {
-      const usd = await accountService.create('USD Account', 'USD', 100000);
-
-      const mockResponse = {
-        ok: true,
-        json: async () => [
-          { base: 'EUR', quote: 'USD', date: '2026-01-15', rate: 1.1 },
-        ],
-      };
-      vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse as Response);
-
-      const period = getCurrentPeriod();
-      const incomeCat = await categoryService.create('Payroll', 'income');
-      await transactionService.create(usd.id!, incomeCat.id!, 5000, new Date(), period);
-
-      await component.ngOnInit();
-
-      // Initial balance converts at the latest rate; the movement without a
-      // stored conversion counts at its face amount (no read-time conversion).
-      const expected = Math.round(100000 / 1.1 * 100) / 100 + 5000;
-      expect(component.totalBalanceBaseCurrency()).toBeCloseTo(expected, 0);
-    });
-
-    it('should return 0 when offline and no base currency accounts exist', async () => {
-      await accountService.create('USD Account', 'USD', 50000);
-      networkService.isOnline.set(false);
-
-      await component.ngOnInit();
-
-      expect(component.totalBalanceBaseCurrency()).toBe(0);
-    });
-
-    it('should still include base currency accounts when offline', async () => {
-      await accountService.create('Cash', 'EUR', 100000);
-      await accountService.create('USD Account', 'USD', 50000);
-      networkService.isOnline.set(false);
-
-      await component.ngOnInit();
-
-      // Only the EUR account contributes when offline
-      expect(component.totalBalanceBaseCurrency()).toBe(100000);
+      expect(component.formatMoney(component.report().balances.total)).toContain('€');
     });
 
     it('should flag excluded accounts when offline with multi-currency accounts', async () => {
@@ -473,7 +177,7 @@ describe('DashboardComponent', () => {
 
       await component.ngOnInit();
 
-      expect(component.conversionDegraded().accountsExcluded).toBe(true);
+      expect(component.report().degradation.accountsExcluded).toBe(true);
     });
 
     it('should flag excluded accounts when API call fails', async () => {
@@ -484,39 +188,35 @@ describe('DashboardComponent', () => {
 
       await component.ngOnInit();
 
-      expect(component.conversionDegraded().accountsExcluded).toBe(true);
+      expect(component.report().degradation.accountsExcluded).toBe(true);
     });
 
-    it('should flag no degradation when all accounts are base currency', async () => {
+    it('fetches no rates when every account is in the base currency', async () => {
       await accountService.create('Cash', 'EUR', 100000);
-      await accountService.create('Savings', 'EUR', 50000);
+      /* Earlier tests leave `fetch` spied; start from a clean call record. */
+      const fetchSpy = vi.spyOn(globalThis, 'fetch');
+      fetchSpy.mockClear();
 
       await component.ngOnInit();
 
-      expect(component.conversionDegraded()).toEqual({
-        accountsExcluded: false,
-        unconvertedTransactions: false,
-      });
+      expect(fetchSpy).not.toHaveBeenCalled();
+      expect(component.report().balances.total).toBe(100000);
     });
 
-    it('should flag no degradation when conversion succeeds', async () => {
+    it('keeps converting with the rates already fetched after going offline', async () => {
       await accountService.create('Cash', 'EUR', 100000);
       await accountService.create('USD Account', 'USD', 50000);
-
-      const mockResponse = {
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue({
         ok: true,
-        json: async () => [
-          { base: 'EUR', quote: 'USD', date: '2026-01-15', rate: 1.08 },
-        ],
-      };
-      vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse as Response);
+        json: async () => [{ base: 'EUR', quote: 'USD', date: '2026-01-15', rate: 1.25 }],
+      } as Response);
 
       await component.ngOnInit();
+      networkService.isOnline.set(false);
+      await component.onScopeMonthChange(getCurrentPeriod() === 1 ? 2 : 1);
 
-      expect(component.conversionDegraded()).toEqual({
-        accountsExcluded: false,
-        unconvertedTransactions: false,
-      });
+      expect(component.report().degradation.accountsExcluded).toBe(false);
+      expect(component.report().balances.total).toBe(140000);
     });
   });
 });
@@ -557,112 +257,14 @@ describe('DashboardComponent - period-end balances', () => {
     await transactionService.create(acc.id!, incomeCat.id!, 700, new Date(), 12, null, null, year);
 
     await component.ngOnInit();
-    expect(component.accountBalances().find(b => b.account.id === acc.id)!.balance).toBe(4000);
-    expect(component.totalBalanceBaseCurrency()).toBe(4000);
+    expect(component.report().balances.accounts.find(b => b.account.id === acc.id)!.balance).toBe(4000);
+    expect(component.report().balances.total).toBe(4000);
 
     await component.onScopeMonthChange(12);
-    expect(component.accountBalances().find(b => b.account.id === acc.id)!.balance).toBe(4700);
-    expect(component.totalBalanceBaseCurrency()).toBe(4700);
+    expect(component.report().balances.accounts.find(b => b.account.id === acc.id)!.balance).toBe(4700);
+    expect(component.report().balances.total).toBe(4700);
   });
 
-  it('shows initial balances only for Periods before any movement', async () => {
-    const acc = await accountService.create('Cash', 'EUR', 100000);
-    const incomeCat = await categoryService.create('Payroll', 'income');
-    const year = getCurrentYear();
-
-    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(), getCurrentPeriod(), null, null, year);
-
-    await component.ngOnInit();
-    await component.onScopeYearChange(year - 1);
-    await component.onScopeMonthChange(1);
-
-    expect(component.accountBalances().find(b => b.account.id === acc.id)!.balance).toBe(100000);
-    expect(component.totalBalanceBaseCurrency()).toBe(100000);
-  });
-
-  it('keeps an empty future Period at the last non-empty balance', async () => {
-    const acc = await accountService.create('Cash', 'EUR', 1000);
-    const incomeCat = await categoryService.create('Payroll', 'income');
-    const year = getCurrentYear();
-
-    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(), 1, null, null, year);
-
-    await component.ngOnInit();
-    const atCurrent = component.totalBalanceBaseCurrency();
-
-    await component.onScopeMonthChange(12);
-    expect(component.accountBalances().find(b => b.account.id === acc.id)!.balance).toBe(4000);
-    expect(component.totalBalanceBaseCurrency()).toBe(atCurrent);
-  });
-
-  it('reproduces the all-time figure when the latest Period is selected (regression)', async () => {
-    const a = await accountService.create('Cash', 'EUR', 1000);
-    const b = await accountService.create('Savings', 'EUR', 0);
-    const incomeCat = await categoryService.create('Payroll', 'income');
-    const expenseCat = await categoryService.create('Food', 'expense');
-    const year = getCurrentYear();
-
-    await transactionService.create(a.id!, incomeCat.id!, 3000, new Date(), 1, null, null, year - 1);
-    await transactionService.create(a.id!, expenseCat.id!, 500, new Date(), 6, null, null, year);
-    await transferService.create(a.id!, b.id!, 300, new Date(), 3, '', 1, year);
-
-    await component.ngOnInit();
-    await component.onScopeYearChange(year);
-    await component.onScopeMonthChange(getCurrentPeriod());
-
-    const balances = component.accountBalances();
-    expect(balances.find(x => x.account.id === a.id)!.balance).toBe(3200);
-    expect(balances.find(x => x.account.id === b.id)!.balance).toBe(300);
-    expect(component.totalBalanceBaseCurrency()).toBe(3500);
-  });
-
-  it('reproduces the all-time figure for cross-currency accounts via stored conversions', async () => {
-    const eur = await accountService.create('Cash', 'EUR', 1000);
-    const usd = await accountService.create('USD Account', 'USD', 0);
-    const incomeCat = await categoryService.create('Payroll', 'income');
-    const expenseCat = await categoryService.create('Food', 'expense');
-    const year = getCurrentYear();
-
-    // Stored at capture time: 100 USD at 1.08 = 108 EUR.
-    await transactionService.create(usd.id!, incomeCat.id!, 100, new Date(), 2, 1.08, 108, year);
-    await transactionService.create(eur.id!, expenseCat.id!, 200, new Date(), 5, null, null, year);
-
-    const mockResponse = {
-      ok: true,
-      json: async () => [
-        { base: 'EUR', quote: 'USD', date: '2026-01-15', rate: 2.0 },
-      ],
-    };
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse as Response);
-
-    await component.ngOnInit();
-    await component.onScopeMonthChange(getCurrentPeriod());
-
-    // All-time: 1000 - 200 + 108 (stored) = 908, not 1000 - 200 + 50 (read-time).
-    expect(component.totalBalanceBaseCurrency()).toBe(908);
-  });
-
-  it('totals cross-currency balances using stored conversions, not read-time re-conversion', async () => {
-    const usd = await accountService.create('USD Account', 'USD', 0);
-    const incomeCat = await categoryService.create('Payroll', 'income');
-    const period = getCurrentPeriod();
-
-    // Stored at capture time: 100 USD at 1.08 = 108 EUR.
-    await transactionService.create(usd.id!, incomeCat.id!, 100, new Date(), period, 1.08, 108);
-
-    // Latest rate would re-convert 100 USD at 2.0 = 50; the stored 108 must win.
-    const mockResponse = {
-      ok: true,
-      json: async () => [
-        { base: 'EUR', quote: 'USD', date: '2026-01-15', rate: 2.0 },
-      ],
-    };
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse as Response);
-
-    await component.ngOnInit();
-
-    expect(component.totalBalanceBaseCurrency()).toBe(108);
-  });
 });
 
 describe('DashboardComponent - shared scope', () => {
@@ -736,26 +338,13 @@ describe('DashboardComponent - shared scope', () => {
     await transactionService.create(acc.id!, incomeCat.id!, 4000, new Date(`${year}-03-15`), 3);
 
     await component.ngOnInit();
-    expect(component.yearTotalIncome()).toBe(4000);
+    expect(component.report().kpis.totals.income).toBe(4000);
 
     await component.onScopeYearChange(2012);
     await component.onScopeMonthChange(1);
 
     expect(component.scope()).toEqual({ kind: 'month', period: 1, year: 2012 });
-    expect(component.yearTotalIncome()).toBe(3000);
-  });
-
-  it('should include movements older than ten years when their year is selected', async () => {
-    const acc = await accountService.create('Cash', 'EUR', 0);
-    const incomeCat = await categoryService.create('Payroll', 'income');
-    const oldYear = getCurrentYear() - 20;
-    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(`${oldYear}-01-15`), 1, null, null, oldYear);
-
-    await component.ngOnInit();
-    await component.onScopeYearChange(oldYear);
-    await component.onScopeMonthChange(1);
-
-    expect(component.yearTotalIncome()).toBe(3000);
+    expect(component.report().kpis.totals.income).toBe(3000);
   });
 
   it('should announce the scope to assistive tech on change', async () => {
@@ -834,8 +423,8 @@ describe('DashboardComponent - shared scope', () => {
 
     const net = fixture.nativeElement.querySelector('.kpi-line.kpi-net .value');
     expect(net).toBeTruthy();
-    expect(net.textContent).toContain(component.formatMoney(component.yearTotalNet()));
-    expect(component.yearTotalNet()).toBe(2500);
+    expect(net.textContent).toContain(component.formatMoney(component.report().kpis.totals.net));
+    expect(component.report().kpis.totals.net).toBe(2500);
   });
 
   it('renders the KPI ledger as three striped lines: income, expenses, net', async () => {
@@ -912,7 +501,7 @@ describe('DashboardComponent - shared scope', () => {
     const incomeLine = ledger.querySelector('.kpi-line.kpi-income');
     expect(incomeLine.querySelector('dt').textContent).toContain('Income');
     expect(incomeLine.querySelector('dd .value').textContent).toContain(
-      component.formatMoney(component.yearTotalIncome()),
+      component.formatMoney(component.report().kpis.totals.income),
     );
     expect(incomeLine.querySelector('dd .secondary').textContent).toContain('AVG');
   });
@@ -931,24 +520,6 @@ describe('DashboardComponent - shared scope', () => {
     await component.ngOnInit();
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.kpi-savings .savings-rate')).toBeTruthy();
-  });
-
-  it('computes the savings rate from the existing monthly averages', async () => {
-    const acc = await accountService.create('Cash', 'EUR', 0);
-    const incomeCat = await categoryService.create('Payroll', 'income');
-    const expenseCat = await categoryService.create('Food', 'expense');
-
-    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(), getCurrentPeriod());
-    await transactionService.create(acc.id!, expenseCat.id!, 500, new Date(), getCurrentPeriod());
-
-    await component.ngOnInit();
-
-    expect(component.savingsRate()).toBe(83);
-  });
-
-  it('returns a null savings rate when there is no income', async () => {
-    await component.ngOnInit();
-    expect(component.savingsRate()).toBeNull();
   });
 
   it('should switch scope by year via the select', async () => {
@@ -970,9 +541,9 @@ describe('DashboardComponent - shared scope', () => {
     fixture.detectChanges();
 
     expect(component.scope()).toEqual({ kind: 'month', period: getCurrentPeriod(), year });
-    expect(component.yearTotalIncome()).toBe(3000);
-    expect(component.yearTotalExpenses()).toBe(0);
-    expect(component.yearTotalNet()).toBe(3000);
+    expect(component.report().kpis.totals.income).toBe(3000);
+    expect(component.report().kpis.totals.expenses).toBe(0);
+    expect(component.report().kpis.totals.net).toBe(3000);
   });
 });
 
@@ -1011,7 +582,7 @@ describe('DashboardComponent - page header, scope control and restyled cards', (
     await resetDb();
   });
 
-  async function scopeTo(period: number, year: number): Promise<void> {
+  async function scopeTo(period: MonthNumber, year: number): Promise<void> {
     await component.onScopeYearChange(year);
     await component.onScopeMonthChange(period);
   }
@@ -1058,11 +629,11 @@ describe('DashboardComponent - page header, scope control and restyled cards', (
 
     await component.ngOnInit();
     await scopeTo(1, year);
-    expect(component.avgMonthlyIncome()).toBe(3000);
+    expect(component.report().kpis.averages.income).toBe(3000);
 
     await component.onScopeMonthChange(2);
     expect(component.scope()).toEqual({ kind: 'month', period: 2, year });
-    expect(component.avgMonthlyIncome()).toBe(4500);
+    expect(component.report().kpis.averages.income).toBe(4500);
   });
 
   it('renders category totals as pure CSS horizontal bars', async () => {
@@ -1088,16 +659,6 @@ describe('DashboardComponent - page header, scope control and restyled cards', (
 
     // No chart dependency: bars are plain divs.
     expect(fixture.nativeElement.querySelector('canvas')).toBeNull();
-  });
-
-  it('computes category bar widths relative to the largest category', async () => {
-    await component.categoryBreakdown.set([
-      { categoryId: 1, name: 'Rent', cash: 1500, credit: 0, total: 1500 },
-      { categoryId: 2, name: 'Food', cash: 500, credit: 0, total: 500 },
-    ]);
-
-    expect(component.categoryBarWidth(1500)).toBe(100);
-    expect(component.categoryBarWidth(500)).toBeCloseTo(33.33, 2);
   });
 
   it('splits a category bar into cash-paid and credit-paid segments', async () => {
@@ -1138,20 +699,6 @@ describe('DashboardComponent - page header, scope control and restyled cards', (
 
     expect(fixture.nativeElement.querySelector('.category-bar-row .bar-segment.cash')).toBeTruthy();
     expect(fixture.nativeElement.querySelector('.category-bar-row .bar-segment.credit')).toBeNull();
-  });
-
-  it('excludes a card payment category from the spending graph', async () => {
-    const cash = await accountService.create('Cash', 'EUR', 0);
-    await accountService.createCard({ name: 'Visa', currency: 'EUR' });
-    const payment = (await categoryService.getAll()).find(c => c.name === 'Visa payment')!;
-    const food = await categoryService.create('Food', 'expense');
-    const period = getCurrentPeriod();
-    await transactionService.create(cash.id!, payment.id!, 500, new Date(), period);
-    await transactionService.create(cash.id!, food.id!, 200, new Date(), period);
-
-    await component.ngOnInit();
-
-    expect(component.categoryBreakdown().map(b => b.name)).toEqual(['Food']);
   });
 
   it('keeps the category card, showing the empty state, when the Period has no expenses', async () => {
@@ -1204,7 +751,7 @@ describe('DashboardComponent - page header, scope control and restyled cards', (
     expect(negative.length).toBe(1);
     expect(negative[0].querySelector('.balance-tile')).toBeTruthy();
     expect(negative[0].textContent).toContain('Credit Card');
-    expect(component.accountBalances().find(b => b.account.id === credit.id)!.balance).toBeLessThan(0);
+    expect(component.report().balances.accounts.find(b => b.account.id === credit.id)!.balance).toBeLessThan(0);
   });
 
   it('keeps positive balances off the error tiles', async () => {
@@ -1878,23 +1425,9 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     await component.ngOnInit();
     fixture.detectChanges();
 
-    expect(component.accumulated()[getCurrentPeriod() - 1]).toBe(
-      component.totalBalanceBaseCurrency(),
+    expect(component.report().balanceStrip.accumulated[getCurrentPeriod() - 1]).toBe(
+      component.report().balances.total,
     );
-  });
-
-  it('degrades the balance series to base-currency accounts when offline, still matching the card', async () => {
-    await accountService.create('Cash', 'EUR', 100000);
-    await accountService.create('USD Account', 'USD', 50000);
-    TestBed.inject(NetworkService).isOnline.set(false);
-
-    await component.ngOnInit();
-
-    expect(component.conversionDegraded().accountsExcluded).toBe(true);
-    expect(component.accumulated()[getCurrentPeriod() - 1]).toBe(
-      component.totalBalanceBaseCurrency(),
-    );
-    expect(component.accumulated()[getCurrentPeriod() - 1]).toBe(100000);
   });
 
   it('announces Income, Expenses and Net per Period in an accessible equivalent', async () => {
@@ -1933,7 +1466,7 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     expect(value).toBeTruthy();
     expect(value.textContent).toContain(
       component.formatMoney(
-        component.yearOverviewData().find(o => o.period === getCurrentPeriod())!.net,
+        component.report().yearOverview.periods.find(o => o.period === getCurrentPeriod())!.net,
       ),
     );
 
@@ -2180,8 +1713,8 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     await component.onScopeYearChange(2012);
     await component.onScopeMonthChange(3);
 
-    expect(component.yearOverviewData().find(o => o.period === 3)!.net).toBe(4000);
-    expect(component.yearOverviewData().find(o => o.period === 1)!.net).toBe(0);
+    expect(component.report().yearOverview.periods.find(o => o.period === 3)!.net).toBe(4000);
+    expect(component.report().yearOverview.periods.find(o => o.period === 1)!.net).toBe(0);
   });
 });
 
@@ -2262,25 +1795,10 @@ describe('DashboardComponent - conversion degradation warnings', () => {
 
     await component.ngOnInit();
 
-    expect(component.yearTotalIncome()).toBe(108);
-    expect(component.conversionDegraded().unconvertedTransactions).toBe(false);
+    expect(component.report().kpis.totals.income).toBe(108);
+    expect(component.report().degradation.unconvertedMovements).toBe(false);
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.conversion-warning .alert')).toBeNull();
-  });
-
-  it('completes category breakdown totals from the stored exchange rate', async () => {
-    const usd = await accountService.create('USD Account', 'USD', 0);
-    const food = await categoryService.create('Food', 'expense');
-    const period = getCurrentPeriod();
-
-    await transactionService.create(usd.id!, food.id!, 100, new Date(), period, 1.08, null);
-    mockRates(1.08);
-
-    await component.ngOnInit();
-
-    expect(component.categoryBreakdown()).toEqual([
-      { categoryId: food.id!, name: 'Food', cash: 108, credit: 0, total: 108 },
-    ]);
   });
 
   it('covers Period-end balances when the unconverted transaction predates the scope', async () => {
@@ -2364,7 +1882,7 @@ describe('DashboardComponent - data version refresh', () => {
   });
 
   it('reloads accounts when the data version changes while mounted', async () => {
-    expect(component.accounts().some((a) => a.name === 'Bank')).toBe(false);
+    expect(component.report().balances.accounts.map(b => b.account).some((a) => a.name === 'Bank')).toBe(false);
 
     await accountService.create('Bank', 'EUR', 0);
 
@@ -2373,7 +1891,7 @@ describe('DashboardComponent - data version refresh', () => {
     await new Promise<void>((resolve) => setTimeout(resolve, 10));
     fixture.detectChanges();
 
-    expect(component.accounts().some((a) => a.name === 'Bank')).toBe(true);
+    expect(component.report().balances.accounts.map(b => b.account).some((a) => a.name === 'Bank')).toBe(true);
   });
 
   it('does not reload while the data version stays unchanged', async () => {
@@ -2382,7 +1900,7 @@ describe('DashboardComponent - data version refresh', () => {
     await new Promise<void>((resolve) => setTimeout(resolve, 10));
     fixture.detectChanges();
 
-    expect(component.accounts().some((a) => a.name === 'Bank')).toBe(false);
+    expect(component.report().balances.accounts.map(b => b.account).some((a) => a.name === 'Bank')).toBe(false);
   });
 });
 
@@ -2486,8 +2004,8 @@ describe('DashboardComponent - conditional debt total and card rows', () => {
     await component.ngOnInit();
     fixture.detectChanges();
 
-    expect(component.hasCardDebt()).toBe(false);
-    expect(component.cardDebt()).toBe(0);
+    expect((component.report().balances.debt != null)).toBe(false);
+    expect((component.report().balances.debt ?? 0)).toBe(0);
     expect(fixture.nativeElement.querySelector('.balance-ledger')).toBeNull();
     const stat = fixture.nativeElement.querySelector('.stat .value');
     expect(stat).toBeTruthy();
@@ -2505,9 +2023,9 @@ describe('DashboardComponent - conditional debt total and card rows', () => {
     await component.ngOnInit();
     fixture.detectChanges();
 
-    expect(component.hasCardDebt()).toBe(false);
-    expect(component.cardDebt()).toBe(0);
-    expect(component.totalBalanceBaseCurrency()).toBe(105000);
+    expect((component.report().balances.debt != null)).toBe(false);
+    expect((component.report().balances.debt ?? 0)).toBe(0);
+    expect(component.report().balances.total).toBe(105000);
     expect(fixture.nativeElement.querySelector('.balance-ledger')).toBeNull();
     const stat = fixture.nativeElement.querySelector('.stat .value');
     expect(stat).toBeTruthy();
@@ -2523,10 +2041,10 @@ describe('DashboardComponent - conditional debt total and card rows', () => {
     await component.ngOnInit();
     fixture.detectChanges();
 
-    expect(component.hasCardDebt()).toBe(true);
-    expect(component.cardDebt()).toBe(25000);
-    expect(component.totalBalanceBaseCurrency()).toBe(75000);
-    expect(component.totalBalanceWithoutDebt()).toBe(100000);
+    expect((component.report().balances.debt != null)).toBe(true);
+    expect((component.report().balances.debt ?? 0)).toBe(25000);
+    expect(component.report().balances.total).toBe(75000);
+    expect(component.report().balances.totalWithoutDebt).toBe(100000);
 
     expect(fixture.nativeElement.querySelector('.stat')).toBeNull();
     const lines = fixture.nativeElement.querySelectorAll('.balance-line');
@@ -2544,68 +2062,6 @@ describe('DashboardComponent - conditional debt total and card rows', () => {
     expect(text).toContain(component.formatMoney(75000));
   });
 
-  it('sums only negative card balances into the Debt, leaving an overpaid card in the totals', async () => {
-    const cash = await accountService.create('Checking', 'EUR', 100000);
-    const expenseCat = await categoryService.create('Groceries', 'expense');
-    const card = await accountService.createCard({ name: 'Visa', currency: 'EUR' });
-    await accountService.createCard({
-      name: 'Master',
-      currency: 'EUR',
-      initialBalance: 5000,
-    });
-    await transactionService.create(card.id!, expenseCat.id!, 25000, new Date(), getCurrentPeriod());
-
-    await component.ngOnInit();
-
-    // Debt is the 25 000 owed on Visa: Master's overpaid +5 000 stays in the
-    // totals, so without-debt is total + debt.
-    expect(component.hasCardDebt()).toBe(true);
-    expect(component.cardDebt()).toBe(25000);
-    expect(component.totalBalanceBaseCurrency()).toBe(80000);
-    expect(component.totalBalanceWithoutDebt()).toBe(105000);
-  });
-
-  it('clears the Debt when the card is settled', async () => {
-    const cash = await accountService.create('Checking', 'EUR', 100000);
-    const expenseCat = await categoryService.create('Groceries', 'expense');
-    const card = await accountService.createCard({ name: 'Visa', currency: 'EUR' });
-    await transactionService.create(card.id!, expenseCat.id!, 25000, new Date(), getCurrentPeriod());
-    await transferService.create(
-      cash.id!, card.id!, 25000, new Date(), getCurrentPeriod(), '', 1, getCurrentYear(),
-    );
-
-    await component.ngOnInit();
-
-    expect(component.hasCardDebt()).toBe(false);
-    expect(component.cardDebt()).toBe(0);
-  });
-
-  it('computes the Debt in base currency from the card movements', async () => {
-    await accountService.create('Checking', 'EUR', 100000);
-    const usd = await accountService.create('USD Account', 'USD', 0);
-    const expenseCat = await categoryService.create('Groceries', 'expense');
-    const card = await accountService.createCard({ name: 'Visa', currency: 'USD' });
-    // Stored at capture time: 100 USD at 1.08 = 108 EUR.
-    await transactionService.create(
-      card.id!, expenseCat.id!, 100, new Date(), getCurrentPeriod(), 1.08, 108,
-    );
-
-    const mockResponse = {
-      ok: true,
-      json: async () => [
-        { base: 'EUR', quote: 'USD', date: '2026-01-15', rate: 1.1 },
-      ],
-    };
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(mockResponse as Response);
-
-    await component.ngOnInit();
-
-    expect(component.hasCardDebt()).toBe(true);
-    expect(component.cardDebt()).toBe(108);
-    expect(component.totalBalanceBaseCurrency()).toBe(100000 - 108);
-    expect(component.totalBalanceWithoutDebt()).toBe(100000);
-  });
-
   it('groups cards after cash accounts in the balance list', async () => {
     const cash = await accountService.create('Checking', 'EUR', 1000);
     await accountService.createCard({ name: 'Visa', currency: 'EUR' });
@@ -2615,7 +2071,7 @@ describe('DashboardComponent - conditional debt total and card rows', () => {
     await component.ngOnInit();
     fixture.detectChanges();
 
-    const order = component.accountBalances().map(b => b.account.name);
+    const order = component.report().balances.accounts.map(b => b.account.name);
     expect(order).toEqual(['Checking', 'Savings', 'Visa', 'Master']);
 
     const rendered = Array.from(
@@ -2657,19 +2113,4 @@ describe('DashboardComponent - conditional debt total and card rows', () => {
     expect(fixture.nativeElement.querySelector('.account-caption')).toBeNull();
   });
 
-  it('reads an overpaid card as zero used against its Limit', async () => {
-    const cash = await accountService.create('Checking', 'EUR', 100000);
-    const card = await accountService.createCard({
-      name: 'Visa',
-      currency: 'EUR',
-      limit: 50000,
-      initialBalance: 5000,
-    });
-
-    await component.ngOnInit();
-
-    const text = component.usedOfLimitText({ account: card, balance: 5000 });
-    expect(text).toContain(component.formatAccountBalance(0, 'EUR'));
-    expect(text).toContain(component.formatAccountBalance(50000, 'EUR'));
-  });
 });

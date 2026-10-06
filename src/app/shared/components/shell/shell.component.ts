@@ -9,7 +9,7 @@ import { CaptureFormService } from '../../../core/services/capture-form.service'
 import { DriveBackupService } from '../../../core/services/drive-backup.service';
 import { NetworkService } from '../../../core/services/network.service';
 import { PwaUpdateService } from '../../../core/services/pwa-update.service';
-import { NoBackupFoundError } from '../../../backup/drive-backup-provider';
+import { RestoreFlow } from '../../../core/services/restore-flow.service';
 import { formatRelativeTimeIn } from '../../../core/format/relative-time';
 import { formatLastBackupStatus } from '../../../backup/last-backup-status';
 import { downloadBackupFile } from '../../../backup/backup-file-download';
@@ -32,6 +32,7 @@ export class ShellComponent {
   private router = inject(Router);
   private captureFormService = inject(CaptureFormService);
   private backupService = inject(DriveBackupService);
+  private restoreFlow = inject(RestoreFlow);
   private networkService = inject(NetworkService);
   private pwaUpdate = inject(PwaUpdateService);
 
@@ -65,7 +66,7 @@ export class ShellComponent {
 
   isBusy = this.backupService.isBackingUp;
 
-  pendingRestore = this.backupService.pendingRestore;
+  pendingRestore = this.restoreFlow.pending;
 
   /** The whole mobile regime (top bar, strips, sheets) lives below 768px. */
   private mobileMediaQuery: MediaQueryList | null =
@@ -227,19 +228,14 @@ export class ShellComponent {
       return;
     }
     this.actingAction.set('restore');
-    this.backupService.pendingRestore.set(null);
-
     try {
-      const snapshot = await this.backupService.getCloudSnapshot();
-      this.backupService.pendingRestore.set(snapshot);
-      this.restoreSheetOpen.set(true);
-    } catch (e: unknown) {
-      if (e instanceof NoBackupFoundError) {
-        this.showFailureFeedback(this.language.t('backup.noCloudBackup'));
-      } else {
-        this.showFailureFeedback(
-          errorCopy(e, this.language.translateFn, 'backup.error.restoreFailed'),
-        );
+      const outcome = await this.restoreFlow.fetch(() => this.backupService.getCloudSnapshot());
+      /* A Cancelled Restore shows nothing: the strip answers "did my action
+         work", and backing out is not a failure. */
+      if (outcome.kind === 'pending') {
+        this.restoreSheetOpen.set(true);
+      } else if (outcome.kind === 'failed') {
+        this.showFailureFeedback(this.language.t(outcome.key, outcome.params));
       }
     } finally {
       this.actingAction.set(null);
@@ -247,25 +243,23 @@ export class ShellComponent {
   }
 
   async confirmRestore(): Promise<void> {
-    const snapshot = this.backupService.pendingRestore();
-    if (!snapshot) return;
+    if (!this.pendingRestore()) return;
 
     this.actingAction.set('restore');
     try {
-      await this.backupService.restoreFromSnapshot(snapshot);
-      this.backupService.pendingRestore.set(null);
-      this.showSuccessFeedback('restore.feedback.restored');
-    } catch (e: unknown) {
-      this.showFailureFeedback(
-        errorCopy(e, this.language.translateFn, 'backup.error.restoreFailed'),
-      );
+      const outcome = await this.restoreFlow.confirm();
+      if (outcome?.kind === 'restored') {
+        this.showSuccessFeedback('restore.feedback.restored');
+      } else if (outcome?.kind === 'failed') {
+        this.showFailureFeedback(this.language.t(outcome.key, outcome.params));
+      }
     } finally {
       this.actingAction.set(null);
     }
   }
 
   cancelRestore(): void {
-    this.backupService.cancelPendingRestore();
+    this.restoreFlow.decline();
   }
 
   dismissFeedback(): void {

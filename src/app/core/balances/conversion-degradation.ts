@@ -1,23 +1,22 @@
-import { PeriodScope, getPeriodYear, movementIsAtOrBeforePeriod } from '../types/period.type';
-import { Account } from '../models/account.model';
+import { movementInScope, movementIsAtOrBeforePeriod } from '../types/period.type';
+import { PeriodScope } from '../scope/scope';
+import { Account, isCreditCard } from '../models/account.model';
 import { Transaction } from '../models/transaction.model';
+import { Transfer } from '../models/transfer.model';
+import { isUnconvertedTransaction, isUnconvertedTransfer } from '../stats/cash-basis';
 
 /**
  * The silent paths that degrade Base Currency figures on Stats:
  * - `accountsExcluded`: foreign accounts whose Exchange Rate could not be
  *   resolved are left out of the total balance.
- * - `unconvertedTransactions`: transactions captured without a stored
- *   conversion count at their face amount inside Base Currency sums.
+ * - `unconvertedMovements`: transactions, and transfers between a Cash
+ *   Account and a Credit Card, captured without a stored conversion count at
+ *   their face amount inside Base Currency sums.
  */
 export interface ConversionDegradation {
   accountsExcluded: boolean;
-  unconvertedTransactions: boolean;
+  unconvertedMovements: boolean;
 }
-
-export const noDegradation: ConversionDegradation = {
-  accountsExcluded: false,
-  unconvertedTransactions: false,
-};
 
 /**
  * Transactions on non-base-currency accounts with neither a stored base
@@ -33,11 +32,34 @@ export function unconvertedTransactionsAffecting(
   scope: PeriodScope,
 ): Transaction[] {
   return transactions.filter(t => {
-    if (t.baseCurrencyAmount != null || t.exchangeRate != null) return false;
-    const account = accountsById.get(t.accountId);
-    if (!account || account.currency === baseCurrency) return false;
+    if (!isUnconvertedTransaction(t, accountsById.get(t.accountId), baseCurrency)) return false;
     return (
-      movementIsAtOrBeforePeriod(t, scope) || getPeriodYear(t) === scope.year
+      movementIsAtOrBeforePeriod(t, scope) ||
+      movementInScope(t, { kind: 'year', year: scope.year })
+    );
+  });
+}
+
+/**
+ * ADR 0028: Transfers with no stored base amount that reach a figure the
+ * conversion-warning strip vouches for. Only a Transfer between a Cash
+ * Account and a Credit Card does — a Card Payment in the yearly totals, any
+ * of them in the Debt split. Between two accounts of the same kind its two
+ * legs cancel out of every figure.
+ */
+export function unconvertedTransfersAffecting(
+  transfers: Transfer[],
+  accountsById: Map<number, Account>,
+  scope: PeriodScope,
+): Transfer[] {
+  return transfers.filter(t => {
+    if (!isUnconvertedTransfer(t)) return false;
+    const source = accountsById.get(t.sourceAccountId);
+    const destination = accountsById.get(t.destinationAccountId);
+    if (!source || !destination || isCreditCard(source) === isCreditCard(destination)) return false;
+    return (
+      movementIsAtOrBeforePeriod(t, scope) ||
+      movementInScope(t, { kind: 'year', year: scope.year })
     );
   });
 }

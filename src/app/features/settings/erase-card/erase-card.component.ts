@@ -26,7 +26,7 @@ export class EraseCardComponent {
     this.pendingErase.set(false);
   }
 
-  /* Erase (CONTEXT.md): a permanent wipe of all local data — the token goes
+  /* Erase (GLOSSARY.md): a permanent wipe of all local data — the token goes
      too and the app returns to Onboarding. Nothing is recoverable. */
   async confirmErase(): Promise<void> {
     if (this.isBusy()) return;

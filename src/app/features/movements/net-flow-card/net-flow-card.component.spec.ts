@@ -1,12 +1,13 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { NetFlowCardComponent, MovementItem } from './net-flow-card.component';
+import { NetFlowCardComponent } from './net-flow-card.component';
 import { LanguageService } from '../../../core/services/language.service';
 import { TransactionService } from '../../../core/services/transaction.service';
 import { TransferService } from '../../../core/services/transfer.service';
 import { AccountService } from '../../../core/services/account.service';
 import { CategoryService } from '../../../core/services/category.service';
 import { db } from '../../../core/db/database';
-import { defaultScope, getCurrentPeriod } from '../../../core/types/period.type';
+import { getCurrentPeriod } from '../../../core/types/period.type';
+import { defaultScope } from '../../../core/scope/scope';
 
 describe('NetFlowCardComponent', () => {
   let fixture: ComponentFixture<NetFlowCardComponent>;
@@ -31,7 +32,8 @@ describe('NetFlowCardComponent', () => {
     component = fixture.componentInstance;
     // Zoneless tests run an initial render tick before the awaited seeds below
     // resolve, so the required inputs must have values from creation onwards.
-    fixture.componentRef.setInput('movements', []);
+    fixture.componentRef.setInput('transactions', []);
+    fixture.componentRef.setInput('transfers', []);
     fixture.componentRef.setInput('accounts', []);
     fixture.componentRef.setInput('categories', []);
     fixture.componentRef.setInput('baseCurrency', 'EUR');
@@ -55,23 +57,15 @@ describe('NetFlowCardComponent', () => {
     await db.delete();
   });
 
-  async function scopeMovements(): Promise<MovementItem[]> {
-    const scope = defaultScope();
-    const txns = await transactionService.getByScope(scope);
-    const transfers = await transferService.getByScope(scope);
-    return [
-      ...txns.map((t) => ({ type: 'transaction' as const, data: t })),
-      ...transfers.map((t) => ({ type: 'transfer' as const, data: t })),
-    ];
-  }
-
   async function render(): Promise<void> {
-    const [movements, accounts, categories] = await Promise.all([
-      scopeMovements(),
+    const [transactions, transfers, accounts, categories] = await Promise.all([
+      transactionService.getAll(),
+      transferService.getAll(),
       accountService.getActive(),
       categoryService.getAll(),
     ]);
-    fixture.componentRef.setInput('movements', movements);
+    fixture.componentRef.setInput('transactions', transactions);
+    fixture.componentRef.setInput('transfers', transfers);
     fixture.componentRef.setInput('accounts', accounts);
     fixture.componentRef.setInput('categories', categories);
     fixture.componentRef.setInput('baseCurrency', 'EUR');
@@ -123,6 +117,23 @@ describe('NetFlowCardComponent', () => {
     await render();
 
     expect(component.expenseTotal()).toBe(10);
+  });
+
+  it('converts an older foreign transaction that stored only its Exchange Rate, as Stats does (#182)', async () => {
+    const period = getCurrentPeriod();
+    await transactionService.create(usdAccountId, expenseCategoryId, 10, new Date(), period, 0.9, null);
+    await render();
+
+    expect(component.expenseTotal()).toBe(9);
+  });
+
+  it('counts a transaction on a Base Currency account at its face amount, ignoring a stale stored base amount, as Stats does (#182)', async () => {
+    const period = getCurrentPeriod();
+    /* Recorded while the Base Currency was USD: its stored base amount is in USD. */
+    await transactionService.create(eurAccountId, expenseCategoryId, 50, new Date(), period, 1.1, 55);
+    await render();
+
+    expect(component.expenseTotal()).toBe(50);
   });
 
   it('excludes transfers from the flow', async () => {

@@ -243,9 +243,23 @@ describe('CategoryService - delete-if-unused (ADR 0018)', () => {
     expect(await service.hasTransactions(category.id!)).toBe(false);
   });
 
+  it('plans to proceed with deleting an unused category', async () => {
+    const category = await service.create('Food', 'expense');
+    expect(await service.planDeletion(category.id!)).toEqual({ kind: 'proceed' });
+  });
+
+  it('plans to refuse deleting a category referenced by a transaction', async () => {
+    const category = await service.create('Food', 'expense');
+    await seedTransaction(category.id!);
+    expect(await service.planDeletion(category.id!)).toEqual({
+      kind: 'refused',
+      reason: 'movements',
+    });
+  });
+
   it('permanently deletes an unused category', async () => {
     const category = await service.create('Food', 'expense');
-    await service.delete(category.id!);
+    expect(await service.delete(category.id!)).toEqual({ kind: 'proceed' });
     expect(await service.getById(category.id!)).toBeUndefined();
     expect((await service.getAll()).length).toBe(0);
   });
@@ -254,12 +268,24 @@ describe('CategoryService - delete-if-unused (ADR 0018)', () => {
     const category = await service.create('Food', 'expense');
     const transactionId = await seedTransaction(category.id!);
 
-    await expect(service.delete(category.id!)).rejects.toMatchObject({
-      key: 'errors.categoryHasMovements',
-    });
+    expect(await service.delete(category.id!)).toEqual({ kind: 'refused', reason: 'movements' });
 
     expect(await service.getById(category.id!)).toBeDefined();
     expect(await db.transactions.get(transactionId)).toBeDefined();
+  });
+
+  it('refuses rather than throws when a transaction is recorded between plan and delete', async () => {
+    const category = await service.create('Food', 'expense');
+    expect(await service.planDeletion(category.id!)).toEqual({ kind: 'proceed' });
+
+    await seedTransaction(category.id!);
+
+    expect(await service.delete(category.id!)).toEqual({ kind: 'refused', reason: 'movements' });
+    expect(await service.getById(category.id!)).toBeDefined();
+  });
+
+  it('throws categoryNotFound when planning to delete a missing category', async () => {
+    await expect(service.planDeletion(999)).rejects.toThrow('errors.categoryNotFound');
   });
 
   it('throws categoryNotFound when deleting a missing category', async () => {

@@ -7,3 +7,5 @@ This inverts an earlier draft that made Google Drive connection mandatory for on
 Restore — from cloud or from an uploaded file — always overwrites the full local dataset and never itself triggers a new backup. Providers are modeled behind a shared seam (folder-per-provider plus sync/download/upload), with Drive as the first implementation.
 
 **Update (2026-08):** the global banner was removed; the sidebar Backup button is now the backup trigger, with the method and last-backup time as a caption beneath it. The Settings Backup card shows the last-backup time and remains the canonical place where backup errors surface. The decision itself — manual-only, optional backup — is unchanged.
+
+**Update (2026-10, #185):** "backup errors" here means Backup errors only. A Restore reports its outcome where it was started — the Settings card, the top-bar quick action, or Onboarding — and never surfaces on the Settings card from elsewhere. A closed sign-in window or declined access is a Cancelled Restore and shows no error at all.

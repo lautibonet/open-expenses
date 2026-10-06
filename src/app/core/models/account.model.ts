@@ -1,7 +1,7 @@
 /* ADR 0022: an Account is either a Cash Account (holds money) or a Credit
    Card (owes money). A Credit Card additionally carries an optional Limit and
    an initial balance that is its starting debt. */
-export type AccountKind = 'cash' | 'credit-card';
+type AccountKind = 'cash' | 'credit-card';
 
 export interface Account {
   id?: number;
@@ -26,6 +26,12 @@ export function isCashAccount(account: Pick<Account, 'kind'>): boolean {
 
 export function isCreditCard(account: Pick<Account, 'kind'>): boolean {
   return account.kind === 'credit-card';
+}
+
+/* An Account already in the Base Currency: its movements need no conversion
+   and count at their face amounts (ADR 0013). */
+export function isBaseCurrencyAccount(account: Pick<Account, 'currency'>, baseCurrency: string): boolean {
+  return account.currency === baseCurrency;
 }
 
 /* ADR 0022 / #174: the set of categories that are a Credit Card's Payment

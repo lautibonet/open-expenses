@@ -38,7 +38,7 @@ async function completeOnboarding(page: import('@playwright/test').Page) {
   await page.getByRole('button', { name: 'New account' }).click();
   await page.getByLabel('Account name').fill('Checking');
   await page.getByLabel('Initial balance').fill('100');
-  await page.getByRole('button', { name: '+ Add' }).click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('button', { name: 'Continue' }).click();
 
   // 5. Categories: defaults are fine
@@ -58,7 +58,7 @@ test.describe('Settings credit cards (#163)', () => {
     await form.getByLabel('Name').fill('Visa');
     await form.getByLabel('Starting debt').fill('-500');
     await form.getByLabel('Limit').fill('2000');
-    await form.getByRole('button', { name: '+ Add Card' }).click();
+    await form.getByRole('button', { name: 'Add', exact: true }).click();
 
     const row = cardRow(page, 'Visa');
     await expect(row).toBeVisible();
@@ -66,28 +66,13 @@ test.describe('Settings credit cards (#163)', () => {
     await expect(row).toContainText('-500');
     await expect(row).toContainText('2000');
 
-    // The consent checkbox also created the card's payment category.
-    await expect(section(page, 'Categories')).toContainText('Visa payment');
+    // The card's Payment Category is plumbing: it never appears in Settings.
+    await expect(section(page, 'Categories')).not.toContainText('Visa payment');
 
     // The card lives in its own section, not among the Accounts.
     await expect(
       section(page, 'Accounts').locator('.account-row').filter({ hasText: 'Visa' }),
     ).toHaveCount(0);
-  });
-
-  test('creates no payment category when consent is declined', async ({ page }) => {
-    await completeOnboarding(page);
-    await page.goto('/settings');
-
-    const cards = section(page, 'Credit Cards');
-    await cards.getByRole('button', { name: 'New card' }).click();
-    const form = cards.locator('.inline-form');
-    await form.getByLabel('Name').fill('Visa');
-    await form.getByRole('checkbox').uncheck();
-    await form.getByRole('button', { name: '+ Add Card' }).click();
-
-    await expect(cardRow(page, 'Visa')).toBeVisible();
-    await expect(section(page, 'Categories')).not.toContainText('Visa payment');
   });
 
   test('edits a card name, starting debt and limit', async ({ page }) => {
@@ -99,7 +84,7 @@ test.describe('Settings credit cards (#163)', () => {
     const form = cards.locator('.inline-form');
     await form.getByLabel('Name').fill('Visa');
     await form.getByLabel('Starting debt').fill('-500');
-    await form.getByRole('button', { name: '+ Add Card' }).click();
+    await form.getByRole('button', { name: 'Add', exact: true }).click();
 
     const row = cardRow(page, 'Visa');
     await row.getByRole('button', { name: 'Edit card' }).click();
@@ -123,7 +108,7 @@ test.describe('Settings credit cards (#163)', () => {
     await cards.getByRole('button', { name: 'New card' }).click();
     const form = cards.locator('.inline-form');
     await form.getByLabel('Name').fill('Visa');
-    await form.getByRole('button', { name: '+ Add Card' }).click();
+    await form.getByRole('button', { name: 'Add', exact: true }).click();
 
     const row = cardRow(page, 'Visa');
     await row.getByRole('button', { name: 'Delete card' }).click();
@@ -141,7 +126,7 @@ test.describe('Settings credit cards (#163)', () => {
     await cards.getByRole('button', { name: 'New card' }).click();
     const form = cards.locator('.inline-form');
     await form.getByLabel('Name').fill('Visa');
-    await form.getByRole('button', { name: '+ Add Card' }).click();
+    await form.getByRole('button', { name: 'Add', exact: true }).click();
     await expect(cardRow(page, 'Visa')).toBeVisible();
 
     const accounts = section(page, 'Accounts');

@@ -17,7 +17,74 @@ class LegacyDatabaseV4 extends Dexie {
   }
 }
 
-describe('database v5 upgrade (locale-neutral storage)', () => {
+describe('opening a v1 database: every legacy row shape', () => {
+  class LegacyDatabaseV1 extends Dexie {
+    constructor() {
+      super('open-expenses-v2');
+      this.version(1).stores({
+        accounts: '++id, name, currency, active',
+        categories: '++id, name, type, active',
+        transactions: '++id, accountId, categoryId, date, period, *tags',
+        transfers: '++id, sourceAccountId, destinationAccountId, date, period',
+        profile: 'id',
+      });
+    }
+  }
+
+  let legacy: LegacyDatabaseV1;
+
+  beforeEach(async () => {
+    await db.delete();
+    legacy = new LegacyDatabaseV1();
+    await legacy.open();
+  });
+
+  afterEach(async () => {
+    legacy.close();
+    await db.delete();
+  });
+
+  it('brings every row up to the current rules', async () => {
+    await legacy.table('accounts').bulkAdd([
+      { name: 'Cash', currency: 'EUR', initialBalance: 0, active: true, createdAt: new Date() },
+      {
+        name: 'Visa', currency: 'EUR', initialBalance: 0, active: true, kind: 'credit-card',
+        linkedAccountId: 1, createdAt: new Date(),
+      },
+    ]);
+    await legacy.table('categories').add({
+      name: 'Food', type: 'Expense', active: true, createdAt: new Date(),
+    });
+    await legacy.table('transactions').add({
+      accountId: 1, categoryId: 1, amount: 10, date: new Date('2025-01-01'),
+      period: 'January', tags: ['old'], exchangeRate: null, baseCurrencyAmount: null,
+      note: '', createdAt: new Date(),
+    });
+    await legacy.table('transfers').add({
+      sourceAccountId: 1, destinationAccountId: 2, amount: 75,
+      date: new Date('2025-02-01'), period: 'February', note: '', createdAt: new Date(),
+    });
+    legacy.close();
+
+    await db.open();
+
+    const [cash, visa] = await db.accounts.toArray();
+    expect([cash.kind, visa.kind]).toEqual(['cash', 'credit-card']);
+    expect('linkedAccountId' in visa).toBe(false);
+    expect((await db.categories.get(visa.paymentCategoryId!))!.name).toBe('Visa payment');
+    expect((await db.categories.get(1))!.type).toBe('expense');
+
+    const [txn] = await db.transactions.toArray();
+    expect([txn.period, txn.year, txn.date.getDate(), 'tags' in txn]).toEqual([1, 2025, 1, false]);
+
+    const [transfer] = await db.transfers.toArray();
+    expect([transfer.sourceAmount, transfer.destinationAmount, transfer.exchangeRate])
+      .toEqual([75, 75, 1]);
+    expect([transfer.period, transfer.year, 'amount' in transfer]).toEqual([2, 2025, false]);
+  });
+});
+
+describe('opening a v4 database: locale-neutral storage', () => {
   let legacy: LegacyDatabaseV4;
 
   beforeEach(async () => {
@@ -127,7 +194,7 @@ describe('database v5 upgrade (locale-neutral storage)', () => {
   });
 });
 
-describe('database v7 upgrade (account kind)', () => {
+describe('opening a v6 database: account kind', () => {
   class LegacyDatabaseV6 extends Dexie {
     constructor() {
       super('open-expenses-v2');
@@ -162,7 +229,7 @@ describe('database v7 upgrade (account kind)', () => {
   });
 });
 
-describe('database v8 upgrade (every card owns its payment category)', () => {
+describe('opening a v7 database: every card owns its payment category', () => {
   class LegacyDatabaseV7 extends Dexie {
     constructor() {
       super('open-expenses-v2');
@@ -242,6 +309,46 @@ describe('database v8 upgrade (every card owns its payment category)', () => {
     expect((await db.categories.toArray()).length).toBe(1);
   });
 
+  it('links an existing category whose name differs only in letter case', async () => {
+    const existingId = await legacy.table('categories').add({
+      name: 'visa PAYMENT',
+      type: 'expense',
+      active: true,
+      createdAt: new Date(),
+    });
+    await legacy.table('accounts').add({
+      name: 'Visa', currency: 'EUR', initialBalance: -500, active: true,
+      kind: 'credit-card', createdAt: new Date(),
+    });
+    legacy.close();
+
+    await db.open();
+
+    const card = (await db.accounts.toArray()).find((a) => a.name === 'Visa')!;
+    expect(card.paymentCategoryId).toBe(existingId);
+    expect((await db.categories.toArray()).length).toBe(1);
+  });
+
+  it('leaves a card unlinked when an Income category holds its payment name', async () => {
+    await legacy.table('categories').add({
+      name: 'Visa payment',
+      type: 'income',
+      active: true,
+      createdAt: new Date(),
+    });
+    await legacy.table('accounts').add({
+      name: 'Visa', currency: 'EUR', initialBalance: -500, active: true,
+      kind: 'credit-card', createdAt: new Date(),
+    });
+    legacy.close();
+
+    await db.open();
+
+    const card = (await db.accounts.toArray()).find((a) => a.name === 'Visa')!;
+    expect(card.paymentCategoryId).toBeUndefined();
+    expect((await db.categories.toArray()).length).toBe(1);
+  });
+
   it('names the created category in the profile language', async () => {
     await seedProfile('es');
     await legacy.table('accounts').add({
@@ -299,7 +406,7 @@ describe('database v8 upgrade (every card owns its payment category)', () => {
   });
 });
 
-describe('database v6 upgrade (local-midnight dates)', () => {
+describe('opening a v4 database: local-midnight dates', () => {
   let legacy: LegacyDatabaseV4;
 
   beforeEach(async () => {
@@ -360,5 +467,55 @@ describe('database v6 upgrade (local-midnight dates)', () => {
 
     const [txn] = await db.transactions.toArray();
     expect(txn.date.getTime()).toBe(withTime.getTime());
+  });
+});
+
+describe('opening a v8 database: dates an older Restore stored as text', () => {
+  class LegacyDatabaseV8 extends Dexie {
+    constructor() {
+      super('open-expenses-v2');
+      this.version(8).stores({
+        accounts: '++id, name, currency, active, kind',
+        categories: '++id, name, type, active',
+        transactions: '++id, accountId, categoryId, date, period, year',
+        transfers: '++id, sourceAccountId, destinationAccountId, date, period, year',
+        profile: 'id',
+      });
+    }
+  }
+
+  let legacy: LegacyDatabaseV8;
+
+  beforeEach(async () => {
+    await db.delete();
+    legacy = new LegacyDatabaseV8();
+    await legacy.open();
+  });
+
+  afterEach(async () => {
+    legacy.close();
+    await db.delete();
+  });
+
+  it('turns them back into dates, Movement Dates at local midnight', async () => {
+    await legacy.table('transactions').add({
+      accountId: 1, categoryId: 1, amount: 10, date: '2026-09-01T00:00:00.000Z',
+      period: 9, year: 2026, exchangeRate: null, baseCurrencyAmount: null,
+      note: '', createdAt: '2026-09-01T18:30:00.000Z',
+    });
+    await legacy.table('profile').add({
+      id: 1, baseCurrency: 'EUR', language: 'en', onboardingCompleted: true,
+      lastBackupAt: '2026-09-02T08:00:00.000Z',
+    });
+    legacy.close();
+
+    await db.open();
+
+    const [txn] = await db.transactions.toArray();
+    expect(txn.date).toBeInstanceOf(Date);
+    expect([txn.date.getFullYear(), txn.date.getMonth() + 1, txn.date.getDate(), txn.date.getHours()])
+      .toEqual([2026, 9, 1, 0]);
+    expect(txn.createdAt).toEqual(new Date('2026-09-01T18:30:00.000Z'));
+    expect((await db.profile.get(1))!.lastBackupAt).toEqual(new Date('2026-09-02T08:00:00.000Z'));
   });
 });

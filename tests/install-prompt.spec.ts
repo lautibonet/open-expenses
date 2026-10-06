@@ -67,7 +67,8 @@ test.describe('install prompt (#115)', () => {
     // Coarse-pointer touch targets stay at the 44px minimum.
     for (const name of ['Install', 'Dismiss']) {
       const box = (await strip.getByRole('button', { name }).boundingBox())!;
-      expect(box.height).toBeGreaterThanOrEqual(44);
+      // Rounded: layout can land a hair under 44 (43.99999…) on subpixel grids.
+      expect(Math.round(box.height)).toBeGreaterThanOrEqual(44);
     }
   });
 
@@ -144,8 +145,8 @@ async function completeOnboarding(page: import('@playwright/test').Page) {
 
   // 4. Accounts
   await page.getByRole('button', { name: 'New account' }).click();
-  await page.getByPlaceholder('Account name').fill('Checking');
-  await page.getByPlaceholder('Initial balance').fill('100');
+  await page.getByLabel('Account name').fill('Checking');
+  await page.getByLabel('Initial balance').fill('100');
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('button', { name: 'Continue' }).click();
 

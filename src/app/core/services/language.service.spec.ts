@@ -26,6 +26,7 @@ describe('LanguageService', () => {
 
   afterEach(async () => {
     vi.unstubAllGlobals();
+    vi.restoreAllMocks();
     await db.delete();
   });
 
@@ -97,6 +98,67 @@ describe('LanguageService', () => {
 
       await service.setLanguage('es');
       expect(document.title).toBe('Open Expenses');
+    });
+
+    describe('Payment Categories (issue #196)', () => {
+      async function seedCard(name: string, categoryName: string, active = true): Promise<number> {
+        const categoryId = (await db.categories.add({
+          name: categoryName,
+          type: 'expense',
+          active: true,
+          createdAt: new Date(2026, 0, 1),
+        })) as number;
+        await db.accounts.add({
+          name,
+          currency: 'EUR',
+          initialBalance: 0,
+          active,
+          kind: 'credit-card',
+          paymentCategoryId: categoryId,
+          createdAt: new Date(2026, 0, 1),
+        });
+        return categoryId;
+      }
+
+      it('renames every card Payment Category, deactivated cards included', async () => {
+        await seedProfile('en');
+        await service.init();
+        const visa = await seedCard('Visa', 'Visa payment');
+        const amex = await seedCard('Amex', 'Amex payment', false);
+
+        const kept = await service.setLanguage('es');
+
+        expect(kept).toEqual([]);
+        expect((await db.categories.get(visa))!.name).toBe('Pago Visa');
+        expect((await db.categories.get(amex))!.name).toBe('Pago Amex');
+      });
+
+      it('still switches when a translated name is taken, keeping the Payment Category name of that card and reporting it', async () => {
+        await seedProfile('en');
+        await service.init();
+        const visa = await seedCard('Visa', 'Visa payment');
+        await db.categories.add({ name: 'Pago Visa', type: 'income', active: true, createdAt: new Date(2026, 0, 1) });
+
+        const kept = await service.setLanguage('es');
+
+        expect(kept).toEqual([{ cardName: 'Visa', takenName: 'Pago Visa' }]);
+        expect(service.activeLanguage()).toBe('es');
+        expect((await db.profile.get(1))!.language).toBe('es');
+        expect((await db.categories.get(visa))!.name).toBe('Visa payment');
+      });
+
+      it('changes neither the Language nor any category when a write fails', async () => {
+        await seedProfile('en');
+        await service.init();
+        const visa = await seedCard('Visa', 'Visa payment');
+        vi.spyOn(db.categories, 'update').mockRejectedValue(new Error('disk full'));
+
+        await expect(service.setLanguage('es')).rejects.toThrow('disk full');
+
+        expect(service.activeLanguage()).toBe('en');
+        expect((await db.profile.get(1))!.language).toBe('en');
+        expect((await db.categories.get(visa))!.name).toBe('Visa payment');
+      });
     });
   });
 

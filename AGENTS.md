@@ -12,11 +12,15 @@ Default five-role vocabulary: `needs-triage`, `needs-info`, `ready-for-agent`, `
 
 ### Domain docs
 
-Single-context layout: one `CONTEXT.md` at repo root + `docs/adr/`. See `docs/agents/domain.md`.
+Single-context layout: one `GLOSSARY.md` at repo root + `docs/adr/`. See `docs/agents/domain.md`.
 
 ### Releases
 
 Version bumps and GitHub Releases tied to `v*` tags, published automatically by CI. Write `.github/release-notes/<tag>.md` before tagging. See `docs/agents/release.md`.
+
+## Unit tests
+
+`npm run test:quiet -- <spec path>...` runs specs once with plain output (no colour codes, failures and summary only); with no path it runs the full suite.
 
 ## Language
 

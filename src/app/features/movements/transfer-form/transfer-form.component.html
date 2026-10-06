@@ -129,6 +129,16 @@
     (stateChange)="onWellStateChange($event)"
   />
 
+  <app-exchange-rate-well
+    [from]="sourceCurrency()"
+    [to]="baseRateTarget()"
+    [date]="form().date"
+    [seed]="baseRateSeed()"
+    [equivalent]="baseCurrencyAmount()"
+    [labels]="baseRateLabels"
+    (stateChange)="onBaseWellStateChange($event)"
+  />
+
   @if (errorMessage()) {
     <p class="error" [title]="errorDetail()" role="alert">{{ errorMessage() }}</p>
   }

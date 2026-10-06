@@ -2,11 +2,13 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { TransferFormComponent, TransferDraft } from './transfer-form.component';
 import { ExchangeRateService } from '../../../core/services/exchange-rate.service';
 import { TransferService } from '../../../core/services/transfer.service';
+import { ProfileService } from '../../../core/services/profile.service';
 import { LanguageService } from '../../../core/services/language.service';
 import { db } from '../../../core/db/database';
 import { Account } from '../../../core/models/account.model';
 import { Transfer } from '../../../core/models/transfer.model';
 import { getCurrentPeriod, getCurrentYear } from '../../../core/types/period.type';
+import { todayLocalISO } from '../../../core/format/local-date';
 
 function flush(ms = 10): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -103,7 +105,7 @@ describe('TransferFormComponent', () => {
       const f = component.form();
       expect(f.sourceAccountId).toBe(eurAccountId);
       expect(f.destAccountId).toBe(eur2AccountId);
-      expect(f.date).toBe(new Date().toISOString().split('T')[0]);
+      expect(f.date).toBe(todayLocalISO());
       expect(f.period).toBe(getCurrentPeriod());
       expect(f.year).toBe(getCurrentYear());
       expect(f.sourceAmount).toBeNull();
@@ -600,14 +602,15 @@ describe('TransferFormComponent', () => {
           sourceAmount: 90,
           destinationAmount: 90,
           exchangeRate: 1,
+          baseExchangeRate: null,
           date: '2026-08-01',
           period: 8,
           year: 2026,
           note: 'bus pass',
-          categoryId: null,
         },
         editingId: null,
         rateState: { loading: false, error: '', rate: null, date: '' },
+        baseRateState: { loading: false, error: '', rate: null, date: '' },
       };
       fixture.componentRef.setInput('initialDraft', draft);
 
@@ -636,14 +639,15 @@ describe('TransferFormComponent', () => {
           sourceAmount: 750,
           destinationAmount: 750,
           exchangeRate: 1,
+          baseExchangeRate: null,
           date: '2025-12-22',
           period: 1,
           year: 2026,
           note: 'savings',
-          categoryId: null,
         },
         editingId: t.id!,
         rateState: { loading: false, error: '', rate: 1, date: 'stored' },
+        baseRateState: { loading: false, error: '', rate: null, date: '' },
       };
       fixture.componentRef.setInput('initialDraft', draft);
 
@@ -729,7 +733,6 @@ describe('TransferFormComponent', () => {
       fixture.detectChanges();
 
       expect(component.cardDestination()?.id).toBe(cardAccountId);
-      expect(component.form().categoryId).toBe(paymentCategoryId);
       const input = paymentCategoryInput();
       expect(input).toBeTruthy();
       expect(input.readOnly).toBe(true);
@@ -751,7 +754,6 @@ describe('TransferFormComponent', () => {
       component.onDestChange(cardAccountId);
       fixture.detectChanges();
 
-      expect(component.form().categoryId).toBe(otherExpenseId);
       expect(paymentCategoryInput().value).toBe('Tarjeta de crédito');
     });
 
@@ -763,7 +765,6 @@ describe('TransferFormComponent', () => {
       fixture.detectChanges();
 
       expect(paymentCategoryInput()).toBeNull();
-      expect(component.form().categoryId).toBeNull();
     });
 
     it('silently re-resolves the category when the destination changes to another card', async () => {
@@ -790,8 +791,6 @@ describe('TransferFormComponent', () => {
       component.onDestChange(cardAccountId);
       fixture.detectChanges();
       component.onDestChange(otherCardId);
-
-      expect(component.form().categoryId).toBe(otherPaymentId);
       fixture.detectChanges();
       expect(paymentCategoryInput().value).toBe('Amex payment');
     });
@@ -801,15 +800,17 @@ describe('TransferFormComponent', () => {
       component.onSourceChange(eurAccountId);
       component.onDestChange(cardAccountId);
       component.onDestChange(eur2AccountId);
+      fixture.detectChanges();
 
-      expect(component.form().categoryId).toBeNull();
+      expect(component.paymentCategoryName()).toBe('');
+      expect(paymentCategoryInput()).toBeNull();
     });
 
     it('never blocks saving a card payment on a missing category choice', async () => {
       await component.ngOnInit();
       component.onSourceChange(eurAccountId);
       component.onDestChange(cardAccountId);
-      component.form.update((f) => ({ ...f, sourceAmount: 100, categoryId: null }));
+      component.form.update((f) => ({ ...f, sourceAmount: 100 }));
 
       expect(component.canSubmit()).toBe(true);
       expect(component.disabledReason()).toBe('');
@@ -846,17 +847,45 @@ describe('TransferFormComponent', () => {
       expect(transfers[0].categoryId).toBe(paymentCategoryId);
     });
 
-    it('saves with the card payment category even when the form state holds another category', async () => {
+    /* ADR 0026: the form shows only the card's stored link — never a
+       category resolved by name. A card without a usable link cannot be paid:
+       the field stays empty, Save is disabled, and the hint says why. */
+    async function payUnlinkedCard(): Promise<void> {
+      fixture.componentRef.setInput('accounts', await db.accounts.toArray());
+      fixture.componentRef.setInput('categories', await db.categories.toArray());
       await component.ngOnInit();
-      fixture.detectChanges();
       component.onSourceChange(eurAccountId);
       component.onDestChange(cardAccountId);
-      component.form.update((f) => ({ ...f, sourceAmount: 150, categoryId: otherExpenseId }));
+      fixture.detectChanges();
+    }
 
+    it('disables Save and says why when the card owns no Payment Category', async () => {
+      await db.accounts.update(cardAccountId, { paymentCategoryId: undefined });
+      await payUnlinkedCard();
+
+      // Before any amount is typed: the card is what blocks the save.
+      expect(paymentCategoryInput().value).toBe('');
+      expect(component.canSubmit()).toBe(false);
+      expect(fixture.nativeElement.querySelector('.save-hint').textContent).toContain(
+        'This card has no payment category. Rename the card to give it one.',
+      );
+    });
+
+    it('disables Save when the card link dangles, even with an Income category holding its payment name', async () => {
+      await db.categories.delete(paymentCategoryId);
+      await db.categories.add({
+        name: 'Visa payment',
+        type: 'income',
+        active: true,
+        createdAt: new Date(),
+      });
+      await payUnlinkedCard();
+      component.form.update((f) => ({ ...f, sourceAmount: 150 }));
+
+      expect(paymentCategoryInput().value).toBe('');
+      expect(component.canSubmit()).toBe(false);
       await component.onSubmit();
-
-      const transfers = await transferService.getAll();
-      expect(transfers[0].categoryId).toBe(paymentCategoryId);
+      expect(await transferService.getAll()).toHaveLength(0);
     });
 
     it('re-resolves the category when an edited card payment is reopened with a stale one', async () => {
@@ -869,8 +898,79 @@ describe('TransferFormComponent', () => {
       await flush();
       fixture.detectChanges();
 
-      expect(component.form().categoryId).toBe(paymentCategoryId);
       expect(paymentCategoryInput().value).toBe('Visa payment');
+    });
+  });
+
+  describe('base rate (ADR 0028)', () => {
+    function rateSections(): Element[] {
+      return Array.from(fixture.nativeElement.querySelectorAll('.exchange-rate-section'));
+    }
+
+    beforeEach(async () => {
+      await TestBed.inject(ProfileService).completeOnboarding('GBP');
+      fixture.componentRef.setInput('baseCurrency', 'GBP');
+      exchangeRateService.getRate.mockImplementation(async (from: string, to: string) => ({
+        rate: to === 'GBP' ? 0.85 : 1.08, from, to, date: '2026-08-20',
+      }));
+    });
+
+    it('asks for the rate to the Base Currency when neither account is in it, and saves it', async () => {
+      await component.ngOnInit();
+      fixture.detectChanges();
+      component.form.update((f) => ({ ...f, sourceAccountId: eurAccountId, destAccountId: eur2AccountId, sourceAmount: 100 }));
+      component.onDateChange('2026-08-20');
+      fixture.detectChanges();
+      await flush();
+      fixture.detectChanges();
+
+      expect(exchangeRateService.getRate).toHaveBeenCalledWith('EUR', 'GBP', '2026-08-20');
+      expect(rateSections()).toHaveLength(1);
+      expect(rateSections()[0].textContent).toContain('85');
+
+      await component.onSubmit();
+
+      const [saved] = await transferService.getAll();
+      expect(saved.baseExchangeRate).toBe(0.85);
+      expect(saved.baseCurrencyAmount).toBe(85);
+    });
+
+    it('asks for no base rate when an account is already in the Base Currency', async () => {
+      fixture.componentRef.setInput('baseCurrency', 'EUR');
+      await component.ngOnInit();
+      fixture.detectChanges();
+      component.form.update((f) => ({ ...f, sourceAccountId: usdAccountId, destAccountId: eurAccountId }));
+      fixture.detectChanges();
+      await flush();
+      fixture.detectChanges();
+
+      expect(rateSections()).toHaveLength(1);
+      expect(exchangeRateService.getRate).not.toHaveBeenCalledWith('USD', 'GBP', expect.anything());
+    });
+
+    it('holds the save until a base rate is entered and states why', async () => {
+      exchangeRateService.getRate.mockRejectedValue(new Error('down'));
+      await component.ngOnInit();
+      fixture.detectChanges();
+      component.form.update((f) => ({ ...f, sourceAccountId: eurAccountId, destAccountId: eur2AccountId, sourceAmount: 100 }));
+      fixture.detectChanges();
+      await flush();
+
+      expect(component.canSubmit()).toBe(false);
+      expect(component.disabledReason()).toBe('Enter the exchange rate to your base currency.');
+    });
+
+    it('seeds the stored base rate when editing, without fetching', async () => {
+      const t = await transferService.create(
+        eurAccountId, eur2AccountId, 100, new Date('2025-12-22'), 1, '', 1, 2025, 0.9,
+      );
+      fixture.componentRef.setInput('editTransfer', t);
+      await flush();
+      fixture.detectChanges();
+      await flush();
+
+      expect(exchangeRateService.getRate).not.toHaveBeenCalled();
+      expect(component.form().baseExchangeRate).toBe(0.9);
     });
   });
 });

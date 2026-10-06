@@ -15,7 +15,7 @@ models, or user flows**.
 |---|---|
 | D1 | **Screenshots are canonical for layout/look**; `monolith_ledger/DESIGN.md` for tokens (they match). |
 | D2 | **Spirit, adapted** — restyle onto the new token system; all current flows preserved as-is. |
-| D3 | **Keep the app glossary** (CONTEXT.md): Movements, Quick Add, Stats, Open Expenses. No design-driven renaming. CONTEXT.md unchanged. |
+| D3 | **Keep the app glossary** (GLOSSARY.md): Movements, Quick Add, Stats, Open Expenses. No design-driven renaming. GLOSSARY.md unchanged. |
 | D4 | **No Accounts page.** Sidebar carries the existing 3 items: Movements, Stats, Settings. |
 | D5 | **No Danger Zone / Wipe Data** — new destructive feature, out of scope. |
 | D6 | **Quick Add card restyled in place** — same 416-line behavior (rate fetch, confirm/override, localStorage memory). Design's "ADD ENTRY" CTA becomes a Quick Add CTA that scrolls/focuses the card. |
@@ -224,7 +224,7 @@ the mobile regime (`headline-lg` 32→24, `display` 48→24).
 - All `core/` services, models, Dexie schema/migrations, `backup/` providers, format utils,
   types/constants; `app.routes.ts`; `app.ts` redirect logic; PWA install/network service
   logic; all form payloads, validation, undo/restore, localStorage keys; i18n mechanism.
-- CONTEXT.md — glossary stands (D3).
+- GLOSSARY.md — glossary stands (D3).
 
 ---
 
@@ -343,4 +343,4 @@ agent-verifiable.
 ---
 
 *Canonical references: Current system in root `DESIGN.md`, vocabulary in
-`CONTEXT.md`, token-placement rule in `docs/adr/0008-design-tokens-in-styles-scss.md`.*
+`GLOSSARY.md`, token-placement rule in `docs/adr/0008-design-tokens-in-styles-scss.md`.*

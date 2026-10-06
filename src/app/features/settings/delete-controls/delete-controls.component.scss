@@ -1,0 +1,37 @@
+@use '../../../shared/styles/patterns' as *;
+
+/* The buttons sit directly in the row's side cluster, so its gap and
+   wrapping apply to them as before. */
+:host {
+  display: contents;
+}
+
+.btn {
+  @extend %btn-base;
+
+  &.danger {
+    @extend %btn-danger;
+  }
+
+  &.small {
+    @extend %btn-small;
+  }
+}
+
+/* Icon-only trash and confirm/cancel affordances (same as movement deletion). */
+.icon-btn {
+  @extend %icon-btn;
+}
+
+/* Touch ergonomics: ghost row actions at the 44px thumb minimum, as on the
+   rest of the Settings row. Three classes, so the ghost geometry beats the
+   .btn.small padding and the .btn.danger fill. */
+@include touch-targets {
+  .btn.icon-btn:not(.primary) {
+    @include ghost-row-actions;
+  }
+
+  .btn.small {
+    min-height: 2.75rem;
+  }
+}

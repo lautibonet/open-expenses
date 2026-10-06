@@ -1,55 +1,12 @@
 import Dexie, { type Table } from 'dexie';
 import { Account } from '../models/account.model';
-import { Category, categoryTypeFromLegacy } from '../models/category.model';
+import { Category } from '../models/category.model';
 import { Transaction } from '../models/transaction.model';
 import { Transfer } from '../models/transfer.model';
 import { Profile } from '../models/profile.model';
-import { DEFAULT_LANGUAGE, isLanguage, Language } from '../types/language.type';
-import { getPeriodYear, monthNumberFromName } from '../types/period.type';
-import { translate } from '../translations/translations';
+import { cleanDataset, Dataset, DATASET_TABLES } from './clean-dataset';
 
-interface LegacyTransfer {
-  id?: number;
-  sourceAccountId: number;
-  destinationAccountId: number;
-  amount: number;
-  date: Date;
-  period: string;
-  note: string;
-  createdAt: Date;
-}
-
-/**
- * Locale-neutral storage (ADR 0009): Period becomes an integer month 1-12 and
- * category type becomes the lowercase code `income`/`expense`. Values that
- * cannot be recognized are left untouched so nothing is destroyed by the
- * migration; unrecognized periods simply stay invisible to Scope filters.
- *
- * Returns the month number for a stored period, or null when the value is
- * already locale-neutral-unknown and must be left untouched.
- */
-function toMonthNumber(period: unknown): number | null {
-  if (typeof period === 'number') {
-    return Number.isInteger(period) && period >= 1 && period <= 12 ? period : null;
-  }
-  if (typeof period === 'string') {
-    return monthNumberFromName(period);
-  }
-  return null;
-}
-
-const MS_PER_DAY = 86_400_000;
-
-function toLocalMidnight(date: unknown): Date | null {
-  if (!(date instanceof Date)) return null;
-  const t = date.getTime();
-  const utcRemainder = ((t % MS_PER_DAY) + MS_PER_DAY) % MS_PER_DAY;
-  if (utcRemainder !== 0) return null;
-  const shifted = new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
-  return shifted.getTime() === t ? null : shifted;
-}
-
-export class AppDatabase extends Dexie {
+class AppDatabase extends Dexie {
   accounts!: Table<Account>;
   categories!: Table<Category>;
   transactions!: Table<Transaction>;
@@ -58,6 +15,9 @@ export class AppDatabase extends Dexie {
 
   constructor() {
     super('open-expenses-v2');
+    /* ADR 0026: the schema history stays declared, but its row repairs no
+       longer live per version. Every upgrade runs the one row cleanup over
+       the whole database; a rule change bumps the version so it reruns. */
     this.version(1).stores({
       accounts: '++id, name, currency, active',
       categories: '++id, name, type, active',
@@ -71,17 +31,6 @@ export class AppDatabase extends Dexie {
       transactions: '++id, accountId, categoryId, date, period, *tags',
       transfers: '++id, sourceAccountId, destinationAccountId, date, period',
       profile: 'id',
-    }).upgrade(async tx => {
-      const transfers = await tx.table('transfers').toArray();
-      for (const t of transfers) {
-        const legacy = t as unknown as LegacyTransfer;
-        await tx.table('transfers').update(legacy.id!, {
-          sourceAmount: legacy.amount,
-          destinationAmount: legacy.amount,
-          exchangeRate: 1,
-          baseCurrencyAmount: legacy.amount,
-        });
-      }
     });
     this.version(3).stores({
       accounts: '++id, name, currency, active',
@@ -89,23 +38,6 @@ export class AppDatabase extends Dexie {
       transactions: '++id, accountId, categoryId, date, period, year, *tags',
       transfers: '++id, sourceAccountId, destinationAccountId, date, period, year',
       profile: 'id',
-    }).upgrade(async tx => {
-      const transactions = await tx.table('transactions').toArray();
-      for (const t of transactions) {
-        if (t.year == null) {
-          await tx.table('transactions').update(t.id!, {
-            year: getPeriodYear(t),
-          });
-        }
-      }
-      const transfers = await tx.table('transfers').toArray();
-      for (const t of transfers) {
-        if (t.year == null) {
-          await tx.table('transfers').update(t.id!, {
-            year: getPeriodYear(t),
-          });
-        }
-      }
     });
     this.version(4).stores({
       accounts: '++id, name, currency, active',
@@ -120,23 +52,6 @@ export class AppDatabase extends Dexie {
       transactions: '++id, accountId, categoryId, date, period, year',
       transfers: '++id, sourceAccountId, destinationAccountId, date, period, year',
       profile: 'id',
-    }).upgrade(async tx => {
-      const categories = await tx.table('categories').toArray();
-      for (const c of categories) {
-        const type = categoryTypeFromLegacy((c as Category).type);
-        if (type !== null && type !== c.type) {
-          await tx.table('categories').update(c.id!, { type });
-        }
-      }
-      for (const tableName of ['transactions', 'transfers'] as const) {
-        const movements = await tx.table(tableName).toArray();
-        for (const m of movements) {
-          const period = toMonthNumber(m.period);
-          if (period !== null && period !== m.period) {
-            await tx.table(tableName).update(m.id!, { period });
-          }
-        }
-      }
     });
     this.version(6).stores({
       accounts: '++id, name, currency, active',
@@ -144,62 +59,52 @@ export class AppDatabase extends Dexie {
       transactions: '++id, accountId, categoryId, date, period, year',
       transfers: '++id, sourceAccountId, destinationAccountId, date, period, year',
       profile: 'id',
-    }).upgrade(async tx => {
-      for (const tableName of ['transactions', 'transfers'] as const) {
-        const movements = await tx.table(tableName).toArray();
-        for (const m of movements) {
-          const shifted = toLocalMidnight(m.date);
-          if (shifted) {
-            await tx.table(tableName).update(m.id!, { date: shifted });
-          }
-        }
-      }
     });
-    /* ADR 0022: every existing account becomes a Cash Account. A Credit Card
-       adds the kind and an optional Limit. */
     this.version(7).stores({
       accounts: '++id, name, currency, active, kind',
       categories: '++id, name, type, active',
       transactions: '++id, accountId, categoryId, date, period, year',
       transfers: '++id, sourceAccountId, destinationAccountId, date, period, year',
       profile: 'id',
-    }).upgrade(async tx => {
-      const accounts = await tx.table('accounts').toArray();
-      for (const account of accounts) {
-        if (account.kind == null) {
-          await tx.table('accounts').update(account.id!, { kind: 'cash' });
-        }
-      }
     });
-    /* Amended ADR 0022: every Credit Card owns its payment category. Cards
-       created before the link was mandatory get one — found by the payment
-       name in the profile's Language, or created — in the same upgrade. */
     this.version(8).stores({
       accounts: '++id, name, currency, active, kind',
       categories: '++id, name, type, active',
       transactions: '++id, accountId, categoryId, date, period, year',
       transfers: '++id, sourceAccountId, destinationAccountId, date, period, year',
       profile: 'id',
+    });
+    this.version(9).stores({
+      accounts: '++id, name, currency, active, kind',
+      categories: '++id, name, type, active',
+      transactions: '++id, accountId, categoryId, date, period, year',
+      transfers: '++id, sourceAccountId, destinationAccountId, date, period, year',
+      profile: 'id',
+    });
+    /* ADR 0028: reran the cleanup to repair every Transfer's base amount. */
+    this.version(10).stores({
+      accounts: '++id, name, currency, active, kind',
+      categories: '++id, name, type, active',
+      transactions: '++id, accountId, categoryId, date, period, year',
+      transfers: '++id, sourceAccountId, destinationAccountId, date, period, year',
+      profile: 'id',
+    });
+    /* Issue #196: reruns the cleanup to name every Payment Category in the
+       profile's Language. */
+    this.version(11).stores({
+      accounts: '++id, name, currency, active, kind',
+      categories: '++id, name, type, active',
+      transactions: '++id, accountId, categoryId, date, period, year',
+      transfers: '++id, sourceAccountId, destinationAccountId, date, period, year',
+      profile: 'id',
     }).upgrade(async tx => {
-      const profiles = await tx.table('profile').toArray();
-      const profile = profiles[0] as Profile | undefined;
-      const language: Language =
-        profile && isLanguage(profile.language) ? profile.language : DEFAULT_LANGUAGE;
-      const cards = await tx.table('accounts').where('kind').equals('credit-card').toArray();
-      for (const card of cards) {
-        if (card.paymentCategoryId != null) continue;
-        const name = translate(language, 'category.cardPayment', { name: card.name });
-        let category = await tx.table('categories').where('name').equals(name).first();
-        if (!category) {
-          const id = await tx.table('categories').add({
-            name,
-            type: 'expense',
-            active: true,
-            createdAt: new Date(),
-          });
-          category = (await tx.table('categories').get(id)) as Category;
-        }
-        await tx.table('accounts').update(card.id!, { paymentCategoryId: category.id });
+      const dataset = {} as Dataset;
+      for (const name of DATASET_TABLES) {
+        dataset[name] = await tx.table(name).toArray();
+      }
+      const cleaned = cleanDataset(dataset);
+      for (const name of DATASET_TABLES) {
+        await tx.table(name).bulkPut(cleaned[name]);
       }
     });
   }
@@ -207,7 +112,7 @@ export class AppDatabase extends Dexie {
 
 export const db = new AppDatabase();
 
-/** Erase (CONTEXT.md): a permanent wipe of all local data. Atomic, irreversible. */
+/** Erase (GLOSSARY.md): a permanent wipe of all local data. Atomic, irreversible. */
 export async function eraseAllLocalData(): Promise<void> {
   await db.transaction(
     'rw',

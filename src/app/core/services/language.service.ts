@@ -1,5 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { ProfileService } from './profile.service';
+import { db } from '../db/database';
+import { KeptPaymentCategory, renamePaymentCategoriesFor } from '../payment-category/payment-category';
 import {
   DEFAULT_LANGUAGE,
   Language,
@@ -7,7 +9,8 @@ import {
   isLanguage,
 } from '../types/language.type';
 import { isCategoryType } from '../models/category.model';
-import { isMonthNumber, PeriodScope } from '../types/period.type';
+import { isMonthNumber } from '../types/period.type';
+import { PeriodScope } from '../scope/scope';
 import { translate } from '../translations/translations';
 import { formatDateIn, formatMoneyIn, formatNumberIn } from '../format/format';
 import { TranslateFn } from '../models/translation-error';
@@ -29,9 +32,16 @@ export class LanguageService {
     }
   }
 
-  async setLanguage(language: Language): Promise<void> {
-    await this.profileService.updateLanguage(language);
+  /* Saves the Language and renames the Payment Categories after it in one
+     transaction (issue #196). Resolves to the cards whose category kept its
+     name because another category holds the translated one. */
+  async setLanguage(language: Language): Promise<KeptPaymentCategory[]> {
+    const kept = await db.transaction('rw', db.profile, db.accounts, db.categories, async () => {
+      await this.profileService.updateLanguage(language);
+      return renamePaymentCategoriesFor(language);
+    });
     this.apply(language);
+    return kept;
   }
 
   async applyFromProfile(): Promise<void> {

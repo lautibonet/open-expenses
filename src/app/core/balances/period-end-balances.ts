@@ -1,5 +1,6 @@
-import { PeriodScope, movementIsAtOrBeforePeriod } from '../types/period.type';
-import { Account } from '../models/account.model';
+import { movementIsAtOrBeforePeriod } from '../types/period.type';
+import { PeriodScope } from '../scope/scope';
+import { Account, isBaseCurrencyAccount } from '../models/account.model';
 import { Transaction } from '../models/transaction.model';
 import { Transfer } from '../models/transfer.model';
 
@@ -8,6 +9,10 @@ export interface PeriodEndBalanceInput {
   transactions: Transaction[];
   transfers: Transfer[];
   isIncome: (transaction: Transaction) => boolean;
+}
+
+export interface PeriodEndBaseInput extends PeriodEndBalanceInput {
+  baseCurrency: string;
 }
 
 function periodEndAmount(
@@ -56,8 +61,29 @@ export function storedBaseAmount(transaction: Transaction): number {
   return transaction.amount;
 }
 
+/* ADR 0013, amended by #182 and #199: a Transaction on an Account already in
+   the Base Currency counts at its face amount, since a stored base amount
+   there can only be a stale one from an earlier Base Currency. Otherwise the
+   stored base amount wins, then the amount at the stored Exchange Rate, then
+   the face amount. */
+export function transactionBaseAmount(
+  transaction: Transaction,
+  account: Account | undefined,
+  baseCurrency: string,
+): number {
+  return account && isBaseCurrencyAccount(account, baseCurrency)
+    ? transaction.amount
+    : storedBaseAmount(transaction);
+}
+
+/* ADR 0028: a Transfer's source side in Base Currency, or its face source
+   amount when no conversion could be stored. */
+export function storedTransferBaseAmount(transfer: Transfer): number {
+  return transfer.baseCurrencyAmount ?? transfer.sourceAmount;
+}
+
 export function periodEndBaseAmount(
-  input: PeriodEndBalanceInput,
+  input: PeriodEndBaseInput,
   scope: PeriodScope,
   initialInBase: number,
 ): number {
@@ -65,9 +91,12 @@ export function periodEndBaseAmount(
     input,
     scope,
     initialInBase,
-    t => (input.isIncome(t) ? storedBaseAmount(t) : -storedBaseAmount(t)),
-    tr => tr.baseCurrencyAmount,
-    tr => tr.baseCurrencyAmount,
+    t => {
+      const amount = transactionBaseAmount(t, input.account, input.baseCurrency);
+      return input.isIncome(t) ? amount : -amount;
+    },
+    storedTransferBaseAmount,
+    storedTransferBaseAmount,
   );
   return Math.round(amount * 100) / 100;
 }

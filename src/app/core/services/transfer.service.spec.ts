@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { TransferService } from './transfer.service';
 import { AccountService } from './account.service';
 import { CategoryService } from './category.service';
+import { ProfileService } from './profile.service';
 import { db } from '../db/database';
 import { getCurrentYear } from '../types/period.type';
 
@@ -98,7 +99,7 @@ describe('TransferService', () => {
     expect(t.sourceAmount).toBe(1000);
     expect(t.destinationAmount).toBe(1080);
     expect(t.exchangeRate).toBe(1.08);
-    expect(t.baseCurrencyAmount).toBe(1080);
+    expect(t.baseCurrencyAmount).toBe(1000);
   });
 
   it('should update a cross-currency transfer and recalculate amounts', async () => {
@@ -110,7 +111,7 @@ describe('TransferService', () => {
     expect(updated.sourceAmount).toBe(2000);
     expect(updated.destinationAmount).toBe(2200);
     expect(updated.exchangeRate).toBe(1.1);
-    expect(updated.baseCurrencyAmount).toBe(2200);
+    expect(updated.baseCurrencyAmount).toBe(2000);
   });
 
   it('should reject self-transfer on update (both fields)', async () => {
@@ -165,13 +166,6 @@ describe('TransferService', () => {
     ).rejects.toThrow('errors.transferExists');
   });
 
-  it('should get transfers by period', async () => {
-    await transferService.create(cashId, savingsId, 100, new Date(), 1);
-    await transferService.create(cashId, savingsId, 200, new Date(), 2);
-    const jan = await transferService.getByPeriod(1);
-    expect(jan.length).toBe(1);
-  });
-
   it('should default the period year to the current year', async () => {
     const t = await transferService.create(cashId, savingsId, 100, new Date('2025-12-22'), 1);
     expect(t.year).toBe(getCurrentYear());
@@ -183,39 +177,6 @@ describe('TransferService', () => {
     );
     expect(t.date.getFullYear()).toBe(2025);
     expect(t.year).toBe(2026);
-  });
-
-  it('should filter transfers by period and year', async () => {
-    await transferService.create(cashId, savingsId, 100, new Date('2025-12-22'), 1, '', 1, 2026);
-    await transferService.create(cashId, savingsId, 200, new Date('2024-12-22'), 1, '', 1, 2025);
-    await transferService.create(cashId, savingsId, 300, new Date('2026-02-10'), 2, '', 1, 2026);
-
-    const jan26 = await transferService.getByPeriod(1, 2026);
-    expect(jan26.length).toBe(1);
-    expect(jan26[0].sourceAmount).toBe(100);
-
-    const janAll = await transferService.getByPeriod(1);
-    expect(janAll.length).toBe(2);
-  });
-
-  it('should get transfers for a month scope by period and year', async () => {
-    await transferService.create(cashId, savingsId, 100, new Date('2025-12-22'), 1, '', 1, 2026);
-    await transferService.create(cashId, savingsId, 200, new Date('2026-02-10'), 2, '', 1, 2026);
-
-    const jan26 = await transferService.getByScope({ kind: 'month', period: 1, year: 2026 });
-    expect(jan26.length).toBe(1);
-    expect(jan26[0].sourceAmount).toBe(100);
-  });
-
-  it('should get every transfer of the stored period year for a year scope', async () => {
-    await transferService.create(cashId, savingsId, 100, new Date('2026-01-05'), 1, '', 1, 2026);
-    await transferService.create(cashId, savingsId, 200, new Date('2026-02-10'), 2, '', 1, 2026);
-    await transferService.create(cashId, savingsId, 300, new Date('2025-12-22'), 1, '', 1, 2026);
-    await transferService.create(cashId, savingsId, 400, new Date('2026-03-01'), 3, '', 1, 2025);
-
-    const year26 = await transferService.getByScope({ kind: 'year', year: 2026 });
-    expect(year26.length).toBe(3);
-    expect(year26.map(t => t.sourceAmount).sort((a, b) => a - b)).toEqual([100, 200, 300]);
   });
 
   it('should update the period year', async () => {
@@ -274,11 +235,29 @@ describe('TransferService', () => {
       expect(updated.categoryId).toBe(expenseId);
     });
 
-    it('resolves by name for a legacy card that owns no stored link', async () => {
+    it('refuses a Card Payment into a card that owns no Payment Category, never resolving one by name', async () => {
       await db.accounts.update(cardId, { paymentCategoryId: undefined });
-      const t = await transferService.create(cashId, cardId, 500, new Date(), 1);
-      const category = await db.categories.get(t.categoryId!);
-      expect(category?.name).toBe('Visa payment');
+
+      await expect(transferService.create(cashId, cardId, 500, new Date(), 1))
+        .rejects.toThrow('errors.cardHasNoPaymentCategory');
+      expect(await db.transfers.count()).toBe(0);
+      expect((await db.accounts.get(cardId))!.paymentCategoryId).toBeUndefined();
+    });
+
+    it('refuses a Card Payment into a card whose Payment Category link dangles', async () => {
+      await db.categories.delete(expenseId);
+
+      await expect(transferService.create(cashId, cardId, 500, new Date(), 1))
+        .rejects.toThrow('errors.cardHasNoPaymentCategory');
+    });
+
+    it('refuses redirecting a Transfer into a card that owns no Payment Category', async () => {
+      const t = await transferService.create(cashId, savingsId, 500, new Date(), 1);
+      await db.accounts.update(cardId, { paymentCategoryId: undefined });
+
+      await expect(transferService.update(t.id!, { destinationAccountId: cardId }))
+        .rejects.toThrow('errors.cardHasNoPaymentCategory');
+      expect((await db.transfers.get(t.id!))!.destinationAccountId).toBe(savingsId);
     });
 
     it('carries no category on a Cash-to-Cash Transfer', async () => {
@@ -312,6 +291,95 @@ describe('TransferService', () => {
       );
       const updated = await transferService.update(t.id!, { destinationAccountId: savingsId });
       expect(updated.categoryId).toBeUndefined();
+    });
+  });
+
+  describe('base amount (ADR 0028)', () => {
+    let usdId: number;
+    let gbpId: number;
+
+    beforeEach(async () => {
+      await TestBed.inject(ProfileService).completeOnboarding('USD');
+      usdId = (await accountService.create('Checking', 'USD', 0)).id!;
+      gbpId = (await accountService.create('Pounds', 'GBP', 0)).id!;
+    });
+
+    it('converts the source side with the base rate when neither account is in the Base Currency', async () => {
+      const t = await transferService.create(
+        cashId, savingsId, 100, new Date(), 1, '', 1, getCurrentYear(), 1.1,
+      );
+      expect(t.baseCurrencyAmount).toBe(110);
+      expect(t.baseExchangeRate).toBe(1.1);
+    });
+
+    it('counts the source amount when the source account is in the Base Currency', async () => {
+      const t = await transferService.create(usdId, cashId, 105, new Date(), 1, '', 0.95);
+      expect(t.baseCurrencyAmount).toBe(105);
+      expect(t.baseExchangeRate).toBeUndefined();
+    });
+
+    it('counts the destination amount when only the destination account is in the Base Currency', async () => {
+      const t = await transferService.create(cashId, usdId, 95, new Date(), 1, '', 1.05);
+      expect(t.baseCurrencyAmount).toBe(99.75);
+      expect(t.baseExchangeRate).toBeUndefined();
+    });
+
+    it('ignores a base rate when one account is already in the Base Currency', async () => {
+      const t = await transferService.create(
+        usdId, cashId, 100, new Date(), 1, '', 0.9, getCurrentYear(), 1.3,
+      );
+      expect(t.baseCurrencyAmount).toBe(100);
+      expect(t.baseExchangeRate).toBeUndefined();
+    });
+
+    it('refuses a Transfer between two foreign accounts without a base rate', async () => {
+      await expect(transferService.create(cashId, gbpId, 100, new Date(), 1, '', 0.85))
+        .rejects.toThrow('errors.baseExchangeRateRequired');
+      expect(await db.transfers.count()).toBe(0);
+    });
+
+    it('refuses a non-positive base rate', async () => {
+      await expect(
+        transferService.create(cashId, gbpId, 100, new Date(), 1, '', 0.85, getCurrentYear(), 0),
+      ).rejects.toThrow('errors.exchangeRatePositive');
+    });
+
+    it('re-derives the base amount from the base rate when an edit changes the amount', async () => {
+      const t = await transferService.create(
+        cashId, savingsId, 100, new Date(), 1, '', 1, getCurrentYear(), 1.1,
+      );
+      const updated = await transferService.update(t.id!, { sourceAmount: 200 });
+      expect(updated.baseCurrencyAmount).toBe(220);
+      expect(updated.baseExchangeRate).toBe(1.1);
+    });
+
+    it('takes a new base rate on edit', async () => {
+      const t = await transferService.create(
+        cashId, savingsId, 100, new Date(), 1, '', 1, getCurrentYear(), 1.1,
+      );
+      const updated = await transferService.update(t.id!, { baseExchangeRate: 1.2 });
+      expect(updated.baseCurrencyAmount).toBe(120);
+    });
+
+    it('asks for a base rate when an edit moves a Transfer away from the Base Currency', async () => {
+      const t = await transferService.create(cashId, usdId, 100, new Date(), 1, '', 1.05);
+      await expect(transferService.update(t.id!, { destinationAccountId: gbpId, exchangeRate: 0.85 }))
+        .rejects.toThrow('errors.baseExchangeRateRequired');
+      expect((await db.transfers.get(t.id!))!.destinationAccountId).toBe(usdId);
+
+      const updated = await transferService.update(t.id!, {
+        destinationAccountId: gbpId, exchangeRate: 0.85, baseExchangeRate: 1.1,
+      });
+      expect(updated.baseCurrencyAmount).toBe(110);
+    });
+
+    it('drops the base rate when an edit brings an account into the Base Currency', async () => {
+      const t = await transferService.create(
+        cashId, savingsId, 100, new Date(), 1, '', 1, getCurrentYear(), 1.1,
+      );
+      const updated = await transferService.update(t.id!, { destinationAccountId: usdId, exchangeRate: 1.05 });
+      expect(updated.baseCurrencyAmount).toBe(105);
+      expect(updated.baseExchangeRate).toBeUndefined();
     });
   });
 });

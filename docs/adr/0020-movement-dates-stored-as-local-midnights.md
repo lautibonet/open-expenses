@@ -6,7 +6,7 @@ Movement dates are stored as `Date` values at local midnight of the picked calen
 
 A tester in Argentina (UTC-3) recorded movements for September 1st and 2nd; the list showed them as August 31st and September 1st. Forms built dates with `new Date("YYYY-MM-DD")`, which JavaScript parses as **UTC midnight**, while every read path — Angular's `date` pipe, `Intl.DateTimeFormat`, day-grouping keys — renders in the **device's local timezone**. West of UTC, a UTC-midnight instant displays as the previous calendar day, so every user in a negative-offset timezone saw all their dates shifted back by one day. The same UTC-slicing also made the form's "today" default revert to yesterday after 21:00 local, and skewed exchange-rate queries after 21:00.
 
-A movement date is a calendar day, not an instant in time (see the Movement Date term in CONTEXT.md): the time-of-day component is meaningless, but the day shown must be the day picked, on every device, in every timezone.
+A movement date is a calendar day, not an instant in time (see the Movement Date term in GLOSSARY.md): the time-of-day component is meaningless, but the day shown must be the day picked, on every device, in every timezone.
 
 ## Decision
 
@@ -19,3 +19,4 @@ A movement date is a calendar day, not an instant in time (see the Movement Date
 - Dates display correctly in any timezone **as long as the device's timezone matches the writer's**: a user who flies from Argentina to Spain will see their dates correctly, but a Restore onto a device in a different zone than the Backup's writer shows that writer's days (which is the right answer — the days were picked there).
 - The stored `Date` remains an instant, so comparisons and IndexedDB ordering keep working unchanged; only the convention about which instant represents a day changed.
 - The alternative — storing timezone-neutral `YYYY-MM-DD` strings — was considered and rejected for now: it is the cleaner long-term model but touches the Dexie schema, every indexed query, both forms, backups, and all consumers, for no additional user-visible correctness beyond what local midnights already give. If cross-timezone sync ever becomes real, string storage can supersede this decision behind the same `local-date.ts` seam.
+- Amended by ADR 0026: the shift is no longer one-time. It is part of the row cleanup that runs on every Dexie upgrade and every Restore, which is safe because it shifts only UTC-midnight dates.

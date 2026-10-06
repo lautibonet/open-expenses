@@ -89,6 +89,7 @@ const en: Record<string, string> = {
   'errors.accountNotFound': 'That account no longer exists. Pick another and try again.',
   'errors.categoryNameRequired': 'Category name is required',
   'errors.categoryNameTaken': 'A category named "{name}" already exists',
+  'errors.cardHasNoPaymentCategory': 'This card has no payment category. Rename the card to give it one.',
   'errors.categoryNotFound': 'That category no longer exists. Pick another and try again.',
   'errors.categoryTypeInvalid': 'Category type must be income or expense',
   'errors.amountPositive': 'Enter an amount greater than zero.',
@@ -97,6 +98,7 @@ const en: Record<string, string> = {
   'errors.yearInvalid': 'Year must be a valid 4-digit year',
   'errors.accountsMustDiffer': 'Choose two different accounts for this transfer.',
   'errors.exchangeRatePositive': 'Enter an exchange rate greater than zero.',
+  'errors.baseExchangeRateRequired': 'Enter the exchange rate to your base currency.',
   'errors.sourceAccountNotFound': 'The source account no longer exists. Pick another and try again.',
   'errors.destinationAccountNotFound':
     'The destination account no longer exists. Pick another and try again.',
@@ -115,6 +117,8 @@ const en: Record<string, string> = {
   'errors.currencyRequired': 'Choose a currency for this account',
   'errors.currencyHasMovements':
     "This account has movements, so its currency can't be changed.",
+  'errors.baseCurrencyHasMovements':
+    "Movements exist, so the base currency can't be changed.",
   'errors.cardLimitNegative': 'Limit cannot be negative',
   'errors.categoryHasMovements':
     "This category has movements, so it can't be deleted. Deactivate it instead.",
@@ -125,6 +129,7 @@ const en: Record<string, string> = {
   'settings.failedUpdateLanguage': 'Failed to update language',
   'settings.baseCurrency': 'Base Currency',
   'settings.baseCurrencyAria': 'Base currency',
+  'settings.baseCurrencyLocked': "Can't be changed once movements exist.",
   'settings.accounts': 'Accounts',
   'settings.creditCards': 'Credit Cards',
   'settings.newCard': 'New card',
@@ -167,6 +172,10 @@ const en: Record<string, string> = {
      it carries transactions. */
   'settings.cardDeleteCategoryKept':
     'The payment category "{name}" has transactions, so it was kept. Deactivate it instead if you no longer need it.',
+  /* Issue #196: page-level notice when a card's payment category keeps its
+     name on a Language switch because the translated name is taken. */
+  'settings.languagePaymentCategoryKept':
+    'The payment category of "{card}" kept its name because another category already uses "{name}". Rename the card to fix it.',
   'settings.categoryDeletePrompt': 'Delete this category? This is permanent.',
   'settings.confirmDeletionAria': 'Confirm deletion',
   'settings.cancelDeletionAria': 'Cancel deletion',
@@ -216,6 +225,7 @@ const en: Record<string, string> = {
   'movements.cardOutstanding': 'Outstanding balance:',
   'movements.cardBadge': 'Card',
   'movements.exchangeRate': 'Exchange Rate',
+  'movements.baseExchangeRate': 'Exchange Rate to Base Currency',
   'movements.fetchingRate': 'Fetching rate…',
   'movements.destAmount': '{currency} Amount',
   'movements.suggestedRate': 'Suggested rate: 1 {from} = {rate} {to} ({date})',
@@ -310,7 +320,7 @@ const en: Record<string, string> = {
   'stats.conversionWarning':
     'Foreign currency accounts could not be converted. Total only includes {currency} accounts.',
   'stats.conversionWarningUnconverted':
-    'Some transactions were captured without a {currency} conversion and count at their face amount.',
+    'Some movements were captured without a {currency} conversion and count at their face amount.',
   'stats.accountBalances': '{scope} Account Balances',
   'stats.income': 'Income',
   'stats.expenses': 'Expenses',
@@ -507,6 +517,7 @@ const es: Record<string, string> = {
   'errors.accountNotFound': 'Esa cuenta ya no existe. Elige otra e inténtalo de nuevo.',
   'errors.categoryNameRequired': 'El nombre de la categoría es obligatorio',
   'errors.categoryNameTaken': 'Ya hay una categoría llamada "{name}"',
+  'errors.cardHasNoPaymentCategory': 'Esta tarjeta no tiene categoría de pago. Cambia el nombre de la tarjeta para asignarle una.',
   'errors.categoryNotFound': 'Esa categoría ya no existe. Elige otra e inténtalo de nuevo.',
   'errors.categoryTypeInvalid': 'El tipo de categoría debe ser ingreso o gasto',
   'errors.amountPositive': 'Introduce un importe mayor que cero.',
@@ -515,6 +526,7 @@ const es: Record<string, string> = {
   'errors.yearInvalid': 'El año debe ser un año válido de 4 dígitos',
   'errors.accountsMustDiffer': 'Elige dos cuentas distintas para esta transferencia.',
   'errors.exchangeRatePositive': 'Introduce un tipo de cambio mayor que cero.',
+  'errors.baseExchangeRateRequired': 'Introduce el tipo de cambio a tu moneda base.',
   'errors.sourceAccountNotFound': 'La cuenta de origen ya no existe. Elige otra e inténtalo de nuevo.',
   'errors.destinationAccountNotFound':
     'La cuenta de destino ya no existe. Elige otra e inténtalo de nuevo.',
@@ -533,6 +545,8 @@ const es: Record<string, string> = {
   'errors.currencyRequired': 'Elige una moneda para esta cuenta',
   'errors.currencyHasMovements':
     'Esta cuenta tiene movimientos, así que no se puede cambiar su moneda.',
+  'errors.baseCurrencyHasMovements':
+    'Ya hay movimientos, así que no se puede cambiar la moneda base.',
   'errors.cardLimitNegative': 'El límite no puede ser negativo',
   'errors.categoryHasMovements':
     'Esta categoría tiene movimientos, así que no se puede eliminar. Desactívala en su lugar.',
@@ -543,6 +557,7 @@ const es: Record<string, string> = {
   'settings.failedUpdateLanguage': 'Error al actualizar el idioma',
   'settings.baseCurrency': 'Moneda base',
   'settings.baseCurrencyAria': 'Moneda base',
+  'settings.baseCurrencyLocked': 'No se puede cambiar cuando ya hay movimientos.',
   'settings.accounts': 'Cuentas',
   'settings.creditCards': 'Tarjetas de crédito',
   'settings.newCard': 'Nueva tarjeta',
@@ -581,6 +596,8 @@ const es: Record<string, string> = {
     'Esto también elimina permanentemente la categoría de pago "{name}".',
   'settings.cardDeleteCategoryKept':
     'La categoría de pago "{name}" tiene transacciones, así que se conservó. Desactívala en su lugar si ya no la necesitas.',
+  'settings.languagePaymentCategoryKept':
+    'La categoría de pago de "{card}" conservó su nombre porque otra categoría ya usa "{name}". Renombra la tarjeta para solucionarlo.',
   'settings.categoryDeletePrompt': '¿Eliminar esta categoría? Es permanente.',
   'settings.confirmDeletionAria': 'Confirmar eliminación',
   'settings.cancelDeletionAria': 'Cancelar eliminación',
@@ -630,6 +647,7 @@ const es: Record<string, string> = {
   'movements.cardOutstanding': 'Saldo pendiente:',
   'movements.cardBadge': 'Tarjeta',
   'movements.exchangeRate': 'Tipo de cambio',
+  'movements.baseExchangeRate': 'Tipo de cambio a la moneda base',
   'movements.fetchingRate': 'Obteniendo tipo de cambio…',
   'movements.destAmount': 'Importe en {currency}',
   'movements.suggestedRate': 'Tipo de cambio sugerido: 1 {from} = {rate} {to} ({date})',
@@ -724,7 +742,7 @@ const es: Record<string, string> = {
   'stats.conversionWarning':
     'No se pudieron convertir las cuentas en moneda extranjera. El total solo incluye cuentas en {currency}.',
   'stats.conversionWarningUnconverted':
-    'Algunas transacciones se registraron sin conversión a {currency} y se contabilizan por su importe nominal.',
+    'Algunos movimientos se registraron sin conversión a {currency} y se contabilizan por su importe nominal.',
   'stats.accountBalances': 'Saldos de cuentas de {scope}',
   'stats.income': 'Ingresos',
   'stats.expenses': 'Gastos',

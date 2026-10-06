@@ -9,7 +9,7 @@ A recorded movement of money linked to an account, a category, an amount, a date
 _Avoid_: Entry, record, line item
 
 **Transfer**:
-A movement of money between two of the user's own accounts. Structurally separate from Transactions. Counts as an Expense only when it moves money from a Cash Account into a Credit Card — a Card Payment; every other Transfer (Cash to Cash, Card to Cash, Card to Card) never counts as Income or Expense. Stores `sourceAmount`, `destinationAmount`, `exchangeRate`, and `baseCurrencyAmount` — and, on a Transfer into a Credit Card, the destination card's Payment Category. For same-currency transfers, `sourceAmount` equals `destinationAmount`.
+A movement of money between two of the user's own accounts. Structurally separate from Transactions. Counts as an Expense only when it moves money from a Cash Account into a Credit Card — a Card Payment; every other Transfer (Cash to Cash, Card to Cash, Card to Card) never counts as Income or Expense. Stores `sourceAmount`, `destinationAmount`, `exchangeRate`, and `baseCurrencyAmount` — and, on a Transfer into a Credit Card, the destination card's Payment Category. For same-currency transfers, `sourceAmount` equals `destinationAmount`. Its base amount is always the source side — the money that left the source Account — expressed in the Base Currency, whatever the currencies of its two Accounts. When neither Account is in the Base Currency, the Transfer carries a second Exchange Rate, from the source currency to the Base Currency, captured with it; an older Transfer without one counts at its face source amount and is flagged as unconverted.
 _Avoid_: Movement, internal transfer
 
 **Account**:
@@ -21,11 +21,11 @@ An Account that represents money the user owes rather than holds: spending on it
 _Avoid_: credit line, revolving credit
 
 **Card Payment**:
-A Transfer from a Cash Account into a Credit Card that settles card debt — the moment the user pays a Statement, in full or in part, from any Account, possibly several times in one Period. It counts as an Expense in the Income and Expenses totals and in Net, under the card's Payment Category. That category labels the payment but never reaches the category graph, where it would double-count what the settled purchases already report. Interest and fees ride inside the Statement total and reach Expenses the same way — never recorded separately.
+A Transfer from a Cash Account into a Credit Card that settles card debt — the moment the user pays a Statement, in full or in part, from any Account, possibly several times in one Period. It counts as an Expense in the Income and Expenses totals and in Net, under the card's Payment Category, at the cash that left the Cash Account expressed in the Base Currency — not at the debt it settled, which differs when the payment crosses currencies. That category labels the payment but never reaches the category graph, where it would double-count what the settled purchases already report. Interest and fees ride inside the Statement total and reach Expenses the same way — never recorded separately.
 _Avoid_: statement payment, pay credit card, card settlement
 
 **Payment Category**:
-The system Expense category a Credit Card owns for labeling its Card Payments, named after the card in the active Language ("Visa payment" / "Pago Visa") and provisioned together with the card — created, or linked when that name is already taken. Renaming the card renames it; deleting the card deletes it. The user never curates it directly: it is plumbing for the Card Payment, so it never reaches the category graph, never appears where categories are picked for ordinary work, and never appears in Settings — it is created, renamed, and removed only through its card.
+The system Expense category a Credit Card owns for labeling its Card Payments, named after the card in the active Language ("Visa payment" / "Pago Visa") and provisioned together with the card — created, or linked when an Expense category with that name already exists; a name taken by an Income category refuses the card. Its name always follows the card and the active Language: renaming the card or switching Language renames it, whoever first created the category under that name. A Restore brings it to the restored Language too. A Language switch never fails over it: when another category already holds the translated name, the card's category keeps its current name. Deleting the card deletes it when it has no Transactions, and keeps it otherwise. The user never curates it directly: it is plumbing for the Card Payment, so it never reaches the category graph, never appears where categories are picked for ordinary work, and never appears in Settings — it is created, renamed, and removed only through its card.
 _Avoid_: card category, payment type, system category
 
 **Statement**:
@@ -45,7 +45,7 @@ The reporting window chosen on the Stats and Movements screens. On Stats it is a
 _Avoid_: Filter, range, timeframe, selection, All Time
 
 **Base Currency**:
-The single currency in which the Stats total balance and all period totals/averages are reported. Set during onboarding. Accounts may hold different currencies; amounts are converted using exchange rates recorded at transaction/transfer time.
+The single currency in which the Stats total balance and all period totals/averages are reported. Set during onboarding, and changeable only while no Transaction or Transfer exists — on any Account, active or deactivated — since every stored conversion is expressed in it and changing it would silently reinterpret history. Deleting the last movement makes it changeable again; Accounts, their initial balances, and Categories never lock it. Accounts may hold different currencies; amounts are converted using exchange rates recorded at transaction/transfer time. Wherever an amount is reported in the Base Currency (Income, Expenses, and Net, balances, the Accumulated line, the category breakdown), a Transaction on an Account already in the Base Currency counts at its face amount, so an Account's balance never depends on whether a foreign Account exists; Movements and Stats always report the same Income, Expenses, and Net for the same movements.
 _Avoid_: Report currency, display currency
 
 **Exchange Rate**:
@@ -116,15 +116,19 @@ The destination of a cloud Backup — Google Drive today, with Dropbox and iClou
 _Avoid_: Provider, cloud service, storage
 
 **Restore**:
-A user-initiated, full overwrite of local data from a prior Backup — from a cloud provider or an uploaded file. Restore replaces the entire local dataset and never triggers a new Backup.
+A user-initiated, full overwrite of local data from a prior Backup — from a cloud provider or an uploaded file. Restore replaces the entire local dataset and never triggers a new Backup. Restoring an older Backup ends with the same data a device that kept that data all along would hold.
 _Avoid_: Recovery, import, rollback
+
+**Pending Restore**:
+A Backup fetched from a Backup Method or read from an uploaded file, waiting for the user to confirm the overwrite. There is at most one at a time, and every Restore entry point presents the same one: confirming or declining it from one place settles it everywhere. Onboarding has no Pending Restore — with no data to lose, it restores without a confirm.
+_Avoid_: staged restore, restore preview
 
 **Last Backup**:
 The freshness figure shown in the sidebar caption and the Settings backup card: the time of the most recent Backup whose data this device holds. A Backup sets it to the backup's own time; a Restore sets it to the time the restored snapshot was taken — never to the restoring device's action time, and never inherited from the snapshot's mirrored profile. It answers "how fresh is the data I'm holding", not "when did this device last act".
 _Avoid_: last sync, backup date of this device
 
 **Cancelled Restore**:
-A Restore attempt that ends before any data changes because the user backed out — closing the sign-in window, declining access, or not picking a file. It leaves local data untouched, re-enables the Restore controls, and is not a failed Restore.
+A Restore attempt that ends before any data changes because the user backed out — closing the sign-in window, declining access, not picking a file, or declining a Pending Restore. It leaves local data untouched, re-enables the Restore controls, and is not a failed Restore. A sign-in window the browser blocked, or a sign-in that could not load, is not the user backing out: that Restore failed.
 _Avoid_: Failed restore, restore error
 
 **Deactivate**:

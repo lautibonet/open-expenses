@@ -1,0 +1,13 @@
+@if (flow().isRefused(target())) {
+  <div class="delete-refusal" role="alert">
+    <p>{{ language.t(message()) }}</p>
+    @if (active()) {
+      <button type="button" class="btn small" (click)="deactivate.emit()">
+        {{ language.t('settings.deactivateInstead') }}
+      </button>
+    }
+    <button type="button" class="btn small" (click)="flow().cancel()">
+      {{ language.t('settings.cancel') }}
+    </button>
+  </div>
+}

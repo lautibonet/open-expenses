@@ -1,6 +1,14 @@
 @use '../../../shared/styles/patterns' as *;
 
+/* The Settings top row stretches its cells; the card fills this one so its
+   border matches the Base Currency card beside it. */
+:host {
+  display: block;
+}
+
 .card {
+  height: 100%;
+  box-sizing: border-box;
   background: var(--surface-lowest);
   border: var(--border-hard);
   padding: var(--space-lg);

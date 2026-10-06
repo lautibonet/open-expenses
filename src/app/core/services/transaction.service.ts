@@ -3,9 +3,7 @@ import { db } from '../db/database';
 import { Transaction } from '../models/transaction.model';
 import { TranslationError } from '../models/translation-error';
 import {
-  PeriodScope,
   getCurrentYear,
-  getPeriodYear,
   isValidPeriod,
   isValidYear,
 } from '../types/period.type';
@@ -108,22 +106,6 @@ export class TransactionService {
 
   async getAll(): Promise<Transaction[]> {
     return db.transactions.toArray();
-  }
-
-  async getByPeriod(period: number, year?: number): Promise<Transaction[]> {
-    const transactions = await db.transactions.where('period').equals(period as any).toArray();
-    if (year === undefined) {
-      return transactions;
-    }
-    return transactions.filter(t => getPeriodYear(t) === year);
-  }
-
-  async getByScope(scope: PeriodScope): Promise<Transaction[]> {
-    if (scope.kind === 'year') {
-      const transactions = await db.transactions.toArray();
-      return transactions.filter(t => getPeriodYear(t) === scope.year);
-    }
-    return this.getByPeriod(scope.period, scope.year);
   }
 
   async getByAccount(accountId: number): Promise<Transaction[]> {
