@@ -1,4 +1,4 @@
-import { Account, isCashAccount, isCreditCard } from '../models/account.model';
+import { Account, isBaseCurrencyAccount, isCashAccount, isCreditCard } from '../models/account.model';
 import { Category, isIncomeCategory } from '../models/category.model';
 import { Transaction } from '../models/transaction.model';
 import { Transfer } from '../models/transfer.model';
@@ -141,7 +141,7 @@ export function isUnconvertedTransaction(
   account: Account | undefined,
   baseCurrency: string,
 ): boolean {
-  if (!account || account.currency === baseCurrency) return false;
+  if (!account || isBaseCurrencyAccount(account, baseCurrency)) return false;
   return transaction.baseCurrencyAmount == null && transaction.exchangeRate == null;
 }
 

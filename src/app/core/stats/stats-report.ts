@@ -1,4 +1,4 @@
-import { Account, isCreditCard, paymentCategoryIds } from '../models/account.model';
+import { Account, isBaseCurrencyAccount, isCreditCard, paymentCategoryIds } from '../models/account.model';
 import { MonthScope } from '../scope/scope';
 import { movementInScope } from '../types/period.type';
 import { periodEndBalance, periodEndBaseAmount } from '../balances/period-end-balances';
@@ -76,10 +76,10 @@ export interface StatsReport {
    the initial balance, in Base Currency, of every Account that counts in the
    total balance and the Accumulated line alike: foreign ones converted at the
    fetched rates, while their movements keep their stored conversions (ADR
-   0013). `excluded` means a rate is unavailable or missing, so the foreign
+   0013). `hasExcludedAccounts` means a rate is unavailable or missing, so the foreign
    Accounts are left out. */
 interface Conversion {
-  excluded: boolean;
+  hasExcludedAccounts: boolean;
   initialsInBase: Map<number, number>;
 }
 
@@ -144,7 +144,7 @@ export function statsReport(
   return {
     balances: { accounts, ...totalBalance(baseAmounts) },
     degradation: {
-      accountsExcluded: conversion.excluded,
+      accountsExcluded: conversion.hasExcludedAccounts,
       unconvertedMovements:
         unconvertedTransactionsAffecting(snapshot.transactions, accountsById, base, scope).length > 0
         || unconvertedTransfersAffecting(snapshot.transfers, accountsById, scope).length > 0,
@@ -179,16 +179,16 @@ export function statsReport(
 function resolveConversion(snapshot: CashBasisSnapshot, rates: RateOutcome): Conversion {
   const foreign = currenciesNeedingRates(snapshot);
   const fetched = rates.kind === 'rates' ? rates.rates : new Map<string, number>();
-  const excluded = foreign.some(c => !fetched.has(c));
+  const hasExcludedAccounts = foreign.some(c => !fetched.has(c));
   const initialsInBase = new Map<number, number>();
   for (const account of snapshot.accounts) {
-    if (account.currency === snapshot.baseCurrency) {
+    if (isBaseCurrencyAccount(account, snapshot.baseCurrency)) {
       initialsInBase.set(account.id!, account.initialBalance);
-    } else if (!excluded) {
+    } else if (!hasExcludedAccounts) {
       initialsInBase.set(account.id!, round2(account.initialBalance / fetched.get(account.currency)!));
     }
   }
-  return { excluded, initialsInBase };
+  return { hasExcludedAccounts, initialsInBase };
 }
 
 /* The total balance and the Debt, from the Base Currency amount of every

@@ -1,4 +1,4 @@
-import { Account } from '../models/account.model';
+import { Account, isBaseCurrencyAccount } from '../models/account.model';
 import { Category } from '../models/category.model';
 import { Transaction } from '../models/transaction.model';
 import { Transfer } from '../models/transfer.model';
@@ -86,10 +86,11 @@ function transactionAmount(
   lookups: CashBasisLookups,
   baseCurrency: string,
 ): DisplayAmount {
-  const currency = lookups.accountsById.get(transaction.accountId)?.currency;
-  if (currency == null || currency === baseCurrency) {
+  const account = lookups.accountsById.get(transaction.accountId);
+  if (!account || isBaseCurrencyAccount(account, baseCurrency)) {
     return { kind: 'single', amount: transaction.amount, currency: baseCurrency };
   }
+  const { currency } = account;
   if (transaction.baseCurrencyAmount !== null) {
     return {
       kind: 'converted',

@@ -1,6 +1,6 @@
 import { movementIsAtOrBeforePeriod } from '../types/period.type';
 import { PeriodScope } from '../scope/scope';
-import { Account } from '../models/account.model';
+import { Account, isBaseCurrencyAccount } from '../models/account.model';
 import { Transaction } from '../models/transaction.model';
 import { Transfer } from '../models/transfer.model';
 
@@ -71,7 +71,9 @@ export function transactionBaseAmount(
   account: Account | undefined,
   baseCurrency: string,
 ): number {
-  return account?.currency === baseCurrency ? transaction.amount : storedBaseAmount(transaction);
+  return account && isBaseCurrencyAccount(account, baseCurrency)
+    ? transaction.amount
+    : storedBaseAmount(transaction);
 }
 
 /* ADR 0028: a Transfer's source side in Base Currency, or its face source
