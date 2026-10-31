@@ -1,4 +1,14 @@
 @let stats = report();
+<!-- ADR 0030: a Scope crossing a year boundary labels each January with its year. -->
+<ng-template #yearRow let-rowClass>
+  @if (yearMarks().length > 0) {
+    <div [class]="rowClass">
+      @for (mark of yearMarks(); track mark.column) {
+        <span [style.grid-column-start]="mark.column" [class.at-end]="mark.atEnd">{{ mark.year }}</span>
+      }
+    </div>
+  }
+</ng-template>
 <div class="dashboard">
   <header class="page-header">
     <div class="headline">
@@ -66,70 +76,80 @@
     }
   </section>
 
-  <section class="card twelve-periods-card">
-    <h2>{{ language.t('stats.twelvePeriods', { period: toPeriodLabel() }) }}</h2>
-    @if (stats.balanceStrip.hasMovements) {
-      <div class="twelve-periods" aria-hidden="true" [style.--zero-pct]="twelvePeriodsZeroPct() + '%'">
-        <div class="twelve-periods-tracks">
-          @for (item of stats.twelvePeriods.periods; track $index) {
-            <div class="twelve-periods-track" [class.current]="item.inScope">
-              <div class="twelve-periods-cell income">
-                @if (item.income > 0) {
-                  <div class="cell-fill" [style.height.%]="barHeight(item.income)"></div>
-                }
-              </div>
-              <div class="twelve-periods-cell expense">
-                @if (item.expenses > 0) {
-                  <div class="cell-fill" [style.height.%]="barHeight(item.expenses)"></div>
-                }
-              </div>
-              <div class="twelve-periods-cell net">
-                @if (item.net > 0) {
-                  <div class="cell-fill up" [style.height.%]="barHeight(item.net)"></div>
-                } @else if (item.net < 0) {
-                  <div class="cell-fill down" [style.height.%]="barHeight(item.net)"></div>
-                }
-              </div>
+  @if (chartsShown()) {
+    <section class="card net-chart-card">
+      <h2>{{ language.t('stats.netChart', { scope: scopeLabelText() }) }}</h2>
+      @if (stats.balanceStrip.hasMovements) {
+        <div class="chart-scroll" #chartScroll>
+          <div
+            class="net-chart"
+            aria-hidden="true"
+            [style.--zero-pct]="netChartZeroPct() + '%'"
+            [style.--periods]="stats.netChart.periods.length"
+          >
+            <div class="net-chart-tracks">
+              @for (item of stats.netChart.periods; track $index) {
+                <div class="net-chart-track" [class.current]="$last">
+                  <div class="net-chart-cell income">
+                    @if (item.income > 0) {
+                      <div class="cell-fill" [style.height.%]="barHeight(item.income)"></div>
+                    }
+                  </div>
+                  <div class="net-chart-cell expense">
+                    @if (item.expenses > 0) {
+                      <div class="cell-fill" [style.height.%]="barHeight(item.expenses)"></div>
+                    }
+                  </div>
+                  <div class="net-chart-cell net">
+                    @if (item.net > 0) {
+                      <div class="cell-fill up" [style.height.%]="barHeight(item.net)"></div>
+                    } @else if (item.net < 0) {
+                      <div class="cell-fill down" [style.height.%]="barHeight(item.net)"></div>
+                    }
+                  </div>
+                </div>
+              }
             </div>
-          }
+            <div class="net-chart-initials">
+              @for (item of stats.netChart.periods; track $index) {
+                <span class="net-chart-initial" [class.current]="$last">
+                  {{ language.monthInitial(item.month) }}
+                </span>
+              }
+            </div>
+            <ng-container *ngTemplateOutlet="yearRow; context: { $implicit: 'net-chart-years' }" />
+          </div>
         </div>
-        <div class="twelve-periods-initials">
-          @for (item of stats.twelvePeriods.periods; track $index) {
-            <span class="twelve-periods-initial" [class.current]="item.inScope">
-              {{ language.monthInitial(item.month) }}
-            </span>
-          }
+        <dl class="net-chart-caption">
+          <dt class="label">
+            {{ language.t('stats.netChartCaption', { month: toPeriodLabel() }) }}
+          </dt>
+          <dd class="value">{{ formatMoney(stats.netChart.toPeriodNet) }}</dd>
+        </dl>
+        <div class="net-chart-scale">
+          <p class="scale-line">
+            <span class="label">{{ language.t('stats.netChartScalePeak') }}</span>
+            <span class="value">{{ formatMoney(netChartScalePeak()) }}</span>
+          </p>
+          <p class="scale-line">
+            <span class="label">{{ language.t('stats.scaleOverdrawn') }}</span>
+            <span class="value">{{ formatMoney(netChartScaleOverdrawn()) }}</span>
+          </p>
         </div>
-      </div>
-      <dl class="twelve-periods-caption">
-        <dt class="label">
-          {{ language.t('stats.twelvePeriodsCaption', { month: toPeriodLabel() }) }}
-        </dt>
-        <dd class="value">{{ formatMoney(stats.twelvePeriods.toPeriodNet) }}</dd>
-      </dl>
-      <div class="twelve-periods-scale">
-        <p class="scale-line">
-          <span class="label">{{ language.t('stats.twelvePeriodsScalePeak') }}</span>
-          <span class="value">{{ formatMoney(twelvePeriodsScalePeak()) }}</span>
-        </p>
-        <p class="scale-line">
-          <span class="label">{{ language.t('stats.scaleOverdrawn') }}</span>
-          <span class="value">{{ formatMoney(twelvePeriodsScaleOverdrawn()) }}</span>
-        </p>
-      </div>
-      <p class="twelve-periods-legend">{{ language.t('stats.twelvePeriodsLegend') }}</p>
-      <ul class="twelve-periods-figures visually-hidden">
-        @for (item of stats.twelvePeriods.periods; track $index) {
-          <li>
-            {{ language.monthName(item.month) }} {{ item.year }}:
-            {{ twelvePeriodsFigures(item) }}
-          </li>
-        }
-      </ul>
-    } @else {
-      <p class="twelve-periods-zero">{{ language.t('stats.twelvePeriodsZero', { period: toPeriodLabel() }) }}</p>
-    }
-  </section>
+        <p class="net-chart-legend">{{ language.t('stats.netChartLegend') }}</p>
+        <ul class="net-chart-figures visually-hidden">
+          @for (item of stats.netChart.periods; track $index) {
+            <li>
+              {{ language.monthName(item.month) }} {{ item.year }}:
+              {{ netChartFigures(item) }}
+            </li>
+          }
+        </ul>
+      } @else {
+        <p class="net-chart-zero">{{ language.t('stats.netChartZero', { scope: scopeLabelText() }) }}</p>
+      }
+    </section>
+  }
 
   <section class="card">
     <h2>{{ language.t('stats.spendingByCategory', { scope: scopeLabelText() }) }}</h2>
@@ -190,25 +210,33 @@
           <span class="value">{{ formatMoney(stats.balances.total) }}</span>
         </div>
       }
-      @if (stats.balanceStrip.hasMovements) {
-        <div class="balance-strip" aria-hidden="true" [style.--zero-pct]="balanceZeroPct() + '%'">
-          <div class="balance-tracks">
-            @for (item of stats.balanceStrip.periods; track $index) {
-              <div class="balance-track" [class.current]="item.inScope" [class.frozen]="item.frozen">
-                @if (item.balance > 0) {
-                  <div class="balance-fill up" [style.height.%]="balanceFillHeight(item.balance)"></div>
-                } @else if (item.balance < 0) {
-                  <div class="balance-fill down" [style.height.%]="balanceFillHeight(item.balance)"></div>
-                }
-              </div>
-            }
-          </div>
-          <div class="balance-initials">
-            @for (item of stats.balanceStrip.periods; track $index) {
-              <span class="balance-initial" [class.current]="item.inScope">
-                {{ language.monthInitial(item.month) }}
-              </span>
-            }
+      @if (chartsShown() && stats.balanceStrip.hasMovements) {
+        <div class="chart-scroll" #chartScroll>
+          <div
+            class="balance-strip"
+            aria-hidden="true"
+            [style.--zero-pct]="balanceZeroPct() + '%'"
+            [style.--periods]="stats.balanceStrip.periods.length"
+          >
+            <div class="balance-tracks">
+              @for (item of stats.balanceStrip.periods; track $index) {
+                <div class="balance-track" [class.current]="$last" [class.frozen]="item.frozen">
+                  @if (item.balance > 0) {
+                    <div class="balance-fill up" [style.height.%]="balanceFillHeight(item.balance)"></div>
+                  } @else if (item.balance < 0) {
+                    <div class="balance-fill down" [style.height.%]="balanceFillHeight(item.balance)"></div>
+                  }
+                </div>
+              }
+            </div>
+            <div class="balance-initials">
+              @for (item of stats.balanceStrip.periods; track $index) {
+                <span class="balance-initial" [class.current]="$last">
+                  {{ language.monthInitial(item.month) }}
+                </span>
+              }
+            </div>
+            <ng-container *ngTemplateOutlet="yearRow; context: { $implicit: 'balance-years' }" />
           </div>
         </div>
         <dl class="balance-caption">

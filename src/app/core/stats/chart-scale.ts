@@ -19,7 +19,7 @@ export interface ScaleAnchor {
 const round2 = (value: number) => Math.round(value * 100) / 100;
 
 /* The zero line both graphs share positions itself from the charted
-   Periods' data (the twelve ending at the To Period): its height in the
+   Periods' data (exactly the Scope's, ADR 0030): its height in the
    track equals their negative share of their extremes. All-positive data
    pins the line to the bottom edge and gives the fills the full height;
    overdrawn data raises it in proportion, so
@@ -43,10 +43,10 @@ export function fillPct(value: number, extremes: Extremes): number {
   return 0;
 }
 
-/* Twelve-Period chart extremes: up is the largest figure among Income, Expenses
+/* Net chart extremes: up is the largest figure among Income, Expenses
    and positive Net; down is the deepest overdrawn Net. Income and Expenses
    are magnitudes and never grow below the line — only a negative Net does. */
-export function twelvePeriodsExtremes(periods: PeriodCashFlow[]): Extremes {
+export function netChartExtremes(periods: PeriodCashFlow[]): Extremes {
   let up = 0;
   let down = 0;
   for (const p of periods) {

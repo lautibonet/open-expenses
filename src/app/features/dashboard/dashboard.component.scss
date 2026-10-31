@@ -187,26 +187,69 @@
   }
 }
 
-/* Balance strip: the year progression inside the total balance card — the
+/* Balance strip: the Scope's progression inside the total balance card — the
    old net-strip grammar applied to money held. Ink fills diverge around the
    zero line: up = balance, down = overdrawn (ink, not red — a sign is a fact
    in a chart; the warning voice stays with the balance rows). The line sits
-   at the year's negative share of its extremes — bottom edge when every
+   at the charted Periods' negative share of their extremes — bottom edge when every
    balance is positive, rising when one is overdrawn. The tracks share the
-   twelve Periods's construction — twelve gap-separated columns, one plot —
+   Net chart's construction — gap-separated columns, one plot —
    so both graphs read as one grammar; only the size differs, the strip
    staying the quieter register. Months beyond the last movement freeze at
    the last known balance, matching the card figure, but render absent: they
    are not recorded data. */
-/* The one track grammar both graph cards share: twelve equal columns set
-   apart by the shared gap — a single plot each, its month tiles separated
-   by daylight — with the zero line painted inside each track at the
-   data-driven --zero-pct datum, above the fills. Height and inner layout
-   stay per-graph; the construction does not. */
-%twelve-column-plot {
+/* The one track grammar both graph cards share: one equal column per
+   charted Period (--periods, set on the plot) set apart by the shared gap —
+   a single plot each, its month tiles separated by daylight — with the zero
+   line painted inside each track at the data-driven --zero-pct datum, above
+   the fills. Height and inner layout stay per-graph; the construction does
+   not. */
+/* ADR 0030: every track is as wide as in a plot of this many Periods. */
+$reference-periods: 12;
+
+%period-plot {
   display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--periods), minmax(0, 1fr));
   gap: var(--space-xs);
+}
+
+/* ADR 0030: a plot charts exactly the Scope's Periods, each track as wide as
+   in a twelve-Period chart. A shorter Scope sits left-aligned, reading from
+   its From Period like every other line on the card; a longer one overflows
+   and its card scrolls sideways, never the page. The 1px padding keeps the To Period's
+   emphasis ring inside the scroll clip. */
+.chart-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 1px;
+}
+
+.net-chart,
+.balance-strip {
+  width: calc((100% + var(--space-xs)) * var(--periods) / #{$reference-periods} - var(--space-xs));
+}
+
+/* A Scope crossing a year boundary labels each January with its year, on a
+   row of its own so the label may run across the following columns without
+   crowding an initial. A January in the last column runs left instead. */
+%year-row {
+  @extend %period-plot;
+
+  margin-top: 2px;
+
+  span {
+    @extend %mono-data;
+
+    font-size: var(--type-label);
+    font-weight: 500;
+    color: var(--on-surface-variant);
+    white-space: nowrap;
+    justify-self: start;
+
+    &.at-end {
+      justify-self: end;
+    }
+  }
 }
 
 %graph-track {
@@ -244,21 +287,21 @@
    entirely and emphasis moves to the month label, which reads bold ink
    instead of the muted register. Desktop keeps the outline unchanged. */
 @media (max-width: 480px) {
-  .twelve-periods-track.current,
+  .net-chart-track.current,
   .balance-track.current {
     outline: none;
   }
 }
 
 .balance-strip {
-  /* The twelve Periods carries the same gap down to its caption; the strip
+  /* The Net chart carries the same gap down to its caption; the strip
      hands its footer the identical spacing, so the two cards' footers pair. */
   margin-top: var(--space-md);
   margin-bottom: var(--space-md);
 }
 
 .balance-tracks {
-  @extend %twelve-column-plot;
+  @extend %period-plot;
 }
 
 .balance-track {
@@ -294,7 +337,7 @@
 }
 
 .balance-initials {
-  @extend %twelve-column-plot;
+  @extend %period-plot;
 
   margin-top: var(--space-xs);
 }
@@ -310,6 +353,10 @@
     font-weight: bold;
     color: var(--on-surface);
   }
+}
+
+.balance-years {
+  @extend %year-row;
 }
 
 .balance-legend {
@@ -329,24 +376,24 @@
   list-style: none;
 }
 
-/* The twelve-Period chart: the twelve Periods to the To Period. Each Period carries three
+/* The Net chart: the Scope's Periods. Each Period carries three
    columns rising from the zero line — Income green, Expenses red, Net ink.
-   The line sits at the year's negative share of its extremes, positioned by
+   The line sits at the charted Periods' negative share of their extremes, positioned by
    the --zero-pct datum inherited from the graph container: bottom edge when
    every month is positive, rising when a month overspends. Only Net may
    cross it, growing down (the Negative-Stays-Ink Rule: a minus is a fact,
    not an alarm). Income and Expenses are magnitudes; they never dip below
    zero. Pure CSS, no chart lib. */
-.twelve-periods {
+.net-chart {
   margin-bottom: var(--space-md);
 }
 
-.twelve-periods-tracks {
+.net-chart-tracks {
   position: relative;
-  @extend %twelve-column-plot;
+  @extend %period-plot;
 }
 
-.twelve-periods-track {
+.net-chart-track {
   @extend %graph-track;
 
   display: grid;
@@ -354,11 +401,11 @@
   height: 7rem;
 }
 
-.twelve-periods-cell {
+.net-chart-cell {
   position: relative;
   z-index: 1;
 
-  & + .twelve-periods-cell {
+  & + .net-chart-cell {
     /* A hair of daylight between the three columns of a month. */
     margin-left: 1px;
   }
@@ -394,13 +441,13 @@
   }
 }
 
-.twelve-periods-initials {
-  @extend %twelve-column-plot;
+.net-chart-initials {
+  @extend %period-plot;
 
   margin-top: var(--space-xs);
 }
 
-.twelve-periods-initial {
+.net-chart-initial {
   @extend %mono-data;
 
   font-weight: 500;
@@ -413,13 +460,17 @@
   }
 }
 
+.net-chart-years {
+  @extend %year-row;
+}
+
 @media (max-width: 768px) {
-  .twelve-periods-track {
+  .net-chart-track {
     height: 5.5rem;
   }
 }
 
-.twelve-periods-zero {
+.net-chart-zero {
   @extend %empty-state;
 
   margin: 0;
@@ -464,7 +515,7 @@
   }
 }
 
-.twelve-periods-caption {
+.net-chart-caption {
   @extend %graph-caption;
 }
 
@@ -473,9 +524,9 @@
 }
 
 /* Scale anchor: the caps-voice lines that give the relative columns absolute
-   meaning — what the graph's scale edges are worth (the twelve-Period chart names its
+   meaning — what the graph's scale edges are worth (the Net chart names its
    tallest column and its deepest overdrawn Net; the strip names its track
-   top, or the overdrawn cap when that is the year's max magnitude). Each
+   top, or the overdrawn cap when that is the charted Periods' max magnitude). Each
    figure rides a row of the caption grammar, so labels align left and
    figures right across the whole footer. */
 %scale-anchor {
@@ -486,7 +537,7 @@
   }
 }
 
-.twelve-periods-scale {
+.net-chart-scale {
   @extend %scale-anchor;
 }
 
@@ -494,7 +545,7 @@
   @extend %scale-anchor;
 }
 
-.twelve-periods-legend {
+.net-chart-legend {
   @extend %caps-label-muted;
 
   /* Wrapped to two lines at 375px: readable leading, not the caps 1.0. */
@@ -505,7 +556,7 @@
 
 /* Accessible equivalent: announces Income, Expenses, Net — and Accumulated
    through the Scope's Period — per Period. */
-.twelve-periods-figures {
+.net-chart-figures {
   margin: 0;
   padding: 0;
   list-style: none;

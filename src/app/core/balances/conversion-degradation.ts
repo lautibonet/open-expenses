@@ -21,8 +21,8 @@ export interface ConversionDegradation {
  * Transactions on non-base-currency accounts with neither a stored base
  * amount nor a stored exchange rate, that reach at least one figure the
  * conversion-warning strip vouches for. Every Stats figure — the Scope's
- * totals, the balances as of the end of its To Period, and the charts of the
- * twelve Periods ending there — counts only movements at or before the end
+ * totals, the balances as of the end of its To Period, and the charts of its
+ * Periods (ADR 0030) — counts only movements at or before the end
  * of the To Period (ADR 0029).
  */
 export function unconvertedTransactionsAffecting(

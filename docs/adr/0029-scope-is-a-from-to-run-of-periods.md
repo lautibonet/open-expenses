@@ -1,5 +1,7 @@
 # A Scope is a From → To run of Periods
 
+Amended by ADR 0030: the Stats charts now cover exactly the Scope's Periods rather than the twelve ending at the To Period.
+
 A Scope is a run of consecutive Periods from a From Period to a To Period, possibly crossing a year boundary. A one-Period Scope is the From = To case and a whole year is January → December; there are no separate month and year kinds. Every scoped figure — the Movements list, Income, Expenses, and Net, the averages, the category breakdown — covers exactly the Scope's Periods on both screens. The motivating case was January: with Scopes confined to one Period year, "the last three months" could not be asked at all.
 
 This drops the implicit year-to-period behaviour of Stats, where a single selected Period reported January through that Period. It is replaced by an explicit "Year to date" preset, which is also the Stats default Scope (January through the latest Period with movements). Keeping year-to-period as a special case of the one-Period Scope would have made Movements and Stats report different figures for the same Scope. The Movements "All" option becomes the "Whole year" preset. Presets (last 3 / 6 / 12 Periods, Year to date, Whole year) only fill in a From/To pair; they are not a kind of Scope.

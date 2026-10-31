@@ -4,9 +4,7 @@ import {
   Period,
   comparePeriods,
   movementInScope,
-  periodInScope,
   scopePeriods,
-  shiftPeriod,
 } from '../types/period.type';
 import { periodEndBalance, periodEndBaseAmount } from '../balances/period-end-balances';
 import {
@@ -43,22 +41,13 @@ export interface AccountBalance {
   usedOfLimit: { used: number; limit: number } | null;
 }
 
-/* One Period of the Net chart: its figures, and whether the Scope covers it. */
-interface ChartPeriodFlow extends PeriodCashFlow {
-  inScope: boolean;
-}
-
 /* One Period of the balance strip: the total balance at its end. `frozen`
    marks a Period after the last one in the chart carrying a Movement, which
    holds the last known balance rather than recorded data. */
 interface StripPeriod extends Period {
   balance: number;
-  inScope: boolean;
   frozen: boolean;
 }
-
-/* ADR 0029: the Stats charts show the twelve Periods ending at the To Period. */
-const CHART_LENGTH = 12;
 
 export interface StatsReport {
   balances: {
@@ -83,12 +72,12 @@ export interface StatsReport {
     /* Whether any Period counted carries a cash-basis movement. */
     hasData: boolean;
   };
-  /* The Net chart: the twelve Periods ending at the To Period. */
-  twelvePeriods: {
-    periods: ChartPeriodFlow[];
+  /* The Net chart: exactly the Scope's Periods, From through To (ADR 0030). */
+  netChart: {
+    periods: PeriodCashFlow[];
     toPeriodNet: number;
   };
-  /* The balance strip, over the same twelve Periods. */
+  /* The balance strip, over the same Periods. */
   balanceStrip: {
     periods: StripPeriod[];
     /* The total balance at the end of each charted Period. */
@@ -133,9 +122,7 @@ export function statsReport(
   rates: RateOutcome,
 ): StatsReport {
   const end = scope.to;
-  const chartScope: Scope = { from: shiftPeriod(end, -(CHART_LENGTH - 1)), to: end };
-  const charted = scopePeriods(chartScope);
-  const inScope = (period: Period) => periodInScope(period.year, period.month, scope);
+  const charted = scopePeriods(scope);
   const figures = cashBasis(snapshot);
   const { accountsById, isIncome } = figures;
   const base = snapshot.baseCurrency;
@@ -164,10 +151,7 @@ export function statsReport(
 
   const totals = figures.scopeTotals(scope);
   const averages = monthlyAverages(totals);
-  const periods = figures.periodFlows(charted).map(flow => ({
-    ...flow,
-    inScope: inScope(flow),
-  }));
+  const periods = figures.periodFlows(charted);
   const accumulated = accumulatedByPeriod({
     accounts: snapshot.accounts,
     transactions: snapshot.transactions,
@@ -181,12 +165,11 @@ export function statsReport(
      the last known balance rather than recorded data. */
   const lastWithMovements = latestPeriodWithMovements(
     [...snapshot.transactions, ...snapshot.transfers],
-    chartScope,
+    scope,
   );
   const stripPeriods = charted.map((period, i) => ({
     ...period,
     balance: accumulated[i],
-    inScope: inScope(period),
     frozen: lastWithMovements === null || comparePeriods(period, lastWithMovements) > 0,
   }));
 
@@ -204,7 +187,7 @@ export function statsReport(
       savingsRate: averages.income > 0 ? Math.round((averages.net / averages.income) * 100) : null,
       hasData: totals.periodsWithMovements > 0,
     },
-    twelvePeriods: {
+    netChart: {
       periods,
       toPeriodNet: periods[periods.length - 1].net,
     },
