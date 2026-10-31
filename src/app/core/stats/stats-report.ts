@@ -166,7 +166,7 @@ export function statsReport(
   const averages = monthlyAverages(totals);
   const periods = figures.periodFlows(charted).map(flow => ({
     ...flow,
-    inScope: inScope({ year: flow.year, month: flow.period }),
+    inScope: inScope(flow),
   }));
   const accumulated = accumulatedByPeriod({
     accounts: snapshot.accounts,

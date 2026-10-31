@@ -71,7 +71,7 @@
     @if (stats.balanceStrip.hasMovements) {
       <div class="year-overview" aria-hidden="true" [style.--zero-pct]="yearOverviewZeroPct() + '%'">
         <div class="overview-tracks">
-          @for (item of stats.yearOverview.periods; track item.period) {
+          @for (item of stats.yearOverview.periods; track $index) {
             <div class="overview-track" [class.current]="item.inScope">
               <div class="overview-cell income">
                 @if (item.income > 0) {
@@ -94,9 +94,9 @@
           }
         </div>
         <div class="overview-initials">
-          @for (item of stats.yearOverview.periods; track item.period) {
+          @for (item of stats.yearOverview.periods; track $index) {
             <span class="overview-initial" [class.current]="item.inScope">
-              {{ language.monthInitial(item.period) }}
+              {{ language.monthInitial(item.month) }}
             </span>
           }
         </div>
@@ -119,9 +119,9 @@
       </div>
       <p class="overview-legend">{{ language.t('stats.overviewLegend') }}</p>
       <ul class="overview-figures visually-hidden">
-        @for (item of stats.yearOverview.periods; track item.period) {
+        @for (item of stats.yearOverview.periods; track $index) {
           <li>
-            {{ language.monthName(item.period) }} {{ item.year }}:
+            {{ language.monthName(item.month) }} {{ item.year }}:
             {{ overviewFigures(item) }}
           </li>
         }

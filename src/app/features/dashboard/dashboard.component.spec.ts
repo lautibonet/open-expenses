@@ -155,7 +155,7 @@ describe('DashboardComponent', () => {
       expect(fixture.nativeElement.querySelector('.overview-zero')).toBeNull();
       expect(
         component.report().yearOverview.periods.find(
-          o => o.period === getCurrentPeriod() && o.year === getCurrentYear(),
+          o => o.month === getCurrentPeriod() && o.year === getCurrentYear(),
         )!.net,
       ).toBe(3000);
     });
@@ -465,7 +465,7 @@ describe('DashboardComponent - shared scope', () => {
     expect(report.categorySpending.map(c => c.total)).toEqual([1000]);
     /* 9000 + 3000 - 400 - 600: February's 5000 comes after the To Period. */
     expect(report.balances.total).toBe(11000);
-    expect(report.yearOverview.periods.at(-1)).toMatchObject({ year: 2025, period: 1 });
+    expect(report.yearOverview.periods.at(-1)).toMatchObject({ year: 2025, month: 1 });
     expect(report.yearOverview.periods.filter(p => p.inScope)).toHaveLength(3);
   });
 
@@ -1612,7 +1612,7 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     expect(value).toBeTruthy();
     expect(value.textContent).toContain(
       component.formatMoney(
-        component.report().yearOverview.periods.find(o => o.period === getCurrentPeriod())!.net,
+        component.report().yearOverview.periods.find(o => o.month === getCurrentPeriod())!.net,
       ),
     );
 
@@ -1859,9 +1859,9 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     component.onScopeChange(scopeOf(3, 2012));
 
     const periods = component.report().yearOverview.periods;
-    expect(periods.at(-1)).toMatchObject({ year: 2012, period: 3, net: 4000 });
-    expect(periods[0]).toMatchObject({ year: 2011, period: 4 });
-    expect(periods.find(o => o.year === 2012 && o.period === 1)!.net).toBe(0);
+    expect(periods.at(-1)).toMatchObject({ year: 2012, month: 3, net: 4000 });
+    expect(periods[0]).toMatchObject({ year: 2011, month: 4 });
+    expect(periods.find(o => o.year === 2012 && o.month === 1)!.net).toBe(0);
   });
 
   it('marks the Scope Periods across a year boundary on both charts', async () => {
