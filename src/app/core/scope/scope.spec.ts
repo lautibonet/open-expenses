@@ -6,6 +6,7 @@ import {
   changeTo,
   defaultScope,
   defaultStatsScope,
+  latestPeriodWithMovements,
   matchingPreset,
   presetScope,
   scopeFromQuery,
@@ -32,6 +33,20 @@ describe('scope', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  describe('latestPeriodWithMovements', () => {
+    const movements = [movement(2025, 12), movement(2026, 4), movement(2025, 8), movement(2026, 'Smarch')];
+
+    it('should find the latest Period with movements, or null when none is recorded', () => {
+      expect(latestPeriodWithMovements(movements)).toEqual(at(2026, 4));
+      expect(latestPeriodWithMovements([])).toBeNull();
+    });
+
+    it('should look only within a Scope when given one, across a year boundary', () => {
+      expect(latestPeriodWithMovements(movements, scope([2025, 11], [2026, 1]))).toEqual(at(2025, 12));
+      expect(latestPeriodWithMovements(movements, scope([2026, 5], [2026, 12]))).toBeNull();
+    });
   });
 
   describe('presetScope', () => {

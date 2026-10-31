@@ -9,6 +9,7 @@ import {
   getPeriodYear,
   isMonthNumber,
   isValidYear,
+  movementInScope,
   movementPeriod,
   samePeriod,
   shiftPeriod,
@@ -69,10 +70,15 @@ export function isMultiPeriod(scope: Scope): boolean {
   return !samePeriod(scope.from, scope.to);
 }
 
-/* The latest Period with movements, or null when nothing is recorded. */
-export function latestPeriodWithMovements(movements: ScopeAwareMovement[]): Period | null {
+/* The latest Period with movements — only those within the given Scope,
+   when one is given — or null when there is none. */
+export function latestPeriodWithMovements(
+  movements: ScopeAwareMovement[],
+  within?: Scope,
+): Period | null {
   let latest: Period | null = null;
   for (const movement of movements) {
+    if (within && !movementInScope(movement, within)) continue;
     const period = movementPeriod(movement);
     if (period && (latest === null || comparePeriods(period, latest) > 0)) {
       latest = period;
