@@ -1,5 +1,4 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
 import { TransactionService } from '../../core/services/transaction.service';
 import { TransferService } from '../../core/services/transfer.service';
 import { AccountService } from '../../core/services/account.service';
@@ -8,16 +7,10 @@ import { ProfileService } from '../../core/services/profile.service';
 import { ExchangeRateService } from '../../core/services/exchange-rate.service';
 import { LanguageService } from '../../core/services/language.service';
 import { DataVersionService } from '../../core/services/data-version.service';
-import { MonthNumber } from '../../core/types/period.type';
-import {
-  MonthScope,
-  ScopeOptions,
-  changeMonth,
-  changeYear,
-  defaultScope,
-  scopeOptions,
-} from '../../core/scope/scope';
+import { ScopeAwareMovement } from '../../core/types/period.type';
+import { Scope, defaultStatsScope } from '../../core/scope/scope';
 import { DismissibleAlertComponent } from '../../shared/components/dismissible-alert/dismissible-alert.component';
+import { ScopeControlComponent } from '../../shared/components/scope-control/scope-control.component';
 import { FitTextDirective } from '../../shared/directives/fit-text.directive';
 import { CashBasisSnapshot, PeriodCashFlow } from '../../core/stats/cash-basis';
 import { CategorySpending, spendingShare } from '../../core/stats/category-spending';
@@ -32,7 +25,7 @@ import {
   balanceExtremes,
   categoryBarWidth,
   fillPct,
-  overviewExtremes,
+  twelvePeriodsExtremes,
   stripScaleAnchor,
   zeroPct,
 } from '../../core/stats/chart-scale';
@@ -51,7 +44,7 @@ const emptySnapshot: CashBasisSnapshot = {
 
 @Component({
   selector: 'app-dashboard',
-  imports: [FormsModule, DismissibleAlertComponent, FitTextDirective],
+  imports: [DismissibleAlertComponent, FitTextDirective, ScopeControlComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss',
 })
@@ -65,26 +58,28 @@ export class DashboardComponent implements OnInit {
   private dataVersion = inject(DataVersionService);
   language = inject(LanguageService);
 
-  scope = signal<MonthScope>(defaultScope());
+  scope = signal<Scope>(defaultStatsScope());
   /* Everything recorded, loaded once per data version; a Scope change only
      re-runs the report. */
   private snapshot = signal<CashBasisSnapshot>(emptySnapshot);
   /* The foreign Accounts' Exchange Rates, fetched once per load. Until they
      arrive the report already shows every figure that does not need them. */
   private rates = signal<RateOutcome>(noRatesNeeded);
-  private availableScopes = computed<ScopeOptions>(() => {
+  /* Every recorded movement, for the Scope control's presets and years. */
+  movements = computed<ScopeAwareMovement[]>(() => {
     const { transactions, transfers } = this.snapshot();
-    return scopeOptions([...transactions, ...transfers], this.scope());
+    return [...transactions, ...transfers];
   });
-  scopeYears = computed(() => this.availableScopes().years);
-  scopeMonths = computed(() => this.availableScopes().months);
   scopeAnnouncement = signal('');
+  /* Issue #216: the Scope selector waits for the data, so it never shows a
+     Period other than the one the screen opens on. */
+  isLoaded = signal(false);
 
   baseCurrency = computed(() => this.snapshot().baseCurrency);
   /* Every figure the screen shows. */
   report = computed<StatsReport>(() => statsReport(this.snapshot(), this.scope(), this.rates()));
 
-  private overviewExtremes = computed(() => overviewExtremes(this.report().yearOverview.periods));
+  private twelvePeriodsExtremes = computed(() => twelvePeriodsExtremes(this.report().twelvePeriods.periods));
   private balanceExtremes = computed(() => balanceExtremes(this.report().balanceStrip.accumulated));
 
   async ngOnInit(): Promise<void> {
@@ -101,6 +96,11 @@ export class DashboardComponent implements OnInit {
     ]);
     const snapshot: CashBasisSnapshot = { accounts, categories, transactions, transfers, baseCurrency };
     this.snapshot.set(snapshot);
+    /* Issue #216: every load — entering the screen or a Restore — opens on
+       the default Scope, Year to date (ADR 0029); Stats is read-only, so
+       nothing else reloads it. */
+    this.scope.set(defaultStatsScope([...transactions, ...transfers]));
+    this.isLoaded.set(true);
     this.rates.set(currenciesNeedingRates(snapshot).length === 0 ? noRatesNeeded : ratesPending);
     const rates = await this.fetchRates(snapshot);
     /* A newer load owns the screen now; its own fetch settles the rates. */
@@ -123,15 +123,7 @@ export class DashboardComponent implements OnInit {
     }
   }
 
-  onScopeYearChange(value: number): void {
-    this.setScope(changeYear(this.scope(), value, this.availableScopes()));
-  }
-
-  onScopeMonthChange(period: MonthNumber): void {
-    this.setScope(changeMonth(this.scope(), period));
-  }
-
-  private setScope(scope: MonthScope): void {
+  onScopeChange(scope: Scope): void {
     this.scope.set(scope);
     this.scopeAnnouncement.set(this.language.scopeLabel(scope));
   }
@@ -140,12 +132,9 @@ export class DashboardComponent implements OnInit {
     return this.language.scopeLabel(this.scope());
   }
 
-  kpiScopeLabel(): string {
-    const scope = this.scope();
-    return this.language.t('stats.kpiScope', {
-      year: scope.year,
-      range: this.language.monthRangeLabel(1, scope.period),
-    });
+  /* The balances and the charts end at the To Period. */
+  toPeriodLabel(): string {
+    return this.language.periodName(this.scope().to);
   }
 
   categoryBarWidth(total: number): number {
@@ -176,14 +165,6 @@ export class DashboardComponent implements OnInit {
     return parts.join(' ');
   }
 
-  scopePeriod(): MonthNumber {
-    return this.scope().period;
-  }
-
-  scopeYearValue(): number {
-    return this.scope().year;
-  }
-
   /* A card row's "used X of limit" caption, in the card's own currency. */
   usedOfLimitText(item: AccountBalance): string {
     if (item.usedOfLimit == null) return '';
@@ -194,8 +175,8 @@ export class DashboardComponent implements OnInit {
     });
   }
 
-  yearOverviewZeroPct(): number {
-    return zeroPct(this.overviewExtremes());
+  twelvePeriodsZeroPct(): number {
+    return zeroPct(this.twelvePeriodsExtremes());
   }
 
   balanceZeroPct(): number {
@@ -203,18 +184,18 @@ export class DashboardComponent implements OnInit {
   }
 
   barHeight(value: number): number {
-    return fillPct(value, this.overviewExtremes());
+    return fillPct(value, this.twelvePeriodsExtremes());
   }
 
-  /* Scale anchor: the figures the overview's scale edges are worth — the
+  /* Scale anchor: the figures the twelve-Period chart's scale edges are worth — the
      tallest column above the line and the deepest overdrawn Net below it,
      signed. Stated so the relative heights get absolute meaning. */
-  overviewScalePeak(): number {
-    return this.overviewExtremes().up;
+  twelvePeriodsScalePeak(): number {
+    return this.twelvePeriodsExtremes().up;
   }
 
-  overviewScaleOverdrawn(): number {
-    return -this.overviewExtremes().down;
+  twelvePeriodsScaleOverdrawn(): number {
+    return -this.twelvePeriodsExtremes().down;
   }
 
   stripScaleAnchor(): { label: string; amount: number } {
@@ -230,7 +211,7 @@ export class DashboardComponent implements OnInit {
   }
 
   /* The accessible figure list: Income, Expenses, and Net per Period. */
-  overviewFigures(item: PeriodCashFlow): string {
+  twelvePeriodsFigures(item: PeriodCashFlow): string {
     return [
       `${this.language.t('stats.income')} ${this.formatMoney(item.income)}`,
       `${this.language.t('stats.expenses')} ${this.formatMoney(item.expenses)}`,

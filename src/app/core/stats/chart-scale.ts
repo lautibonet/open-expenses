@@ -18,10 +18,11 @@ export interface ScaleAnchor {
 
 const round2 = (value: number) => Math.round(value * 100) / 100;
 
-/* The zero line both graphs share positions itself from the Scope year's
-   data: its height in the track equals the year's negative share of its
-   extremes. An all-positive year pins the line to the bottom edge and gives
-   the fills the full height; an overdrawn year raises it in proportion, so
+/* The zero line both graphs share positions itself from the charted
+   Periods' data (the twelve ending at the To Period): its height in the
+   track equals their negative share of their extremes. All-positive data
+   pins the line to the bottom edge and gives the fills the full height;
+   overdrawn data raises it in proportion, so
    the tallest figure above reaches the top edge and the deepest below
    reaches the bottom edge. */
 export function zeroPct({ up, down }: Extremes): number {
@@ -42,10 +43,10 @@ export function fillPct(value: number, extremes: Extremes): number {
   return 0;
 }
 
-/* Year overview extremes: up is the largest figure among Income, Expenses
+/* Twelve-Period chart extremes: up is the largest figure among Income, Expenses
    and positive Net; down is the deepest overdrawn Net. Income and Expenses
    are magnitudes and never grow below the line — only a negative Net does. */
-export function overviewExtremes(periods: PeriodCashFlow[]): Extremes {
+export function twelvePeriodsExtremes(periods: PeriodCashFlow[]): Extremes {
   let up = 0;
   let down = 0;
   for (const p of periods) {

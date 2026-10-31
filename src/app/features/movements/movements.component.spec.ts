@@ -21,8 +21,23 @@ import {
   MonthNumber,
   getCurrentPeriod,
   getCurrentYear,
+  shiftPeriod,
 } from '../../core/types/period.type';
-import { defaultScope } from '../../core/scope/scope';
+import { Scope, defaultMovementsScope } from '../../core/scope/scope';
+
+/* A Scope from one Period through another; the To defaults to the From. */
+function scopeOf(fromMonth: number, fromYear: number, toMonth = fromMonth, toYear = fromYear): Scope {
+  return {
+    from: { year: fromYear, month: fromMonth as MonthNumber },
+    to: { year: toYear, month: toMonth as MonthNumber },
+  };
+}
+
+/* The one-Period Scope on the current Period, shifted by some months. */
+function currentPeriodScope(shift = 0): Scope {
+  const period = shiftPeriod({ year: getCurrentYear(), month: getCurrentPeriod() }, shift);
+  return { from: period, to: period };
+}
 import { TransactionRow, movementOf } from '../../core/movements/movement-list';
 import { todayLocalISO } from '../../core/format/local-date';
 
@@ -688,7 +703,7 @@ describe('MovementsComponent - period year', () => {
     await component.ngOnInit();
     component.openTransferForm();
     fixture.detectChanges();
-    component.scope.set({ kind: 'month', period: 3, year: 2025 });
+    component.scope.set(scopeOf(3, 2025));
 
     component.cancelTransferForm();
     component.openTransferForm();
@@ -717,7 +732,7 @@ describe('MovementsComponent - period year', () => {
     expect(component.rows().length).toBe(1);
     expect((movementOf(component.rows()[0]) as any).amount).toBe(200);
 
-    await component.onScopeYearChange(getCurrentYear() - 1);
+    component.onScopeChange(scopeOf(period, getCurrentYear() - 1));
     expect(component.rows().length).toBe(1);
     expect((movementOf(component.rows()[0]) as any).amount).toBe(100);
   });
@@ -841,12 +856,19 @@ describe('MovementsComponent - page header and scope control', () => {
     expect(subtitle.textContent.trim()).toBe('Track and categorize your financial flow.');
   });
 
-  it('keeps accessible names on the year and month scope selects', async () => {
+  it('keeps accessible names on the preset and, for a run of Periods, the From and To selects', async () => {
     await component.ngOnInit();
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('select[aria-label="Scope year"]')).toBeTruthy();
-    expect(fixture.nativeElement.querySelector('select[aria-label="Scope month"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('select[aria-label="Scope preset"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('select[aria-label="From month"]')).toBeNull();
+
+    component.onScopeChange(scopeOf(11, 2025, 1, 2026));
+    fixture.detectChanges();
+
+    for (const label of ['From month', 'From year', 'To month', 'To year']) {
+      expect(fixture.nativeElement.querySelector(`select[aria-label="${label}"]`), label).toBeTruthy();
+    }
   });
 
   it('renders plain month and year selects with no chevron stepper', async () => {
@@ -858,7 +880,7 @@ describe('MovementsComponent - page header and scope control', () => {
       fixture.nativeElement.querySelector('button[aria-label="Previous month"]'),
     ).toBeNull();
     expect(fixture.nativeElement.querySelector('button[aria-label="Next month"]')).toBeNull();
-    expect(fixture.nativeElement.querySelector('.scope-selects select')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('app-scope-control select')).toBeTruthy();
   });
 
   it('leads the content with the Net Flow card', async () => {
@@ -1011,65 +1033,77 @@ describe('MovementsComponent - shared scope', () => {
     await db.delete();
   });
 
-  it('should default to the current month scope', async () => {
+  it('should default to the current Period when nothing is recorded', async () => {
     await component.ngOnInit();
-    expect(component.scope()).toEqual(defaultScope());
+    expect(component.scope()).toEqual(defaultMovementsScope());
+    expect(component.scope()).toEqual(currentPeriodScope());
   });
 
-  it('should derive year options from the data range, not a fixed window', async () => {
-    await transactionService.create(
-      accountId,
-      categoryId,
-      100,
-      new Date('2012-01-15'),
-      1,
-      null,
-      null,
-      2012,
-    );
-    await transactionService.create(
-      accountId,
-      categoryId,
-      200,
-      new Date('2016-01-15'),
-      1,
-      null,
-      null,
-      2016,
-    );
+  it('should open on the latest Period with movements, even one ahead of the calendar', async () => {
+    const nextYear = getCurrentYear() + 1;
+    await transactionService.create(accountId, categoryId, 100, new Date(), 2, null, null, nextYear);
+    await transactionService.create(accountId, categoryId, 100, new Date('2016-05-15'), 5, null, null, 2016);
+
     await component.ngOnInit();
 
-    expect(component.scopeYears()).toContain(2012);
-    expect(component.scopeYears()).toContain(2016);
-    expect(component.scopeYears()).toContain(getCurrentYear());
-    expect(component.scopeYears()).toEqual(expect.arrayContaining([2012, 2016, getCurrentYear()]));
+    expect(component.scope()).toEqual(scopeOf(2, nextYear));
   });
 
-  it('should derive month options from the months actually present in data', async () => {
-    await transactionService.create(
-      accountId,
-      categoryId,
-      100,
-      new Date('2026-03-15'),
-      3,
-      null,
-      null,
-      2026,
-    );
-    await transactionService.create(
-      accountId,
-      categoryId,
-      200,
-      new Date('2026-07-15'),
-      7,
-      null,
-      null,
-      2026,
-    );
+  it('should keep the selection when a movement is recorded in a later Period', async () => {
+    await transactionService.create(accountId, categoryId, 100, new Date(), 3, null, null, 2016);
+    await component.ngOnInit();
+    expect(component.scope()).toEqual(scopeOf(3, 2016));
+
+    await transactionService.create(accountId, categoryId, 100, new Date(), 9, null, null, 2016);
+    await component.refresh();
+
+    expect(component.scope()).toEqual(scopeOf(3, 2016));
+  });
+
+  it('should pick the default again when the data is replaced by a Restore', async () => {
+    await transactionService.create(accountId, categoryId, 100, new Date(), 3, null, null, 2016);
+    fixture.detectChanges();
+    await vi.waitFor(() => expect(component.isLoaded()).toBe(true));
+    component.onScopeChange(scopeOf(1, 2016, 12, 2016));
+
+    await transactionService.create(accountId, categoryId, 100, new Date(), 9, null, null, 2017);
+    TestBed.inject(DataVersionService).bump();
+    fixture.detectChanges();
+
+    await vi.waitFor(() => expect(component.scope()).toEqual(scopeOf(9, 2017)));
+  });
+
+  it('should not show the Scope selector until the data has loaded', async () => {
+    await transactionService.create(accountId, categoryId, 100, new Date(), 3, null, null, 2016);
+
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-scope-control')).toBeNull();
+
+    await vi.waitFor(() => expect(component.isLoaded()).toBe(true));
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-scope-control')).not.toBeNull();
+  });
+
+  it('should offer every year from the earliest with data to the current year, with no gaps', async () => {
+    await transactionService.create(accountId, categoryId, 100, new Date('2012-01-15'), 1, null, null, 2012);
+    await transactionService.create(accountId, categoryId, 200, new Date('2016-01-15'), 1, null, null, 2016);
+    await component.ngOnInit();
+    component.onScopeChange(scopeOf(1, 2016, 2, 2016));
+    fixture.detectChanges();
+
+    const yearSelect = fixture.nativeElement.querySelector('select[aria-label="From year"]') as HTMLSelectElement;
+    const years = Array.from(yearSelect.options).map(o => Number(o.textContent));
+    const expected = Array.from({ length: getCurrentYear() - 2012 + 1 }, (_, i) => 2012 + i);
+    expect(years).toEqual(expected);
+  });
+
+  it('should stay on a picked Period without movements', async () => {
+    await transactionService.create(accountId, categoryId, 200, new Date('2016-07-15'), 7, null, null, 2016);
     await component.ngOnInit();
 
-    expect(component.scopeMonths()).toContain(3);
-    expect(component.scopeMonths()).toContain(7);
+    component.onScopeChange(scopeOf(2, 2015));
+    expect(component.scope()).toEqual(scopeOf(2, 2015));
+    expect(component.rows()).toEqual([]);
   });
 
   it('should show movements from a chosen past period', async () => {
@@ -1094,11 +1128,9 @@ describe('MovementsComponent - shared scope', () => {
       2016,
     );
     await component.ngOnInit();
-    expect(component.rows().length).toBe(0);
+    expect(component.scope()).toEqual(scopeOf(5, 2016));
 
-    await component.onScopeYearChange(2012);
-    await component.onScopeMonthChange(1);
-    expect(component.scope()).toEqual({ kind: 'month', period: 1, year: 2012 });
+    component.onScopeChange(scopeOf(1, 2012));
     expect(component.rows().length).toBe(1);
   });
 
@@ -1116,13 +1148,12 @@ describe('MovementsComponent - shared scope', () => {
     );
     await component.ngOnInit();
 
-    await component.onScopeYearChange(oldYear);
-    await component.onScopeMonthChange(1);
+    component.onScopeChange(scopeOf(1, oldYear));
     expect(component.rows().length).toBe(1);
     expect((movementOf(component.rows()[0]) as any).year).toBe(oldYear);
   });
 
-  it('should switch scope by year while keeping the current period', async () => {
+  it('should switch to the same Period of another year', async () => {
     const period = getCurrentPeriod();
     await transactionService.create(
       accountId,
@@ -1137,12 +1168,11 @@ describe('MovementsComponent - shared scope', () => {
     await transactionService.create(accountId, categoryId, 200, new Date(), period);
     await component.ngOnInit();
 
-    await component.onScopeYearChange(getCurrentYear() - 1);
-    expect(component.scope()).toEqual({ kind: 'month', period, year: getCurrentYear() - 1 });
+    component.onScopeChange(scopeOf(period, getCurrentYear() - 1));
     expect(component.rows().length).toBe(1);
   });
 
-  it('should switch scope month and filter accordingly', async () => {
+  it('should switch to another Period and filter accordingly', async () => {
     const year = getCurrentYear();
     await transactionService.create(
       accountId,
@@ -1166,12 +1196,11 @@ describe('MovementsComponent - shared scope', () => {
     );
     await component.ngOnInit();
 
-    await component.onScopeMonthChange(1);
-    expect(component.scope()).toEqual({ kind: 'month', period: 1, year });
+    component.onScopeChange(scopeOf(1, year));
     expect(component.rows().length).toBe(1);
   });
 
-  it('shows the whole selected year when the All option is chosen', async () => {
+  it('shows the whole year when the Whole year preset fills in January to December', async () => {
     const year = getCurrentYear();
     await transactionService.create(
       accountId,
@@ -1194,38 +1223,49 @@ describe('MovementsComponent - shared scope', () => {
       year,
     );
     await component.ngOnInit();
-    await component.onScopeMonthChange(1);
+    component.onScopeChange(scopeOf(1, year));
     expect(component.rows().length).toBe(1);
 
-    await component.onScopeMonthChange('all');
-    expect(component.scope()).toEqual({ kind: 'year', year });
+    component.onScopeChange(scopeOf(1, year, 12, year));
     expect(component.rows().length).toBe(2);
   });
 
-  it('keeps the All scope when the year changes', async () => {
+  it('lists the movements of a Scope across a year boundary, and its Net covers exactly them', async () => {
+    const salary = await categoryService.create('Salary', 'income');
+    const at = (month: number, year: number) => new Date(`${year}-${String(month).padStart(2, '0')}-15`);
+    await transactionService.create(accountId, categoryId, 999, at(10, 2025), 10, null, null, 2025);
+    await transactionService.create(accountId, salary.id!, 3000, at(11, 2025), 11, null, null, 2025);
+    await transactionService.create(accountId, categoryId, 400, at(12, 2025), 12, null, null, 2025);
+    await transactionService.create(accountId, categoryId, 600, at(1, 2026), 1, null, null, 2026);
+    await transactionService.create(accountId, categoryId, 888, at(2, 2026), 2, null, null, 2026);
     await component.ngOnInit();
 
-    await component.onScopeMonthChange('all');
-    await component.onScopeYearChange(getCurrentYear() - 1);
+    component.onScopeChange(scopeOf(11, 2025, 1, 2026));
+    fixture.detectChanges();
 
-    expect(component.scope()).toEqual({ kind: 'year', year: getCurrentYear() - 1 });
+    expect(component.rows().map(row => (movementOf(row) as Transaction).amount).sort()).toEqual([3000, 400, 600]);
+    const card = fixture.debugElement.query(By.directive(NetFlowCardComponent)).componentInstance as NetFlowCardComponent;
+    expect(card.incomeTotal()).toBe(3000);
+    expect(card.expenseTotal()).toBe(1000);
+    expect(card.netTotal()).toBe(2000);
   });
 
-  it('selects the All option in the month select while the year scope is active', async () => {
+  it('opens the preset select on Last period', async () => {
     await component.ngOnInit();
-    expect(component.scopeMonthSelectValue()).toBe(getCurrentPeriod());
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
 
-    await component.onScopeMonthChange('all');
-
-    expect(component.scopeMonthSelectValue()).toBe('all');
+    const preset = fixture.nativeElement.querySelector('select[aria-label="Scope preset"]') as HTMLSelectElement;
+    expect(preset.options[preset.selectedIndex].textContent?.trim()).toBe('Last period');
   });
 
-  it('announces the All scope with the year label', async () => {
+  it('announces a whole-year Scope with the year label', async () => {
     await component.ngOnInit();
 
-    await component.onScopeMonthChange('all');
+    component.onScopeChange(scopeOf(1, getCurrentYear(), 12, getCurrentYear()));
 
-    expect(component.scopeAnnouncement()).toBe(`All ${getCurrentYear()}`);
+    expect(component.scopeAnnouncement()).toBe(`${getCurrentYear()}`);
   });
 
   it('should announce the scope to assistive tech on change', async () => {
@@ -1233,13 +1273,13 @@ describe('MovementsComponent - shared scope', () => {
     expect(component.scopeAnnouncement()).toBe('');
 
     const period = getCurrentPeriod();
-    await component.onScopeYearChange(getCurrentYear() - 1);
+    component.onScopeChange(scopeOf(period, getCurrentYear() - 1));
     expect(component.scopeAnnouncement()).toBe(
       `${MONTH_NAMES[period - 1]} ${getCurrentYear() - 1}`,
     );
 
-    await component.onScopeYearChange(getCurrentYear());
-    expect(component.scopeAnnouncement()).toBe(`${MONTH_NAMES[period - 1]} ${getCurrentYear()}`);
+    component.onScopeChange(scopeOf(11, 2025, 1, 2026));
+    expect(component.scopeAnnouncement()).toBe('November 2025 – January 2026');
   });
 
   it('should title a heading with the current period label', async () => {
@@ -1938,7 +1978,8 @@ describe('MovementsComponent - translations', () => {
     const text = fixture.nativeElement.textContent;
     expect(text).toContain('+ Transferencia');
     expect(text).toContain('No hay movimientos de');
-    expect(fixture.nativeElement.querySelector('[aria-label="Ámbito: año"]')).toBeTruthy();
+    expect(text).toContain('Último período');
+    expect(fixture.nativeElement.querySelector('[aria-label="Ámbito predefinido"]')).toBeTruthy();
   });
 
   it('re-renders in Spanish immediately when the Language changes after render', async () => {
@@ -2557,8 +2598,7 @@ describe('MovementsComponent - async load gate', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelectorAll('tbody tr').length).toBeGreaterThan(0);
 
-    const otherMonth = ((getCurrentPeriod() % 12) + 1) as MonthNumber;
-    component.onScopeMonthChange(otherMonth);
+    component.onScopeChange(currentPeriodScope(1));
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('[aria-busy="true"]')).toBeNull();
@@ -3475,66 +3515,87 @@ describe('MovementsComponent - scope URL state', () => {
     await db.delete();
   });
 
-  it('restores the Scope from period and year query params', async () => {
+  it('restores the Scope from from and to query params', async () => {
+    TestBed.inject(Location).replaceState('/movements?from=2025-11&to=2026-01');
+
+    await component.ngOnInit();
+
+    expect(component.scope()).toEqual(scopeOf(11, 2025, 1, 2026));
+  });
+
+  it('still restores the Scope from old period and year query params', async () => {
     TestBed.inject(Location).replaceState('/movements?period=3&year=2025');
 
     await component.ngOnInit();
 
-    expect(component.scope()).toEqual({ kind: 'month', period: 3, year: 2025 });
+    expect(component.scope()).toEqual(scopeOf(3, 2025));
+  });
+
+  it('lets a Scope in the link win over the latest Period with movements', async () => {
+    const account = await TestBed.inject(AccountService).create('Cash', 'EUR', 0);
+    const category = await TestBed.inject(CategoryService).create('Food', 'expense');
+    await TestBed.inject(TransactionService).create(
+      account.id!, category.id!, 100, new Date(), 9, null, null, 2025,
+    );
+    TestBed.inject(Location).replaceState('/movements?from=2025-03&to=2025-03');
+
+    await component.ngOnInit();
+
+    expect(component.scope()).toEqual(scopeOf(3, 2025));
+  });
+
+  it('keeps the Scope in the link when the data fails to load', async () => {
+    fixture.detectChanges();
+    await vi.waitFor(() => expect(component.isLoaded()).toBe(true));
+    vi.spyOn(TestBed.inject(TransactionService), 'getAll').mockRejectedValueOnce(new Error('boom'));
+    TestBed.inject(Location).replaceState('/movements?from=2025-03&to=2025-04');
+
+    await expect(component.ngOnInit()).rejects.toThrow('boom');
+
+    expect(component.scope()).toEqual(scopeOf(3, 2025, 4, 2025));
   });
 
   it('ignores malformed or out-of-range scope params and falls back to the current Scope', async () => {
     TestBed.inject(Location).replaceState('/movements?period=13&year=notayear');
-
     await component.ngOnInit();
+    expect(component.scope()).toEqual(defaultMovementsScope());
 
-    expect(component.scope()).toEqual(defaultScope());
+    TestBed.inject(Location).replaceState('/movements?from=2025-13&to=2026-01');
+    await component.ngOnInit();
+    expect(component.scope()).toEqual(defaultMovementsScope());
   });
 
   it('keeps the current Scope for legacy links without params', async () => {
     await component.ngOnInit();
 
-    expect(component.scope()).toEqual(defaultScope());
+    expect(component.scope()).toEqual(defaultMovementsScope());
   });
 
-  it('reflects a Scope change in the URL as period and year query params', async () => {
+  it('reflects a Scope change in the URL as from and to query params', async () => {
     await component.ngOnInit();
 
-    const otherMonth = ((getCurrentPeriod() % 12) + 1) as MonthNumber;
-    await component.onScopeMonthChange(otherMonth);
+    component.onScopeChange(scopeOf(11, 2025, 1, 2026));
 
-    const url = TestBed.inject(Location).path(true);
-    expect(url).toContain(`period=${otherMonth}`);
-    expect(url).toContain(`year=${getCurrentYear()}`);
+    expect(TestBed.inject(Location).path(true)).toContain('?from=2025-11&to=2026-01');
   });
 
-  it('reflects a year change in the URL too', async () => {
+  it('round-trips a Scope through its link', async () => {
+    await component.ngOnInit();
+    component.onScopeChange(scopeOf(12, 2024, 3, 2025));
+    component.scope.set(defaultMovementsScope());
+
+    /* Entering the screen again reads the Scope back from the link. */
     await component.ngOnInit();
 
-    const lastYear = getCurrentYear() - 1;
-    await component.onScopeYearChange(lastYear);
-
-    const url = TestBed.inject(Location).path(true);
-    expect(url).toContain(`period=${getCurrentPeriod()}`);
-    expect(url).toContain(`year=${lastYear}`);
+    expect(component.scope()).toEqual(scopeOf(12, 2024, 3, 2025));
   });
 
-  it('restores the All scope from a period=all deep link', async () => {
+  it('opens an old period=all link on January through December of its year', async () => {
     TestBed.inject(Location).replaceState('/movements?period=all&year=2025');
 
     await component.ngOnInit();
 
-    expect(component.scope()).toEqual({ kind: 'year', year: 2025 });
-  });
-
-  it('reflects the All scope in the URL as period=all', async () => {
-    await component.ngOnInit();
-
-    await component.onScopeMonthChange('all');
-
-    const url = TestBed.inject(Location).path(true);
-    expect(url).toContain('period=all');
-    expect(url).toContain(`year=${getCurrentYear()}`);
+    expect(component.scope()).toEqual(scopeOf(1, 2025, 12, 2025));
   });
 });
 

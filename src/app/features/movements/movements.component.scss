@@ -22,10 +22,6 @@
   @extend %caps-label-muted;
 }
 
-.scope-selects {
-  @extend %scope-selects;
-}
-
 .controls {
   display: flex;
   gap: 0.5rem;

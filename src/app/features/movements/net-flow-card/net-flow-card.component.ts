@@ -4,7 +4,7 @@ import { Transfer } from '../../../core/models/transfer.model';
 import { Account } from '../../../core/models/account.model';
 import { Category } from '../../../core/models/category.model';
 import { LanguageService } from '../../../core/services/language.service';
-import { PeriodScope } from '../../../core/scope/scope';
+import { Scope } from '../../../core/scope/scope';
 import { cashBasis } from '../../../core/stats/cash-basis';
 import { DismissibleAlertComponent } from '../../../shared/components/dismissible-alert/dismissible-alert.component';
 
@@ -23,7 +23,7 @@ export class NetFlowCardComponent {
   accounts = input.required<Account[]>();
   categories = input.required<Category[]>();
   baseCurrency = input.required<string>();
-  scope = input.required<PeriodScope>();
+  scope = input.required<Scope>();
 
   /* ADR 0022: the cash-basis figures come from the same module Stats reads,
      so the two screens always agree. */

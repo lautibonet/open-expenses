@@ -11,8 +11,28 @@ import { NetworkService } from '../../core/services/network.service';
 import { LanguageService } from '../../core/services/language.service';
 import { DataVersionService } from '../../core/services/data-version.service';
 import { db } from '../../core/db/database';
-import { MONTH_NAMES, MonthNumber, getCurrentPeriod, getCurrentYear } from '../../core/types/period.type';
-import { defaultScope } from '../../core/scope/scope';
+import {
+  MONTH_NAMES,
+  MonthNumber,
+  getCurrentPeriod,
+  getCurrentYear,
+  shiftPeriod,
+} from '../../core/types/period.type';
+import { Scope, defaultStatsScope } from '../../core/scope/scope';
+
+/* A Scope from one Period through another; the To defaults to the From. */
+function scopeOf(fromMonth: number, fromYear: number, toMonth = fromMonth, toYear = fromYear): Scope {
+  return {
+    from: { year: fromYear, month: fromMonth as MonthNumber },
+    to: { year: toYear, month: toMonth as MonthNumber },
+  };
+}
+
+/* The one-Period Scope on the current Period, shifted by some months. */
+function currentPeriodScope(shift = 0): Scope {
+  const period = shiftPeriod({ year: getCurrentYear(), month: getCurrentPeriod() }, shift);
+  return { from: period, to: period };
+}
 
 /** Keep the Dexie connection open for the whole file and just clear the
  * tables between tests. Closing/recreating the db (delete + open) aborts
@@ -87,7 +107,7 @@ describe('DashboardComponent', () => {
     expect(component.report().kpis.totals.income).toBe(3000);
   });
 
-  describe('KPI trio follows the selected month (year-to-period)', () => {
+  describe('KPI trio follows the Scope', () => {
     async function seedIncome(period: number, year: number = getCurrentYear()): Promise<void> {
       const acc = await accountService.create('Cash', 'EUR', 0);
       const cat = await categoryService.create('Payroll', 'income');
@@ -107,7 +127,7 @@ describe('DashboardComponent', () => {
       }
 
       await component.ngOnInit();
-      await component.onScopeMonthChange(8);
+      component.onScopeChange(scopeOf(1, year, 8, year));
       fixture.detectChanges();
 
       const scopes = Array.from(
@@ -119,21 +139,24 @@ describe('DashboardComponent', () => {
       expect(scopes[0].textContent).toContain('AUG');
     });
 
-    it('shows the KPI empty state when the selected month has no data, keeping the year net strip', async () => {
+    it('shows the KPI empty state when the Scope has no data, keeping the Net chart', async () => {
       await seedIncome(getCurrentPeriod());
       await component.ngOnInit();
-      await component.onScopeMonthChange(2);
+      const next = currentPeriodScope(1);
+      component.onScopeChange(next);
       fixture.detectChanges();
 
       expect(fixture.nativeElement.querySelector('.kpi-ledger')).toBeNull();
       const empty = fixture.nativeElement.querySelector('.kpi-card .empty-state');
       expect(empty).toBeTruthy();
-      expect(empty.textContent).toContain('February');
+      expect(empty.textContent).toContain(MONTH_NAMES[next.to.month - 1]);
 
-      expect(fixture.nativeElement.querySelector('.year-overview .overview-tracks')).toBeTruthy();
-      expect(fixture.nativeElement.querySelector('.overview-zero')).toBeNull();
+      expect(fixture.nativeElement.querySelector('.twelve-periods .twelve-periods-tracks')).toBeTruthy();
+      expect(fixture.nativeElement.querySelector('.twelve-periods-zero')).toBeNull();
       expect(
-        component.report().yearOverview.periods.find(o => o.period === getCurrentPeriod())!.net,
+        component.report().twelvePeriods.periods.find(
+          o => o.month === getCurrentPeriod() && o.year === getCurrentYear(),
+        )!.net,
       ).toBe(3000);
     });
   });
@@ -248,7 +271,7 @@ describe('DashboardComponent', () => {
 
       await component.ngOnInit();
       networkService.isOnline.set(false);
-      await component.onScopeMonthChange(getCurrentPeriod() === 1 ? 2 : 1);
+      component.onScopeChange(currentPeriodScope(-1));
 
       expect(component.report().degradation.accountsExcluded).toBe(false);
       expect(component.report().balances.total).toBe(140000);
@@ -292,10 +315,11 @@ describe('DashboardComponent - period-end balances', () => {
     await transactionService.create(acc.id!, incomeCat.id!, 700, new Date(), 12, null, null, year);
 
     await component.ngOnInit();
+    component.onScopeChange(currentPeriodScope());
     expect(component.report().balances.accounts.find(b => b.account.id === acc.id)!.balance).toBe(4000);
     expect(component.report().balances.total).toBe(4000);
 
-    await component.onScopeMonthChange(12);
+    component.onScopeChange(scopeOf(1, year, 12, year));
     expect(component.report().balances.accounts.find(b => b.account.id === acc.id)!.balance).toBe(4700);
     expect(component.report().balances.total).toBe(4700);
   });
@@ -337,35 +361,82 @@ describe('DashboardComponent - shared scope', () => {
     );
   }
 
-  it('should default to the current month scope', async () => {
+  it('should default to Year to date ending at the current Period when nothing is recorded', async () => {
     await component.ngOnInit();
-    expect(component.scope()).toEqual(defaultScope());
+    expect(component.scope()).toEqual(defaultStatsScope());
+    expect(component.scope()).toEqual(scopeOf(1, getCurrentYear(), getCurrentPeriod(), getCurrentYear()));
   });
 
-  it('should derive year options from the data range, not a fixed window', async () => {
+  it('should open on Year to date ending at the latest Period with movements, even one ahead of the calendar', async () => {
+    const nextYear = getCurrentYear() + 1;
+    await seedIncome(5, 2016);
+    await seedIncome(2, nextYear);
+
+    await component.ngOnInit();
+
+    expect(component.scope()).toEqual(scopeOf(1, nextYear, 2, nextYear));
+  });
+
+  it('should pick the default again when the data is replaced by a Restore', async () => {
+    await seedIncome(5, 2016);
+    fixture = TestBed.createComponent(DashboardComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+    await vi.waitFor(() => expect(component.scope()).toEqual(scopeOf(1, 2016, 5, 2016)));
+    component.onScopeChange(scopeOf(1, 2016));
+
+    await seedIncome(9, 2017);
+    TestBed.inject(DataVersionService).bump();
+    fixture.detectChanges();
+
+    await vi.waitFor(() => expect(component.scope()).toEqual(scopeOf(1, 2017, 9, 2017)));
+  });
+
+  it('should not show the Scope selector until the data has loaded', async () => {
+    await seedIncome(5, 2016);
+    fixture = TestBed.createComponent(DashboardComponent);
+    component = fixture.componentInstance;
+
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-scope-control')).toBeNull();
+
+    await vi.waitFor(() => expect(component.scope().to.year).toBe(2016));
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-scope-control')).not.toBeNull();
+  });
+
+  it('should offer every year from the earliest with data to the current year, with no gaps', async () => {
     const acc = await accountService.create('Cash', 'EUR', 0);
     const incomeCat = await categoryService.create('Payroll', 'income');
     await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date('2012-01-15'), 1, null, null, 2012);
     await transactionService.create(acc.id!, incomeCat.id!, 5000, new Date('2016-03-15'), 3, null, null, 2016);
 
     await component.ngOnInit();
+    fixture.detectChanges();
+    const preset = fixture.nativeElement.querySelector('select[aria-label="Scope preset"]') as HTMLSelectElement;
+    preset.selectedIndex = preset.options.length - 1; /* Custom */
+    preset.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
 
-    expect(component.scopeYears()).toEqual(expect.arrayContaining([2012, 2016, getCurrentYear()]));
+    const yearSelect = fixture.nativeElement.querySelector('select[aria-label="To year"]') as HTMLSelectElement;
+    const years = Array.from(yearSelect.options).map(o => Number(o.textContent));
+    const expected = Array.from({ length: getCurrentYear() - 2012 + 1 }, (_, i) => 2012 + i);
+    expect(years).toEqual(expected);
   });
 
-  it('should derive month options from the months actually present in data', async () => {
+  it('should stay on a picked Scope without movements', async () => {
     const acc = await accountService.create('Cash', 'EUR', 0);
     const incomeCat = await categoryService.create('Payroll', 'income');
-    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date('2026-01-15'), 1);
-    await transactionService.create(acc.id!, incomeCat.id!, 5000, new Date('2026-05-15'), 5);
-
+    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date('2016-05-15'), 5, null, null, 2016);
     await component.ngOnInit();
 
-    expect(component.scopeMonths()).toContain(1);
-    expect(component.scopeMonths()).toContain(5);
+    component.onScopeChange(scopeOf(8, 2015));
+
+    expect(component.scope()).toEqual(scopeOf(8, 2015));
+    expect(component.report().kpis.totals.income).toBe(0);
   });
 
-  it('should show only the selected year totals', async () => {
+  it('should show only the totals of the Scope Periods', async () => {
     const acc = await accountService.create('Cash', 'EUR', 0);
     const incomeCat = await categoryService.create('Payroll', 'income');
     const year = getCurrentYear();
@@ -375,11 +446,31 @@ describe('DashboardComponent - shared scope', () => {
     await component.ngOnInit();
     expect(component.report().kpis.totals.income).toBe(4000);
 
-    await component.onScopeYearChange(2012);
-    await component.onScopeMonthChange(1);
+    component.onScopeChange(scopeOf(1, 2012));
 
-    expect(component.scope()).toEqual({ kind: 'month', period: 1, year: 2012 });
     expect(component.report().kpis.totals.income).toBe(3000);
+  });
+
+  it('should report exactly the Periods of a Scope that crosses a year boundary', async () => {
+    const acc = await accountService.create('Cash', 'EUR', 0);
+    const incomeCat = await categoryService.create('Payroll', 'income');
+    const food = await categoryService.create('Food', 'expense');
+    await transactionService.create(acc.id!, incomeCat.id!, 9000, new Date('2024-10-15'), 10, null, null, 2024);
+    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date('2024-11-15'), 11, null, null, 2024);
+    await transactionService.create(acc.id!, food.id!, 400, new Date('2024-12-15'), 12, null, null, 2024);
+    await transactionService.create(acc.id!, food.id!, 600, new Date('2025-01-15'), 1, null, null, 2025);
+    await transactionService.create(acc.id!, food.id!, 5000, new Date('2025-02-15'), 2, null, null, 2025);
+
+    await component.ngOnInit();
+    component.onScopeChange(scopeOf(11, 2024, 1, 2025));
+    const report = component.report();
+
+    expect(report.kpis.totals).toEqual({ income: 3000, expenses: 1000, net: 2000, periodsWithMovements: 3 });
+    expect(report.categorySpending.map(c => c.total)).toEqual([1000]);
+    /* 9000 + 3000 - 400 - 600: February's 5000 comes after the To Period. */
+    expect(report.balances.total).toBe(11000);
+    expect(report.twelvePeriods.periods.at(-1)).toMatchObject({ year: 2025, month: 1 });
+    expect(report.twelvePeriods.periods.filter(p => p.inScope)).toHaveLength(3);
   });
 
   it('should announce the scope to assistive tech on change', async () => {
@@ -387,7 +478,7 @@ describe('DashboardComponent - shared scope', () => {
     expect(component.scopeAnnouncement()).toBe('');
 
     const period = getCurrentPeriod();
-    await component.onScopeYearChange(getCurrentYear() - 1);
+    component.onScopeChange(scopeOf(period, getCurrentYear() - 1));
     expect(component.scopeAnnouncement()).toBe(
       `${MONTH_NAMES[period - 1]} ${getCurrentYear() - 1}`,
     );
@@ -395,47 +486,36 @@ describe('DashboardComponent - shared scope', () => {
 
   it('should label the totals card with the current scope', async () => {
     await component.ngOnInit();
+    component.onScopeChange(currentPeriodScope());
     expect(component.scopeLabelText()).toBe(
       `${MONTH_NAMES[getCurrentPeriod() - 1]} ${getCurrentYear()}`,
     );
   });
 
-  it('should render exactly two scope selects and no extra averages dropdown', async () => {
+  it('should render the preset select and no extra averages dropdown', async () => {
     await component.ngOnInit();
+    component.onScopeChange(currentPeriodScope());
+    fixture.detectChanges();
+    await fixture.whenStable();
     fixture.detectChanges();
 
     const selects = fixture.nativeElement.querySelectorAll('select');
-    expect(selects.length).toBe(2);
-
     const labels = Array.from(selects as NodeListOf<HTMLSelectElement>).map(s => s.getAttribute('aria-label'));
-    expect(labels).toContain('Scope year');
-    expect(labels).toContain('Scope month');
+    expect(labels).toEqual(['Scope preset']);
   });
 
-  it('should name the scope in every month-scoped card heading', async () => {
+  it('should name the Scope in its spending heading and the To Period in the balance headings', async () => {
     await component.ngOnInit();
+    component.onScopeChange(scopeOf(11, 2024, 1, 2025));
     fixture.detectChanges();
 
-    const expectedLabel = `${MONTH_NAMES[getCurrentPeriod() - 1]} ${getCurrentYear()}`;
-    const monthHeadings = Array.from(
-      fixture.nativeElement.querySelectorAll(
-        'section.card:not(.year-overview-card):not(.total-balance-card) h2',
-      ) as NodeListOf<HTMLElement>,
-    );
-    expect(monthHeadings.length).toBeGreaterThan(0);
-    for (const h of monthHeadings) {
-      expect(h.textContent).toContain(expectedLabel);
-    }
-
-    // The year overview covers the whole scope year, so its heading states
-    // the year scope instead of the month scope.
-    const stripHeading = fixture.nativeElement.querySelector('.year-overview-card h2');
-    expect(stripHeading.textContent).toContain(String(getCurrentYear()));
-
-    // The total balance card spans every month of the scope year (the balance
-    // strip), so its heading states the year scope too.
-    const balanceHeading = fixture.nativeElement.querySelector('.total-balance-card h2');
-    expect(balanceHeading.textContent).toContain(String(getCurrentYear()));
+    const headings = Array.from(
+      fixture.nativeElement.querySelectorAll('section.card h2') as NodeListOf<HTMLElement>,
+    ).map(h => h.textContent!.trim());
+    expect(headings).toContain('November 2024 – January 2025 Spending by Category');
+    expect(headings).toContain('January 2025 Total Balance');
+    expect(headings).toContain('January 2025 Account Balances');
+    expect(headings).toContain('Twelve Periods to January 2025');
   });
 
   it('should render the page heading as an h1', async () => {
@@ -499,7 +579,7 @@ describe('DashboardComponent - shared scope', () => {
     expect(netValue.textContent).toContain(component.formatMoney(4500));
   });
 
-  it('shows the KPI empty state, not the ledger, when the scope year has no movements', async () => {
+  it('shows the KPI empty state, not the ledger, when the Scope has no movements', async () => {
     await component.ngOnInit();
     fixture.detectChanges();
 
@@ -509,17 +589,37 @@ describe('DashboardComponent - shared scope', () => {
     expect(empty.textContent).toContain(String(getCurrentYear()));
   });
 
-  it('keeps the KPI scope label in sync when the scope year changes', async () => {
+  it('keeps the KPI scope label in sync when the Scope changes', async () => {
     await seedIncome(getCurrentPeriod());
     const previousYear = getCurrentYear() - 1;
     await seedIncome(1, previousYear);
     await component.ngOnInit();
     fixture.detectChanges();
-    await component.onScopeYearChange(previousYear);
+    component.onScopeChange(scopeOf(1, previousYear, 3, previousYear));
     fixture.detectChanges();
 
     const scope = fixture.nativeElement.querySelector('.kpi-scope');
     expect(scope.textContent).toContain(String(previousYear));
+    expect(scope.textContent).toContain('JAN–MAR');
+  });
+
+  it('states a one-Period KPI scope by its single month', async () => {
+    await seedIncome(3, 2024);
+    await component.ngOnInit();
+    component.onScopeChange(scopeOf(3, 2024));
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.kpi-scope').textContent.trim()).toBe('2024 · MAR');
+  });
+
+  it('states a KPI scope across a year boundary with both years', async () => {
+    await seedIncome(12, 2024);
+    await component.ngOnInit();
+    component.onScopeChange(scopeOf(11, 2024, 1, 2025));
+    fixture.detectChanges();
+
+    const scope = fixture.nativeElement.querySelector('.kpi-scope');
+    expect(scope.textContent.trim()).toBe('NOV 2024–JAN 2025');
   });
 
   it('associates each KPI label, value and average in one ledger definition list', async () => {
@@ -557,7 +657,7 @@ describe('DashboardComponent - shared scope', () => {
     expect(fixture.nativeElement.querySelector('.kpi-savings .savings-rate')).toBeTruthy();
   });
 
-  it('should switch scope by year via the select', async () => {
+  it('should switch the Scope via the preset select', async () => {
     const acc = await accountService.create('Cash', 'EUR', 0);
     const incomeCat = await categoryService.create('Payroll', 'income');
     const year = getCurrentYear();
@@ -566,19 +666,31 @@ describe('DashboardComponent - shared scope', () => {
     await component.ngOnInit();
     fixture.detectChanges();
 
-    const yearSelect = fixture.nativeElement.querySelector('select[aria-label="Scope year"]') as HTMLSelectElement;
+    const presetSelect = fixture.nativeElement.querySelector('select[aria-label="Scope preset"]') as HTMLSelectElement;
     const flush = () => new Promise<void>(resolve => setTimeout(resolve, 10));
 
-    const yearOption = Array.from(yearSelect.options).find(o => o.textContent?.trim() === String(year))!;
-    yearSelect.value = yearOption.value;
-    yearSelect.dispatchEvent(new Event('change'));
+    presetSelect.selectedIndex = Array.from(presetSelect.options).findIndex(
+      o => o.textContent?.trim() === 'Whole year',
+    );
+    presetSelect.dispatchEvent(new Event('change'));
     await flush();
     fixture.detectChanges();
 
-    expect(component.scope()).toEqual({ kind: 'month', period: getCurrentPeriod(), year });
+    expect(component.scope()).toEqual(scopeOf(1, year, 12, year));
     expect(component.report().kpis.totals.income).toBe(3000);
     expect(component.report().kpis.totals.expenses).toBe(0);
     expect(component.report().kpis.totals.net).toBe(3000);
+  });
+
+  it('should open the select on Year to date', async () => {
+    await seedIncome(1, 2016);
+    await component.ngOnInit();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const presetSelect = fixture.nativeElement.querySelector('select[aria-label="Scope preset"]') as HTMLSelectElement;
+    expect(presetSelect.options[presetSelect.selectedIndex].textContent?.trim()).toBe('Year to date');
   });
 });
 
@@ -617,10 +729,6 @@ describe('DashboardComponent - page header, scope control and restyled cards', (
     await resetDb();
   });
 
-  async function scopeTo(period: MonthNumber, year: number): Promise<void> {
-    await component.onScopeYearChange(year);
-    await component.onScopeMonthChange(period);
-  }
 
   it('renders the display headline with its subtitle', async () => {
     await component.ngOnInit();
@@ -634,12 +742,18 @@ describe('DashboardComponent - page header, scope control and restyled cards', (
     expect(subtitle.textContent.trim()).toBe('Your totals, averages and balances at a glance.');
   });
 
-  it('keeps accessible names on the year and month scope selects', async () => {
+  it('keeps accessible names on the preset and the From and To selects', async () => {
     await component.ngOnInit();
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('select[aria-label="Scope year"]')).toBeTruthy();
-    expect(fixture.nativeElement.querySelector('select[aria-label="Scope month"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('select[aria-label="Scope preset"]')).toBeTruthy();
+    const preset = fixture.nativeElement.querySelector('select[aria-label="Scope preset"]') as HTMLSelectElement;
+    preset.selectedIndex = preset.options.length - 1; /* Custom */
+    preset.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    for (const label of ['From month', 'From year', 'To month', 'To year']) {
+      expect(fixture.nativeElement.querySelector(`select[aria-label="${label}"]`), label).toBeTruthy();
+    }
   });
 
   it('renders plain month and year selects with no chevron stepper', async () => {
@@ -651,10 +765,10 @@ describe('DashboardComponent - page header, scope control and restyled cards', (
       fixture.nativeElement.querySelector('button[aria-label="Previous month"]'),
     ).toBeNull();
     expect(fixture.nativeElement.querySelector('button[aria-label="Next month"]')).toBeNull();
-    expect(fixture.nativeElement.querySelector('.scope-selects select')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('app-scope-control select')).toBeTruthy();
   });
 
-  it('refreshes averages when the scope month changes, following the covered period', async () => {
+  it('refreshes averages when the Scope changes, following the covered Periods', async () => {
     const acc = await accountService.create('Cash', 'EUR', 0);
     const incomeCat = await categoryService.create('Payroll', 'income');
     const year = getCurrentYear();
@@ -663,11 +777,10 @@ describe('DashboardComponent - page header, scope control and restyled cards', (
     await transactionService.create(acc.id!, incomeCat.id!, 6000, new Date(`${year}-02-15`), 2);
 
     await component.ngOnInit();
-    await scopeTo(1, year);
+    component.onScopeChange(scopeOf(1, year));
     expect(component.report().kpis.averages.income).toBe(3000);
 
-    await component.onScopeMonthChange(2);
-    expect(component.scope()).toEqual({ kind: 'month', period: 2, year });
+    component.onScopeChange(scopeOf(1, year, 2, year));
     expect(component.report().kpis.averages.income).toBe(4500);
   });
 
@@ -878,8 +991,8 @@ describe('DashboardComponent - translations', () => {
     expect(text).toContain('MEDIA');
     expect(text).toContain('Saldo total de');
     expect(text).toContain('Saldos de cuentas de');
-    expect(fixture.nativeElement.querySelector('[aria-label="Ámbito: año"]')).toBeTruthy();
-    expect(fixture.nativeElement.querySelector('[aria-label="Ámbito: mes"]')).toBeTruthy();
+    expect(text).toContain('Año hasta la fecha');
+    expect(fixture.nativeElement.querySelector('[aria-label="Ámbito predefinido"]')).toBeTruthy();
   });
 
   it('re-renders in Spanish immediately when the Language changes after render', async () => {
@@ -977,7 +1090,7 @@ describe('DashboardComponent - KPI row layout and mono weights', () => {
       '.kpi-line.kpi-savings .savings-rate',
       '.stat .value',
       '.category-bar-row .cat-amount',
-      '.overview-caption .value',
+      '.twelve-periods-caption .value',
       '.balance-tile',
       '.balance-amount',
     ] as const;
@@ -990,7 +1103,7 @@ describe('DashboardComponent - KPI row layout and mono weights', () => {
   });
 });
 
-describe('DashboardComponent - year overview (12-month graph)', () => {
+describe('DashboardComponent - twelve Periods (12-month graph)', () => {
   let fixture: ComponentFixture<DashboardComponent>;
   let component: DashboardComponent;
   let accountService: AccountService;
@@ -1031,13 +1144,20 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     );
   }
 
+  /* Opens the screen on a one-Period Scope, December of the current year by
+     default, so both charts cover January through December of that year. */
+  async function openOn(month = 12, year = getCurrentYear()): Promise<void> {
+    await component.ngOnInit();
+    component.onScopeChange(scopeOf(month, year));
+  }
+
   function tracks(): NodeListOf<HTMLElement> {
-    return fixture.nativeElement.querySelectorAll('.overview-track');
+    return fixture.nativeElement.querySelectorAll('.twelve-periods-track');
   }
 
   it('renders one track for each of the 12 Periods of the scope year', async () => {
     await seedMovement(getCurrentPeriod());
-    await component.ngOnInit();
+    await openOn();
     fixture.detectChanges();
 
     expect(tracks().length).toBe(12);
@@ -1054,7 +1174,7 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     await transactionService.create(acc.id!, incomeCat.id!, 1000, new Date(`${year}-03-15`), 3, null, null, year);
     await transactionService.create(acc.id!, expenseCat.id!, 3000, new Date(`${year}-03-15`), 3, null, null, year);
 
-    await component.ngOnInit();
+    await openOn();
     fixture.detectChanges();
 
     const [january, february, march] = Array.from(tracks());
@@ -1080,13 +1200,13 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     await transactionService.create(acc.id!, incomeCat.id!, 1000, new Date(`${year}-03-15`), 3, null, null, year);
     await transactionService.create(acc.id!, expenseCat.id!, 3000, new Date(`${year}-03-15`), 3, null, null, year);
 
-    await component.ngOnInit();
+    await openOn();
     fixture.detectChanges();
 
     // Year extremes: up 3000 (peak income), down 2000 (March's overdrawn net).
     // The zero line rises to 40% of the track; up fills share the 60% above it,
     // the down fill takes the 40% below it.
-    expect(component.yearOverviewZeroPct()).toBe(40);
+    expect(component.twelvePeriodsZeroPct()).toBe(40);
     const [january, february, march] = Array.from(tracks());
     expect((january.querySelector('.income .cell-fill') as HTMLElement).style.height).toBe('60%');
     expect((february.querySelector('.expense .cell-fill') as HTMLElement).style.height).toBe('30%');
@@ -1100,12 +1220,12 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
 
     await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(`${year}-01-15`), 1, null, null, year);
 
-    await component.ngOnInit();
+    await openOn();
     fixture.detectChanges();
 
-    expect(component.yearOverviewZeroPct()).toBe(0);
-    const overview = fixture.nativeElement.querySelector('.year-overview') as HTMLElement;
-    expect(overview.style.getPropertyValue('--zero-pct')).toBe('0%');
+    expect(component.twelvePeriodsZeroPct()).toBe(0);
+    const chart = fixture.nativeElement.querySelector('.twelve-periods') as HTMLElement;
+    expect(chart.style.getPropertyValue('--zero-pct')).toBe('0%');
     const january = tracks()[0];
     expect((january.querySelector('.income .cell-fill') as HTMLElement).style.height).toBe('100%');
   });
@@ -1119,7 +1239,7 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     await transactionService.create(acc.id!, incomeCat.id!, 1000, new Date(`${year}-01-15`), 1, null, null, year);
     await transactionService.create(acc.id!, expenseCat.id!, 3000, new Date(`${year}-02-15`), 2, null, null, year);
 
-    await component.ngOnInit();
+    await openOn();
     fixture.detectChanges();
 
     const [january, february] = Array.from(tracks());
@@ -1136,7 +1256,7 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
 
     await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(`${year}-01-15`), 1, null, null, year);
 
-    await component.ngOnInit();
+    await openOn();
     fixture.detectChanges();
 
     const emptyTrack = tracks()[6];
@@ -1146,7 +1266,7 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
 
   it('colors the columns by direction and keeps Net ink at every sign', async () => {
     await seedMovement(getCurrentPeriod());
-    await component.ngOnInit();
+    await openOn();
     fixture.detectChanges();
 
     const css = compiledComponentCss();
@@ -1158,25 +1278,25 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
 
   it('paints the midline above the fills at the data-driven zero position in both graphs', async () => {
     await seedMovement(getCurrentPeriod());
-    await component.ngOnInit();
+    await openOn();
     fixture.detectChanges();
 
     const css = compiledComponentCss();
-    expect(css).toMatch(/\.overview-track[^{]*::before\s*\{[^}]*bottom:\s*var\(--zero-pct/);
+    expect(css).toMatch(/\.twelve-periods-track[^{]*::before\s*\{[^}]*bottom:\s*var\(--zero-pct/);
     expect(css).toMatch(/\.balance-track[^{]*::before\s*\{[^}]*bottom:\s*var\(--zero-pct/);
     expect(css).toMatch(/\.cell-fill[^{]*\{[^}]*bottom:\s*var\(--zero-pct/);
   });
 
   it('builds both graphs from the same twelve-column track grammar', async () => {
     await seedMovement(getCurrentPeriod());
-    await component.ngOnInit();
+    await openOn();
     fixture.detectChanges();
 
     const css = compiledComponentCss();
 
     // One construction for both graphs: twelve equal columns with the same
     // shared gap — a single plot each, not a strip of ad-hoc tiles.
-    for (const selector of ['overview-tracks', 'balance-tracks', 'overview-initials', 'balance-initials']) {
+    for (const selector of ['twelve-periods-tracks', 'balance-tracks', 'twelve-periods-initials', 'balance-initials']) {
       const rule = css.match(new RegExp(`\\.${selector}[^{]*\\{([^}]*)\\}`))!;
       expect(rule[1]).toContain('repeat(12, minmax(0, 1fr))');
       expect(rule[1]).toContain('gap: var(--space-xs)');
@@ -1184,27 +1304,27 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
 
     // The tracks carry no borders: the month cells read as tiles separated
     // by the gap, not as one bordered plot.
-    expect(css).not.toMatch(/\.overview-track[^{]*\{[^}]*border/);
+    expect(css).not.toMatch(/\.twelve-periods-track[^{]*\{[^}]*border/);
     expect(css).not.toMatch(/\.balance-track[^{]*\{[^}]*border/);
   });
 
   it('keeps the size hierarchy between the two graphs', async () => {
     await seedMovement(getCurrentPeriod());
-    await component.ngOnInit();
+    await openOn();
     fixture.detectChanges();
 
     const css = compiledComponentCss();
-    expect(css).toMatch(/\.overview-track[^{]*\{[^}]*height:\s*7rem/);
+    expect(css).toMatch(/\.twelve-periods-track[^{]*\{[^}]*height:\s*7rem/);
     expect(css).toMatch(/\.balance-track[^{]*\{[^}]*height:\s*4\.5rem/);
   });
 
   it('draws the current-month ring as a layoutless ink outline on both graphs', async () => {
     await seedMovement(getCurrentPeriod());
-    await component.ngOnInit();
+    await openOn();
     fixture.detectChanges();
 
     const css = compiledComponentCss();
-    for (const selector of ['overview-track', 'balance-track']) {
+    for (const selector of ['twelve-periods-track', 'balance-track']) {
       // Sass hoists the placeholder's `&.current` to the front of the
       // compiled compound selector.
       const rule = css.match(new RegExp(`\\.current\\.${selector}[^{]*\\{([^}]*)\\}`))!;
@@ -1218,11 +1338,11 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
 
   it('drops the ring below 480px so the emphasized month keeps its fills visible, and emphasizes the label instead', async () => {
     await seedMovement(getCurrentPeriod());
-    await component.ngOnInit();
+    await openOn();
     fixture.detectChanges();
 
     const css = compiledComponentCss();
-    for (const selector of ['overview-track', 'balance-track']) {
+    for (const selector of ['twelve-periods-track', 'balance-track']) {
       // On a ~22px track the ring leaves nothing to close around: the
       // outline goes and emphasis moves to the month label.
       expect(css).toMatch(
@@ -1230,43 +1350,39 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
       );
     }
     // The label carries the mobile emphasis: bold ink.
-    for (const selector of ['balance-initial', 'overview-initial']) {
+    for (const selector of ['balance-initial', 'twelve-periods-initial']) {
       const rule = css.match(new RegExp(`\\.${selector}\\.current[^{]*\\{([^}]*)\\}`))!;
       expect(rule[1]).toContain('font-weight: bold');
     }
   });
 
-  it('heads the year overview with the year scope, not the month scope', async () => {
+  it('heads the twelve-Period chart with the twelve Periods ending at the To Period', async () => {
     await seedMovement(getCurrentPeriod());
-    await component.ngOnInit();
+    await openOn(3);
     fixture.detectChanges();
 
-    const heading = fixture.nativeElement.querySelector('.year-overview-card h2');
-    expect(heading.textContent).toContain(String(getCurrentYear()));
-    expect(heading.textContent).not.toContain(MONTH_NAMES[getCurrentPeriod() - 1]);
+    const heading = fixture.nativeElement.querySelector('.twelve-periods-card h2');
+    expect(heading.textContent.trim()).toBe(`Twelve Periods to March ${getCurrentYear()}`);
   });
 
-  it('marks the scope Period as the current one', async () => {
+  it('marks the one Period of a one-Period Scope', async () => {
     await seedMovement(getCurrentPeriod());
-    await component.ngOnInit();
+    await openOn();
     fixture.detectChanges();
 
-    const currentPeriod = getCurrentPeriod();
     const all = Array.from(tracks());
-    expect(all[currentPeriod - 1].classList).toContain('current');
-    for (const [index, other] of all.entries()) {
-      if (index !== currentPeriod - 1) {
-        expect(other.classList).not.toContain('current');
-      }
+    expect(all[11].classList).toContain('current');
+    for (const other of all.slice(0, 11)) {
+      expect(other.classList).not.toContain('current');
     }
   });
 
   it('shows the zero state, not an empty block, when the scope year has no movements', async () => {
-    await component.ngOnInit();
+    await openOn();
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('.overview-tracks')).toBeNull();
-    const zero = fixture.nativeElement.querySelector('.overview-zero');
+    expect(fixture.nativeElement.querySelector('.twelve-periods-tracks')).toBeNull();
+    const zero = fixture.nativeElement.querySelector('.twelve-periods-zero');
     expect(zero).toBeTruthy();
     expect(zero.textContent).toContain(String(getCurrentYear()));
   });
@@ -1277,7 +1393,7 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
 
   it('renders the balance strip inside the total balance card when the scope year has movements', async () => {
     await seedMovement(getCurrentPeriod());
-    await component.ngOnInit();
+    await openOn();
     fixture.detectChanges();
 
     const card = fixture.nativeElement.querySelector('.total-balance-card');
@@ -1302,16 +1418,16 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     const incomeCat = await categoryService.create('Payroll', 'income');
     await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(), getCurrentPeriod());
 
-    await component.ngOnInit();
+    await openOn();
     fixture.detectChanges();
 
     const currentPeriod = getCurrentPeriod();
     const all = Array.from(balanceTracks());
-    expect(all[currentPeriod - 1].classList).toContain('current');
-    expect(all[11].classList).not.toContain('current');
+    expect(all[11].classList).toContain('current');
+    expect(all[0].classList).not.toContain('current');
 
     // No movements after the seed Period: every later track freezes at the
-    // same balance — same fill height as the current month.
+    // same balance — same fill height as the seed month.
     const currentFill = all[currentPeriod - 1].querySelector('.balance-fill') as HTMLElement;
     const decemberFill = all[11].querySelector('.balance-fill') as HTMLElement;
     expect(decemberFill).toBeTruthy();
@@ -1320,7 +1436,7 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
 
   it('renders the months after the last Movement absent, not solid black', async () => {
     await seedMovement(2);
-    await component.ngOnInit();
+    await openOn();
     fixture.detectChanges();
 
     const all = Array.from(balanceTracks());
@@ -1351,7 +1467,7 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
 
   it('still announces the frozen balance per Period in the hidden figure list', async () => {
     await seedMovement(2);
-    await component.ngOnInit();
+    await openOn();
     fixture.detectChanges();
 
     const items = Array.from(
@@ -1367,7 +1483,7 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     const expenseCat = await categoryService.create('Food', 'expense');
     await transactionService.create(acc.id!, expenseCat.id!, 500, new Date(), 2);
 
-    await component.ngOnInit();
+    await openOn();
     fixture.detectChanges();
 
     // January: zero balance, bare track. February: overdrawn, fills downward.
@@ -1383,7 +1499,7 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
 
   it('pins the strip zero line to the bottom edge when the year never goes negative', async () => {
     await seedMovement(getCurrentPeriod());
-    await component.ngOnInit();
+    await openOn();
     fixture.detectChanges();
 
     expect(component.balanceZeroPct()).toBe(0);
@@ -1398,7 +1514,7 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     const expenseCat = await categoryService.create('Food', 'expense');
     await transactionService.create(acc.id!, expenseCat.id!, 3000, new Date(), 2);
 
-    await component.ngOnInit();
+    await openOn();
     fixture.detectChanges();
 
     // January 1000, February -2000, tail frozen at -2000: up extreme 1000,
@@ -1411,7 +1527,7 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
   });
 
   it('shows no balance strip, legend or figures when the scope year has no movements', async () => {
-    await component.ngOnInit();
+    await openOn();
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('.balance-strip')).toBeNull();
@@ -1421,7 +1537,7 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
 
   it('explains the strip convention with a one-line caps legend', async () => {
     await seedMovement(getCurrentPeriod());
-    await component.ngOnInit();
+    await openOn();
     fixture.detectChanges();
 
     const legend = fixture.nativeElement.querySelector('.balance-legend');
@@ -1434,7 +1550,7 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
 
   it('gives both legends readable leading for the wrapped two-line mobile render', async () => {
     await seedMovement(getCurrentPeriod());
-    await component.ngOnInit();
+    await openOn();
     fixture.detectChanges();
 
     // Caps labels are single-line at leading 1, but the legends wrap to two
@@ -1445,7 +1561,7 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     expect(tokens).toMatch(/--leading-caption:\s*1\.4/);
 
     const css = compiledComponentCss();
-    for (const selector of ['overview-legend', 'balance-legend']) {
+    for (const selector of ['twelve-periods-legend', 'balance-legend']) {
       expect(css).toMatch(
         new RegExp(`\\.${selector}[^{]*\\{[^}]*line-height:\\s*var\\(--leading-caption\\)`),
       );
@@ -1457,10 +1573,10 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     const incomeCat = await categoryService.create('Payroll', 'income');
     await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(), getCurrentPeriod());
 
-    await component.ngOnInit();
+    await openOn();
     fixture.detectChanges();
 
-    expect(component.report().balanceStrip.accumulated[getCurrentPeriod() - 1]).toBe(
+    expect(component.report().balanceStrip.accumulated.at(-1)).toBe(
       component.report().balances.total,
     );
   });
@@ -1474,10 +1590,10 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(`${year}-01-15`), 1, null, null, year);
     await transactionService.create(acc.id!, expenseCat.id!, 500, new Date(`${year}-02-15`), 2, null, null, year);
 
-    await component.ngOnInit();
+    await openOn();
     fixture.detectChanges();
 
-    const list = fixture.nativeElement.querySelector('.overview-figures');
+    const list = fixture.nativeElement.querySelector('.twelve-periods-figures');
     expect(list).toBeTruthy();
     expect(list.classList).toContain('visually-hidden');
 
@@ -1489,19 +1605,19 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     expect(items[1].textContent).toContain(component.formatMoney(-500));
   });
 
-  it('shows the scope Period\'s Net figure as a visible mono caption on the card', async () => {
+  it('shows the To Period\'s Net figure as a visible mono caption on the card', async () => {
     await seedMovement(getCurrentPeriod());
-    await component.ngOnInit();
+    await openOn(getCurrentPeriod());
     fixture.detectChanges();
 
-    const caption = fixture.nativeElement.querySelector('.overview-caption');
+    const caption = fixture.nativeElement.querySelector('.twelve-periods-caption');
     expect(caption).toBeTruthy();
 
     const value = caption.querySelector('.value');
     expect(value).toBeTruthy();
     expect(value.textContent).toContain(
       component.formatMoney(
-        component.report().yearOverview.periods.find(o => o.period === getCurrentPeriod())!.net,
+        component.report().twelvePeriods.periods.find(o => o.month === getCurrentPeriod())!.net,
       ),
     );
 
@@ -1512,36 +1628,36 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
 
   it('keeps the caption figure in the mono data voice', async () => {
     await seedMovement(getCurrentPeriod());
-    await component.ngOnInit();
+    await openOn();
     fixture.detectChanges();
 
     const css = compiledComponentCss();
-    expect(css).toMatch(/\.overview-caption[^{]*\.value[^{]*\{[^}]*font-family:\s*var\(--font-data\)/);
-    expect(css).toMatch(/\.overview-caption[^{]*\.value[^{]*\{[^}]*font-variant-numeric:\s*tabular-nums/);
+    expect(css).toMatch(/\.twelve-periods-caption[^{]*\.value[^{]*\{[^}]*font-family:\s*var\(--font-data\)/);
+    expect(css).toMatch(/\.twelve-periods-caption[^{]*\.value[^{]*\{[^}]*font-variant-numeric:\s*tabular-nums/);
   });
 
   it('explains the color grammar with a one-line caps legend', async () => {
     await seedMovement(getCurrentPeriod());
-    await component.ngOnInit();
+    await openOn();
     fixture.detectChanges();
 
-    const legend = fixture.nativeElement.querySelector('.overview-legend');
+    const legend = fixture.nativeElement.querySelector('.twelve-periods-legend');
     expect(legend).toBeTruthy();
 
     const css = compiledComponentCss();
-    expect(css).toMatch(/\.overview-legend[^{]*\{[^}]*text-transform:\s*uppercase/);
+    expect(css).toMatch(/\.twelve-periods-legend[^{]*\{[^}]*text-transform:\s*uppercase/);
   });
 
   it('keeps the decorative graph aria-hidden and the screen-reader figure list beside the caption', async () => {
     await seedMovement(getCurrentPeriod());
-    await component.ngOnInit();
+    await openOn();
     fixture.detectChanges();
 
-    const graph = fixture.nativeElement.querySelector('.year-overview');
+    const graph = fixture.nativeElement.querySelector('.twelve-periods');
     expect(graph).toBeTruthy();
     expect(graph.getAttribute('aria-hidden')).toBe('true');
 
-    const list = fixture.nativeElement.querySelector('.overview-figures');
+    const list = fixture.nativeElement.querySelector('.twelve-periods-figures');
     expect(list).toBeTruthy();
     expect(list.classList).toContain('visually-hidden');
     expect(list.querySelectorAll('li').length).toBe(12);
@@ -1556,34 +1672,34 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(`${year}-01-15`), 1, null, null, year);
     await transactionService.create(acc.id!, expenseCat.id!, 500, new Date(`${year}-02-15`), 2, null, null, year);
 
-    await component.ngOnInit();
-    await component.onScopeMonthChange(1);
+    await openOn();
+    component.onScopeChange(scopeOf(1, year));
     fixture.detectChanges();
 
-    let value = fixture.nativeElement.querySelector('.overview-caption .value');
+    let value = fixture.nativeElement.querySelector('.twelve-periods-caption .value');
     expect(value.textContent).toContain(component.formatMoney(3000));
-    expect(fixture.nativeElement.querySelector('.overview-caption .label').textContent)
+    expect(fixture.nativeElement.querySelector('.twelve-periods-caption .label').textContent)
       .toContain(languageService.monthName(1));
 
-    await component.onScopeMonthChange(2);
+    component.onScopeChange(scopeOf(2, year));
     fixture.detectChanges();
 
-    value = fixture.nativeElement.querySelector('.overview-caption .value');
+    value = fixture.nativeElement.querySelector('.twelve-periods-caption .value');
     expect(value.textContent).toContain(component.formatMoney(-500));
-    expect(fixture.nativeElement.querySelector('.overview-caption .label').textContent)
+    expect(fixture.nativeElement.querySelector('.twelve-periods-caption .label').textContent)
       .toContain(languageService.monthName(2));
   });
 
   it('shows no caption or legend in the zero state', async () => {
-    await component.ngOnInit();
+    await openOn();
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('.overview-tracks')).toBeNull();
-    expect(fixture.nativeElement.querySelector('.overview-caption')).toBeNull();
-    expect(fixture.nativeElement.querySelector('.overview-legend')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.twelve-periods-tracks')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.twelve-periods-caption')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.twelve-periods-legend')).toBeNull();
   });
 
-  it('anchors the overview scale: the tallest column and the deepest overdrawn figure are worth their figures', async () => {
+  it('anchors the twelve-Period chart scale: the tallest column and the deepest overdrawn figure are worth their figures', async () => {
     const acc = await accountService.create('Cash', 'EUR', 0);
     const incomeCat = await categoryService.create('Payroll', 'income');
     const expenseCat = await categoryService.create('Food', 'expense');
@@ -1592,12 +1708,12 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(`${year}-01-15`), 1, null, null, year);
     await transactionService.create(acc.id!, expenseCat.id!, 500, new Date(`${year}-02-15`), 2, null, null, year);
 
-    await component.ngOnInit();
+    await openOn();
     fixture.detectChanges();
 
     // Year extremes: up 3000 (the tallest column), down 500 (February's
     // overdrawn net) — the anchor names both signed.
-    const scale = fixture.nativeElement.querySelector('.overview-scale');
+    const scale = fixture.nativeElement.querySelector('.twelve-periods-scale');
     expect(scale).toBeTruthy();
     expect(scale.textContent).toContain('Tallest column');
     expect(scale.textContent).toContain(component.formatMoney(3000));
@@ -1605,24 +1721,24 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     expect(scale.textContent).toContain(component.formatMoney(-500));
 
     const css = compiledComponentCss();
-    expect(css).toMatch(/\.overview-scale[^{]*\{[^}]*text-transform:\s*uppercase/);
-    expect(css).toMatch(/\.overview-scale[^{]*\.value[^{]*\{[^}]*font-family:\s*var\(--font-data\)/);
-    expect(css).toMatch(/\.overview-scale[^{]*\.value[^{]*\{[^}]*font-variant-numeric:\s*tabular-nums/);
+    expect(css).toMatch(/\.twelve-periods-scale[^{]*\{[^}]*text-transform:\s*uppercase/);
+    expect(css).toMatch(/\.twelve-periods-scale[^{]*\.value[^{]*\{[^}]*font-family:\s*var\(--font-data\)/);
+    expect(css).toMatch(/\.twelve-periods-scale[^{]*\.value[^{]*\{[^}]*font-variant-numeric:\s*tabular-nums/);
   });
 
-  it('anchors the overview scale floor at zero when no Period dips below the line', async () => {
+  it('anchors the twelve-Period chart scale floor at zero when no Period dips below the line', async () => {
     await seedMovement(getCurrentPeriod());
-    await component.ngOnInit();
+    await openOn();
     fixture.detectChanges();
 
-    const scale = fixture.nativeElement.querySelector('.overview-scale');
+    const scale = fixture.nativeElement.querySelector('.twelve-periods-scale');
     expect(scale.textContent).toContain('Deepest overdrawn');
     expect(scale.textContent).toContain(component.formatMoney(0));
   });
 
   it('anchors the strip scale at the track top when the positive peak is the year max magnitude', async () => {
     await seedMovement(getCurrentPeriod());
-    await component.ngOnInit();
+    await openOn();
     fixture.detectChanges();
 
     const scale = fixture.nativeElement.querySelector('.balance-scale');
@@ -1640,7 +1756,7 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     const expenseCat = await categoryService.create('Food', 'expense');
     await transactionService.create(acc.id!, expenseCat.id!, 3000, new Date(), 2);
 
-    await component.ngOnInit();
+    await openOn();
     fixture.detectChanges();
 
     // January 1000, February -2000, tail frozen at -2000: the year's max
@@ -1650,7 +1766,7 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     expect(scale.textContent).toContain(component.formatMoney(-2000));
   });
 
-  it('mirrors the overview caption under the strip: the Scope Period\'s Balance', async () => {
+  it('mirrors the twelve-Period chart caption under the strip: the Scope Period\'s Balance', async () => {
     const acc = await accountService.create('Cash', 'EUR', 0);
     const incomeCat = await categoryService.create('Payroll', 'income');
     const expenseCat = await categoryService.create('Food', 'expense');
@@ -1659,23 +1775,23 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(`${year}-01-15`), 1, null, null, year);
     await transactionService.create(acc.id!, expenseCat.id!, 500, new Date(`${year}-02-15`), 2, null, null, year);
 
-    await component.ngOnInit();
-    await component.onScopeMonthChange(2);
+    await openOn();
+    component.onScopeChange(scopeOf(2, year));
     fixture.detectChanges();
 
     const caption = fixture.nativeElement.querySelector('.balance-caption');
     expect(caption).toBeTruthy();
-    expect(caption.querySelector('.label').textContent).toContain('February Balance');
+    expect(caption.querySelector('.label').textContent).toContain(`February ${year} Balance`);
     expect(caption.querySelector('.value').textContent).toContain(component.formatMoney(2500));
 
-    await component.onScopeMonthChange(1);
+    component.onScopeChange(scopeOf(1, year));
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.balance-caption .label').textContent)
-      .toContain('January Balance');
+      .toContain(`January ${year} Balance`);
     expect(fixture.nativeElement.querySelector('.balance-caption .value').textContent)
       .toContain(component.formatMoney(3000));
 
-    // The mirrored caption pairs with the overview caption's grammar: caps
+    // The mirrored caption pairs with the twelve-Period chart caption's grammar: caps
     // label left, mono figure right.
     const css = compiledComponentCss();
     expect(css).toMatch(/\.balance-caption[^{]*\{[^}]*text-transform:\s*uppercase/);
@@ -1684,24 +1800,24 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
   });
 
   it('shows no scale anchors or strip caption in the zero state', async () => {
-    await component.ngOnInit();
+    await openOn();
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('.overview-scale')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.twelve-periods-scale')).toBeNull();
     expect(fixture.nativeElement.querySelector('.balance-scale')).toBeNull();
     expect(fixture.nativeElement.querySelector('.balance-caption')).toBeNull();
   });
 
   it('aligns the scale anchors with the caption grammar: label left, value right, one spacing rhythm', async () => {
     await seedMovement(getCurrentPeriod());
-    await component.ngOnInit();
+    await openOn();
     fixture.detectChanges();
 
     const css = compiledComponentCss();
 
     // Each scale figure sits on a justified row: label left, value right —
     // the caption's own grammar.
-    for (const selector of ['overview-scale', 'balance-scale']) {
+    for (const selector of ['twelve-periods-scale', 'balance-scale']) {
       expect(css).toMatch(
         new RegExp(`\\.${selector}[^{]*\\.scale-line[^{]*\\{[^}]*justify-content:\\s*space-between`),
       );
@@ -1709,23 +1825,23 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
 
     // The graph-to-caption gap is one shared rhythm both graphs hand down;
     // no card carries its own spacing.
-    expect(css).toMatch(/\.year-overview[^{]*\{[^}]*margin-bottom:\s*var\(--space-md\)/);
+    expect(css).toMatch(/\.twelve-periods[^{]*\{[^}]*margin-bottom:\s*var\(--space-md\)/);
     expect(css).toMatch(/\.balance-strip[^{]*\{[^}]*margin-bottom:\s*var\(--space-md\)/);
 
     // The legends carry their own shared step below the footer lines — the
     // same margin on both cards, so the footers still pair.
-    expect(css).toMatch(/\.overview-legend[^{]*\{[^}]*margin:\s*var\(--space-sm\)/);
+    expect(css).toMatch(/\.twelve-periods-legend[^{]*\{[^}]*margin:\s*var\(--space-sm\)/);
     expect(css).toMatch(/\.balance-legend[^{]*\{[^}]*margin:\s*var\(--space-sm\)/);
   });
 
   it('takes month initials from the Language service, correct in both Languages', async () => {
     await seedMovement(getCurrentPeriod());
-    await component.ngOnInit();
+    await openOn();
     fixture.detectChanges();
 
     const readInitials = () =>
       Array.from(
-        fixture.nativeElement.querySelectorAll('.overview-initial') as NodeListOf<HTMLElement>,
+        fixture.nativeElement.querySelectorAll('.twelve-periods-initial') as NodeListOf<HTMLElement>,
       ).map(el => el.textContent?.trim());
 
     expect(readInitials()).toEqual(['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D']);
@@ -1736,7 +1852,7 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     expect(readInitials()).toEqual(['E', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D']);
   });
 
-  it('follows the scope year when the Scope changes', async () => {
+  it('charts the twelve Periods ending at the To Period when the Scope changes', async () => {
     const acc = await accountService.create('Cash', 'EUR', 0);
     const incomeCat = await categoryService.create('Payroll', 'income');
     const year = getCurrentYear();
@@ -1744,12 +1860,32 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date(`${year}-01-15`), 1, null, null, year);
     await transactionService.create(acc.id!, incomeCat.id!, 4000, new Date('2012-03-15'), 3, null, null, 2012);
 
-    await component.ngOnInit();
-    await component.onScopeYearChange(2012);
-    await component.onScopeMonthChange(3);
+    await openOn();
+    component.onScopeChange(scopeOf(3, 2012));
 
-    expect(component.report().yearOverview.periods.find(o => o.period === 3)!.net).toBe(4000);
-    expect(component.report().yearOverview.periods.find(o => o.period === 1)!.net).toBe(0);
+    const periods = component.report().twelvePeriods.periods;
+    expect(periods.at(-1)).toMatchObject({ year: 2012, month: 3, net: 4000 });
+    expect(periods[0]).toMatchObject({ year: 2011, month: 4 });
+    expect(periods.find(o => o.year === 2012 && o.month === 1)!.net).toBe(0);
+  });
+
+  it('marks the Scope Periods across a year boundary on both charts', async () => {
+    const acc = await accountService.create('Cash', 'EUR', 0);
+    const incomeCat = await categoryService.create('Payroll', 'income');
+    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date('2024-12-15'), 12, null, null, 2024);
+    await openOn();
+    component.onScopeChange(scopeOf(11, 2024, 1, 2025));
+    fixture.detectChanges();
+
+    const initials = Array.from(
+      fixture.nativeElement.querySelectorAll('.twelve-periods-initial') as NodeListOf<HTMLElement>,
+    );
+    expect(initials.map(el => el.textContent?.trim())).toEqual(
+      ['F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D', 'J'],
+    );
+    const marked = [false, false, false, false, false, false, false, false, false, true, true, true];
+    expect(initials.map(el => el.classList.contains('current'))).toEqual(marked);
+    expect(Array.from(balanceTracks()).map(el => el.classList.contains('current'))).toEqual(marked);
   });
 });
 

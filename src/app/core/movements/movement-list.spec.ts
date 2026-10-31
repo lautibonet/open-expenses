@@ -76,7 +76,7 @@ function input(overrides: Partial<MovementListInput>): MovementListInput {
     accounts: [cash, savings],
     categories: [food, salary],
     baseCurrency: 'EUR',
-    scope: { kind: 'month', period: 1, year: 2026 },
+    scope: { from: { year: 2026, month: 1 }, to: { year: 2026, month: 1 } },
     filters: { categoryId: null, accountId: null, search: '', sortDir: 'desc' },
     ...overrides,
   };
@@ -114,10 +114,10 @@ describe('movementList - Scope and order', () => {
     expect(list.rowCount).toBe(3);
   });
 
-  it('a year Scope keeps every Period of that year', () => {
+  it('a January to December Scope keeps every Period of that year', () => {
     const list = movementList(
       input({
-        scope: { kind: 'year', year: 2026 },
+        scope: { from: { year: 2026, month: 1 }, to: { year: 2026, month: 12 } },
         transactions: [
           txn({ id: 1, period: 1, year: 2026 }),
           txn({ id: 2, period: 7, year: 2026, date: new Date(2026, 6, 1) }),
@@ -129,10 +129,29 @@ describe('movementList - Scope and order', () => {
     expect(ids(rowsOf(list)).sort()).toEqual(['t1', 't2']);
   });
 
+  it('a Scope across a year boundary keeps exactly its Periods', () => {
+    const list = movementList(
+      input({
+        scope: { from: { year: 2025, month: 11 }, to: { year: 2026, month: 1 } },
+        transactions: [
+          txn({ id: 1, period: 11, year: 2025, date: new Date(2025, 10, 5) }),
+          txn({ id: 2, period: 12, year: 2025, date: new Date(2025, 11, 5) }),
+          txn({ id: 3, period: 1, year: 2026 }),
+          txn({ id: 4, period: 10, year: 2025, date: new Date(2025, 9, 5) }),
+          txn({ id: 5, period: 2, year: 2026, date: new Date(2026, 1, 5) }),
+          txn({ id: 6, period: 11, year: 2026, date: new Date(2026, 10, 5) }),
+        ],
+        transfers: [transfer({ id: 1, period: 12, year: 2025 })],
+      }),
+    );
+
+    expect(ids(rowsOf(list)).sort()).toEqual(['t1', 't2', 't3', 'x1']);
+  });
+
   it('leaves a movement with an unrecognizable period out of every Scope', () => {
     const list = movementList(
       input({
-        scope: { kind: 'year', year: 2026 },
+        scope: { from: { year: 2026, month: 1 }, to: { year: 2026, month: 12 } },
         transactions: [txn({ id: 1 }), txn({ id: 2, period: 'Enero' as never })],
         transfers: [transfer({ id: 1, period: 'Enero' as never })],
       }),

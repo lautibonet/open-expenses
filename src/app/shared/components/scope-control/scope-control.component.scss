@@ -1,0 +1,33 @@
+@use '../../styles/patterns' as *;
+
+/* One row: the preset select, then the preset's Scope as muted text or, on
+   Custom, From → To. On narrow screens the range wraps beneath as a unit,
+   and each end keeps its month and year together. */
+:host {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm) var(--space-md);
+}
+
+select {
+  @extend %field;
+}
+
+.scope-range {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.scope-end {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.scope-arrow,
+.scope-summary {
+  color: var(--on-surface-variant);
+}

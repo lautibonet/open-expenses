@@ -35,7 +35,7 @@ import {
   getPeriodYear,
   periodYearFromDate,
 } from '../../../core/types/period.type';
-import { defaultScope } from '../../../core/scope/scope';
+import { defaultMovementsScope } from '../../../core/scope/scope';
 import {
   dateToLocalISO,
   parseLocalDate,
@@ -350,7 +350,7 @@ export class TransferFormComponent implements AfterViewInit {
     this.cardBalance.set(
       periodEndBalance(
         { account: card, transactions, transfers, isIncome },
-        defaultScope(),
+        defaultMovementsScope().to,
       ),
     );
   }

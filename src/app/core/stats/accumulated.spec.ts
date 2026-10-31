@@ -1,8 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { accumulatedByPeriod, lastMovementPeriod } from './year-overview';
+import { accumulatedByPeriod } from './accumulated';
 import { Transaction } from '../models/transaction.model';
 import { Transfer } from '../models/transfer.model';
 import { Account } from '../models/account.model';
+import { scopePeriods } from '../types/period.type';
+
+const year2026 = scopePeriods({ from: { year: 2026, month: 1 }, to: { year: 2026, month: 12 } });
 
 function txn(overrides: Partial<Transaction>): Transaction {
   return {
@@ -53,13 +56,13 @@ function account(overrides: Partial<Account>): Account {
 }
 
 describe('accumulatedByPeriod', () => {
-  it('returns one entry for every Period of the year', () => {
+  it('returns one entry for every Period asked for', () => {
     const series = accumulatedByPeriod({
       accounts: [],
       transactions: [],
       transfers: [],
       isIncome: () => true,
-      year: 2026,
+      periods: year2026,
       baseCurrency: 'EUR',
       initialInBase: new Map(),
     });
@@ -78,7 +81,7 @@ describe('accumulatedByPeriod', () => {
       ],
       transfers: [],
       isIncome: (t: Transaction) => t.id === 1,
-      year: 2026,
+      periods: year2026,
       baseCurrency: 'EUR',
       initialInBase: new Map([[1, 1000]]),
     });
@@ -89,6 +92,24 @@ describe('accumulatedByPeriod', () => {
     expect(series[11]).toBe(2800);
   });
 
+  it('accumulates across a year boundary', () => {
+    const series = accumulatedByPeriod({
+      accounts: [account({ id: 1, initialBalance: 1000 })],
+      transactions: [
+        txn({ id: 1, period: 11, year: 2025, amount: 300 }),
+        txn({ id: 2, period: 1, year: 2026, amount: 200 }),
+        txn({ id: 3, period: 2, year: 2026, amount: 9999 }),
+      ],
+      transfers: [],
+      isIncome: () => true,
+      periods: scopePeriods({ from: { year: 2025, month: 10 }, to: { year: 2026, month: 1 } }),
+      baseCurrency: 'EUR',
+      initialInBase: new Map([[1, 1000]]),
+    });
+
+    expect(series).toEqual([1000, 1300, 1300, 1500]);
+  });
+
   it('includes prior years entirely and the year Period by Period', () => {
     const prior = txn({ id: 1, period: 6, year: 2025, amount: 2000 });
 
@@ -97,7 +118,7 @@ describe('accumulatedByPeriod', () => {
       transactions: [prior, txn({ id: 2, period: 2, amount: 500 })],
       transfers: [],
       isIncome: () => true,
-      year: 2026,
+      periods: year2026,
       baseCurrency: 'EUR',
       initialInBase: new Map([[1, 1000]]),
     });
@@ -112,7 +133,7 @@ describe('accumulatedByPeriod', () => {
       transactions: [],
       transfers: [transfer({ period: 2 })],
       isIncome: () => true,
-      year: 2026,
+      periods: year2026,
       baseCurrency: 'EUR',
       initialInBase: new Map([
         [1, 100],
@@ -131,7 +152,7 @@ describe('accumulatedByPeriod', () => {
       transactions: [stored],
       transfers: [],
       isIncome: () => true,
-      year: 2026,
+      periods: year2026,
       baseCurrency: 'EUR',
       initialInBase: new Map([[1, 1000]]),
     });
@@ -145,7 +166,7 @@ describe('accumulatedByPeriod', () => {
       transactions: [txn({ id: 1, accountId: 2, period: 1, amount: 500 })],
       transfers: [],
       isIncome: () => true,
-      year: 2026,
+      periods: year2026,
       baseCurrency: 'EUR',
       initialInBase: new Map([[1, 1000]]),
     });
@@ -161,7 +182,7 @@ describe('accumulatedByPeriod', () => {
       transactions: [stored],
       transfers: [],
       isIncome: () => true,
-      year: 2026,
+      periods: year2026,
       baseCurrency: 'EUR',
       initialInBase: new Map([[1, 1000]]),
     });
@@ -181,45 +202,11 @@ describe('accumulatedByPeriod', () => {
       transactions,
       transfers: [],
       isIncome: (t: Transaction) => t.id === 1,
-      year: 2026,
+      periods: year2026,
       baseCurrency: 'EUR',
       initialInBase: new Map([[1, 1000]]),
     });
 
     expect(series[1]).toBe(3300);
-  });
-});
-
-describe('lastMovementPeriod', () => {
-  it('returns 0 when the year carries no movements', () => {
-    expect(lastMovementPeriod([], [], 2026)).toBe(0);
-  });
-
-  it('returns the latest Period carrying a Transaction', () => {
-    const transactions = [
-      txn({ id: 1, period: 2 }),
-      txn({ id: 2, period: 5 }),
-    ];
-    expect(lastMovementPeriod(transactions, [], 2026)).toBe(5);
-  });
-
-  it('counts Transfers as movements', () => {
-    expect(lastMovementPeriod([], [transfer({ period: 7 })], 2026)).toBe(7);
-  });
-
-  it('takes the latest across Transactions and Transfers', () => {
-    expect(lastMovementPeriod([txn({ period: 3 })], [transfer({ period: 9 })], 2026)).toBe(9);
-  });
-
-  it('ignores movements of other years', () => {
-    const transactions = [
-      txn({ id: 1, period: 12, year: 2025 }),
-      txn({ id: 2, period: 4 }),
-    ];
-    expect(lastMovementPeriod(transactions, [transfer({ period: 8, year: 2025 })], 2026)).toBe(4);
-  });
-
-  it('returns 12 when December carries a movement', () => {
-    expect(lastMovementPeriod([txn({ period: 12 })], [], 2026)).toBe(12);
   });
 });

@@ -5,13 +5,12 @@ import { Transfer } from '../models/transfer.model';
 import { storedTransferBaseAmount, transactionBaseAmount } from '../balances/period-end-balances';
 import {
   MONTH_NUMBERS,
-  MonthNumber,
+  Period,
   getPeriodYear,
   movementInScope,
-  periodInScope,
-  periodIsYearToPeriod,
+  scopePeriods,
 } from '../types/period.type';
-import { MonthScope, PeriodScope } from '../scope/scope';
+import { Scope } from '../scope/scope';
 
 /* The id-keyed Account lookup every cash-basis predicate expects. Shared so
    each caller builds it the same way (an Account without an id is skipped). */
@@ -84,11 +83,10 @@ export interface CashBasisSnapshot {
   baseCurrency: string;
 }
 
-/* Income, Expenses, and Net of one Period of a year, in Base Currency.
-   `hasMovements` says whether any cash-basis movement landed in it — the
-   Periods that count toward a monthly average. */
-export interface PeriodCashFlow {
-  period: MonthNumber;
+/* Income, Expenses, and Net of one Period, in Base Currency. `hasMovements`
+   says whether any cash-basis movement landed in it — the Periods that count
+   toward a monthly average. */
+export interface PeriodCashFlow extends Period {
   income: number;
   expenses: number;
   net: number;
@@ -117,18 +115,16 @@ export interface CashBasisLookups {
 }
 
 export interface CashBasis extends CashBasisLookups {
-  /* The twelve Periods of a year, in calendar order. */
-  periods(year: number): PeriodCashFlow[];
-  /* The Movements figures: a single Period, or a whole year. */
-  scopeTotals(scope: PeriodScope): CashFlowTotals;
-  /* The Stats figures: January through the Scope's Period of its year. */
-  yearToPeriodTotals(scope: MonthScope): CashFlowTotals;
+  /* The figures of each given Period, in the order given. */
+  periodFlows(periods: Period[]): PeriodCashFlow[];
+  /* The figures of exactly the Scope's Periods, on Movements and Stats alike. */
+  scopeTotals(scope: Scope): CashFlowTotals;
   /* The counted Transactions in a Scope that fell back to their face amount
      for lack of a stored conversion. */
-  unconvertedTransactions(scope: PeriodScope): Transaction[];
+  unconvertedTransactions(scope: Scope): Transaction[];
   /* The Card Payments in a Scope counted at their face source amount for
      lack of a stored conversion (ADR 0028). */
-  unconvertedCardPayments(scope: PeriodScope): Transfer[];
+  unconvertedCardPayments(scope: Scope): Transfer[];
 }
 
 const round2 = (value: number) => Math.round(value * 100) / 100;
@@ -184,7 +180,7 @@ export function cashBasis(snapshot: CashBasisSnapshot): CashBasis {
   const cardPayments = cardPaymentTransfers(snapshot.transfers, accountsById);
   const periodsByYear = new Map<number, PeriodCashFlow[]>();
 
-  function periods(year: number): PeriodCashFlow[] {
+  function yearPeriods(year: number): PeriodCashFlow[] {
     const cached = periodsByYear.get(year);
     if (cached) return cached;
     const sums = new Map(
@@ -203,22 +199,25 @@ export function cashBasis(snapshot: CashBasisSnapshot): CashBasis {
       sum.expenses += storedTransferBaseAmount(payment);
       sum.hasMovements = true;
     }
-    const result = MONTH_NUMBERS.map(period => {
-      const sum = sums.get(period)!;
+    const result = MONTH_NUMBERS.map(month => {
+      const sum = sums.get(month)!;
       const income = round2(sum.income);
       const expenses = round2(sum.expenses);
-      return { period, income, expenses, net: round2(income - expenses), hasMovements: sum.hasMovements };
+      return { year, month, income, expenses, net: round2(income - expenses), hasMovements: sum.hasMovements };
     });
     periodsByYear.set(year, result);
     return result;
   }
 
-  function sumPeriods(year: number, include: (period: MonthNumber) => boolean): CashFlowTotals {
+  function periodFlows(periods: Period[]): PeriodCashFlow[] {
+    return periods.map(p => yearPeriods(p.year)[p.month - 1]);
+  }
+
+  function scopeTotals(scope: Scope): CashFlowTotals {
     let income = 0;
     let expenses = 0;
     let periodsWithMovements = 0;
-    for (const p of periods(year)) {
-      if (!include(p.period)) continue;
+    for (const p of periodFlows(scopePeriods(scope))) {
       income += p.income;
       expenses += p.expenses;
       if (p.hasMovements) periodsWithMovements++;
@@ -230,10 +229,8 @@ export function cashBasis(snapshot: CashBasisSnapshot): CashBasis {
 
   return {
     ...lookups,
-    periods,
-    scopeTotals: scope => sumPeriods(scope.year, period => periodInScope(scope.year, period, scope)),
-    yearToPeriodTotals: scope =>
-      sumPeriods(scope.year, period => periodIsYearToPeriod(scope.year, period, scope)),
+    periodFlows,
+    scopeTotals,
     unconvertedTransactions: scope =>
       counted.filter(
         transaction =>

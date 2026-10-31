@@ -12,10 +12,6 @@
   @extend %scope-control;
 }
 
-.scope-selects {
-  @extend %scope-selects;
-}
-
 /* KPI ledger summary: one card, three striped lines — income, expenses, net —
    with the year totals right-aligned into a single tabular ledger column and
    the monthly average demoted beneath each figure. The card gives every figure
@@ -197,7 +193,7 @@
    in a chart; the warning voice stays with the balance rows). The line sits
    at the year's negative share of its extremes — bottom edge when every
    balance is positive, rising when one is overdrawn. The tracks share the
-   year overview's construction — twelve gap-separated columns, one plot —
+   twelve Periods's construction — twelve gap-separated columns, one plot —
    so both graphs read as one grammar; only the size differs, the strip
    staying the quieter register. Months beyond the last movement freeze at
    the last known balance, matching the card figure, but render absent: they
@@ -248,14 +244,14 @@
    entirely and emphasis moves to the month label, which reads bold ink
    instead of the muted register. Desktop keeps the outline unchanged. */
 @media (max-width: 480px) {
-  .overview-track.current,
+  .twelve-periods-track.current,
   .balance-track.current {
     outline: none;
   }
 }
 
 .balance-strip {
-  /* The year overview carries the same gap down to its caption; the strip
+  /* The twelve Periods carries the same gap down to its caption; the strip
      hands its footer the identical spacing, so the two cards' footers pair. */
   margin-top: var(--space-md);
   margin-bottom: var(--space-md);
@@ -333,7 +329,7 @@
   list-style: none;
 }
 
-/* Year overview: the year-at-a-glance graph. Each Period carries three
+/* The twelve-Period chart: the twelve Periods to the To Period. Each Period carries three
    columns rising from the zero line — Income green, Expenses red, Net ink.
    The line sits at the year's negative share of its extremes, positioned by
    the --zero-pct datum inherited from the graph container: bottom edge when
@@ -341,16 +337,16 @@
    cross it, growing down (the Negative-Stays-Ink Rule: a minus is a fact,
    not an alarm). Income and Expenses are magnitudes; they never dip below
    zero. Pure CSS, no chart lib. */
-.year-overview {
+.twelve-periods {
   margin-bottom: var(--space-md);
 }
 
-.overview-tracks {
+.twelve-periods-tracks {
   position: relative;
   @extend %twelve-column-plot;
 }
 
-.overview-track {
+.twelve-periods-track {
   @extend %graph-track;
 
   display: grid;
@@ -358,11 +354,11 @@
   height: 7rem;
 }
 
-.overview-cell {
+.twelve-periods-cell {
   position: relative;
   z-index: 1;
 
-  & + .overview-cell {
+  & + .twelve-periods-cell {
     /* A hair of daylight between the three columns of a month. */
     margin-left: 1px;
   }
@@ -398,13 +394,13 @@
   }
 }
 
-.overview-initials {
+.twelve-periods-initials {
   @extend %twelve-column-plot;
 
   margin-top: var(--space-xs);
 }
 
-.overview-initial {
+.twelve-periods-initial {
   @extend %mono-data;
 
   font-weight: 500;
@@ -418,12 +414,12 @@
 }
 
 @media (max-width: 768px) {
-  .overview-track {
+  .twelve-periods-track {
     height: 5.5rem;
   }
 }
 
-.overview-zero {
+.twelve-periods-zero {
   @extend %empty-state;
 
   margin: 0;
@@ -468,7 +464,7 @@
   }
 }
 
-.overview-caption {
+.twelve-periods-caption {
   @extend %graph-caption;
 }
 
@@ -477,7 +473,7 @@
 }
 
 /* Scale anchor: the caps-voice lines that give the relative columns absolute
-   meaning — what the graph's scale edges are worth (the overview names its
+   meaning — what the graph's scale edges are worth (the twelve-Period chart names its
    tallest column and its deepest overdrawn Net; the strip names its track
    top, or the overdrawn cap when that is the year's max magnitude). Each
    figure rides a row of the caption grammar, so labels align left and
@@ -490,7 +486,7 @@
   }
 }
 
-.overview-scale {
+.twelve-periods-scale {
   @extend %scale-anchor;
 }
 
@@ -498,7 +494,7 @@
   @extend %scale-anchor;
 }
 
-.overview-legend {
+.twelve-periods-legend {
   @extend %caps-label-muted;
 
   /* Wrapped to two lines at 375px: readable leading, not the caps 1.0. */
@@ -509,7 +505,7 @@
 
 /* Accessible equivalent: announces Income, Expenses, Net — and Accumulated
    through the Scope's Period — per Period. */
-.overview-figures {
+.twelve-periods-figures {
   margin: 0;
   padding: 0;
   list-style: none;

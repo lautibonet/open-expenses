@@ -13,6 +13,15 @@ import { Account } from '../models/account.model';
 import { Transaction } from '../models/transaction.model';
 import { Transfer } from '../models/transfer.model';
 import { Category } from '../models/category.model';
+import { MonthNumber, scopePeriods } from '../types/period.type';
+import { Scope } from '../scope/scope';
+
+const scope = (fromYear: number, fromMonth: number, toYear: number, toMonth: number): Scope => ({
+  from: { year: fromYear, month: fromMonth as MonthNumber },
+  to: { year: toYear, month: toMonth as MonthNumber },
+});
+const month = (year: number, m: number): Scope => scope(year, m, year, m);
+const wholeYear = (year: number): Scope => scope(year, 1, year, 12);
 
 function account(overrides: Partial<Account>): Account {
   return {
@@ -180,7 +189,7 @@ describe('cashBasis totals (ADR 0022)', () => {
       transactions: [txn({ accountId: 2, categoryId: 1, amount: 10, exchangeRate: 0.9, baseCurrencyAmount: null })],
     }));
 
-    expect(figures.scopeTotals({ kind: 'month', period: 1, year: 2026 })).toEqual({
+    expect(figures.scopeTotals(month(2026, 1))).toEqual({
       income: 0,
       expenses: 9,
       net: -9,
@@ -194,7 +203,7 @@ describe('cashBasis totals (ADR 0022)', () => {
       transactions: [txn({ accountId: 1, categoryId: 1, amount: 50, exchangeRate: 1.1, baseCurrencyAmount: 55 })],
     }));
 
-    expect(figures.scopeTotals({ kind: 'month', period: 1, year: 2026 }).expenses).toBe(50);
+    expect(figures.scopeTotals(month(2026, 1)).expenses).toBe(50);
   });
 
   it('counts a foreign Transaction at its stored base amount', () => {
@@ -202,13 +211,13 @@ describe('cashBasis totals (ADR 0022)', () => {
       transactions: [txn({ accountId: 2, categoryId: 2, amount: 100, exchangeRate: 1.08, baseCurrencyAmount: 108 })],
     }));
 
-    expect(figures.scopeTotals({ kind: 'month', period: 1, year: 2026 }).income).toBe(108);
+    expect(figures.scopeTotals(month(2026, 1)).income).toBe(108);
   });
 
   it('counts a foreign Transaction without any stored conversion at its face amount and reports it', () => {
     const unconverted = txn({ id: 9, accountId: 2, categoryId: 1, amount: 10 });
     const figures = cashBasis(snapshot({ transactions: [unconverted] }));
-    const scope = { kind: 'month' as const, period: 1 as const, year: 2026 };
+    const scope = month(2026, 1);
 
     expect(figures.scopeTotals(scope).expenses).toBe(10);
     expect(figures.unconvertedTransactions(scope).map(t => t.id)).toEqual([9]);
@@ -223,8 +232,8 @@ describe('cashBasis totals (ADR 0022)', () => {
       ],
     }));
 
-    expect(figures.unconvertedTransactions({ kind: 'month', period: 1, year: 2026 })).toEqual([]);
-    expect(figures.unconvertedTransactions({ kind: 'year', year: 2026 }).map(t => t.id)).toEqual([3]);
+    expect(figures.unconvertedTransactions(month(2026, 1))).toEqual([]);
+    expect(figures.unconvertedTransactions(wholeYear(2026)).map(t => t.id)).toEqual([3]);
   });
 
   it('leaves Card Purchases out and counts Card Payments as Expenses', () => {
@@ -243,7 +252,7 @@ describe('cashBasis totals (ADR 0022)', () => {
       ],
     }));
 
-    expect(figures.scopeTotals({ kind: 'month', period: 1, year: 2026 })).toEqual({
+    expect(figures.scopeTotals(month(2026, 1))).toEqual({
       income: 3000,
       expenses: 500,
       net: 2500,
@@ -262,26 +271,32 @@ describe('cashBasis totals (ADR 0022)', () => {
         transfer({ id: 9, sourceAccountId: 1, destinationAccountId: 2, sourceAmount: 10, baseCurrencyAmount: null }),
       ],
     }));
-    const scope = { kind: 'month' as const, period: 1 as const, year: 2026 };
+    const scope = month(2026, 1);
 
     expect(figures.scopeTotals(scope).expenses).toBe(168);
     expect(figures.unconvertedCardPayments(scope).map(t => t.id)).toEqual([7]);
-    expect(figures.unconvertedCardPayments({ kind: 'month', period: 2, year: 2026 })).toEqual([]);
+    expect(figures.unconvertedCardPayments(month(2026, 2))).toEqual([]);
   });
 
-  it('splits every Period of a year in calendar order, by the stored Period year', () => {
+  it('splits each requested Period in order, by the stored Period year, across a year boundary', () => {
     const december = txn({ id: 1, accountId: 1, categoryId: 2, period: 1, date: new Date('2025-12-22'), year: 2026, amount: 3000 });
     const figures = cashBasis(snapshot({
-      transactions: [december, txn({ id: 2, accountId: 1, categoryId: 1, period: 3, amount: 700 })],
+      transactions: [
+        december,
+        txn({ id: 2, accountId: 1, categoryId: 1, period: 3, amount: 700 }),
+        txn({ id: 3, accountId: 1, categoryId: 1, period: 12, year: 2025, amount: 40 }),
+      ],
     }));
 
-    const periods = figures.periods(2026);
+    const periods = figures.periodFlows(scopePeriods(scope(2025, 11, 2026, 3)));
 
-    expect(periods.map(p => p.period)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
-    expect(periods[0]).toEqual({ period: 1, income: 3000, expenses: 0, net: 3000, hasMovements: true });
-    expect(periods[1]).toEqual({ period: 2, income: 0, expenses: 0, net: 0, hasMovements: false });
-    expect(periods[2].net).toBe(-700);
-    expect(figures.periods(2025).every(p => !p.hasMovements && p.net === 0)).toBe(true);
+    expect(periods.map(p => [p.year, p.month])).toEqual([
+      [2025, 11], [2025, 12], [2026, 1], [2026, 2], [2026, 3],
+    ]);
+    expect(periods[0]).toEqual({ year: 2025, month: 11, income: 0, expenses: 0, net: 0, hasMovements: false });
+    expect(periods[1]).toEqual({ year: 2025, month: 12, income: 0, expenses: 40, net: -40, hasMovements: true });
+    expect(periods[2]).toEqual({ year: 2026, month: 1, income: 3000, expenses: 0, net: 3000, hasMovements: true });
+    expect(periods[4].net).toBe(-700);
   });
 
   it('rounds each Period figure to cents', () => {
@@ -293,10 +308,10 @@ describe('cashBasis totals (ADR 0022)', () => {
       ],
     }));
 
-    expect(figures.periods(2026)[0].income).toBe(60.6);
+    expect(figures.periodFlows([{ year: 2026, month: 1 }])[0].income).toBe(60.6);
   });
 
-  it('sums the whole year for a year Scope', () => {
+  it('sums the whole year for a January to December Scope', () => {
     const figures = cashBasis(snapshot({
       transactions: [
         txn({ id: 1, accountId: 1, categoryId: 2, period: 1, amount: 1000 }),
@@ -305,7 +320,7 @@ describe('cashBasis totals (ADR 0022)', () => {
       ],
     }));
 
-    expect(figures.scopeTotals({ kind: 'year', year: 2026 })).toEqual({
+    expect(figures.scopeTotals(wholeYear(2026))).toEqual({
       income: 1000,
       expenses: 300,
       net: 700,
@@ -313,34 +328,37 @@ describe('cashBasis totals (ADR 0022)', () => {
     });
   });
 
-  it('sums January through the Scope Period for the year-to-period totals, and averages over the Periods with movements', () => {
+  it('sums exactly the Periods of a Scope that crosses a year boundary, and averages over its Periods with movements', () => {
     const figures = cashBasis(snapshot({
       transactions: [
-        txn({ id: 1, accountId: 1, categoryId: 2, period: 1, amount: 3000 }),
-        txn({ id: 2, accountId: 1, categoryId: 1, period: 3, amount: 1000 }),
-        txn({ id: 3, accountId: 1, categoryId: 1, period: 4, amount: 9999 }),
+        txn({ id: 1, accountId: 1, categoryId: 2, period: 10, year: 2025, amount: 9999 }),
+        txn({ id: 2, accountId: 1, categoryId: 2, period: 11, year: 2025, amount: 3000 }),
+        txn({ id: 3, accountId: 1, categoryId: 1, period: 1, year: 2026, amount: 1000 }),
+        txn({ id: 4, accountId: 1, categoryId: 1, period: 2, year: 2026, amount: 8888 }),
+        txn({ id: 5, accountId: 1, categoryId: 1, period: 11, year: 2026, amount: 7777 }),
       ],
     }));
 
-    const totals = figures.yearToPeriodTotals({ kind: 'month', period: 3, year: 2026 });
+    const totals = figures.scopeTotals(scope(2025, 11, 2026, 1));
 
     expect(totals).toEqual({ income: 3000, expenses: 1000, net: 2000, periodsWithMovements: 2 });
     expect(monthlyAverages(totals)).toEqual({ income: 1500, expenses: 500, net: 1000 });
   });
 
-  it('makes the year-to-period totals equal the sum of the Period figures the year overview shows', () => {
+  it('makes the Scope totals equal the sum of the Period figures the twelve-Period chart shows', () => {
     const figures = cashBasis(snapshot({
       transactions: [
-        txn({ id: 1, accountId: 1, categoryId: 2, period: 1, amount: 10.1 }),
+        txn({ id: 1, accountId: 1, categoryId: 2, period: 12, year: 2025, amount: 10.1 }),
         txn({ id: 2, accountId: 1, categoryId: 2, period: 2, amount: 20.2 }),
         txn({ id: 3, accountId: 2, categoryId: 1, period: 2, amount: 7, exchangeRate: 0.95 }),
         txn({ id: 4, accountId: 1, categoryId: 1, period: 5, amount: 1 }),
       ],
     }));
+    const covered = scope(2025, 12, 2026, 4);
 
-    const shown = figures.periods(2026).filter(p => p.period <= 4);
+    const shown = figures.periodFlows(scopePeriods(covered));
 
-    expect(figures.yearToPeriodTotals({ kind: 'month', period: 4, year: 2026 })).toEqual({
+    expect(figures.scopeTotals(covered)).toEqual({
       income: 30.3,
       expenses: 6.65,
       net: 23.65,
@@ -351,7 +369,7 @@ describe('cashBasis totals (ADR 0022)', () => {
   });
 
   it('averages to zero when no Period carries movements', () => {
-    const totals = cashBasis(snapshot({})).yearToPeriodTotals({ kind: 'month', period: 6, year: 2026 });
+    const totals = cashBasis(snapshot({})).scopeTotals(scope(2026, 1, 2026, 6));
 
     expect(monthlyAverages(totals)).toEqual({ income: 0, expenses: 0, net: 0 });
   });

@@ -30,8 +30,9 @@ for (const viewport of [
 
       await page.goto('/stats');
 
-      for (const trackSel of ['.balance-track.current', '.overview-track.current']) {
-        const track = page.locator(trackSel);
+      for (const trackSel of ['.balance-track.current', '.twelve-periods-track.current']) {
+        // Every Period in the Scope is marked (ADR 0029); the To Period holds the income.
+        const track = page.locator(trackSel).last();
         await expect(track).toBeVisible();
 
         const style = await track.evaluate((el) => {
@@ -59,8 +60,8 @@ for (const viewport of [
 
       // The emphasized month's label carries the mobile emphasis: bold ink
       // instead of the muted register, on both graphs.
-      for (const labelSel of ['.balance-initial.current', '.overview-initial.current']) {
-        const label = page.locator(labelSel).first();
+      for (const labelSel of ['.balance-initial.current', '.twelve-periods-initial.current']) {
+        const label = page.locator(labelSel).last();
         await expect(label).toBeVisible();
         const style = await label.evaluate((el) => {
           const s = getComputedStyle(el);
@@ -73,20 +74,20 @@ for (const viewport of [
       // The current month's fills stay visible inside the emphasized
       // tracks: each fill spans its container (the outline paints without
       // layout and never clips the fill) and carries real height (income
-      // seeded above) — on both graphs. The overview splits its track into
+      // seeded above) — on both graphs. The twelve-Period chart splits its track into
       // three cells (income/expense/net), so its fills are a third of the
       // track by design; the span check is the meaningful one there.
       for (const [fillSel, containerSel] of [
         ['.balance-track.current .balance-fill', '.balance-track.current'],
-        ['.overview-track.current .cell-fill', '.overview-track.current .overview-cell'],
+        ['.twelve-periods-track.current .cell-fill', '.twelve-periods-track.current .twelve-periods-cell'],
       ] as const) {
-        const fill = page.locator(fillSel).first();
+        const fill = page.locator(fillSel).last();
         await expect(fill).toBeVisible();
         const [fillBox, containerWidth] = await Promise.all([
           fill.boundingBox(),
           page
             .locator(containerSel)
-            .first()
+            .last()
             .evaluate((el) => el.clientWidth),
         ]);
         expect(fillBox).not.toBeNull();
