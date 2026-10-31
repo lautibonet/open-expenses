@@ -191,6 +191,9 @@ describe('translations', () => {
       'scope.toMonthAria',
       'scope.toYearAria',
       'scope.range',
+      'scope.caption',
+      'scope.captionRun',
+      'scope.captionPeriod',
     ]) {
       expect(TRANSLATIONS.en[key]).toBeTruthy();
       expect(TRANSLATIONS.es[key]).toBeTruthy();
@@ -378,7 +381,6 @@ describe('translations', () => {
       'stats.noAccounts',
       'stats.avgCaption',
       'stats.savingsRate',
-      'stats.kpiScope',
     ]) {
       expect(TRANSLATIONS.en[key]).toBeTruthy();
       expect(TRANSLATIONS.es[key]).toBeTruthy();

@@ -73,10 +73,6 @@ export class LanguageService {
       .toLocaleUpperCase(this.activeLanguage());
   }
 
-  monthRangeLabel(from: number, to: number): string {
-    return `${this.monthAbbrev(from)}–${this.monthAbbrev(to)}`;
-  }
-
   periodLabel(period: number | string): string {
     return isMonthNumber(period) ? this.monthName(period) : String(period);
   }
@@ -101,6 +97,27 @@ export class LanguageService {
       return this.t('scope.range', { from: this.monthName(from.month), to: this.periodName(to) });
     }
     return this.t('scope.range', { from: this.periodName(from), to: this.periodName(to) });
+  }
+
+  /* A Scope's short caption, by abbreviated months: "2026 · MAR" for one
+     Period, "2026 · JAN–MAR" within a year, and "NOV 2025–JAN 2026" across
+     a year boundary. */
+  scopeCaption(scope: Scope): string {
+    const { from, to } = scope;
+    if (from.year === to.year) {
+      const months = isMultiPeriod(scope)
+        ? this.t('scope.captionRun', { from: this.monthAbbrev(from.month), to: this.monthAbbrev(to.month) })
+        : this.monthAbbrev(to.month);
+      return this.t('scope.caption', { year: to.year, months });
+    }
+    return this.t('scope.captionRun', {
+      from: this.periodCaption(from),
+      to: this.periodCaption(to),
+    });
+  }
+
+  private periodCaption(period: Period): string {
+    return this.t('scope.captionPeriod', { month: this.monthAbbrev(period.month), year: period.year });
   }
 
   categoryTypeLabel(type: string): string {

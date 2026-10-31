@@ -137,20 +137,6 @@ export class DashboardComponent implements OnInit {
     return this.language.periodName(this.scope().to);
   }
 
-  /* The KPI caption: "2026 · MAR" for one Period, "2026 · JAN–MAR" within a
-     year, "NOV 2025–JAN 2026" across a year boundary. */
-  kpiScopeLabel(): string {
-    const { from, to } = this.scope();
-    if (from.year === to.year) {
-      const range =
-        from.month === to.month
-          ? this.language.monthAbbrev(to.month)
-          : this.language.monthRangeLabel(from.month, to.month);
-      return this.language.t('stats.kpiScope', { year: to.year, range });
-    }
-    return `${this.language.monthAbbrev(from.month)} ${from.year}–${this.language.monthAbbrev(to.month)} ${to.year}`;
-  }
-
   categoryBarWidth(total: number): number {
     return categoryBarWidth(total, this.report().categorySpending);
   }
