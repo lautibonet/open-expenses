@@ -69,6 +69,24 @@ test('a Scope longer than twelve Periods scrolls inside its card, opening on the
     .toEqual([0, 0]);
 });
 
+test('a Scope shorter than twelve Periods sits left-aligned in its card', async ({ page }) => {
+  await completeOnboarding(page);
+  await addIncome(page, '3000');
+
+  await page.goto('/stats');
+  await page.getByLabel('Scope preset').selectOption({ label: 'Last 3' });
+  await expect(page.locator('.net-chart-track')).toHaveCount(3);
+
+  for (const card of ['.net-chart-card', '.total-balance-card']) {
+    const offset = await page.locator(card).evaluate(el => {
+      const scroll = el.querySelector('.chart-scroll')!.getBoundingClientRect();
+      const first = el.querySelector('.net-chart-track, .balance-track')!.getBoundingClientRect();
+      return first.left - scroll.left;
+    });
+    expect(offset, `${card} starts its first track at the card's left edge`).toBeLessThanOrEqual(2);
+  }
+});
+
 async function addIncome(page: Page, amount: string, date?: string) {
   await page.getByRole('button', { name: '+ Transaction' }).click();
   const form = page.locator('.transaction-form-form');

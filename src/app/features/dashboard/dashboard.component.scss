@@ -214,9 +214,9 @@ $reference-periods: 12;
 }
 
 /* ADR 0030: a plot charts exactly the Scope's Periods, each track as wide as
-   in a twelve-Period chart. A shorter Scope sits right-aligned, its To Period
-   at the edge the eye already goes to; a longer one overflows and its card
-   scrolls sideways, never the page. The 1px padding keeps the To Period's
+   in a twelve-Period chart. A shorter Scope sits left-aligned, reading from
+   its From Period like every other line on the card; a longer one overflows
+   and its card scrolls sideways, never the page. The 1px padding keeps the To Period's
    emphasis ring inside the scroll clip. */
 .chart-scroll {
   overflow-x: auto;
@@ -227,7 +227,6 @@ $reference-periods: 12;
 .net-chart,
 .balance-strip {
   width: calc((100% + var(--space-xs)) * var(--periods) / #{$reference-periods} - var(--space-xs));
-  margin-left: auto;
 }
 
 /* A Scope crossing a year boundary labels each January with its year, on a
