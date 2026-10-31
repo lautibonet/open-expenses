@@ -242,9 +242,9 @@ describe('lastMovementPeriod', () => {
   });
 
   it('finds the latest Period across a year boundary', () => {
-    const window = scopePeriods({ from: { year: 2025, month: 11 }, to: { year: 2026, month: 1 } });
+    const periods = scopePeriods({ from: { year: 2025, month: 11 }, to: { year: 2026, month: 1 } });
     const transactions = [txn({ id: 1, period: 12, year: 2025 }), txn({ id: 2, period: 2, year: 2026 })];
-    expect(lastMovementPeriod(transactions, [], window)).toEqual(at(2025, 12));
+    expect(lastMovementPeriod(transactions, [], periods)).toEqual(at(2025, 12));
   });
 
   it('returns December when December carries a movement', () => {
