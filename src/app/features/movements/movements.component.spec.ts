@@ -1063,60 +1063,37 @@ describe('MovementsComponent - shared scope', () => {
     expect(fixture.nativeElement.querySelector('.scope-selects')).not.toBeNull();
   });
 
-  it('should derive year options from the data range, not a fixed window', async () => {
-    await transactionService.create(
-      accountId,
-      categoryId,
-      100,
-      new Date('2012-01-15'),
-      1,
-      null,
-      null,
-      2012,
-    );
-    await transactionService.create(
-      accountId,
-      categoryId,
-      200,
-      new Date('2016-01-15'),
-      1,
-      null,
-      null,
-      2016,
-    );
+  it('should offer every year from the earliest with data to the current year, with no gaps', async () => {
+    await transactionService.create(accountId, categoryId, 100, new Date('2012-01-15'), 1, null, null, 2012);
+    await transactionService.create(accountId, categoryId, 200, new Date('2016-01-15'), 1, null, null, 2016);
     await component.ngOnInit();
 
-    expect(component.scopeYears()).toContain(2012);
-    expect(component.scopeYears()).toContain(2016);
-    expect(component.scopeYears()).toContain(getCurrentYear());
-    expect(component.scopeYears()).toEqual(expect.arrayContaining([2012, 2016, getCurrentYear()]));
+    const expected = Array.from({ length: getCurrentYear() - 2012 + 1 }, (_, i) => 2012 + i);
+    expect(component.scopeYears()).toEqual(expected);
   });
 
-  it('should derive month options from the months actually present in data', async () => {
-    await transactionService.create(
-      accountId,
-      categoryId,
-      100,
-      new Date('2026-03-15'),
-      3,
-      null,
-      null,
-      2026,
-    );
-    await transactionService.create(
-      accountId,
-      categoryId,
-      200,
-      new Date('2026-07-15'),
-      7,
-      null,
-      null,
-      2026,
-    );
+  it('should offer all twelve months, even on a year without movements', async () => {
+    await transactionService.create(accountId, categoryId, 100, new Date('2012-03-15'), 3, null, null, 2012);
+    await transactionService.create(accountId, categoryId, 200, new Date('2016-07-15'), 7, null, null, 2016);
+    await component.ngOnInit();
+    expect(component.scopeMonths()).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
+
+    component.onScopeYearChange(2014);
+
+    expect(component.scopeMonths()).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
+  });
+
+  it('should stay on a picked Period without movements and keep its month across a year change', async () => {
+    await transactionService.create(accountId, categoryId, 200, new Date('2016-07-15'), 7, null, null, 2016);
     await component.ngOnInit();
 
-    expect(component.scopeMonths()).toContain(3);
-    expect(component.scopeMonths()).toContain(7);
+    component.onScopeMonthChange(2);
+    expect(component.scope()).toEqual({ kind: 'month', period: 2, year: 2016 });
+    expect(component.rows()).toEqual([]);
+
+    component.onScopeYearChange(2015);
+    expect(component.scope()).toEqual({ kind: 'month', period: 2, year: 2015 });
+    expect(component.rows()).toEqual([]);
   });
 
   it('should show movements from a chosen past period', async () => {
