@@ -10,7 +10,7 @@ import {
   matchingPreset,
   presetScope,
   scopeFromQuery,
-  scopeOptions,
+  scopeYears,
   scopeQuery,
 } from './scope';
 
@@ -273,48 +273,42 @@ describe('scope', () => {
     });
   });
 
-  describe('scopeOptions', () => {
+  describe('scopeYears', () => {
     const movements = [movement(2024, 3), movement(2025, 11), movement(2026, 12)];
 
     beforeEach(() => {
       vi.setSystemTime(new Date(2026, 9, 15));
     });
 
-    it('should offer all twelve months', () => {
-      expect(scopeOptions(movements, scope([2019, 3], [2019, 3])).months).toEqual([
-        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
-      ]);
-    });
-
     it('should offer every year from the earliest with data to the current year, with no gaps', () => {
-      const options = scopeOptions(
+      const years = scopeYears(
         [movement(2023, 1), movement(2025, 3)],
         scope([2026, 10], [2026, 10]),
       );
-      expect(options.years).toEqual([2023, 2024, 2025, 2026]);
+      expect(years).toEqual([2023, 2024, 2025, 2026]);
     });
 
     it('should offer years up to the latest year with data when it is ahead of the calendar', () => {
-      const options = scopeOptions(
+      const years = scopeYears(
         [movement(2025, 5), movement(2028, 1)],
         scope([2026, 10], [2026, 10]),
       );
-      expect(options.years).toEqual([2025, 2026, 2027, 2028]);
+      expect(years).toEqual([2025, 2026, 2027, 2028]);
     });
 
     it('should keep offering both ends of a Scope outside the years with data', () => {
-      expect(scopeOptions(movements, scope([2021, 1], [2030, 3])).years).toEqual([
+      expect(scopeYears(movements, scope([2021, 1], [2030, 3]))).toEqual([
         2021, 2022, 2023, 2024, 2025, 2026, 2027, 2028, 2029, 2030,
       ]);
     });
 
     it('should offer only the current year when there is no data', () => {
-      expect(scopeOptions([], scope([2026, 10], [2026, 10])).years).toEqual([2026]);
+      expect(scopeYears([], scope([2026, 10], [2026, 10]))).toEqual([2026]);
     });
 
     it('should place a movement without a stored year in its date year', () => {
-      const options = scopeOptions([{ period: 9, date: new Date(2023, 8, 15) }], scope([2023, 1], [2023, 12]));
-      expect(options.years).toEqual([2023, 2024, 2025, 2026]);
+      const years = scopeYears([{ period: 9, date: new Date(2023, 8, 15) }], scope([2023, 1], [2023, 12]));
+      expect(years).toEqual([2023, 2024, 2025, 2026]);
     });
   });
 });

@@ -21,7 +21,7 @@
         (ngModelChange)="onFromMonthChange($event)"
         [attr.aria-label]="language.t('scope.fromMonthAria')"
       >
-        @for (month of months(); track month) {
+        @for (month of months; track month) {
           <option [ngValue]="month">{{ language.monthName(month) }}</option>
         }
       </select>
@@ -42,7 +42,7 @@
         (ngModelChange)="onToMonthChange($event)"
         [attr.aria-label]="language.t('scope.toMonthAria')"
       >
-        @for (month of months(); track month) {
+        @for (month of months; track month) {
           <option [ngValue]="month">{{ language.monthName(month) }}</option>
         }
       </select>

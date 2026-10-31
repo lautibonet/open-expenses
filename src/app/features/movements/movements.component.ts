@@ -193,7 +193,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
     try {
       await this.loadAll();
     } finally {
-      this.setScope(this.scope());
+      this.onScopeChange(this.scope());
     }
   });
 
@@ -341,13 +341,9 @@ export class MovementsComponent implements OnInit, OnDestroy {
     this.transfers.set(await this.transferService.getAll());
   }
 
-  onScopeChange(scope: Scope): void {
-    this.setScope(scope);
-  }
-
   /* The whole Ledger is already loaded, so the new Scope's rows and Net
      figures derive at once — there is no stale Scope to gate. */
-  private setScope(scope: Scope): void {
+  onScopeChange(scope: Scope): void {
     this.scope.set(scope);
     this.reflectScopeInUrl(scope);
     this.scopeAnnouncement.set(this.language.scopeLabel(scope));

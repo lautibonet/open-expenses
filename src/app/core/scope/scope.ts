@@ -1,6 +1,4 @@
 import {
-  MONTH_NUMBERS,
-  MonthNumber,
   Period,
   ScopeAwareMovement,
   comparePeriods,
@@ -201,17 +199,12 @@ function legacyScopeFromQuery(params: URLSearchParams): Scope | null {
   return isMonthNumber(month) ? singlePeriodScope({ year, month }) : null;
 }
 
-export interface ScopeOptions {
-  years: number[];
-  months: MonthNumber[];
-}
-
-/* Issue #218: every month is on offer for any year — a Period without
-   movements shows as empty, never snaps elsewhere. The years on offer run
+/* Issue #218: every month is on offer for any of these years — a Period
+   without movements shows as empty, never snaps elsewhere. The years run
    without gaps from the earliest year with data (or the From year) to the
    latest of the current year, the latest year with data, and the To year,
    so a deep-linked Scope stays put. */
-export function scopeOptions(movements: ScopeAwareMovement[], scope: Scope): ScopeOptions {
+export function scopeYears(movements: ScopeAwareMovement[], scope: Scope): number[] {
   let first = Math.min(getCurrentYear(), scope.from.year);
   let last = Math.max(getCurrentYear(), scope.to.year);
   for (const movement of movements) {
@@ -219,8 +212,5 @@ export function scopeOptions(movements: ScopeAwareMovement[], scope: Scope): Sco
     first = Math.min(first, year);
     last = Math.max(last, year);
   }
-  return {
-    years: Array.from({ length: last - first + 1 }, (_, i) => first + i),
-    months: [...MONTH_NUMBERS],
-  };
+  return Array.from({ length: last - first + 1 }, (_, i) => first + i);
 }

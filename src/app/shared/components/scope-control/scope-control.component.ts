@@ -1,7 +1,7 @@
 import { Component, computed, inject, input, linkedSignal, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { LanguageService } from '../../../core/services/language.service';
-import { MonthNumber, Period, ScopeAwareMovement } from '../../../core/types/period.type';
+import { MONTH_NUMBERS, MonthNumber, Period, ScopeAwareMovement } from '../../../core/types/period.type';
 import {
   SCOPE_PRESETS,
   Scope,
@@ -12,7 +12,7 @@ import {
   isMultiPeriod,
   matchingPreset,
   presetScope,
-  scopeOptions,
+  scopeYears,
 } from '../../../core/scope/scope';
 
 /* The Scope control shared by Movements and Stats (ADR 0029): a preset
@@ -54,9 +54,8 @@ export class ScopeControlComponent {
     computation: (scope, previous) => this.isProposed(scope) && (previous?.value ?? false),
   });
 
-  private options = computed(() => scopeOptions(this.movements(), this.scope()));
-  years = computed(() => this.options().years);
-  months = computed(() => this.options().months);
+  years = computed(() => scopeYears(this.movements(), this.scope()));
+  readonly months = MONTH_NUMBERS;
 
   shownPreset = computed<ScopePresetChoice>(() => {
     const chosen = this.chosen();
