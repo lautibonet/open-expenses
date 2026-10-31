@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { RateOutcome, currenciesNeedingRates, statsReport } from './stats-report';
 import { CashBasisSnapshot } from './cash-basis';
-import { MonthScope } from '../scope/scope';
+import { Scope } from '../scope/scope';
+import { MonthNumber } from '../types/period.type';
 import { Account } from '../models/account.model';
 import { Category } from '../models/category.model';
 import { Transaction } from '../models/transaction.model';
@@ -81,8 +82,13 @@ function snapshot(overrides: Partial<CashBasisSnapshot>): CashBasisSnapshot {
   };
 }
 
-function scope(period: MonthScope['period'], year = 2026): MonthScope {
-  return { kind: 'month', period, year };
+/* A one-Period Scope. */
+function scope(period: MonthNumber, year = 2026): Scope {
+  return { from: { year, month: period }, to: { year, month: period } };
+}
+
+function range(fromYear: number, fromMonth: MonthNumber, toYear: number, toMonth: MonthNumber): Scope {
+  return { from: { year: fromYear, month: fromMonth }, to: { year: toYear, month: toMonth } };
 }
 
 const noRatesNeeded: RateOutcome = { kind: 'rates', rates: new Map() };
@@ -334,16 +340,16 @@ describe('statsReport Exchange Rate paths', () => {
     expect(statsReport(moved, scope(1), noRatesNeeded).degradation.unconvertedMovements).toBe(false);
   });
 
-  it('warns about an unconverted Transaction later in the Scope year, which the year figures count', () => {
+  it('never warns about an unconverted Transaction after the To Period, which no figure counts', () => {
     const later = { ...ledger, transactions: [txn({ id: 9, accountId: 2, amount: 5, period: 6 })] };
 
-    expect(statsReport(later, scope(1), usdRates).degradation.unconvertedMovements).toBe(true);
+    expect(statsReport(later, scope(1), usdRates).degradation.unconvertedMovements).toBe(false);
+    expect(statsReport(later, range(2026, 1, 2026, 6), usdRates).degradation.unconvertedMovements).toBe(true);
     expect(statsReport(later, scope(1, 2027), usdRates).degradation.unconvertedMovements).toBe(true);
-    expect(statsReport(later, scope(1, 2025), usdRates).degradation.unconvertedMovements).toBe(false);
   });
 });
 
-describe('statsReport year figures', () => {
+describe('statsReport Scope figures', () => {
   const cash = account({ id: 1, name: 'Cash', initialBalance: 1000 });
   const visa = account({ id: 2, name: 'Visa', kind: 'credit-card', paymentCategoryId: 4 });
   const visaPayment = category({ id: 4, name: 'Visa payment', type: 'expense' });
@@ -360,13 +366,20 @@ describe('statsReport year figures', () => {
     ],
   });
 
-  it('sums the KPIs January through the Scope Period, with monthly averages and the savings rate', () => {
-    const { kpis } = statsReport(ledger, scope(2), noRatesNeeded);
+  it('sums the KPIs over exactly the Scope Periods, with monthly averages and the savings rate', () => {
+    const { kpis } = statsReport(ledger, range(2026, 1, 2026, 2), noRatesNeeded);
 
     expect(kpis.totals).toEqual({ income: 3000, expenses: 1500, net: 1500, periodsWithMovements: 2 });
     expect(kpis.averages).toEqual({ income: 1500, expenses: 750, net: 750 });
     expect(kpis.savingsRate).toBe(50);
     expect(kpis.hasData).toBe(true);
+  });
+
+  it('sums a one-Period Scope over that Period alone, with no implicit year to date', () => {
+    const { kpis } = statsReport(ledger, scope(2), noRatesNeeded);
+
+    expect(kpis.totals).toEqual({ income: 0, expenses: 500, net: -500, periodsWithMovements: 1 });
+    expect(kpis.savingsRate).toBeNull();
   });
 
   it('has no savings rate without Income, and no KPI data in a year without cash-basis movements', () => {
@@ -378,38 +391,57 @@ describe('statsReport year figures', () => {
     expect(kpis.hasData).toBe(false);
   });
 
-  it('reports the twelve Periods of the Scope year and the Scope Period Net', () => {
+  it('charts the twelve Periods ending at the To Period, across a year boundary, and the To Period Net', () => {
     const { yearOverview } = statsReport(ledger, scope(2), noRatesNeeded);
 
-    expect(yearOverview.periods).toHaveLength(12);
-    expect(yearOverview.periods[0]).toMatchObject({ period: 1, income: 3000, expenses: 1000, net: 2000 });
-    expect(yearOverview.selectedPeriodNet).toBe(-500);
+    expect(yearOverview.periods.map(p => [p.year, p.period])).toEqual([
+      [2025, 3], [2025, 4], [2025, 5], [2025, 6], [2025, 7], [2025, 8],
+      [2025, 9], [2025, 10], [2025, 11], [2025, 12], [2026, 1], [2026, 2],
+    ]);
+    expect(yearOverview.periods[10]).toMatchObject({ year: 2026, period: 1, income: 3000, expenses: 1000, net: 2000 });
+    expect(yearOverview.toPeriodNet).toBe(-500);
   });
 
-  it('accumulates the total balance at every Period of the Scope year', () => {
+  it('marks the Scope Periods on both charts', () => {
+    const { yearOverview, balanceStrip } = statsReport(ledger, range(2025, 12, 2026, 2), noRatesNeeded);
+
+    const marked = [false, false, false, false, false, false, false, false, false, true, true, true];
+    expect(yearOverview.periods.map(p => p.inScope)).toEqual(marked);
+    expect(balanceStrip.periods.map(p => p.inScope)).toEqual(marked);
+  });
+
+  it('accumulates the total balance at the end of each charted Period', () => {
     const { balanceStrip, balances } = statsReport(ledger, scope(2), noRatesNeeded);
 
-    expect(balanceStrip.accumulated).toEqual([3000, 2300, 2400, 2400, 2400, 2400, 2400, 2400, 2400, 2400, 2400, 2400]);
-    expect(balanceStrip.scopePeriodBalance).toBe(2300);
-    expect(balanceStrip.scopePeriodBalance).toBe(balances.total);
-    expect(balanceStrip.frozenFromPeriod).toBe(3);
+    expect(balanceStrip.accumulated).toEqual([1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 3000, 2300]);
+    expect(balanceStrip.periods.map(p => p.balance)).toEqual(balanceStrip.accumulated);
+    expect(balanceStrip.toPeriodBalance).toBe(2300);
+    expect(balanceStrip.toPeriodBalance).toBe(balances.total);
     expect(balanceStrip.hasMovements).toBe(true);
   });
 
-  it('shows the strip for a year whose only movement is a Card Purchase', () => {
+  it('freezes the charted Periods after the last one with movements', () => {
+    const { balanceStrip } = statsReport(ledger, scope(5), noRatesNeeded);
+
+    expect(balanceStrip.periods.map(p => p.frozen)).toEqual([
+      false, false, false, false, false, false, false, false, false, false, true, true,
+    ]);
+  });
+
+  it('shows the strip for a window whose only movement is a Card Purchase', () => {
     const cardOnly = { ...ledger, transactions: [txn({ id: 1, accountId: 2, amount: 50, period: 4 })] };
 
     const { balanceStrip } = statsReport(cardOnly, scope(4), noRatesNeeded);
 
     expect(balanceStrip.hasMovements).toBe(true);
-    expect(balanceStrip.frozenFromPeriod).toBe(4);
+    expect(balanceStrip.periods.some(p => p.frozen)).toBe(false);
   });
 
-  it('has no strip movements in a year with none, holding the carried-over balance', () => {
-    const { balanceStrip } = statsReport(ledger, scope(1, 2027), noRatesNeeded);
+  it('has no strip movements in a window with none, holding the carried-over balance', () => {
+    const { balanceStrip } = statsReport(ledger, scope(1, 2028), noRatesNeeded);
 
     expect(balanceStrip.hasMovements).toBe(false);
-    expect(balanceStrip.frozenFromPeriod).toBe(0);
+    expect(balanceStrip.periods.every(p => p.frozen)).toBe(true);
     expect(balanceStrip.accumulated[0]).toBe(2400);
   });
 
@@ -428,6 +460,57 @@ describe('statsReport year figures', () => {
   });
 });
 
+describe('statsReport over a Scope that crosses a year boundary', () => {
+  const cash = account({ id: 1, name: 'Cash', initialBalance: 1000 });
+  const ledger = snapshot({
+    accounts: [cash],
+    transactions: [
+      txn({ id: 1, categoryId: 2, amount: 9999, period: 10, year: 2025 }),
+      txn({ id: 2, categoryId: 2, amount: 2000, period: 11, year: 2025 }),
+      txn({ id: 3, categoryId: 1, amount: 300, period: 11, year: 2025 }),
+      txn({ id: 4, categoryId: 3, amount: 700, period: 1, year: 2026 }),
+      txn({ id: 5, categoryId: 1, amount: 50, period: 2, year: 2026 }),
+    ],
+  });
+  const novemberToJanuary = range(2025, 11, 2026, 1);
+
+  it('reports the totals for exactly its Periods and averages over its Periods with movements', () => {
+    const { kpis } = statsReport(ledger, novemberToJanuary, noRatesNeeded);
+
+    expect(kpis.totals).toEqual({ income: 2000, expenses: 1000, net: 1000, periodsWithMovements: 2 });
+    expect(kpis.averages).toEqual({ income: 1000, expenses: 500, net: 500 });
+    expect(kpis.savingsRate).toBe(50);
+  });
+
+  it('breaks down the spending of exactly its Periods', () => {
+    const { categorySpending } = statsReport(ledger, novemberToJanuary, noRatesNeeded);
+
+    expect(categorySpending).toEqual([
+      { categoryId: 3, name: 'Rent', cash: 700, credit: 0, total: 700 },
+      { categoryId: 1, name: 'Food', cash: 300, credit: 0, total: 300 },
+    ]);
+  });
+
+  it('reports balances as of the end of the To Period', () => {
+    const { balances, balanceStrip } = statsReport(ledger, novemberToJanuary, noRatesNeeded);
+
+    /* 1000 + 9999 + 2000 - 300 - 700; February's 50 comes after the To Period. */
+    expect(balances.accounts[0].balance).toBe(11999);
+    expect(balances.total).toBe(11999);
+    expect(balanceStrip.toPeriodBalance).toBe(11999);
+  });
+
+  it('charts the twelve Periods ending at the To Period with its three Periods marked', () => {
+    const { yearOverview } = statsReport(ledger, novemberToJanuary, noRatesNeeded);
+
+    expect(yearOverview.periods[0]).toMatchObject({ year: 2025, period: 2 });
+    expect(yearOverview.periods[11]).toMatchObject({ year: 2026, period: 1, net: -700 });
+    expect(yearOverview.periods.filter(p => p.inScope).map(p => [p.year, p.period])).toEqual([
+      [2025, 11], [2025, 12], [2026, 1],
+    ]);
+  });
+});
+
 describe('statsReport balance strip Exchange Rate paths', () => {
   const eur = account({ id: 1, name: 'Cash EUR', currency: 'EUR', initialBalance: 100 });
   const usd = account({ id: 2, name: 'Cash USD', currency: 'USD', initialBalance: 125 });
@@ -440,15 +523,15 @@ describe('statsReport balance strip Exchange Rate paths', () => {
   it('accumulates converted Accounts so the Scope Period equals the total balance', () => {
     const report = statsReport(ledger, scope(2), usdRates);
 
-    expect(report.balanceStrip.accumulated.slice(0, 2)).toEqual([160, 160]);
-    expect(report.balanceStrip.scopePeriodBalance).toBe(report.balances.total);
+    expect(report.balanceStrip.accumulated.slice(10)).toEqual([160, 160]);
+    expect(report.balanceStrip.toPeriodBalance).toBe(report.balances.total);
   });
 
   it('accumulates only the Base Currency Accounts at face amounts when rates are unavailable', () => {
     const report = statsReport(ledger, scope(2), unavailable);
 
-    expect(report.balanceStrip.accumulated.slice(0, 2)).toEqual([100, 90]);
-    expect(report.balanceStrip.scopePeriodBalance).toBe(report.balances.total);
+    expect(report.balanceStrip.accumulated.slice(10)).toEqual([100, 90]);
+    expect(report.balanceStrip.toPeriodBalance).toBe(report.balances.total);
   });
 });
 
@@ -474,12 +557,12 @@ describe('statsReport Base Currency Accounts at face amount (#199)', () => {
     );
 
     expect(alone.balances.total).toBe(70);
-    expect(alone.balanceStrip.accumulated[0]).toBe(70);
+    expect(alone.balanceStrip.accumulated.at(-1)).toBe(70);
     /* 70 EUR + (0 − 40) EUR from the foreign Account's stored conversion. */
     expect(converted.balances.total).toBe(30);
-    expect(converted.balanceStrip.accumulated[0]).toBe(30);
+    expect(converted.balanceStrip.accumulated.at(-1)).toBe(30);
     expect(excluded.balances.total).toBe(70);
-    expect(excluded.balanceStrip.accumulated[0]).toBe(70);
+    expect(excluded.balanceStrip.accumulated.at(-1)).toBe(70);
   });
 
   it('counts the category spending at face amount, and foreign spending at its stored conversion', () => {

@@ -9,8 +9,8 @@ import {
   isLanguage,
 } from '../types/language.type';
 import { isCategoryType } from '../models/category.model';
-import { isMonthNumber } from '../types/period.type';
-import { PeriodScope } from '../scope/scope';
+import { Period, isMonthNumber } from '../types/period.type';
+import { Scope, isMultiPeriod } from '../scope/scope';
 import { translate } from '../translations/translations';
 import { formatDateIn, formatMoneyIn, formatNumberIn } from '../format/format';
 import { TranslateFn } from '../models/translation-error';
@@ -81,11 +81,26 @@ export class LanguageService {
     return isMonthNumber(period) ? this.monthName(period) : String(period);
   }
 
-  scopeLabel(scope: PeriodScope): string {
-    if (scope.kind === 'year') {
-      return this.t('scope.allYear', { year: scope.year });
+  /* A Period by its month and year: "March 2026". */
+  periodName(period: Period): string {
+    return `${this.monthName(period.month)} ${period.year}`;
+  }
+
+  /* A Scope by its From and To Periods: "March 2026" for one Period, "2026"
+     for a whole year, "January – March 2026" within a year, and
+     "November 2025 – January 2026" across a year boundary. */
+  scopeLabel(scope: Scope): string {
+    const { from, to } = scope;
+    if (!isMultiPeriod(scope)) {
+      return this.periodName(to);
     }
-    return `${this.monthName(scope.period)} ${scope.year}`;
+    if (from.year === to.year) {
+      if (from.month === 1 && to.month === 12) {
+        return String(to.year);
+      }
+      return this.t('scope.range', { from: this.monthName(from.month), to: this.periodName(to) });
+    }
+    return this.t('scope.range', { from: this.periodName(from), to: this.periodName(to) });
   }
 
   categoryTypeLabel(type: string): string {

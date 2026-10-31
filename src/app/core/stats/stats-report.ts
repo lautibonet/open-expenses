@@ -1,6 +1,13 @@
 import { Account, isBaseCurrencyAccount, isCreditCard, paymentCategoryIds } from '../models/account.model';
-import { MonthScope } from '../scope/scope';
-import { movementInScope } from '../types/period.type';
+import { Scope } from '../scope/scope';
+import {
+  Period,
+  comparePeriods,
+  movementInScope,
+  periodInScope,
+  scopePeriods,
+  shiftPeriod,
+} from '../types/period.type';
 import { periodEndBalance, periodEndBaseAmount } from '../balances/period-end-balances';
 import {
   ConversionDegradation,
@@ -36,6 +43,23 @@ export interface AccountBalance {
   usedOfLimit: { used: number; limit: number } | null;
 }
 
+/* One Period of the Net chart: its figures, and whether the Scope covers it. */
+export interface ChartPeriodFlow extends PeriodCashFlow {
+  inScope: boolean;
+}
+
+/* One Period of the balance strip: the total balance at its end. `frozen`
+   marks a Period after the last one in the chart carrying a Movement, which
+   holds the last known balance rather than recorded data. */
+export interface StripPeriod extends Period {
+  balance: number;
+  inScope: boolean;
+  frozen: boolean;
+}
+
+/* ADR 0029: the Stats charts show the twelve Periods ending at the To Period. */
+export const CHART_LENGTH = 12;
+
 export interface StatsReport {
   balances: {
     /* Cash Accounts first, then Credit Cards, each group in its stored order. */
@@ -50,7 +74,7 @@ export interface StatsReport {
     ratesPending: boolean;
   };
   degradation: ConversionDegradation;
-  /* Cash-basis Income, Expenses, and Net, January through the Scope Period. */
+  /* Cash-basis Income, Expenses, and Net over exactly the Scope's Periods. */
   kpis: {
     totals: CashFlowTotals;
     averages: CashFlowAverages;
@@ -59,20 +83,21 @@ export interface StatsReport {
     /* Whether any Period counted carries a cash-basis movement. */
     hasData: boolean;
   };
+  /* The Net chart: the twelve Periods ending at the To Period. */
   yearOverview: {
-    periods: PeriodCashFlow[];
-    selectedPeriodNet: number;
+    periods: ChartPeriodFlow[];
+    toPeriodNet: number;
   };
+  /* The balance strip, over the same twelve Periods. */
   balanceStrip: {
-    /* The total balance at the end of each Period of the Scope year. */
+    periods: StripPeriod[];
+    /* The total balance at the end of each charted Period. */
     accumulated: number[];
-    /* The last Period of the Scope year carrying a Movement; 0 when none. */
-    frozenFromPeriod: number;
-    scopePeriodBalance: number;
-    /* Any Movement in the Scope year — cash-basis or not. */
+    toPeriodBalance: number;
+    /* Any Movement in the charted Periods — cash-basis or not. */
     hasMovements: boolean;
   };
-  /* The Scope Period's spending per category. */
+  /* The spending per category over exactly the Scope's Periods. */
   categorySpending: CategorySpending[];
 }
 
@@ -104,9 +129,12 @@ export function currenciesNeedingRates(snapshot: CashBasisSnapshot): string[] {
    the outcome of the Exchange Rate fetch. */
 export function statsReport(
   snapshot: CashBasisSnapshot,
-  scope: MonthScope,
+  scope: Scope,
   rates: RateOutcome,
 ): StatsReport {
+  const end = scope.to;
+  const charted = scopePeriods({ from: shiftPeriod(end, -(CHART_LENGTH - 1)), to: end });
+  const inScope = (period: Period) => periodInScope(period.year, period.month, scope);
   const figures = cashBasis(snapshot);
   const { accountsById, isIncome } = figures;
   const base = snapshot.baseCurrency;
@@ -121,7 +149,7 @@ export function statsReport(
 
   const accounts = cashAccountsFirst(
     snapshot.accounts.map(account => {
-      const balance = periodEndBalance(balanceInput(account), scope);
+      const balance = periodEndBalance(balanceInput(account), end);
       return { account, balance, usedOfLimit: usedOfLimit(account, balance) };
     }),
   );
@@ -130,30 +158,39 @@ export function statsReport(
   for (const { account } of accounts) {
     const initial = conversion.initialsInBase.get(account.id!);
     if (initial == null) continue;
-    baseAmounts.set(account, periodEndBaseAmount(balanceInput(account), scope, initial));
+    baseAmounts.set(account, periodEndBaseAmount(balanceInput(account), end, initial));
   }
 
-  const totals = figures.yearToPeriodTotals(scope);
+  const totals = figures.scopeTotals(scope);
   const averages = monthlyAverages(totals);
-  const periods = figures.periods(scope.year);
+  const periods = figures.periodFlows(charted).map(flow => ({
+    ...flow,
+    inScope: inScope({ year: flow.year, month: flow.period }),
+  }));
   const accumulated = accumulatedByPeriod({
     accounts: snapshot.accounts,
     transactions: snapshot.transactions,
     transfers: snapshot.transfers,
     isIncome,
-    year: scope.year,
+    periods: charted,
     baseCurrency: base,
     initialInBase: conversion.initialsInBase,
   });
-  const frozenFromPeriod = lastMovementPeriod(snapshot.transactions, snapshot.transfers, scope.year);
+  const lastWithMovements = lastMovementPeriod(snapshot.transactions, snapshot.transfers, charted);
+  const stripPeriods = charted.map((period, i) => ({
+    ...period,
+    balance: accumulated[i],
+    inScope: inScope(period),
+    frozen: lastWithMovements === null || comparePeriods(period, lastWithMovements) > 0,
+  }));
 
   return {
     balances: { accounts, ...totalBalance(baseAmounts), ratesPending: conversion.ratesPending },
     degradation: {
       accountsExcluded: conversion.hasExcludedAccounts,
       unconvertedMovements:
-        unconvertedTransactionsAffecting(snapshot.transactions, accountsById, base, scope).length > 0
-        || unconvertedTransfersAffecting(snapshot.transfers, accountsById, scope).length > 0,
+        unconvertedTransactionsAffecting(snapshot.transactions, accountsById, base, end).length > 0
+        || unconvertedTransfersAffecting(snapshot.transfers, accountsById, end).length > 0,
     },
     kpis: {
       totals,
@@ -163,15 +200,13 @@ export function statsReport(
     },
     yearOverview: {
       periods,
-      selectedPeriodNet: periods.find(p => p.period === scope.period)?.net ?? 0,
+      toPeriodNet: periods[periods.length - 1].net,
     },
     balanceStrip: {
+      periods: stripPeriods,
       accumulated,
-      frozenFromPeriod,
-      scopePeriodBalance: accumulated[scope.period - 1] ?? 0,
-      hasMovements: [...snapshot.transactions, ...snapshot.transfers].some(m =>
-        movementInScope(m, { kind: 'year', year: scope.year }),
-      ),
+      toPeriodBalance: accumulated[accumulated.length - 1],
+      hasMovements: lastWithMovements !== null,
     },
     categorySpending: categorySpending(
       snapshot.transactions.filter(t => movementInScope(t, scope)),

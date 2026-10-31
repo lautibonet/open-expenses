@@ -173,9 +173,34 @@ describe('translations', () => {
   });
 
   it('covers the scope keys', () => {
-    for (const key of ['scope.yearAria', 'scope.monthAria', 'scope.allOption', 'scope.allYear', 'scope.groupAria', 'scope.label']) {
+    for (const key of [
+      'scope.groupAria',
+      'scope.label',
+      'scope.presetAria',
+      'scope.preset.thisPeriod',
+      'scope.preset.last3',
+      'scope.preset.last6',
+      'scope.preset.last12',
+      'scope.preset.yearToDate',
+      'scope.preset.wholeYear',
+      'scope.preset.custom',
+      'scope.from',
+      'scope.to',
+      'scope.fromMonthAria',
+      'scope.fromYearAria',
+      'scope.toMonthAria',
+      'scope.toYearAria',
+      'scope.range',
+    ]) {
       expect(TRANSLATIONS.en[key]).toBeTruthy();
       expect(TRANSLATIONS.es[key]).toBeTruthy();
+    }
+  });
+
+  it('drops the month and year Scope strings that the From/To Scope replaced', () => {
+    for (const key of ['scope.yearAria', 'scope.monthAria', 'scope.allOption', 'scope.allYear']) {
+      expect(TRANSLATIONS.en[key]).toBeUndefined();
+      expect(TRANSLATIONS.es[key]).toBeUndefined();
     }
   });
 

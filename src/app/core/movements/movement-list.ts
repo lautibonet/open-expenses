@@ -2,7 +2,7 @@ import { Account, isBaseCurrencyAccount } from '../models/account.model';
 import { Category } from '../models/category.model';
 import { Transaction } from '../models/transaction.model';
 import { Transfer } from '../models/transfer.model';
-import { PeriodScope } from '../scope/scope';
+import { Scope } from '../scope/scope';
 import { movementInScope } from '../types/period.type';
 import { CashBasisLookups, cashBasisLookups } from '../stats/cash-basis';
 import { dateToLocalISO } from '../format/local-date';
@@ -22,7 +22,7 @@ export interface MovementListInput {
   accounts: Account[];
   categories: Category[];
   baseCurrency: string;
-  scope: PeriodScope;
+  scope: Scope;
   filters: MovementListFilters;
 }
 

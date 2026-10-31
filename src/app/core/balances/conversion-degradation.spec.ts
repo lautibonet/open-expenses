@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MonthNumber } from '../types/period.type';
-import { PeriodScope } from '../scope/scope';
+import { MonthNumber, Period } from '../types/period.type';
 import { Account } from '../models/account.model';
 import { Transaction } from '../models/transaction.model';
 import { unconvertedTransactionsAffecting } from './conversion-degradation';
@@ -32,11 +31,9 @@ function transaction(overrides: Partial<Transaction> = {}): Transaction {
   } as Transaction;
 }
 
-const scope = (period: number, year: number): PeriodScope => ({
-  kind: 'month',
-  period: period as MonthNumber,
-  year,
-});
+/* The end of the Scope's To Period: every figure the warning vouches for
+   counts only movements at or before it. */
+const scope = (period: number, year: number): Period => ({ year, month: period as MonthNumber });
 
 describe('unconvertedTransactionsAffecting', () => {
   it('flags an offline-captured transaction on a foreign account with no stored conversion', () => {
@@ -84,13 +81,13 @@ describe('unconvertedTransactionsAffecting', () => {
     expect(flagged).toEqual(txns);
   });
 
-  it('flags foreign-account transactions in the scope year even after the scope period (yearly totals path)', () => {
+  it('ignores foreign-account transactions after the To Period, even in its year', () => {
     const accounts = new Map([[1, account({ currency: 'USD' })]]);
     const txns = [transaction({ accountId: 1, period: 12, year: 2026 })];
 
     const flagged = unconvertedTransactionsAffecting(txns, accounts, 'EUR', scope(9, 2026));
 
-    expect(flagged).toEqual(txns);
+    expect(flagged).toEqual([]);
   });
 
   it('ignores foreign-account transactions after the scope period in another year', () => {
