@@ -199,7 +199,12 @@ export class MovementsComponent implements OnInit, OnDestroy {
     }
   });
 
-  private reloadDataOnVersionChange = this.dataVersion.reloadOnChange(() => this.loadAll());
+  /* A Restore replaces the data, so the screen opens afresh on its default
+     Scope. */
+  private reloadDataOnVersionChange = this.dataVersion.reloadOnChange(async () => {
+    await this.loadAll();
+    this.reflectScopeInUrl(this.scope());
+  });
 
   private prefersReducedMotion(): boolean {
     return (
@@ -310,14 +315,13 @@ export class MovementsComponent implements OnInit, OnDestroy {
   }
 
   async ngOnInit(): Promise<void> {
-    const fromUrl = this.scopeFromUrl();
-    if (fromUrl) {
-      this.scope.set(fromUrl);
-    }
-    await this.loadAll();
+    await this.loadAll(this.scopeFromUrl());
   }
 
-  private async loadAll(): Promise<void> {
+  /* Issue #216: the Scope is chosen once the movements are in — the one
+     named in the link, else the default Scope. Later refreshes never move
+     it. */
+  private async loadAll(linkedScope: PeriodScope | null = null): Promise<void> {
     try {
       this.baseCurrency.set(await this.profileService.getBaseCurrency());
       this.accounts.set(await this.accountService.getActive());
@@ -325,6 +329,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
       this.categories.set(await this.categoryService.getActive());
       this.allCategories.set(await this.categoryService.getAll());
       await this.refresh();
+      this.scope.set(linkedScope ?? defaultScope([...this.transactions(), ...this.transfers()]));
     } finally {
       this.dataLoaded.set(true);
     }

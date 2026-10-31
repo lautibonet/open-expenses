@@ -7,27 +7,29 @@
 
     <div class="scope-control" role="group" [attr.aria-label]="language.t('scope.groupAria')">
       <span class="scope-label" aria-hidden="true">{{ language.t('scope.label') }}</span>
-      <div class="scope-selects">
-        <select
-          [ngModel]="scopeMonthSelectValue()"
-          (ngModelChange)="onScopeMonthChange($event)"
-          [attr.aria-label]="language.t('scope.monthAria')"
-        >
-          <option [ngValue]="'all'">{{ language.t('scope.allOption') }}</option>
-          @for (month of scopeMonths(); track month) {
-            <option [ngValue]="month">{{ language.monthName(month) }}</option>
-          }
-        </select>
-        <select
-          [ngModel]="scopeYearValue()"
-          (ngModelChange)="onScopeYearChange($event)"
-          [attr.aria-label]="language.t('scope.yearAria')"
-        >
-          @for (yr of scopeYears(); track yr) {
-            <option [ngValue]="yr">{{ yr }}</option>
-          }
-        </select>
-      </div>
+      @if (dataLoaded()) {
+        <div class="scope-selects">
+          <select
+            [ngModel]="scopeMonthSelectValue()"
+            (ngModelChange)="onScopeMonthChange($event)"
+            [attr.aria-label]="language.t('scope.monthAria')"
+          >
+            <option [ngValue]="'all'">{{ language.t('scope.allOption') }}</option>
+            @for (month of scopeMonths(); track month) {
+              <option [ngValue]="month">{{ language.monthName(month) }}</option>
+            }
+          </select>
+          <select
+            [ngModel]="scopeYearValue()"
+            (ngModelChange)="onScopeYearChange($event)"
+            [attr.aria-label]="language.t('scope.yearAria')"
+          >
+            @for (yr of scopeYears(); track yr) {
+              <option [ngValue]="yr">{{ yr }}</option>
+            }
+          </select>
+        </div>
+      }
     </div>
   </header>
 

@@ -1011,9 +1011,56 @@ describe('MovementsComponent - shared scope', () => {
     await db.delete();
   });
 
-  it('should default to the current month scope', async () => {
+  it('should default to the current month scope when nothing is recorded', async () => {
     await component.ngOnInit();
     expect(component.scope()).toEqual(defaultScope());
+  });
+
+  it('should open on the latest Period with movements, even one ahead of the calendar', async () => {
+    const nextYear = getCurrentYear() + 1;
+    await transactionService.create(accountId, categoryId, 100, new Date(), 2, null, null, nextYear);
+    await transactionService.create(accountId, categoryId, 100, new Date('2016-05-15'), 5, null, null, 2016);
+
+    await component.ngOnInit();
+
+    expect(component.scope()).toEqual({ kind: 'month', period: 2, year: nextYear });
+  });
+
+  it('should keep the selection when a movement is recorded in a later Period', async () => {
+    await transactionService.create(accountId, categoryId, 100, new Date(), 3, null, null, 2016);
+    await component.ngOnInit();
+    expect(component.scope()).toEqual({ kind: 'month', period: 3, year: 2016 });
+
+    await transactionService.create(accountId, categoryId, 100, new Date(), 9, null, null, 2016);
+    await component.refresh();
+
+    expect(component.scope()).toEqual({ kind: 'month', period: 3, year: 2016 });
+  });
+
+  it('should pick the default again when the data is replaced by a Restore', async () => {
+    await transactionService.create(accountId, categoryId, 100, new Date(), 3, null, null, 2016);
+    fixture.detectChanges();
+    await vi.waitFor(() => expect(component.dataLoaded()).toBe(true));
+    component.onScopeMonthChange('all');
+
+    await transactionService.create(accountId, categoryId, 100, new Date(), 9, null, null, 2017);
+    TestBed.inject(DataVersionService).bump();
+    fixture.detectChanges();
+
+    await vi.waitFor(() =>
+      expect(component.scope()).toEqual({ kind: 'month', period: 9, year: 2017 }),
+    );
+  });
+
+  it('should not show the Scope selector until the data has loaded', async () => {
+    await transactionService.create(accountId, categoryId, 100, new Date(), 3, null, null, 2016);
+
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.scope-selects')).toBeNull();
+
+    await vi.waitFor(() => expect(component.dataLoaded()).toBe(true));
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.scope-selects')).not.toBeNull();
   });
 
   it('should derive year options from the data range, not a fixed window', async () => {
@@ -1094,7 +1141,7 @@ describe('MovementsComponent - shared scope', () => {
       2016,
     );
     await component.ngOnInit();
-    expect(component.rows().length).toBe(0);
+    expect(component.scope()).toEqual({ kind: 'month', period: 5, year: 2016 });
 
     await component.onScopeYearChange(2012);
     await component.onScopeMonthChange(1);
@@ -3476,6 +3523,19 @@ describe('MovementsComponent - scope URL state', () => {
   });
 
   it('restores the Scope from period and year query params', async () => {
+    TestBed.inject(Location).replaceState('/movements?period=3&year=2025');
+
+    await component.ngOnInit();
+
+    expect(component.scope()).toEqual({ kind: 'month', period: 3, year: 2025 });
+  });
+
+  it('lets a Scope in the link win over the latest Period with movements', async () => {
+    const account = await TestBed.inject(AccountService).create('Cash', 'EUR', 0);
+    const category = await TestBed.inject(CategoryService).create('Food', 'expense');
+    await TestBed.inject(TransactionService).create(
+      account.id!, category.id!, 100, new Date(), 9, null, null, 2025,
+    );
     TestBed.inject(Location).replaceState('/movements?period=3&year=2025');
 
     await component.ngOnInit();

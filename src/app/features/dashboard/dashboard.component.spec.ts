@@ -292,6 +292,7 @@ describe('DashboardComponent - period-end balances', () => {
     await transactionService.create(acc.id!, incomeCat.id!, 700, new Date(), 12, null, null, year);
 
     await component.ngOnInit();
+    await component.onScopeMonthChange(getCurrentPeriod());
     expect(component.report().balances.accounts.find(b => b.account.id === acc.id)!.balance).toBe(4000);
     expect(component.report().balances.total).toBe(4000);
 
@@ -337,9 +338,49 @@ describe('DashboardComponent - shared scope', () => {
     );
   }
 
-  it('should default to the current month scope', async () => {
+  it('should default to the current month scope when nothing is recorded', async () => {
     await component.ngOnInit();
     expect(component.scope()).toEqual(defaultScope());
+  });
+
+  it('should open on the latest Period with movements, even one ahead of the calendar', async () => {
+    const nextYear = getCurrentYear() + 1;
+    await seedIncome(5, 2016);
+    await seedIncome(2, nextYear);
+
+    await component.ngOnInit();
+
+    expect(component.scope()).toEqual({ kind: 'month', period: 2, year: nextYear });
+  });
+
+  it('should pick the default again when the data is replaced by a Restore', async () => {
+    await seedIncome(5, 2016);
+    fixture = TestBed.createComponent(DashboardComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+    await vi.waitFor(() => expect(component.scope()).toEqual({ kind: 'month', period: 5, year: 2016 }));
+    component.onScopeMonthChange(1);
+
+    await seedIncome(9, 2017);
+    TestBed.inject(DataVersionService).bump();
+    fixture.detectChanges();
+
+    await vi.waitFor(() =>
+      expect(component.scope()).toEqual({ kind: 'month', period: 9, year: 2017 }),
+    );
+  });
+
+  it('should not show the Scope selector until the data has loaded', async () => {
+    await seedIncome(5, 2016);
+    fixture = TestBed.createComponent(DashboardComponent);
+    component = fixture.componentInstance;
+
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.scope-selects')).toBeNull();
+
+    await vi.waitFor(() => expect(component.scope().year).toBe(2016));
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.scope-selects')).not.toBeNull();
   });
 
   it('should derive year options from the data range, not a fixed window', async () => {

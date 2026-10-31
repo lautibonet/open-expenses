@@ -39,9 +39,22 @@ describe('scope', () => {
       expect(next).toEqual({ kind: 'month', period: 6, year: 2024 });
     });
 
-    it('should move a month Scope to the current month on the current year', () => {
+    it('should move a month Scope to the current month on the current year when it has no data', () => {
       const next: MonthScope = changeYear({ kind: 'month', period: 2, year: 2024 }, 2026, options);
       expect(next).toEqual({ kind: 'month', period: 10, year: 2026 });
+    });
+
+    it('should move a month Scope to the latest month with data on the current year, even ahead of the calendar', () => {
+      const withCurrentYear = scopeOptions(
+        [
+          { period: 6, year: 2024, date: new Date(2024, 5, 1) },
+          { period: 8, year: 2026, date: new Date(2026, 7, 1) },
+          { period: 12, year: 2026, date: new Date(2026, 9, 27) },
+        ],
+        { kind: 'month', period: 6, year: 2024 },
+      );
+      const next: MonthScope = changeYear({ kind: 'month', period: 6, year: 2024 }, 2026, withCurrentYear);
+      expect(next).toEqual({ kind: 'month', period: 12, year: 2026 });
     });
 
     it('should move a month Scope to the current month on a year without data', () => {
@@ -103,10 +116,25 @@ describe('scope', () => {
       });
     });
 
-    it('should default to the current month on the current year', () => {
+    it('should default to the current month on the current year when it has no data', () => {
       expect(changeMonth({ kind: 'year', year: 2026 }, null, options)).toEqual({
         kind: 'month',
         period: 10,
+        year: 2026,
+      });
+    });
+
+    it('should default to the latest month with data when leaving the year Scope of the current year', () => {
+      const withCurrentYear = scopeOptions(
+        [
+          { period: 8, year: 2026, date: new Date(2026, 7, 1) },
+          { period: 9, year: 2026, date: new Date(2026, 8, 1) },
+        ],
+        { kind: 'year', year: 2026 },
+      );
+      expect(changeMonth({ kind: 'year', year: 2026 }, null, withCurrentYear)).toEqual({
+        kind: 'month',
+        period: 9,
         year: 2026,
       });
     });
@@ -156,12 +184,62 @@ describe('scope', () => {
   });
 
   describe('defaultScope', () => {
-    it('should default to the current month and year', () => {
-      expect(defaultScope()).toEqual({
-        kind: 'month',
-        period: getCurrentPeriod(),
-        year: getCurrentYear(),
-      });
+    beforeEach(() => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date(2026, 9, 31));
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('should default to the current month and year when nothing is recorded', () => {
+      expect(defaultScope([])).toEqual({ kind: 'month', period: 10, year: 2026 });
+    });
+
+    it('should open on the latest Period with movements when it is behind the calendar', () => {
+      const movements = [
+        { period: 9, year: 2026, date: new Date(2026, 8, 3) },
+        { period: 7, year: 2026, date: new Date(2026, 6, 3) },
+      ];
+      expect(defaultScope(movements)).toEqual({ kind: 'month', period: 9, year: 2026 });
+    });
+
+    it('should open on a Period ahead of the calendar', () => {
+      const movements = [
+        { period: 10, year: 2026, date: new Date(2026, 9, 2) },
+        { period: 12, year: 2026, date: new Date(2026, 9, 27) },
+      ];
+      expect(defaultScope(movements)).toEqual({ kind: 'month', period: 12, year: 2026 });
+    });
+
+    it('should open on the latest Period of an earlier year when the current year has none', () => {
+      const movements = [
+        { period: 11, year: 2024, date: new Date(2024, 10, 1) },
+        { period: 3, year: 2025, date: new Date(2025, 2, 1) },
+      ];
+      expect(defaultScope(movements)).toEqual({ kind: 'month', period: 3, year: 2025 });
+    });
+
+    it('should order Periods by their stored year before their month', () => {
+      const movements = [
+        { period: 12, year: 2025, date: new Date(2025, 11, 1) },
+        { period: 1, year: 2027, date: new Date(2026, 11, 28) },
+      ];
+      expect(defaultScope(movements)).toEqual({ kind: 'month', period: 1, year: 2027 });
+    });
+
+    it('should place a movement without a stored year in its date year', () => {
+      const movements = [{ period: 5, date: new Date(2023, 4, 1) }];
+      expect(defaultScope(movements)).toEqual({ kind: 'month', period: 5, year: 2023 });
+    });
+
+    it('should ignore an unrecognizable period', () => {
+      const movements = [
+        { period: 4, year: 2026, date: new Date(2026, 3, 1) },
+        { period: 'Smarch', year: 2026, date: new Date(2026, 11, 1) },
+      ];
+      expect(defaultScope(movements)).toEqual({ kind: 'month', period: 4, year: 2026 });
     });
   });
 

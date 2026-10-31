@@ -24,13 +24,28 @@ interface YearScope {
 
 export type PeriodScope = MonthScope | YearScope;
 
-export function defaultScope(): MonthScope {
-  return { kind: 'month', period: getCurrentPeriod(), year: getCurrentYear() };
+/* Issue #216: a screen opens on the latest Period with movements — even one
+   ahead of the calendar, since a Period is the user's own convention — and
+   on the current Period when nothing is recorded. */
+export function defaultScope(movements: ScopeAwareMovement[] = []): MonthScope {
+  let latest: MonthScope | null = null;
+  for (const movement of movements) {
+    if (!isMonthNumber(movement.period)) continue;
+    const year = getPeriodYear(movement);
+    if (
+      latest === null ||
+      year > latest.year ||
+      (year === latest.year && movement.period > latest.period)
+    ) {
+      latest = { kind: 'month', period: movement.period, year };
+    }
+  }
+  return latest ?? { kind: 'month', period: getCurrentPeriod(), year: getCurrentYear() };
 }
 
 /* Issue #194: a new year keeps the kind of Scope. A month Scope keeps its
-   month within the same year and otherwise lands on the current month on
-   the current year, else on the latest month with data in that year. */
+   month within the same year and otherwise lands on the latest month with
+   data in that year (#216), else on the current month. */
 export function changeYear(
   scope: MonthScope,
   year: number,
@@ -56,8 +71,7 @@ export function changeYear(
 
 /* A picked month narrows to that Period of the Scope year; "all" widens to
    the year Scope. With no month picked, leaving the year Scope lands on the
-   current month on the current year, otherwise on the latest month with
-   data in that year. */
+   latest month with data in that year, otherwise on the current month. */
 export function changeMonth(scope: PeriodScope, value: MonthNumber): MonthScope;
 export function changeMonth(
   scope: PeriodScope,
@@ -81,9 +95,6 @@ function defaultMonthForYear(
   year: number,
   latestMonthByYear: ReadonlyMap<number, MonthNumber> | undefined,
 ): MonthNumber {
-  if (year === getCurrentYear()) {
-    return getCurrentPeriod();
-  }
   return latestMonthByYear?.get(year) ?? getCurrentPeriod();
 }
 

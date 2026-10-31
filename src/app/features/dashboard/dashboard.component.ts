@@ -79,6 +79,9 @@ export class DashboardComponent implements OnInit {
   scopeYears = computed(() => this.availableScopes().years);
   scopeMonths = computed(() => this.availableScopes().months);
   scopeAnnouncement = signal('');
+  /* The Scope selector waits for the data, so it never shows a Period
+     other than the one the screen opens on. */
+  dataLoaded = signal(false);
 
   baseCurrency = computed(() => this.snapshot().baseCurrency);
   /* Every figure the screen shows. */
@@ -101,6 +104,10 @@ export class DashboardComponent implements OnInit {
     ]);
     const snapshot: CashBasisSnapshot = { accounts, categories, transactions, transfers, baseCurrency };
     this.snapshot.set(snapshot);
+    /* Issue #216: every load — entering the screen or a Restore — opens on
+       the default Scope; Stats is read-only, so nothing else reloads it. */
+    this.scope.set(defaultScope([...transactions, ...transfers]));
+    this.dataLoaded.set(true);
     this.rates.set(currenciesNeedingRates(snapshot).length === 0 ? noRatesNeeded : ratesPending);
     const rates = await this.fetchRates(snapshot);
     /* A newer load owns the screen now; its own fetch settles the rates. */
