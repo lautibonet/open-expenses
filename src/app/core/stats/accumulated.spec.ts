@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { accumulatedByPeriod } from './year-overview';
+import { accumulatedByPeriod } from './accumulated';
 import { Transaction } from '../models/transaction.model';
 import { Transfer } from '../models/transfer.model';
 import { Account } from '../models/account.model';

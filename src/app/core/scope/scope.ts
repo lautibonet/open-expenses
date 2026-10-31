@@ -95,7 +95,7 @@ function anchorPeriod(movements: ScopeAwareMovement[]): Period {
 }
 
 /* Movements opens on the one-Period Scope at the anchor. */
-export function defaultScope(movements: ScopeAwareMovement[] = []): Scope {
+export function defaultMovementsScope(movements: ScopeAwareMovement[] = []): Scope {
   return singlePeriodScope(anchorPeriod(movements));
 }
 

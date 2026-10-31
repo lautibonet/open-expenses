@@ -393,21 +393,21 @@ describe('statsReport Scope figures', () => {
   });
 
   it('charts the twelve Periods ending at the To Period, across a year boundary, and the To Period Net', () => {
-    const { yearOverview } = statsReport(ledger, scope(2), noRatesNeeded);
+    const { twelvePeriods } = statsReport(ledger, scope(2), noRatesNeeded);
 
-    expect(yearOverview.periods.map(p => [p.year, p.month])).toEqual([
+    expect(twelvePeriods.periods.map(p => [p.year, p.month])).toEqual([
       [2025, 3], [2025, 4], [2025, 5], [2025, 6], [2025, 7], [2025, 8],
       [2025, 9], [2025, 10], [2025, 11], [2025, 12], [2026, 1], [2026, 2],
     ]);
-    expect(yearOverview.periods[10]).toMatchObject({ year: 2026, month: 1, income: 3000, expenses: 1000, net: 2000 });
-    expect(yearOverview.toPeriodNet).toBe(-500);
+    expect(twelvePeriods.periods[10]).toMatchObject({ year: 2026, month: 1, income: 3000, expenses: 1000, net: 2000 });
+    expect(twelvePeriods.toPeriodNet).toBe(-500);
   });
 
   it('marks the Scope Periods on both charts', () => {
-    const { yearOverview, balanceStrip } = statsReport(ledger, fromTo(2025, 12, 2026, 2), noRatesNeeded);
+    const { twelvePeriods, balanceStrip } = statsReport(ledger, fromTo(2025, 12, 2026, 2), noRatesNeeded);
 
     const marked = [false, false, false, false, false, false, false, false, false, true, true, true];
-    expect(yearOverview.periods.map(p => p.inScope)).toEqual(marked);
+    expect(twelvePeriods.periods.map(p => p.inScope)).toEqual(marked);
     expect(balanceStrip.periods.map(p => p.inScope)).toEqual(marked);
   });
 
@@ -502,11 +502,11 @@ describe('statsReport over a Scope that crosses a year boundary', () => {
   });
 
   it('charts the twelve Periods ending at the To Period with its three Periods marked', () => {
-    const { yearOverview } = statsReport(ledger, novemberToJanuary, noRatesNeeded);
+    const { twelvePeriods } = statsReport(ledger, novemberToJanuary, noRatesNeeded);
 
-    expect(yearOverview.periods[0]).toMatchObject({ year: 2025, month: 2 });
-    expect(yearOverview.periods[11]).toMatchObject({ year: 2026, month: 1, net: -700 });
-    expect(yearOverview.periods.filter(p => p.inScope).map(p => [p.year, p.month])).toEqual([
+    expect(twelvePeriods.periods[0]).toMatchObject({ year: 2025, month: 2 });
+    expect(twelvePeriods.periods[11]).toMatchObject({ year: 2026, month: 1, net: -700 });
+    expect(twelvePeriods.periods.filter(p => p.inScope).map(p => [p.year, p.month])).toEqual([
       [2025, 11], [2025, 12], [2026, 1],
     ]);
   });

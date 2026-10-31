@@ -66,24 +66,24 @@
     }
   </section>
 
-  <section class="card year-overview-card">
-    <h2>{{ language.t('stats.yearOverview', { period: toPeriodLabel() }) }}</h2>
+  <section class="card twelve-periods-card">
+    <h2>{{ language.t('stats.twelvePeriods', { period: toPeriodLabel() }) }}</h2>
     @if (stats.balanceStrip.hasMovements) {
-      <div class="year-overview" aria-hidden="true" [style.--zero-pct]="yearOverviewZeroPct() + '%'">
-        <div class="overview-tracks">
-          @for (item of stats.yearOverview.periods; track $index) {
-            <div class="overview-track" [class.current]="item.inScope">
-              <div class="overview-cell income">
+      <div class="twelve-periods" aria-hidden="true" [style.--zero-pct]="twelvePeriodsZeroPct() + '%'">
+        <div class="twelve-periods-tracks">
+          @for (item of stats.twelvePeriods.periods; track $index) {
+            <div class="twelve-periods-track" [class.current]="item.inScope">
+              <div class="twelve-periods-cell income">
                 @if (item.income > 0) {
                   <div class="cell-fill" [style.height.%]="barHeight(item.income)"></div>
                 }
               </div>
-              <div class="overview-cell expense">
+              <div class="twelve-periods-cell expense">
                 @if (item.expenses > 0) {
                   <div class="cell-fill" [style.height.%]="barHeight(item.expenses)"></div>
                 }
               </div>
-              <div class="overview-cell net">
+              <div class="twelve-periods-cell net">
                 @if (item.net > 0) {
                   <div class="cell-fill up" [style.height.%]="barHeight(item.net)"></div>
                 } @else if (item.net < 0) {
@@ -93,41 +93,41 @@
             </div>
           }
         </div>
-        <div class="overview-initials">
-          @for (item of stats.yearOverview.periods; track $index) {
-            <span class="overview-initial" [class.current]="item.inScope">
+        <div class="twelve-periods-initials">
+          @for (item of stats.twelvePeriods.periods; track $index) {
+            <span class="twelve-periods-initial" [class.current]="item.inScope">
               {{ language.monthInitial(item.month) }}
             </span>
           }
         </div>
       </div>
-      <dl class="overview-caption">
+      <dl class="twelve-periods-caption">
         <dt class="label">
-          {{ language.t('stats.overviewCaption', { month: toPeriodLabel() }) }}
+          {{ language.t('stats.twelvePeriodsCaption', { month: toPeriodLabel() }) }}
         </dt>
-        <dd class="value">{{ formatMoney(stats.yearOverview.toPeriodNet) }}</dd>
+        <dd class="value">{{ formatMoney(stats.twelvePeriods.toPeriodNet) }}</dd>
       </dl>
-      <div class="overview-scale">
+      <div class="twelve-periods-scale">
         <p class="scale-line">
-          <span class="label">{{ language.t('stats.overviewScalePeak') }}</span>
-          <span class="value">{{ formatMoney(overviewScalePeak()) }}</span>
+          <span class="label">{{ language.t('stats.twelvePeriodsScalePeak') }}</span>
+          <span class="value">{{ formatMoney(twelvePeriodsScalePeak()) }}</span>
         </p>
         <p class="scale-line">
           <span class="label">{{ language.t('stats.scaleOverdrawn') }}</span>
-          <span class="value">{{ formatMoney(overviewScaleOverdrawn()) }}</span>
+          <span class="value">{{ formatMoney(twelvePeriodsScaleOverdrawn()) }}</span>
         </p>
       </div>
-      <p class="overview-legend">{{ language.t('stats.overviewLegend') }}</p>
-      <ul class="overview-figures visually-hidden">
-        @for (item of stats.yearOverview.periods; track $index) {
+      <p class="twelve-periods-legend">{{ language.t('stats.twelvePeriodsLegend') }}</p>
+      <ul class="twelve-periods-figures visually-hidden">
+        @for (item of stats.twelvePeriods.periods; track $index) {
           <li>
             {{ language.monthName(item.month) }} {{ item.year }}:
-            {{ overviewFigures(item) }}
+            {{ twelvePeriodsFigures(item) }}
           </li>
         }
       </ul>
     } @else {
-      <p class="overview-zero">{{ language.t('stats.yearOverviewZero', { period: toPeriodLabel() }) }}</p>
+      <p class="twelve-periods-zero">{{ language.t('stats.twelvePeriodsZero', { period: toPeriodLabel() }) }}</p>
     }
   </section>
 

@@ -4,7 +4,7 @@ import {
   Scope,
   changeFrom,
   changeTo,
-  defaultScope,
+  defaultMovementsScope,
   defaultStatsScope,
   latestPeriodWithMovements,
   matchingPreset,
@@ -213,21 +213,21 @@ describe('scope', () => {
     });
   });
 
-  describe('defaultScope', () => {
+  describe('defaultMovementsScope', () => {
     beforeEach(() => {
       vi.setSystemTime(new Date(2026, 9, 31));
     });
 
     it('should default to the current Period when nothing is recorded', () => {
-      expect(defaultScope([])).toEqual(scope([2026, 10], [2026, 10]));
+      expect(defaultMovementsScope([])).toEqual(scope([2026, 10], [2026, 10]));
     });
 
     it('should open on the latest Period with movements when it is behind the calendar', () => {
-      expect(defaultScope([movement(2026, 9), movement(2026, 7)])).toEqual(scope([2026, 9], [2026, 9]));
+      expect(defaultMovementsScope([movement(2026, 9), movement(2026, 7)])).toEqual(scope([2026, 9], [2026, 9]));
     });
 
     it('should open on a Period ahead of the calendar', () => {
-      expect(defaultScope([movement(2026, 10), movement(2026, 12)])).toEqual(
+      expect(defaultMovementsScope([movement(2026, 10), movement(2026, 12)])).toEqual(
         scope([2026, 12], [2026, 12]),
       );
     });
@@ -237,17 +237,17 @@ describe('scope', () => {
         { period: 12, year: 2025, date: new Date(2025, 11, 1) },
         { period: 1, year: 2027, date: new Date(2026, 11, 28) },
       ];
-      expect(defaultScope(movements)).toEqual(scope([2027, 1], [2027, 1]));
+      expect(defaultMovementsScope(movements)).toEqual(scope([2027, 1], [2027, 1]));
     });
 
     it('should place a movement without a stored year in its date year', () => {
-      expect(defaultScope([{ period: 5, date: new Date(2023, 4, 1) }])).toEqual(
+      expect(defaultMovementsScope([{ period: 5, date: new Date(2023, 4, 1) }])).toEqual(
         scope([2023, 5], [2023, 5]),
       );
     });
 
     it('should ignore an unrecognizable period', () => {
-      expect(defaultScope([movement(2026, 4), movement(2026, 'Smarch')])).toEqual(
+      expect(defaultMovementsScope([movement(2026, 4), movement(2026, 'Smarch')])).toEqual(
         scope([2026, 4], [2026, 4]),
       );
     });

@@ -151,10 +151,10 @@ describe('DashboardComponent', () => {
       expect(empty).toBeTruthy();
       expect(empty.textContent).toContain(MONTH_NAMES[next.to.month - 1]);
 
-      expect(fixture.nativeElement.querySelector('.year-overview .overview-tracks')).toBeTruthy();
-      expect(fixture.nativeElement.querySelector('.overview-zero')).toBeNull();
+      expect(fixture.nativeElement.querySelector('.twelve-periods .twelve-periods-tracks')).toBeTruthy();
+      expect(fixture.nativeElement.querySelector('.twelve-periods-zero')).toBeNull();
       expect(
-        component.report().yearOverview.periods.find(
+        component.report().twelvePeriods.periods.find(
           o => o.month === getCurrentPeriod() && o.year === getCurrentYear(),
         )!.net,
       ).toBe(3000);
@@ -465,8 +465,8 @@ describe('DashboardComponent - shared scope', () => {
     expect(report.categorySpending.map(c => c.total)).toEqual([1000]);
     /* 9000 + 3000 - 400 - 600: February's 5000 comes after the To Period. */
     expect(report.balances.total).toBe(11000);
-    expect(report.yearOverview.periods.at(-1)).toMatchObject({ year: 2025, month: 1 });
-    expect(report.yearOverview.periods.filter(p => p.inScope)).toHaveLength(3);
+    expect(report.twelvePeriods.periods.at(-1)).toMatchObject({ year: 2025, month: 1 });
+    expect(report.twelvePeriods.periods.filter(p => p.inScope)).toHaveLength(3);
   });
 
   it('should announce the scope to assistive tech on change', async () => {
@@ -1085,7 +1085,7 @@ describe('DashboardComponent - KPI row layout and mono weights', () => {
       '.kpi-line.kpi-savings .savings-rate',
       '.stat .value',
       '.category-bar-row .cat-amount',
-      '.overview-caption .value',
+      '.twelve-periods-caption .value',
       '.balance-tile',
       '.balance-amount',
     ] as const;
@@ -1098,7 +1098,7 @@ describe('DashboardComponent - KPI row layout and mono weights', () => {
   });
 });
 
-describe('DashboardComponent - year overview (12-month graph)', () => {
+describe('DashboardComponent - twelve Periods (12-month graph)', () => {
   let fixture: ComponentFixture<DashboardComponent>;
   let component: DashboardComponent;
   let accountService: AccountService;
@@ -1147,7 +1147,7 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
   }
 
   function tracks(): NodeListOf<HTMLElement> {
-    return fixture.nativeElement.querySelectorAll('.overview-track');
+    return fixture.nativeElement.querySelectorAll('.twelve-periods-track');
   }
 
   it('renders one track for each of the 12 Periods of the scope year', async () => {
@@ -1201,7 +1201,7 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     // Year extremes: up 3000 (peak income), down 2000 (March's overdrawn net).
     // The zero line rises to 40% of the track; up fills share the 60% above it,
     // the down fill takes the 40% below it.
-    expect(component.yearOverviewZeroPct()).toBe(40);
+    expect(component.twelvePeriodsZeroPct()).toBe(40);
     const [january, february, march] = Array.from(tracks());
     expect((january.querySelector('.income .cell-fill') as HTMLElement).style.height).toBe('60%');
     expect((february.querySelector('.expense .cell-fill') as HTMLElement).style.height).toBe('30%');
@@ -1218,9 +1218,9 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     await openOn();
     fixture.detectChanges();
 
-    expect(component.yearOverviewZeroPct()).toBe(0);
-    const overview = fixture.nativeElement.querySelector('.year-overview') as HTMLElement;
-    expect(overview.style.getPropertyValue('--zero-pct')).toBe('0%');
+    expect(component.twelvePeriodsZeroPct()).toBe(0);
+    const chart = fixture.nativeElement.querySelector('.twelve-periods') as HTMLElement;
+    expect(chart.style.getPropertyValue('--zero-pct')).toBe('0%');
     const january = tracks()[0];
     expect((january.querySelector('.income .cell-fill') as HTMLElement).style.height).toBe('100%');
   });
@@ -1277,7 +1277,7 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     fixture.detectChanges();
 
     const css = compiledComponentCss();
-    expect(css).toMatch(/\.overview-track[^{]*::before\s*\{[^}]*bottom:\s*var\(--zero-pct/);
+    expect(css).toMatch(/\.twelve-periods-track[^{]*::before\s*\{[^}]*bottom:\s*var\(--zero-pct/);
     expect(css).toMatch(/\.balance-track[^{]*::before\s*\{[^}]*bottom:\s*var\(--zero-pct/);
     expect(css).toMatch(/\.cell-fill[^{]*\{[^}]*bottom:\s*var\(--zero-pct/);
   });
@@ -1291,7 +1291,7 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
 
     // One construction for both graphs: twelve equal columns with the same
     // shared gap — a single plot each, not a strip of ad-hoc tiles.
-    for (const selector of ['overview-tracks', 'balance-tracks', 'overview-initials', 'balance-initials']) {
+    for (const selector of ['twelve-periods-tracks', 'balance-tracks', 'twelve-periods-initials', 'balance-initials']) {
       const rule = css.match(new RegExp(`\\.${selector}[^{]*\\{([^}]*)\\}`))!;
       expect(rule[1]).toContain('repeat(12, minmax(0, 1fr))');
       expect(rule[1]).toContain('gap: var(--space-xs)');
@@ -1299,7 +1299,7 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
 
     // The tracks carry no borders: the month cells read as tiles separated
     // by the gap, not as one bordered plot.
-    expect(css).not.toMatch(/\.overview-track[^{]*\{[^}]*border/);
+    expect(css).not.toMatch(/\.twelve-periods-track[^{]*\{[^}]*border/);
     expect(css).not.toMatch(/\.balance-track[^{]*\{[^}]*border/);
   });
 
@@ -1309,7 +1309,7 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     fixture.detectChanges();
 
     const css = compiledComponentCss();
-    expect(css).toMatch(/\.overview-track[^{]*\{[^}]*height:\s*7rem/);
+    expect(css).toMatch(/\.twelve-periods-track[^{]*\{[^}]*height:\s*7rem/);
     expect(css).toMatch(/\.balance-track[^{]*\{[^}]*height:\s*4\.5rem/);
   });
 
@@ -1319,7 +1319,7 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     fixture.detectChanges();
 
     const css = compiledComponentCss();
-    for (const selector of ['overview-track', 'balance-track']) {
+    for (const selector of ['twelve-periods-track', 'balance-track']) {
       // Sass hoists the placeholder's `&.current` to the front of the
       // compiled compound selector.
       const rule = css.match(new RegExp(`\\.current\\.${selector}[^{]*\\{([^}]*)\\}`))!;
@@ -1337,7 +1337,7 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     fixture.detectChanges();
 
     const css = compiledComponentCss();
-    for (const selector of ['overview-track', 'balance-track']) {
+    for (const selector of ['twelve-periods-track', 'balance-track']) {
       // On a ~22px track the ring leaves nothing to close around: the
       // outline goes and emphasis moves to the month label.
       expect(css).toMatch(
@@ -1345,18 +1345,18 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
       );
     }
     // The label carries the mobile emphasis: bold ink.
-    for (const selector of ['balance-initial', 'overview-initial']) {
+    for (const selector of ['balance-initial', 'twelve-periods-initial']) {
       const rule = css.match(new RegExp(`\\.${selector}\\.current[^{]*\\{([^}]*)\\}`))!;
       expect(rule[1]).toContain('font-weight: bold');
     }
   });
 
-  it('heads the overview with the twelve Periods ending at the To Period', async () => {
+  it('heads the twelve-Period chart with the twelve Periods ending at the To Period', async () => {
     await seedMovement(getCurrentPeriod());
     await openOn(3);
     fixture.detectChanges();
 
-    const heading = fixture.nativeElement.querySelector('.year-overview-card h2');
+    const heading = fixture.nativeElement.querySelector('.twelve-periods-card h2');
     expect(heading.textContent.trim()).toBe(`Twelve Periods to March ${getCurrentYear()}`);
   });
 
@@ -1376,8 +1376,8 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     await openOn();
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('.overview-tracks')).toBeNull();
-    const zero = fixture.nativeElement.querySelector('.overview-zero');
+    expect(fixture.nativeElement.querySelector('.twelve-periods-tracks')).toBeNull();
+    const zero = fixture.nativeElement.querySelector('.twelve-periods-zero');
     expect(zero).toBeTruthy();
     expect(zero.textContent).toContain(String(getCurrentYear()));
   });
@@ -1556,7 +1556,7 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     expect(tokens).toMatch(/--leading-caption:\s*1\.4/);
 
     const css = compiledComponentCss();
-    for (const selector of ['overview-legend', 'balance-legend']) {
+    for (const selector of ['twelve-periods-legend', 'balance-legend']) {
       expect(css).toMatch(
         new RegExp(`\\.${selector}[^{]*\\{[^}]*line-height:\\s*var\\(--leading-caption\\)`),
       );
@@ -1588,7 +1588,7 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     await openOn();
     fixture.detectChanges();
 
-    const list = fixture.nativeElement.querySelector('.overview-figures');
+    const list = fixture.nativeElement.querySelector('.twelve-periods-figures');
     expect(list).toBeTruthy();
     expect(list.classList).toContain('visually-hidden');
 
@@ -1605,14 +1605,14 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     await openOn(getCurrentPeriod());
     fixture.detectChanges();
 
-    const caption = fixture.nativeElement.querySelector('.overview-caption');
+    const caption = fixture.nativeElement.querySelector('.twelve-periods-caption');
     expect(caption).toBeTruthy();
 
     const value = caption.querySelector('.value');
     expect(value).toBeTruthy();
     expect(value.textContent).toContain(
       component.formatMoney(
-        component.report().yearOverview.periods.find(o => o.month === getCurrentPeriod())!.net,
+        component.report().twelvePeriods.periods.find(o => o.month === getCurrentPeriod())!.net,
       ),
     );
 
@@ -1627,8 +1627,8 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     fixture.detectChanges();
 
     const css = compiledComponentCss();
-    expect(css).toMatch(/\.overview-caption[^{]*\.value[^{]*\{[^}]*font-family:\s*var\(--font-data\)/);
-    expect(css).toMatch(/\.overview-caption[^{]*\.value[^{]*\{[^}]*font-variant-numeric:\s*tabular-nums/);
+    expect(css).toMatch(/\.twelve-periods-caption[^{]*\.value[^{]*\{[^}]*font-family:\s*var\(--font-data\)/);
+    expect(css).toMatch(/\.twelve-periods-caption[^{]*\.value[^{]*\{[^}]*font-variant-numeric:\s*tabular-nums/);
   });
 
   it('explains the color grammar with a one-line caps legend', async () => {
@@ -1636,11 +1636,11 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     await openOn();
     fixture.detectChanges();
 
-    const legend = fixture.nativeElement.querySelector('.overview-legend');
+    const legend = fixture.nativeElement.querySelector('.twelve-periods-legend');
     expect(legend).toBeTruthy();
 
     const css = compiledComponentCss();
-    expect(css).toMatch(/\.overview-legend[^{]*\{[^}]*text-transform:\s*uppercase/);
+    expect(css).toMatch(/\.twelve-periods-legend[^{]*\{[^}]*text-transform:\s*uppercase/);
   });
 
   it('keeps the decorative graph aria-hidden and the screen-reader figure list beside the caption', async () => {
@@ -1648,11 +1648,11 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     await openOn();
     fixture.detectChanges();
 
-    const graph = fixture.nativeElement.querySelector('.year-overview');
+    const graph = fixture.nativeElement.querySelector('.twelve-periods');
     expect(graph).toBeTruthy();
     expect(graph.getAttribute('aria-hidden')).toBe('true');
 
-    const list = fixture.nativeElement.querySelector('.overview-figures');
+    const list = fixture.nativeElement.querySelector('.twelve-periods-figures');
     expect(list).toBeTruthy();
     expect(list.classList).toContain('visually-hidden');
     expect(list.querySelectorAll('li').length).toBe(12);
@@ -1671,17 +1671,17 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     component.onScopeChange(scopeOf(1, year));
     fixture.detectChanges();
 
-    let value = fixture.nativeElement.querySelector('.overview-caption .value');
+    let value = fixture.nativeElement.querySelector('.twelve-periods-caption .value');
     expect(value.textContent).toContain(component.formatMoney(3000));
-    expect(fixture.nativeElement.querySelector('.overview-caption .label').textContent)
+    expect(fixture.nativeElement.querySelector('.twelve-periods-caption .label').textContent)
       .toContain(languageService.monthName(1));
 
     component.onScopeChange(scopeOf(2, year));
     fixture.detectChanges();
 
-    value = fixture.nativeElement.querySelector('.overview-caption .value');
+    value = fixture.nativeElement.querySelector('.twelve-periods-caption .value');
     expect(value.textContent).toContain(component.formatMoney(-500));
-    expect(fixture.nativeElement.querySelector('.overview-caption .label').textContent)
+    expect(fixture.nativeElement.querySelector('.twelve-periods-caption .label').textContent)
       .toContain(languageService.monthName(2));
   });
 
@@ -1689,12 +1689,12 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     await openOn();
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('.overview-tracks')).toBeNull();
-    expect(fixture.nativeElement.querySelector('.overview-caption')).toBeNull();
-    expect(fixture.nativeElement.querySelector('.overview-legend')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.twelve-periods-tracks')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.twelve-periods-caption')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.twelve-periods-legend')).toBeNull();
   });
 
-  it('anchors the overview scale: the tallest column and the deepest overdrawn figure are worth their figures', async () => {
+  it('anchors the twelve-Period chart scale: the tallest column and the deepest overdrawn figure are worth their figures', async () => {
     const acc = await accountService.create('Cash', 'EUR', 0);
     const incomeCat = await categoryService.create('Payroll', 'income');
     const expenseCat = await categoryService.create('Food', 'expense');
@@ -1708,7 +1708,7 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
 
     // Year extremes: up 3000 (the tallest column), down 500 (February's
     // overdrawn net) — the anchor names both signed.
-    const scale = fixture.nativeElement.querySelector('.overview-scale');
+    const scale = fixture.nativeElement.querySelector('.twelve-periods-scale');
     expect(scale).toBeTruthy();
     expect(scale.textContent).toContain('Tallest column');
     expect(scale.textContent).toContain(component.formatMoney(3000));
@@ -1716,17 +1716,17 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     expect(scale.textContent).toContain(component.formatMoney(-500));
 
     const css = compiledComponentCss();
-    expect(css).toMatch(/\.overview-scale[^{]*\{[^}]*text-transform:\s*uppercase/);
-    expect(css).toMatch(/\.overview-scale[^{]*\.value[^{]*\{[^}]*font-family:\s*var\(--font-data\)/);
-    expect(css).toMatch(/\.overview-scale[^{]*\.value[^{]*\{[^}]*font-variant-numeric:\s*tabular-nums/);
+    expect(css).toMatch(/\.twelve-periods-scale[^{]*\{[^}]*text-transform:\s*uppercase/);
+    expect(css).toMatch(/\.twelve-periods-scale[^{]*\.value[^{]*\{[^}]*font-family:\s*var\(--font-data\)/);
+    expect(css).toMatch(/\.twelve-periods-scale[^{]*\.value[^{]*\{[^}]*font-variant-numeric:\s*tabular-nums/);
   });
 
-  it('anchors the overview scale floor at zero when no Period dips below the line', async () => {
+  it('anchors the twelve-Period chart scale floor at zero when no Period dips below the line', async () => {
     await seedMovement(getCurrentPeriod());
     await openOn();
     fixture.detectChanges();
 
-    const scale = fixture.nativeElement.querySelector('.overview-scale');
+    const scale = fixture.nativeElement.querySelector('.twelve-periods-scale');
     expect(scale.textContent).toContain('Deepest overdrawn');
     expect(scale.textContent).toContain(component.formatMoney(0));
   });
@@ -1761,7 +1761,7 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     expect(scale.textContent).toContain(component.formatMoney(-2000));
   });
 
-  it('mirrors the overview caption under the strip: the Scope Period\'s Balance', async () => {
+  it('mirrors the twelve-Period chart caption under the strip: the Scope Period\'s Balance', async () => {
     const acc = await accountService.create('Cash', 'EUR', 0);
     const incomeCat = await categoryService.create('Payroll', 'income');
     const expenseCat = await categoryService.create('Food', 'expense');
@@ -1786,7 +1786,7 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     expect(fixture.nativeElement.querySelector('.balance-caption .value').textContent)
       .toContain(component.formatMoney(3000));
 
-    // The mirrored caption pairs with the overview caption's grammar: caps
+    // The mirrored caption pairs with the twelve-Period chart caption's grammar: caps
     // label left, mono figure right.
     const css = compiledComponentCss();
     expect(css).toMatch(/\.balance-caption[^{]*\{[^}]*text-transform:\s*uppercase/);
@@ -1798,7 +1798,7 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     await openOn();
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('.overview-scale')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.twelve-periods-scale')).toBeNull();
     expect(fixture.nativeElement.querySelector('.balance-scale')).toBeNull();
     expect(fixture.nativeElement.querySelector('.balance-caption')).toBeNull();
   });
@@ -1812,7 +1812,7 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
 
     // Each scale figure sits on a justified row: label left, value right —
     // the caption's own grammar.
-    for (const selector of ['overview-scale', 'balance-scale']) {
+    for (const selector of ['twelve-periods-scale', 'balance-scale']) {
       expect(css).toMatch(
         new RegExp(`\\.${selector}[^{]*\\.scale-line[^{]*\\{[^}]*justify-content:\\s*space-between`),
       );
@@ -1820,12 +1820,12 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
 
     // The graph-to-caption gap is one shared rhythm both graphs hand down;
     // no card carries its own spacing.
-    expect(css).toMatch(/\.year-overview[^{]*\{[^}]*margin-bottom:\s*var\(--space-md\)/);
+    expect(css).toMatch(/\.twelve-periods[^{]*\{[^}]*margin-bottom:\s*var\(--space-md\)/);
     expect(css).toMatch(/\.balance-strip[^{]*\{[^}]*margin-bottom:\s*var\(--space-md\)/);
 
     // The legends carry their own shared step below the footer lines — the
     // same margin on both cards, so the footers still pair.
-    expect(css).toMatch(/\.overview-legend[^{]*\{[^}]*margin:\s*var\(--space-sm\)/);
+    expect(css).toMatch(/\.twelve-periods-legend[^{]*\{[^}]*margin:\s*var\(--space-sm\)/);
     expect(css).toMatch(/\.balance-legend[^{]*\{[^}]*margin:\s*var\(--space-sm\)/);
   });
 
@@ -1836,7 +1836,7 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
 
     const readInitials = () =>
       Array.from(
-        fixture.nativeElement.querySelectorAll('.overview-initial') as NodeListOf<HTMLElement>,
+        fixture.nativeElement.querySelectorAll('.twelve-periods-initial') as NodeListOf<HTMLElement>,
       ).map(el => el.textContent?.trim());
 
     expect(readInitials()).toEqual(['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D']);
@@ -1858,7 +1858,7 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     await openOn();
     component.onScopeChange(scopeOf(3, 2012));
 
-    const periods = component.report().yearOverview.periods;
+    const periods = component.report().twelvePeriods.periods;
     expect(periods.at(-1)).toMatchObject({ year: 2012, month: 3, net: 4000 });
     expect(periods[0]).toMatchObject({ year: 2011, month: 4 });
     expect(periods.find(o => o.year === 2012 && o.month === 1)!.net).toBe(0);
@@ -1873,7 +1873,7 @@ describe('DashboardComponent - year overview (12-month graph)', () => {
     fixture.detectChanges();
 
     const initials = Array.from(
-      fixture.nativeElement.querySelectorAll('.overview-initial') as NodeListOf<HTMLElement>,
+      fixture.nativeElement.querySelectorAll('.twelve-periods-initial') as NodeListOf<HTMLElement>,
     );
     expect(initials.map(el => el.textContent?.trim())).toEqual(
       ['F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D', 'J'],

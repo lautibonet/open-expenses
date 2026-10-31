@@ -22,7 +22,7 @@ import {
   cashBasis,
   monthlyAverages,
 } from './cash-basis';
-import { accumulatedByPeriod } from './year-overview';
+import { accumulatedByPeriod } from './accumulated';
 import { CategorySpending, categorySpending } from './category-spending';
 
 /* The outcome of fetching Exchange Rates for the foreign Account currencies,
@@ -84,7 +84,7 @@ export interface StatsReport {
     hasData: boolean;
   };
   /* The Net chart: the twelve Periods ending at the To Period. */
-  yearOverview: {
+  twelvePeriods: {
     periods: ChartPeriodFlow[];
     toPeriodNet: number;
   };
@@ -204,7 +204,7 @@ export function statsReport(
       savingsRate: averages.income > 0 ? Math.round((averages.net / averages.income) * 100) : null,
       hasData: totals.periodsWithMovements > 0,
     },
-    yearOverview: {
+    twelvePeriods: {
       periods,
       toPeriodNet: periods[periods.length - 1].net,
     },

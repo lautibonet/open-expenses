@@ -4,7 +4,7 @@ import { expect, test } from '@playwright/test';
  * Issue #156 — Stats graphs: scale anchors + mirrored balance caption.
  *
  * Each graph card states its scale in the caps-label voice (figures in
- * JetBrains Mono tabular): the overview anchors its tallest column and its
+ * JetBrains Mono tabular): the twelve-Period chart anchors its tallest column and its
  * zero line, the strip anchors its track top (or, when the year's max
  * magnitude is an overdrawn balance, that cap). The strip gains the mirrored
  * "{month} Balance" caption under it, pairing both cards' footers.
@@ -30,17 +30,17 @@ for (const viewport of [
 
       await page.goto('/stats');
 
-      // Overview anchor: tallest column figure; both transactions land in
+      // Twelve-Period chart anchor: tallest column figure; both transactions land in
       // the current Period, so nothing dips below the line and the floor
       // figure is 0.
-      const overviewScale = page.locator('.overview-scale');
-      await expect(overviewScale).toBeVisible();
-      await expect(overviewScale).toContainText('Tallest column');
-      await expect(overviewScale).toContainText('3,000.00');
-      await expect(overviewScale).toContainText('Deepest overdrawn');
-      await expect(overviewScale).toContainText('0.00');
+      const twelvePeriodsScale = page.locator('.twelve-periods-scale');
+      await expect(twelvePeriodsScale).toBeVisible();
+      await expect(twelvePeriodsScale).toContainText('Tallest column');
+      await expect(twelvePeriodsScale).toContainText('3,000.00');
+      await expect(twelvePeriodsScale).toContainText('Deepest overdrawn');
+      await expect(twelvePeriodsScale).toContainText('0.00');
 
-      // Strip caption mirrors the overview caption's grammar.
+      // Strip caption mirrors the twelve-Period chart caption's grammar.
       const balanceCaption = page.locator('.balance-caption');
       await expect(balanceCaption).toBeVisible();
       await expect(balanceCaption).toContainText('Balance');
@@ -53,13 +53,13 @@ for (const viewport of [
       await expect(balanceScale).toContainText('2,600.00');
 
       // Hidden figure lists untouched; legends still in place.
-      await expect(page.locator('.overview-figures.visually-hidden')).toHaveCount(1);
+      await expect(page.locator('.twelve-periods-figures.visually-hidden')).toHaveCount(1);
       await expect(page.locator('.balance-figures.visually-hidden')).toHaveCount(1);
-      await expect(page.locator('.overview-legend')).toBeVisible();
+      await expect(page.locator('.twelve-periods-legend')).toBeVisible();
       await expect(page.locator('.balance-legend')).toBeVisible();
 
       // The anchors' figures read in the mono data voice.
-      const mono = await overviewScale.locator('.value').first().evaluate((el) => {
+      const mono = await twelvePeriodsScale.locator('.value').first().evaluate((el) => {
         const s = getComputedStyle(el);
         return { family: s.fontFamily, numeric: s.fontVariantNumeric };
       });
@@ -82,22 +82,22 @@ for (const viewport of [
           return c.top - g.bottom;
         };
         return {
-          overviewCaption: row('.overview-caption'),
-          overviewScale: row('.overview-scale .scale-line'),
+          twelvePeriodsCaption: row('.twelve-periods-caption'),
+          twelvePeriodsScale: row('.twelve-periods-scale .scale-line'),
           balanceCaption: row('.balance-caption'),
           balanceScale: row('.balance-scale .scale-line'),
-          overviewGap: gap('.year-overview', '.overview-caption'),
+          twelvePeriodsGap: gap('.twelve-periods', '.twelve-periods-caption'),
           balanceGap: gap('.balance-strip', '.balance-caption'),
-          overviewCaptionGap: gap('.overview-caption', '.overview-scale .scale-line'),
-          overviewLegendGap: gap(
-            '.overview-scale .scale-line:nth-child(2)',
-            '.overview-legend',
+          twelvePeriodsCaptionGap: gap('.twelve-periods-caption', '.twelve-periods-scale .scale-line'),
+          twelvePeriodsLegendGap: gap(
+            '.twelve-periods-scale .scale-line:nth-child(2)',
+            '.twelve-periods-legend',
           ),
           balanceLegendGap: gap('.balance-scale .scale-line', '.balance-legend'),
         };
       });
       for (const [caption, scale] of [
-        [geo.overviewCaption, geo.overviewScale],
+        [geo.twelvePeriodsCaption, geo.twelvePeriodsScale],
         [geo.balanceCaption, geo.balanceScale],
       ]) {
         expect(Math.abs(scale.labelLeft - caption.labelLeft), 'labels share the left edge')
@@ -105,17 +105,17 @@ for (const viewport of [
         expect(Math.abs(scale.valueRight - caption.valueRight), 'figures share the right edge')
           .toBeLessThanOrEqual(2);
       }
-      expect(Math.abs(geo.overviewGap - geo.balanceGap), 'one shared graph-to-caption gap')
+      expect(Math.abs(geo.twelvePeriodsGap - geo.balanceGap), 'one shared graph-to-caption gap')
         .toBeLessThanOrEqual(2);
       // Footer rhythm: caption→scale rides the small step; the legends sit
       // one bigger shared step below, alike on both cards.
       expect(
-        Math.abs(geo.overviewCaptionGap - geo.balanceGap * 0.25),
-        `caption gap ${geo.overviewCaptionGap} must be a quarter of the graph gap`,
+        Math.abs(geo.twelvePeriodsCaptionGap - geo.balanceGap * 0.25),
+        `caption gap ${geo.twelvePeriodsCaptionGap} must be a quarter of the graph gap`,
       ).toBeLessThanOrEqual(2);
       expect(
-        Math.abs(geo.overviewLegendGap - geo.balanceGap * 0.5),
-        `overview legend gap ${geo.overviewLegendGap} must be half the graph gap`,
+        Math.abs(geo.twelvePeriodsLegendGap - geo.balanceGap * 0.5),
+        `twelve-Period legend gap ${geo.twelvePeriodsLegendGap} must be half the graph gap`,
       ).toBeLessThanOrEqual(2);
       expect(
         Math.abs(geo.balanceLegendGap - geo.balanceGap * 0.5),

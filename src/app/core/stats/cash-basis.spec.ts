@@ -345,7 +345,7 @@ describe('cashBasis totals (ADR 0022)', () => {
     expect(monthlyAverages(totals)).toEqual({ income: 1500, expenses: 500, net: 1000 });
   });
 
-  it('makes the Scope totals equal the sum of the Period figures the overview shows', () => {
+  it('makes the Scope totals equal the sum of the Period figures the twelve-Period chart shows', () => {
     const figures = cashBasis(snapshot({
       transactions: [
         txn({ id: 1, accountId: 1, categoryId: 2, period: 12, year: 2025, amount: 10.1 }),

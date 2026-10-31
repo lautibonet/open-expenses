@@ -25,7 +25,7 @@ import {
   balanceExtremes,
   categoryBarWidth,
   fillPct,
-  overviewExtremes,
+  twelvePeriodsExtremes,
   stripScaleAnchor,
   zeroPct,
 } from '../../core/stats/chart-scale';
@@ -79,7 +79,7 @@ export class DashboardComponent implements OnInit {
   /* Every figure the screen shows. */
   report = computed<StatsReport>(() => statsReport(this.snapshot(), this.scope(), this.rates()));
 
-  private overviewExtremes = computed(() => overviewExtremes(this.report().yearOverview.periods));
+  private twelvePeriodsExtremes = computed(() => twelvePeriodsExtremes(this.report().twelvePeriods.periods));
   private balanceExtremes = computed(() => balanceExtremes(this.report().balanceStrip.accumulated));
 
   async ngOnInit(): Promise<void> {
@@ -175,8 +175,8 @@ export class DashboardComponent implements OnInit {
     });
   }
 
-  yearOverviewZeroPct(): number {
-    return zeroPct(this.overviewExtremes());
+  twelvePeriodsZeroPct(): number {
+    return zeroPct(this.twelvePeriodsExtremes());
   }
 
   balanceZeroPct(): number {
@@ -184,18 +184,18 @@ export class DashboardComponent implements OnInit {
   }
 
   barHeight(value: number): number {
-    return fillPct(value, this.overviewExtremes());
+    return fillPct(value, this.twelvePeriodsExtremes());
   }
 
-  /* Scale anchor: the figures the overview's scale edges are worth — the
+  /* Scale anchor: the figures the twelve-Period chart's scale edges are worth — the
      tallest column above the line and the deepest overdrawn Net below it,
      signed. Stated so the relative heights get absolute meaning. */
-  overviewScalePeak(): number {
-    return this.overviewExtremes().up;
+  twelvePeriodsScalePeak(): number {
+    return this.twelvePeriodsExtremes().up;
   }
 
-  overviewScaleOverdrawn(): number {
-    return -this.overviewExtremes().down;
+  twelvePeriodsScaleOverdrawn(): number {
+    return -this.twelvePeriodsExtremes().down;
   }
 
   stripScaleAnchor(): { label: string; amount: number } {
@@ -211,7 +211,7 @@ export class DashboardComponent implements OnInit {
   }
 
   /* The accessible figure list: Income, Expenses, and Net per Period. */
-  overviewFigures(item: PeriodCashFlow): string {
+  twelvePeriodsFigures(item: PeriodCashFlow): string {
     return [
       `${this.language.t('stats.income')} ${this.formatMoney(item.income)}`,
       `${this.language.t('stats.expenses')} ${this.formatMoney(item.expenses)}`,

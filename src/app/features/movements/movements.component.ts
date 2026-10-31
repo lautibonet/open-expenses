@@ -21,7 +21,7 @@ import {
   movementOf,
 } from '../../core/movements/movement-list';
 import { MONTH_NUMBERS, ScopeAwareMovement, getCurrentYear } from '../../core/types/period.type';
-import { Scope, defaultScope, scopeFromQuery, scopeQuery } from '../../core/scope/scope';
+import { Scope, defaultMovementsScope, scopeFromQuery, scopeQuery } from '../../core/scope/scope';
 import { LanguageService } from '../../core/services/language.service';
 import { BottomSheetComponent } from '../../shared/components/bottom-sheet/bottom-sheet.component';
 import { ScopeControlComponent } from '../../shared/components/scope-control/scope-control.component';
@@ -58,7 +58,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
   private location = inject(Location);
   language = inject(LanguageService);
 
-  scope = signal<Scope>(defaultScope());
+  scope = signal<Scope>(defaultMovementsScope());
   /* The Ledger's movements across every Period. The list and the Scope
      control both derive from them, so a Scope change never refetches. */
   transactions = signal<Transaction[]>([]);
@@ -321,7 +321,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
       this.allCategories.set(await this.categoryService.getAll());
       await this.refresh();
     } finally {
-      this.scope.set(linkedScope ?? defaultScope([...this.transactions(), ...this.transfers()]));
+      this.scope.set(linkedScope ?? defaultMovementsScope([...this.transactions(), ...this.transfers()]));
       this.isLoaded.set(true);
     }
   }
