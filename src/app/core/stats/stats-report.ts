@@ -1,5 +1,5 @@
 import { Account, isBaseCurrencyAccount, isCreditCard, paymentCategoryIds } from '../models/account.model';
-import { Scope } from '../scope/scope';
+import { Scope, latestPeriodWithMovements } from '../scope/scope';
 import {
   Period,
   comparePeriods,
@@ -22,7 +22,7 @@ import {
   cashBasis,
   monthlyAverages,
 } from './cash-basis';
-import { accumulatedByPeriod, lastMovementPeriod } from './year-overview';
+import { accumulatedByPeriod } from './accumulated';
 import { CategorySpending, categorySpending } from './category-spending';
 
 /* The outcome of fetching Exchange Rates for the foreign Account currencies,
@@ -84,7 +84,7 @@ export interface StatsReport {
     hasData: boolean;
   };
   /* The Net chart: the twelve Periods ending at the To Period. */
-  yearOverview: {
+  twelvePeriods: {
     periods: ChartPeriodFlow[];
     toPeriodNet: number;
   };
@@ -133,7 +133,8 @@ export function statsReport(
   rates: RateOutcome,
 ): StatsReport {
   const end = scope.to;
-  const charted = scopePeriods({ from: shiftPeriod(end, -(CHART_LENGTH - 1)), to: end });
+  const chartScope: Scope = { from: shiftPeriod(end, -(CHART_LENGTH - 1)), to: end };
+  const charted = scopePeriods(chartScope);
   const inScope = (period: Period) => periodInScope(period.year, period.month, scope);
   const figures = cashBasis(snapshot);
   const { accountsById, isIncome } = figures;
@@ -165,7 +166,7 @@ export function statsReport(
   const averages = monthlyAverages(totals);
   const periods = figures.periodFlows(charted).map(flow => ({
     ...flow,
-    inScope: inScope({ year: flow.year, month: flow.period }),
+    inScope: inScope(flow),
   }));
   const accumulated = accumulatedByPeriod({
     accounts: snapshot.accounts,
@@ -176,7 +177,12 @@ export function statsReport(
     baseCurrency: base,
     initialInBase: conversion.initialsInBase,
   });
-  const lastWithMovements = lastMovementPeriod(snapshot.transactions, snapshot.transfers, charted);
+  /* Accumulated Periods after the last one with movements are frozen at
+     the last known balance rather than recorded data. */
+  const lastWithMovements = latestPeriodWithMovements(
+    [...snapshot.transactions, ...snapshot.transfers],
+    chartScope,
+  );
   const stripPeriods = charted.map((period, i) => ({
     ...period,
     balance: accumulated[i],
@@ -198,7 +204,7 @@ export function statsReport(
       savingsRate: averages.income > 0 ? Math.round((averages.net / averages.income) * 100) : null,
       hasData: totals.periodsWithMovements > 0,
     },
-    yearOverview: {
+    twelvePeriods: {
       periods,
       toPeriodNet: periods[periods.length - 1].net,
     },

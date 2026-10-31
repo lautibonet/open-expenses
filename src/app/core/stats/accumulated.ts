@@ -1,4 +1,4 @@
-import { Period, comparePeriods, movementPeriod } from '../types/period.type';
+import { Period } from '../types/period.type';
 import { Transaction } from '../models/transaction.model';
 import { Transfer } from '../models/transfer.model';
 import { Account } from '../models/account.model';
@@ -39,24 +39,4 @@ export function accumulatedByPeriod(input: AccumulatedInput): number[] {
     }
     return Math.round(total * 100) / 100;
   });
-}
-
-/* The latest of the given Periods carrying a recorded Movement — Transaction
-   or Transfer — or null when none does. Accumulated Periods after it are
-   frozen at the last known balance rather than recorded data. */
-export function lastMovementPeriod(
-  transactions: Transaction[],
-  transfers: Transfer[],
-  periods: Period[],
-): Period | null {
-  if (periods.length === 0) return null;
-  const first = periods[0];
-  const last = periods[periods.length - 1];
-  let latest: Period | null = null;
-  for (const movement of [...transactions, ...transfers]) {
-    const period = movementPeriod(movement);
-    if (!period || comparePeriods(period, first) < 0 || comparePeriods(period, last) > 0) continue;
-    if (latest === null || comparePeriods(period, latest) > 0) latest = period;
-  }
-  return latest;
 }

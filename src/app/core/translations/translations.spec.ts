@@ -191,6 +191,9 @@ describe('translations', () => {
       'scope.toMonthAria',
       'scope.toYearAria',
       'scope.range',
+      'scope.caption',
+      'scope.captionRun',
+      'scope.captionPeriod',
     ]) {
       expect(TRANSLATIONS.en[key]).toBeTruthy();
       expect(TRANSLATIONS.es[key]).toBeTruthy();
@@ -364,11 +367,11 @@ describe('translations', () => {
       'stats.income',
       'stats.expenses',
       'stats.net',
-      'stats.yearOverview',
-      'stats.yearOverviewZero',
-      'stats.overviewCaption',
-      'stats.overviewLegend',
-      'stats.overviewScalePeak',
+      'stats.twelvePeriods',
+      'stats.twelvePeriodsZero',
+      'stats.twelvePeriodsCaption',
+      'stats.twelvePeriodsLegend',
+      'stats.twelvePeriodsScalePeak',
       'stats.scaleOverdrawn',
       'stats.stripScaleTop',
       'stats.balanceCaption',
@@ -378,7 +381,6 @@ describe('translations', () => {
       'stats.noAccounts',
       'stats.avgCaption',
       'stats.savingsRate',
-      'stats.kpiScope',
     ]) {
       expect(TRANSLATIONS.en[key]).toBeTruthy();
       expect(TRANSLATIONS.es[key]).toBeTruthy();

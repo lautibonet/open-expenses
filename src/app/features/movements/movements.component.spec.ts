@@ -23,7 +23,7 @@ import {
   getCurrentYear,
   shiftPeriod,
 } from '../../core/types/period.type';
-import { Scope, defaultScope } from '../../core/scope/scope';
+import { Scope, defaultMovementsScope } from '../../core/scope/scope';
 
 /* A Scope from one Period through another; the To defaults to the From. */
 function scopeOf(fromMonth: number, fromYear: number, toMonth = fromMonth, toYear = fromYear): Scope {
@@ -1035,7 +1035,7 @@ describe('MovementsComponent - shared scope', () => {
 
   it('should default to the current Period when nothing is recorded', async () => {
     await component.ngOnInit();
-    expect(component.scope()).toEqual(defaultScope());
+    expect(component.scope()).toEqual(defaultMovementsScope());
     expect(component.scope()).toEqual(currentPeriodScope());
   });
 
@@ -3558,17 +3558,17 @@ describe('MovementsComponent - scope URL state', () => {
   it('ignores malformed or out-of-range scope params and falls back to the current Scope', async () => {
     TestBed.inject(Location).replaceState('/movements?period=13&year=notayear');
     await component.ngOnInit();
-    expect(component.scope()).toEqual(defaultScope());
+    expect(component.scope()).toEqual(defaultMovementsScope());
 
     TestBed.inject(Location).replaceState('/movements?from=2025-13&to=2026-01');
     await component.ngOnInit();
-    expect(component.scope()).toEqual(defaultScope());
+    expect(component.scope()).toEqual(defaultMovementsScope());
   });
 
   it('keeps the current Scope for legacy links without params', async () => {
     await component.ngOnInit();
 
-    expect(component.scope()).toEqual(defaultScope());
+    expect(component.scope()).toEqual(defaultMovementsScope());
   });
 
   it('reflects a Scope change in the URL as from and to query params', async () => {
@@ -3582,7 +3582,7 @@ describe('MovementsComponent - scope URL state', () => {
   it('round-trips a Scope through its link', async () => {
     await component.ngOnInit();
     component.onScopeChange(scopeOf(12, 2024, 3, 2025));
-    component.scope.set(defaultScope());
+    component.scope.set(defaultMovementsScope());
 
     /* Entering the screen again reads the Scope back from the link. */
     await component.ngOnInit();

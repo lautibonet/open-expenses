@@ -3,7 +3,7 @@ import {
   balanceExtremes,
   categoryBarWidth,
   fillPct,
-  overviewExtremes,
+  twelvePeriodsExtremes,
   stripScaleAnchor,
   zeroPct,
 } from './chart-scale';
@@ -11,7 +11,7 @@ import { PeriodCashFlow } from './cash-basis';
 import { CategorySpending } from './category-spending';
 
 function period(overrides: Partial<PeriodCashFlow>): PeriodCashFlow {
-  return { year: 2026, period: 1, income: 0, expenses: 0, net: 0, hasMovements: false, ...overrides };
+  return { year: 2026, month: 1, income: 0, expenses: 0, net: 0, hasMovements: false, ...overrides };
 }
 
 function spending(total: number): CategorySpending {
@@ -51,18 +51,18 @@ describe('fill heights', () => {
   });
 });
 
-describe('year overview extremes', () => {
+describe('twelve Periods extremes', () => {
   it('takes the largest Income, Expenses, or positive Net above the line, and the deepest Net below', () => {
     const periods = [
-      period({ period: 1, income: 1000, expenses: 400, net: 600 }),
-      period({ period: 2, income: 200, expenses: 1500, net: -1300 }),
+      period({ month: 1, income: 1000, expenses: 400, net: 600 }),
+      period({ month: 2, income: 200, expenses: 1500, net: -1300 }),
     ];
 
-    expect(overviewExtremes(periods)).toEqual({ up: 1500, down: 1300 });
+    expect(twelvePeriodsExtremes(periods)).toEqual({ up: 1500, down: 1300 });
   });
 
   it('has no overdrawn side when every Net is positive', () => {
-    expect(overviewExtremes([period({ income: 10, expenses: 5, net: 5 })])).toEqual({ up: 10, down: 0 });
+    expect(twelvePeriodsExtremes([period({ income: 10, expenses: 5, net: 5 })])).toEqual({ up: 10, down: 0 });
   });
 });
 

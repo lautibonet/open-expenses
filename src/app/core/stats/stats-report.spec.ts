@@ -87,7 +87,8 @@ function scope(period: MonthNumber, year = 2026): Scope {
   return { from: { year, month: period }, to: { year, month: period } };
 }
 
-function range(fromYear: number, fromMonth: MonthNumber, toYear: number, toMonth: MonthNumber): Scope {
+/* A Scope from one Period to another. */
+function fromTo(fromYear: number, fromMonth: MonthNumber, toYear: number, toMonth: MonthNumber): Scope {
   return { from: { year: fromYear, month: fromMonth }, to: { year: toYear, month: toMonth } };
 }
 
@@ -344,7 +345,7 @@ describe('statsReport Exchange Rate paths', () => {
     const later = { ...ledger, transactions: [txn({ id: 9, accountId: 2, amount: 5, period: 6 })] };
 
     expect(statsReport(later, scope(1), usdRates).degradation.unconvertedMovements).toBe(false);
-    expect(statsReport(later, range(2026, 1, 2026, 6), usdRates).degradation.unconvertedMovements).toBe(true);
+    expect(statsReport(later, fromTo(2026, 1, 2026, 6), usdRates).degradation.unconvertedMovements).toBe(true);
     expect(statsReport(later, scope(1, 2027), usdRates).degradation.unconvertedMovements).toBe(true);
   });
 });
@@ -367,7 +368,7 @@ describe('statsReport Scope figures', () => {
   });
 
   it('sums the KPIs over exactly the Scope Periods, with monthly averages and the savings rate', () => {
-    const { kpis } = statsReport(ledger, range(2026, 1, 2026, 2), noRatesNeeded);
+    const { kpis } = statsReport(ledger, fromTo(2026, 1, 2026, 2), noRatesNeeded);
 
     expect(kpis.totals).toEqual({ income: 3000, expenses: 1500, net: 1500, periodsWithMovements: 2 });
     expect(kpis.averages).toEqual({ income: 1500, expenses: 750, net: 750 });
@@ -392,21 +393,21 @@ describe('statsReport Scope figures', () => {
   });
 
   it('charts the twelve Periods ending at the To Period, across a year boundary, and the To Period Net', () => {
-    const { yearOverview } = statsReport(ledger, scope(2), noRatesNeeded);
+    const { twelvePeriods } = statsReport(ledger, scope(2), noRatesNeeded);
 
-    expect(yearOverview.periods.map(p => [p.year, p.period])).toEqual([
+    expect(twelvePeriods.periods.map(p => [p.year, p.month])).toEqual([
       [2025, 3], [2025, 4], [2025, 5], [2025, 6], [2025, 7], [2025, 8],
       [2025, 9], [2025, 10], [2025, 11], [2025, 12], [2026, 1], [2026, 2],
     ]);
-    expect(yearOverview.periods[10]).toMatchObject({ year: 2026, period: 1, income: 3000, expenses: 1000, net: 2000 });
-    expect(yearOverview.toPeriodNet).toBe(-500);
+    expect(twelvePeriods.periods[10]).toMatchObject({ year: 2026, month: 1, income: 3000, expenses: 1000, net: 2000 });
+    expect(twelvePeriods.toPeriodNet).toBe(-500);
   });
 
   it('marks the Scope Periods on both charts', () => {
-    const { yearOverview, balanceStrip } = statsReport(ledger, range(2025, 12, 2026, 2), noRatesNeeded);
+    const { twelvePeriods, balanceStrip } = statsReport(ledger, fromTo(2025, 12, 2026, 2), noRatesNeeded);
 
     const marked = [false, false, false, false, false, false, false, false, false, true, true, true];
-    expect(yearOverview.periods.map(p => p.inScope)).toEqual(marked);
+    expect(twelvePeriods.periods.map(p => p.inScope)).toEqual(marked);
     expect(balanceStrip.periods.map(p => p.inScope)).toEqual(marked);
   });
 
@@ -428,7 +429,7 @@ describe('statsReport Scope figures', () => {
     ]);
   });
 
-  it('shows the strip for a window whose only movement is a Card Purchase', () => {
+  it('shows the strip for a Scope whose only movement is a Card Purchase', () => {
     const cardOnly = { ...ledger, transactions: [txn({ id: 1, accountId: 2, amount: 50, period: 4 })] };
 
     const { balanceStrip } = statsReport(cardOnly, scope(4), noRatesNeeded);
@@ -437,7 +438,7 @@ describe('statsReport Scope figures', () => {
     expect(balanceStrip.periods.some(p => p.frozen)).toBe(false);
   });
 
-  it('has no strip movements in a window with none, holding the carried-over balance', () => {
+  it('has no strip movements in a Scope with none, holding the carried-over balance', () => {
     const { balanceStrip } = statsReport(ledger, scope(1, 2028), noRatesNeeded);
 
     expect(balanceStrip.hasMovements).toBe(false);
@@ -472,7 +473,7 @@ describe('statsReport over a Scope that crosses a year boundary', () => {
       txn({ id: 5, categoryId: 1, amount: 50, period: 2, year: 2026 }),
     ],
   });
-  const novemberToJanuary = range(2025, 11, 2026, 1);
+  const novemberToJanuary = fromTo(2025, 11, 2026, 1);
 
   it('reports the totals for exactly its Periods and averages over its Periods with movements', () => {
     const { kpis } = statsReport(ledger, novemberToJanuary, noRatesNeeded);
@@ -501,11 +502,11 @@ describe('statsReport over a Scope that crosses a year boundary', () => {
   });
 
   it('charts the twelve Periods ending at the To Period with its three Periods marked', () => {
-    const { yearOverview } = statsReport(ledger, novemberToJanuary, noRatesNeeded);
+    const { twelvePeriods } = statsReport(ledger, novemberToJanuary, noRatesNeeded);
 
-    expect(yearOverview.periods[0]).toMatchObject({ year: 2025, period: 2 });
-    expect(yearOverview.periods[11]).toMatchObject({ year: 2026, period: 1, net: -700 });
-    expect(yearOverview.periods.filter(p => p.inScope).map(p => [p.year, p.period])).toEqual([
+    expect(twelvePeriods.periods[0]).toMatchObject({ year: 2025, month: 2 });
+    expect(twelvePeriods.periods[11]).toMatchObject({ year: 2026, month: 1, net: -700 });
+    expect(twelvePeriods.periods.filter(p => p.inScope).map(p => [p.year, p.month])).toEqual([
       [2025, 11], [2025, 12], [2026, 1],
     ]);
   });

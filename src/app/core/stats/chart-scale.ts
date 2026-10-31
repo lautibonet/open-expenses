@@ -43,10 +43,10 @@ export function fillPct(value: number, extremes: Extremes): number {
   return 0;
 }
 
-/* Year overview extremes: up is the largest figure among Income, Expenses
+/* Twelve-Period chart extremes: up is the largest figure among Income, Expenses
    and positive Net; down is the deepest overdrawn Net. Income and Expenses
    are magnitudes and never grow below the line — only a negative Net does. */
-export function overviewExtremes(periods: PeriodCashFlow[]): Extremes {
+export function twelvePeriodsExtremes(periods: PeriodCashFlow[]): Extremes {
   let up = 0;
   let down = 0;
   for (const p of periods) {

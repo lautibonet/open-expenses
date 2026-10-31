@@ -290,12 +290,12 @@ describe('cashBasis totals (ADR 0022)', () => {
 
     const periods = figures.periodFlows(scopePeriods(scope(2025, 11, 2026, 3)));
 
-    expect(periods.map(p => [p.year, p.period])).toEqual([
+    expect(periods.map(p => [p.year, p.month])).toEqual([
       [2025, 11], [2025, 12], [2026, 1], [2026, 2], [2026, 3],
     ]);
-    expect(periods[0]).toEqual({ year: 2025, period: 11, income: 0, expenses: 0, net: 0, hasMovements: false });
-    expect(periods[1]).toEqual({ year: 2025, period: 12, income: 0, expenses: 40, net: -40, hasMovements: true });
-    expect(periods[2]).toEqual({ year: 2026, period: 1, income: 3000, expenses: 0, net: 3000, hasMovements: true });
+    expect(periods[0]).toEqual({ year: 2025, month: 11, income: 0, expenses: 0, net: 0, hasMovements: false });
+    expect(periods[1]).toEqual({ year: 2025, month: 12, income: 0, expenses: 40, net: -40, hasMovements: true });
+    expect(periods[2]).toEqual({ year: 2026, month: 1, income: 3000, expenses: 0, net: 3000, hasMovements: true });
     expect(periods[4].net).toBe(-700);
   });
 
@@ -345,7 +345,7 @@ describe('cashBasis totals (ADR 0022)', () => {
     expect(monthlyAverages(totals)).toEqual({ income: 1500, expenses: 500, net: 1000 });
   });
 
-  it('makes the Scope totals equal the sum of the Period figures the overview shows', () => {
+  it('makes the Scope totals equal the sum of the Period figures the twelve-Period chart shows', () => {
     const figures = cashBasis(snapshot({
       transactions: [
         txn({ id: 1, accountId: 1, categoryId: 2, period: 12, year: 2025, amount: 10.1 }),

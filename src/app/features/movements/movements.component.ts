@@ -21,7 +21,7 @@ import {
   movementOf,
 } from '../../core/movements/movement-list';
 import { MONTH_NUMBERS, ScopeAwareMovement, getCurrentYear } from '../../core/types/period.type';
-import { Scope, defaultScope, scopeFromQuery, scopeQuery } from '../../core/scope/scope';
+import { Scope, defaultMovementsScope, scopeFromQuery, scopeQuery } from '../../core/scope/scope';
 import { LanguageService } from '../../core/services/language.service';
 import { BottomSheetComponent } from '../../shared/components/bottom-sheet/bottom-sheet.component';
 import { ScopeControlComponent } from '../../shared/components/scope-control/scope-control.component';
@@ -58,7 +58,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
   private location = inject(Location);
   language = inject(LanguageService);
 
-  scope = signal<Scope>(defaultScope());
+  scope = signal<Scope>(defaultMovementsScope());
   /* The Ledger's movements across every Period. The list and the Scope
      control both derive from them, so a Scope change never refetches. */
   transactions = signal<Transaction[]>([]);
@@ -193,7 +193,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
     try {
       await this.loadAll();
     } finally {
-      this.setScope(this.scope());
+      this.onScopeChange(this.scope());
     }
   });
 
@@ -321,7 +321,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
       this.allCategories.set(await this.categoryService.getAll());
       await this.refresh();
     } finally {
-      this.scope.set(linkedScope ?? defaultScope([...this.transactions(), ...this.transfers()]));
+      this.scope.set(linkedScope ?? defaultMovementsScope([...this.transactions(), ...this.transfers()]));
       this.isLoaded.set(true);
     }
   }
@@ -341,13 +341,9 @@ export class MovementsComponent implements OnInit, OnDestroy {
     this.transfers.set(await this.transferService.getAll());
   }
 
-  onScopeChange(scope: Scope): void {
-    this.setScope(scope);
-  }
-
   /* The whole Ledger is already loaded, so the new Scope's rows and Net
      figures derive at once — there is no stale Scope to gate. */
-  private setScope(scope: Scope): void {
+  onScopeChange(scope: Scope): void {
     this.scope.set(scope);
     this.reflectScopeInUrl(scope);
     this.scopeAnnouncement.set(this.language.scopeLabel(scope));

@@ -1,6 +1,4 @@
 import {
-  MONTH_NUMBERS,
-  MonthNumber,
   Period,
   ScopeAwareMovement,
   comparePeriods,
@@ -9,6 +7,7 @@ import {
   getPeriodYear,
   isMonthNumber,
   isValidYear,
+  movementInScope,
   movementPeriod,
   samePeriod,
   shiftPeriod,
@@ -37,15 +36,16 @@ export const SCOPE_PRESETS: ScopePreset[] = [
 ];
 
 /* The order in which an edited Scope is matched against the presets: the
-   shorter rolling runs first, and "Whole year" before "Year to date", which
-   produces the same January → December run for a past year. */
+   calendar-year presets before the rolling "Last N" runs, and "Whole year"
+   before "Year to date", which produces the same January → December run
+   for a past year. */
 const MATCHING_ORDER: ScopePreset[] = [
   'thisPeriod',
+  'wholeYear',
+  'yearToDate',
   'last3',
   'last6',
   'last12',
-  'wholeYear',
-  'yearToDate',
 ];
 
 const ROLLING_LENGTH: Partial<Record<ScopePreset, number>> = {
@@ -68,10 +68,15 @@ export function isMultiPeriod(scope: Scope): boolean {
   return !samePeriod(scope.from, scope.to);
 }
 
-/* The latest Period with movements, or null when nothing is recorded. */
-export function latestPeriodWithMovements(movements: ScopeAwareMovement[]): Period | null {
+/* The latest Period with movements — only those within the given Scope,
+   when one is given — or null when there is none. */
+export function latestPeriodWithMovements(
+  movements: ScopeAwareMovement[],
+  within?: Scope,
+): Period | null {
   let latest: Period | null = null;
   for (const movement of movements) {
+    if (within && !movementInScope(movement, within)) continue;
     const period = movementPeriod(movement);
     if (period && (latest === null || comparePeriods(period, latest) > 0)) {
       latest = period;
@@ -88,7 +93,7 @@ function anchorPeriod(movements: ScopeAwareMovement[]): Period {
 }
 
 /* Movements opens on the one-Period Scope at the anchor. */
-export function defaultScope(movements: ScopeAwareMovement[] = []): Scope {
+export function defaultMovementsScope(movements: ScopeAwareMovement[] = []): Scope {
   return singlePeriodScope(anchorPeriod(movements));
 }
 
@@ -194,17 +199,12 @@ function legacyScopeFromQuery(params: URLSearchParams): Scope | null {
   return isMonthNumber(month) ? singlePeriodScope({ year, month }) : null;
 }
 
-export interface ScopeOptions {
-  years: number[];
-  months: MonthNumber[];
-}
-
-/* Issue #218: every month is on offer for any year — a Period without
-   movements shows as empty, never snaps elsewhere. The years on offer run
+/* Issue #218: every month is on offer for any of these years — a Period
+   without movements shows as empty, never snaps elsewhere. The years run
    without gaps from the earliest year with data (or the From year) to the
    latest of the current year, the latest year with data, and the To year,
    so a deep-linked Scope stays put. */
-export function scopeOptions(movements: ScopeAwareMovement[], scope: Scope): ScopeOptions {
+export function scopeYears(movements: ScopeAwareMovement[], scope: Scope): number[] {
   let first = Math.min(getCurrentYear(), scope.from.year);
   let last = Math.max(getCurrentYear(), scope.to.year);
   for (const movement of movements) {
@@ -212,8 +212,5 @@ export function scopeOptions(movements: ScopeAwareMovement[], scope: Scope): Sco
     first = Math.min(first, year);
     last = Math.max(last, year);
   }
-  return {
-    years: Array.from({ length: last - first + 1 }, (_, i) => first + i),
-    months: [...MONTH_NUMBERS],
-  };
+  return Array.from({ length: last - first + 1 }, (_, i) => first + i);
 }

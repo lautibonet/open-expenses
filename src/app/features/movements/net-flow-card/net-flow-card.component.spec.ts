@@ -7,7 +7,7 @@ import { AccountService } from '../../../core/services/account.service';
 import { CategoryService } from '../../../core/services/category.service';
 import { db } from '../../../core/db/database';
 import { getCurrentPeriod } from '../../../core/types/period.type';
-import { defaultScope } from '../../../core/scope/scope';
+import { defaultMovementsScope } from '../../../core/scope/scope';
 
 describe('NetFlowCardComponent', () => {
   let fixture: ComponentFixture<NetFlowCardComponent>;
@@ -37,7 +37,7 @@ describe('NetFlowCardComponent', () => {
     fixture.componentRef.setInput('accounts', []);
     fixture.componentRef.setInput('categories', []);
     fixture.componentRef.setInput('baseCurrency', 'EUR');
-    fixture.componentRef.setInput('scope', defaultScope());
+    fixture.componentRef.setInput('scope', defaultMovementsScope());
     transactionService = TestBed.inject(TransactionService);
     transferService = TestBed.inject(TransferService);
     accountService = TestBed.inject(AccountService);
@@ -169,7 +169,7 @@ describe('NetFlowCardComponent', () => {
     });
     const period = getCurrentPeriod();
     await transferService.create(
-      eurAccountId, card.id!, 400, new Date(), period, '', 1, defaultScope().to.year,
+      eurAccountId, card.id!, 400, new Date(), period, '', 1, defaultMovementsScope().to.year,
     );
     await render();
 
@@ -182,7 +182,7 @@ describe('NetFlowCardComponent', () => {
     const card = await accountService.createCard({ name: 'Visa', currency: 'EUR' });
     const card2 = await accountService.createCard({ name: 'Master', currency: 'EUR' });
     const period = getCurrentPeriod();
-    const year = defaultScope().to.year;
+    const year = defaultMovementsScope().to.year;
     await transferService.create(card.id!, eurAccountId, 100, new Date(), period, '', 1, year);
     await transferService.create(card.id!, card2.id!, 100, new Date(), period, '', 1, year);
     await render();
@@ -246,7 +246,7 @@ describe('NetFlowCardComponent', () => {
 
   it('names the Scope Period in the heading', async () => {
     const period = getCurrentPeriod();
-    const year = defaultScope().to.year;
+    const year = defaultMovementsScope().to.year;
     await transactionService.create(eurAccountId, incomeCategoryId, 1000, new Date(), period);
     fixture.componentRef.setInput('scope', { from: { year, month: period }, to: { year, month: period } });
     await render();

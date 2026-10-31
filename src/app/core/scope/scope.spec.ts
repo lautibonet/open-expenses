@@ -4,12 +4,13 @@ import {
   Scope,
   changeFrom,
   changeTo,
-  defaultScope,
+  defaultMovementsScope,
   defaultStatsScope,
+  latestPeriodWithMovements,
   matchingPreset,
   presetScope,
   scopeFromQuery,
-  scopeOptions,
+  scopeYears,
   scopeQuery,
 } from './scope';
 
@@ -32,6 +33,20 @@ describe('scope', () => {
 
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  describe('latestPeriodWithMovements', () => {
+    const movements = [movement(2025, 12), movement(2026, 4), movement(2025, 8), movement(2026, 'Smarch')];
+
+    it('should find the latest Period with movements, or null when none is recorded', () => {
+      expect(latestPeriodWithMovements(movements)).toEqual(at(2026, 4));
+      expect(latestPeriodWithMovements([])).toBeNull();
+    });
+
+    it('should look only within a Scope when given one, across a year boundary', () => {
+      expect(latestPeriodWithMovements(movements, scope([2025, 11], [2026, 1]))).toEqual(at(2025, 12));
+      expect(latestPeriodWithMovements(movements, scope([2026, 5], [2026, 12]))).toBeNull();
+    });
   });
 
   describe('presetScope', () => {
@@ -96,11 +111,21 @@ describe('scope', () => {
     const movements = [movement(2025, 6), movement(2026, 3)];
 
     it('should name the preset an edited From and To matches', () => {
-      expect(matchingPreset(scope([2026, 1], [2026, 3]), movements)).toBe('last3');
+      expect(matchingPreset(scope([2026, 2], [2026, 3]), movements)).toBe('custom');
       expect(matchingPreset(scope([2025, 10], [2026, 3]), movements)).toBe('last6');
       expect(matchingPreset(scope([2025, 4], [2026, 3]), movements)).toBe('last12');
       expect(matchingPreset(scope([2025, 1], [2025, 12]), movements)).toBe('wholeYear');
       expect(matchingPreset(scope([2026, 3], [2026, 3]), movements)).toBe('thisPeriod');
+    });
+
+    it('should name Year to date over a rolling preset producing the same Scope', () => {
+      // Year to date of 2026 runs January to March, as does "Last 3".
+      expect(matchingPreset(scope([2026, 1], [2026, 3]), movements)).toBe('yearToDate');
+    });
+
+    it('should name Whole year over Year to date and Last 12 producing the same Scope', () => {
+      const december = [movement(2025, 12)];
+      expect(matchingPreset(scope([2025, 1], [2025, 12]), december)).toBe('wholeYear');
     });
 
     it('should name Custom when no preset produces the Scope', () => {
@@ -188,21 +213,21 @@ describe('scope', () => {
     });
   });
 
-  describe('defaultScope', () => {
+  describe('defaultMovementsScope', () => {
     beforeEach(() => {
       vi.setSystemTime(new Date(2026, 9, 31));
     });
 
     it('should default to the current Period when nothing is recorded', () => {
-      expect(defaultScope([])).toEqual(scope([2026, 10], [2026, 10]));
+      expect(defaultMovementsScope([])).toEqual(scope([2026, 10], [2026, 10]));
     });
 
     it('should open on the latest Period with movements when it is behind the calendar', () => {
-      expect(defaultScope([movement(2026, 9), movement(2026, 7)])).toEqual(scope([2026, 9], [2026, 9]));
+      expect(defaultMovementsScope([movement(2026, 9), movement(2026, 7)])).toEqual(scope([2026, 9], [2026, 9]));
     });
 
     it('should open on a Period ahead of the calendar', () => {
-      expect(defaultScope([movement(2026, 10), movement(2026, 12)])).toEqual(
+      expect(defaultMovementsScope([movement(2026, 10), movement(2026, 12)])).toEqual(
         scope([2026, 12], [2026, 12]),
       );
     });
@@ -212,17 +237,17 @@ describe('scope', () => {
         { period: 12, year: 2025, date: new Date(2025, 11, 1) },
         { period: 1, year: 2027, date: new Date(2026, 11, 28) },
       ];
-      expect(defaultScope(movements)).toEqual(scope([2027, 1], [2027, 1]));
+      expect(defaultMovementsScope(movements)).toEqual(scope([2027, 1], [2027, 1]));
     });
 
     it('should place a movement without a stored year in its date year', () => {
-      expect(defaultScope([{ period: 5, date: new Date(2023, 4, 1) }])).toEqual(
+      expect(defaultMovementsScope([{ period: 5, date: new Date(2023, 4, 1) }])).toEqual(
         scope([2023, 5], [2023, 5]),
       );
     });
 
     it('should ignore an unrecognizable period', () => {
-      expect(defaultScope([movement(2026, 4), movement(2026, 'Smarch')])).toEqual(
+      expect(defaultMovementsScope([movement(2026, 4), movement(2026, 'Smarch')])).toEqual(
         scope([2026, 4], [2026, 4]),
       );
     });
@@ -248,48 +273,42 @@ describe('scope', () => {
     });
   });
 
-  describe('scopeOptions', () => {
+  describe('scopeYears', () => {
     const movements = [movement(2024, 3), movement(2025, 11), movement(2026, 12)];
 
     beforeEach(() => {
       vi.setSystemTime(new Date(2026, 9, 15));
     });
 
-    it('should offer all twelve months', () => {
-      expect(scopeOptions(movements, scope([2019, 3], [2019, 3])).months).toEqual([
-        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
-      ]);
-    });
-
     it('should offer every year from the earliest with data to the current year, with no gaps', () => {
-      const options = scopeOptions(
+      const years = scopeYears(
         [movement(2023, 1), movement(2025, 3)],
         scope([2026, 10], [2026, 10]),
       );
-      expect(options.years).toEqual([2023, 2024, 2025, 2026]);
+      expect(years).toEqual([2023, 2024, 2025, 2026]);
     });
 
     it('should offer years up to the latest year with data when it is ahead of the calendar', () => {
-      const options = scopeOptions(
+      const years = scopeYears(
         [movement(2025, 5), movement(2028, 1)],
         scope([2026, 10], [2026, 10]),
       );
-      expect(options.years).toEqual([2025, 2026, 2027, 2028]);
+      expect(years).toEqual([2025, 2026, 2027, 2028]);
     });
 
     it('should keep offering both ends of a Scope outside the years with data', () => {
-      expect(scopeOptions(movements, scope([2021, 1], [2030, 3])).years).toEqual([
+      expect(scopeYears(movements, scope([2021, 1], [2030, 3]))).toEqual([
         2021, 2022, 2023, 2024, 2025, 2026, 2027, 2028, 2029, 2030,
       ]);
     });
 
     it('should offer only the current year when there is no data', () => {
-      expect(scopeOptions([], scope([2026, 10], [2026, 10])).years).toEqual([2026]);
+      expect(scopeYears([], scope([2026, 10], [2026, 10]))).toEqual([2026]);
     });
 
     it('should place a movement without a stored year in its date year', () => {
-      const options = scopeOptions([{ period: 9, date: new Date(2023, 8, 15) }], scope([2023, 1], [2023, 12]));
-      expect(options.years).toEqual([2023, 2024, 2025, 2026]);
+      const years = scopeYears([{ period: 9, date: new Date(2023, 8, 15) }], scope([2023, 1], [2023, 12]));
+      expect(years).toEqual([2023, 2024, 2025, 2026]);
     });
   });
 });

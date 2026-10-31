@@ -1,11 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { accumulatedByPeriod, lastMovementPeriod } from './year-overview';
+import { accumulatedByPeriod } from './accumulated';
 import { Transaction } from '../models/transaction.model';
 import { Transfer } from '../models/transfer.model';
 import { Account } from '../models/account.model';
-import { Period, scopePeriods } from '../types/period.type';
+import { scopePeriods } from '../types/period.type';
 
-const at = (year: number, month: number): Period => ({ year, month } as Period);
 const year2026 = scopePeriods({ from: { year: 2026, month: 1 }, to: { year: 2026, month: 12 } });
 
 function txn(overrides: Partial<Transaction>): Transaction {
@@ -209,45 +208,5 @@ describe('accumulatedByPeriod', () => {
     });
 
     expect(series[1]).toBe(3300);
-  });
-});
-
-describe('lastMovementPeriod', () => {
-  it('returns null when the Periods carry no movements', () => {
-    expect(lastMovementPeriod([], [], year2026)).toBeNull();
-  });
-
-  it('returns the latest Period carrying a Transaction', () => {
-    const transactions = [
-      txn({ id: 1, period: 2 }),
-      txn({ id: 2, period: 5 }),
-    ];
-    expect(lastMovementPeriod(transactions, [], year2026)).toEqual(at(2026, 5));
-  });
-
-  it('counts Transfers as movements', () => {
-    expect(lastMovementPeriod([], [transfer({ period: 7 })], year2026)).toEqual(at(2026, 7));
-  });
-
-  it('takes the latest across Transactions and Transfers', () => {
-    expect(lastMovementPeriod([txn({ period: 3 })], [transfer({ period: 9 })], year2026)).toEqual(at(2026, 9));
-  });
-
-  it('ignores movements outside the Periods', () => {
-    const transactions = [
-      txn({ id: 1, period: 12, year: 2025 }),
-      txn({ id: 2, period: 4 }),
-    ];
-    expect(lastMovementPeriod(transactions, [transfer({ period: 8, year: 2025 })], year2026)).toEqual(at(2026, 4));
-  });
-
-  it('finds the latest Period across a year boundary', () => {
-    const window = scopePeriods({ from: { year: 2025, month: 11 }, to: { year: 2026, month: 1 } });
-    const transactions = [txn({ id: 1, period: 12, year: 2025 }), txn({ id: 2, period: 2, year: 2026 })];
-    expect(lastMovementPeriod(transactions, [], window)).toEqual(at(2025, 12));
-  });
-
-  it('returns December when December carries a movement', () => {
-    expect(lastMovementPeriod([txn({ period: 12 })], [], year2026)).toEqual(at(2026, 12));
   });
 });

@@ -285,6 +285,21 @@ describe('LanguageService', () => {
       expect(service.scopeLabel(scope(2025, 11, 2026, 1))).toBe('Noviembre 2025 – Enero 2026');
     });
 
+    it('captions a Scope with abbreviated months in the active language', async () => {
+      await seedProfile('en');
+      await service.init();
+      const scope = (fy: number, fm: MonthNumber, ty: number, tm: MonthNumber) => ({
+        from: { year: fy, month: fm },
+        to: { year: ty, month: tm },
+      });
+      expect(service.scopeCaption(scope(2026, 3, 2026, 3))).toBe('2026 · MAR');
+      expect(service.scopeCaption(scope(2026, 1, 2026, 3))).toBe('2026 · JAN–MAR');
+      expect(service.scopeCaption(scope(2025, 11, 2026, 1))).toBe('NOV 2025–JAN 2026');
+
+      await service.setLanguage('es');
+      expect(service.scopeCaption(scope(2025, 11, 2026, 1))).toBe('NOV 2025–ENE 2026');
+    });
+
     it('leaves unrecognized stored periods visible as raw values', async () => {
       await seedProfile('en');
       await service.init();

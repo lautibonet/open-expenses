@@ -5,7 +5,6 @@ import { Transfer } from '../models/transfer.model';
 import { storedTransferBaseAmount, transactionBaseAmount } from '../balances/period-end-balances';
 import {
   MONTH_NUMBERS,
-  MonthNumber,
   Period,
   getPeriodYear,
   movementInScope,
@@ -87,9 +86,7 @@ export interface CashBasisSnapshot {
 /* Income, Expenses, and Net of one Period, in Base Currency. `hasMovements`
    says whether any cash-basis movement landed in it — the Periods that count
    toward a monthly average. */
-export interface PeriodCashFlow {
-  year: number;
-  period: MonthNumber;
+export interface PeriodCashFlow extends Period {
   income: number;
   expenses: number;
   net: number;
@@ -202,11 +199,11 @@ export function cashBasis(snapshot: CashBasisSnapshot): CashBasis {
       sum.expenses += storedTransferBaseAmount(payment);
       sum.hasMovements = true;
     }
-    const result = MONTH_NUMBERS.map(period => {
-      const sum = sums.get(period)!;
+    const result = MONTH_NUMBERS.map(month => {
+      const sum = sums.get(month)!;
       const income = round2(sum.income);
       const expenses = round2(sum.expenses);
-      return { year, period, income, expenses, net: round2(income - expenses), hasMovements: sum.hasMovements };
+      return { year, month, income, expenses, net: round2(income - expenses), hasMovements: sum.hasMovements };
     });
     periodsByYear.set(year, result);
     return result;
