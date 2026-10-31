@@ -131,7 +131,7 @@ export class DashboardComponent implements OnInit {
   }
 
   onScopeYearChange(value: number): void {
-    this.setScope(changeYear(this.scope(), value, this.availableScopes()));
+    this.setScope(changeYear(this.scope(), value));
   }
 
   onScopeMonthChange(period: MonthNumber): void {

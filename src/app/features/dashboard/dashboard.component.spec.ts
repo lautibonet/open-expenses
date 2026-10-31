@@ -383,7 +383,7 @@ describe('DashboardComponent - shared scope', () => {
     expect(fixture.nativeElement.querySelector('.scope-selects')).not.toBeNull();
   });
 
-  it('should derive year options from the data range, not a fixed window', async () => {
+  it('should offer every year from the earliest with data to the current year, with no gaps', async () => {
     const acc = await accountService.create('Cash', 'EUR', 0);
     const incomeCat = await categoryService.create('Payroll', 'income');
     await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date('2012-01-15'), 1, null, null, 2012);
@@ -391,19 +391,35 @@ describe('DashboardComponent - shared scope', () => {
 
     await component.ngOnInit();
 
-    expect(component.scopeYears()).toEqual(expect.arrayContaining([2012, 2016, getCurrentYear()]));
+    const expected = Array.from({ length: getCurrentYear() - 2012 + 1 }, (_, i) => 2012 + i);
+    expect(component.scopeYears()).toEqual(expected);
   });
 
-  it('should derive month options from the months actually present in data', async () => {
+  it('should offer all twelve months, even on a year without movements', async () => {
     const acc = await accountService.create('Cash', 'EUR', 0);
     const incomeCat = await categoryService.create('Payroll', 'income');
-    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date('2026-01-15'), 1);
-    await transactionService.create(acc.id!, incomeCat.id!, 5000, new Date('2026-05-15'), 5);
+    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date('2012-01-15'), 1, null, null, 2012);
+    await transactionService.create(acc.id!, incomeCat.id!, 5000, new Date('2016-05-15'), 5, null, null, 2016);
+    await component.ngOnInit();
+    expect(component.scopeMonths()).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
 
+    component.onScopeYearChange(2014);
+
+    expect(component.scopeMonths()).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
+  });
+
+  it('should stay on a picked Period without movements and keep its month across a year change', async () => {
+    const acc = await accountService.create('Cash', 'EUR', 0);
+    const incomeCat = await categoryService.create('Payroll', 'income');
+    await transactionService.create(acc.id!, incomeCat.id!, 3000, new Date('2016-05-15'), 5, null, null, 2016);
     await component.ngOnInit();
 
-    expect(component.scopeMonths()).toContain(1);
-    expect(component.scopeMonths()).toContain(5);
+    component.onScopeMonthChange(8);
+    expect(component.scope()).toEqual({ kind: 'month', period: 8, year: 2016 });
+
+    component.onScopeYearChange(2015);
+    expect(component.scope()).toEqual({ kind: 'month', period: 8, year: 2015 });
+    expect(component.report().kpis.totals.income).toBe(0);
   });
 
   it('should show only the selected year totals', async () => {

@@ -50,30 +50,12 @@ function latestMonthByYear(movements: ScopeAwareMovement[]): Map<number, MonthNu
   return latest;
 }
 
-/* Issue #194: a new year keeps the kind of Scope. A month Scope keeps its
-   month within the same year and otherwise lands on the latest month with
-   data in that year, else on the current month (Issue #216). */
-export function changeYear(
-  scope: MonthScope,
-  year: number,
-  options: Pick<ScopeOptions, 'latestMonthByYear'>,
-): MonthScope;
-export function changeYear(
-  scope: PeriodScope,
-  year: number,
-  options: Pick<ScopeOptions, 'latestMonthByYear'>,
-): PeriodScope;
-export function changeYear(
-  scope: PeriodScope,
-  year: number,
-  options: Pick<ScopeOptions, 'latestMonthByYear'>,
-): PeriodScope {
-  if (scope.kind === 'year') {
-    return { kind: 'year', year };
-  }
-  const period =
-    scope.year === year ? scope.period : defaultMonthForYear(year, options.latestMonthByYear);
-  return { kind: 'month', period, year };
+/* Issue #194: a new year keeps the kind of Scope. Issue #218: a month
+   Scope keeps its month, since every month is on offer in every year. */
+export function changeYear(scope: MonthScope, year: number): MonthScope;
+export function changeYear(scope: PeriodScope, year: number): PeriodScope;
+export function changeYear(scope: PeriodScope, year: number): PeriodScope {
+  return scope.kind === 'year' ? { kind: 'year', year } : { kind: 'month', period: scope.period, year };
 }
 
 /* A picked month narrows to that Period of the Scope year; "all" widens to
@@ -132,30 +114,22 @@ export interface ScopeOptions {
   latestMonthByYear: ReadonlyMap<number, MonthNumber>;
 }
 
-/* Issue #194: the months on offer follow the Scope's year: its months with
-   data, plus the current month on the current year. The selected month and
-   year are always on offer, so a Scope with no data behind it — a deep
-   link, or a Period whose last movement was deleted — stays put. */
+/* Issue #218: every month is on offer for any year — a Period without
+   movements shows as empty, never snaps elsewhere. The years on offer run
+   without gaps from the earliest year with data (or the selected year) to
+   the latest of the current year, the latest year with data, and the
+   selected year, so a deep-linked Scope stays put. */
 export function scopeOptions(movements: ScopeAwareMovement[], scope: PeriodScope): ScopeOptions {
-  const currentYear = getCurrentYear();
-  const years = new Set([currentYear, scope.year]);
-  const months = new Set<MonthNumber>();
-  if (scope.year === currentYear) {
-    months.add(getCurrentPeriod());
-  }
-  if (scope.kind === 'month') {
-    months.add(scope.period);
-  }
+  let first = Math.min(getCurrentYear(), scope.year);
+  let last = Math.max(getCurrentYear(), scope.year);
   for (const movement of movements) {
     const year = getPeriodYear(movement);
-    years.add(year);
-    if (year === scope.year && isMonthNumber(movement.period)) {
-      months.add(movement.period);
-    }
+    first = Math.min(first, year);
+    last = Math.max(last, year);
   }
   return {
-    years: Array.from(years).sort((a, b) => a - b),
-    months: MONTH_NUMBERS.filter(m => months.has(m)),
+    years: Array.from({ length: last - first + 1 }, (_, i) => first + i),
+    months: [...MONTH_NUMBERS],
     latestMonthByYear: latestMonthByYear(movements),
   };
 }

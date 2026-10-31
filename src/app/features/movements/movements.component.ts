@@ -354,7 +354,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
   }
 
   onScopeYearChange(value: number): void {
-    this.setScope(changeYear(this.scope(), value, this.availableScopes()));
+    this.setScope(changeYear(this.scope(), value));
   }
 
   onScopeMonthChange(value: MonthNumber | 'all' | null): void {
