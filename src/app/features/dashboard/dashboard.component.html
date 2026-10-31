@@ -1,4 +1,14 @@
 @let stats = report();
+<!-- ADR 0030: a Scope crossing a year boundary labels each January with its year. -->
+<ng-template #yearRow let-rowClass>
+  @if (yearMarks().length > 0) {
+    <div [class]="rowClass">
+      @for (mark of yearMarks(); track mark.column) {
+        <span [style.grid-column-start]="mark.column" [class.at-end]="mark.atEnd">{{ mark.year }}</span>
+      }
+    </div>
+  }
+</ng-template>
 <div class="dashboard">
   <header class="page-header">
     <div class="headline">
@@ -107,13 +117,7 @@
                 </span>
               }
             </div>
-            @if (yearMarks().length > 0) {
-              <div class="net-chart-years">
-                @for (mark of yearMarks(); track mark.column) {
-                  <span [style.grid-column-start]="mark.column" [class.at-end]="mark.atEnd">{{ mark.year }}</span>
-                }
-              </div>
-            }
+            <ng-container *ngTemplateOutlet="yearRow; context: { $implicit: 'net-chart-years' }" />
           </div>
         </div>
         <dl class="net-chart-caption">
@@ -232,13 +236,7 @@
                 </span>
               }
             </div>
-            @if (yearMarks().length > 0) {
-              <div class="balance-years">
-                @for (mark of yearMarks(); track mark.column) {
-                  <span [style.grid-column-start]="mark.column" [class.at-end]="mark.atEnd">{{ mark.year }}</span>
-                }
-              </div>
-            }
+            <ng-container *ngTemplateOutlet="yearRow; context: { $implicit: 'balance-years' }" />
           </div>
         </div>
         <dl class="balance-caption">

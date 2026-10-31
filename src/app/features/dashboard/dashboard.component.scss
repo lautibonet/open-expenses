@@ -187,11 +187,11 @@
   }
 }
 
-/* Balance strip: the year progression inside the total balance card — the
+/* Balance strip: the Scope's progression inside the total balance card — the
    old net-strip grammar applied to money held. Ink fills diverge around the
    zero line: up = balance, down = overdrawn (ink, not red — a sign is a fact
    in a chart; the warning voice stays with the balance rows). The line sits
-   at the year's negative share of its extremes — bottom edge when every
+   at the charted Periods' negative share of their extremes — bottom edge when every
    balance is positive, rising when one is overdrawn. The tracks share the
    Net chart's construction — gap-separated columns, one plot —
    so both graphs read as one grammar; only the size differs, the strip
@@ -204,6 +204,9 @@
    line painted inside each track at the data-driven --zero-pct datum, above
    the fills. Height and inner layout stay per-graph; the construction does
    not. */
+/* ADR 0030: every track is as wide as in a plot of this many Periods. */
+$reference-periods: 12;
+
 %period-plot {
   display: grid;
   grid-template-columns: repeat(var(--periods), minmax(0, 1fr));
@@ -223,7 +226,7 @@
 
 .net-chart,
 .balance-strip {
-  width: calc((100% + var(--space-xs)) * var(--periods) / 12 - var(--space-xs));
+  width: calc((100% + var(--space-xs)) * var(--periods) / #{$reference-periods} - var(--space-xs));
   margin-left: auto;
 }
 
@@ -376,7 +379,7 @@
 
 /* The Net chart: the Scope's Periods. Each Period carries three
    columns rising from the zero line — Income green, Expenses red, Net ink.
-   The line sits at the year's negative share of its extremes, positioned by
+   The line sits at the charted Periods' negative share of their extremes, positioned by
    the --zero-pct datum inherited from the graph container: bottom edge when
    every month is positive, rising when a month overspends. Only Net may
    cross it, growing down (the Negative-Stays-Ink Rule: a minus is a fact,
@@ -524,7 +527,7 @@
 /* Scale anchor: the caps-voice lines that give the relative columns absolute
    meaning — what the graph's scale edges are worth (the Net chart names its
    tallest column and its deepest overdrawn Net; the strip names its track
-   top, or the overdrawn cap when that is the year's max magnitude). Each
+   top, or the overdrawn cap when that is the charted Periods' max magnitude). Each
    figure rides a row of the caption grammar, so labels align left and
    figures right across the whole footer. */
 %scale-anchor {

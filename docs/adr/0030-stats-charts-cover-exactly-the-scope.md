@@ -6,6 +6,6 @@ For a one-Period Scope both charts are left out: a single column compares nothin
 
 ## Considered Options
 
-- **Keep the twelve-Period window and only mark the Scope.** Rejected: the user reads the charts as the Scope, and an unchanged chart after a Scope change reads as a bug.
+- **Keep charting the twelve Periods ending at the To Period and only mark the Scope.** Rejected: the user reads the charts as the Scope, and an unchanged chart after a Scope change reads as a bug.
 - **Cap long Scopes at their last twelve Periods.** Rejected: the chart would silently stop covering the Scope.
 - **Shrink tracks to fit any length.** Rejected on its own: past twelve Periods the tracks get too thin to read on a phone.

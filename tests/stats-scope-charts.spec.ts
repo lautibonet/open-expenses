@@ -58,6 +58,15 @@ test('a Scope longer than twelve Periods scrolls inside its card, opening on the
   expect(Math.abs(11 * geo.pitch + geo.track - geo.visible)).toBeLessThanOrEqual(4);
 
   await expect(page.locator('.net-chart-years span')).toHaveText([String(year - 1), String(year)]);
+
+  /* Scrolled away, each chart returns to the To Period when the Scope changes. */
+  const scrolls = page.locator('.chart-scroll');
+  await scrolls.evaluateAll(els => els.forEach(el => { el.scrollLeft = 0; }));
+  await page.getByLabel('From month').selectOption({ label: 'February' });
+  await expect(page.locator('.net-chart-track')).toHaveCount(periods - 1);
+  await expect
+    .poll(() => scrolls.evaluateAll(els => els.map(el => el.scrollWidth - el.clientWidth - el.scrollLeft)))
+    .toEqual([0, 0]);
 });
 
 async function addIncome(page: Page, amount: string, date?: string) {

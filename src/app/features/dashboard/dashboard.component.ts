@@ -8,6 +8,7 @@ import {
   signal,
   viewChildren,
 } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { TransactionService } from '../../core/services/transaction.service';
 import { TransferService } from '../../core/services/transfer.service';
 import { AccountService } from '../../core/services/account.service';
@@ -36,9 +37,9 @@ import {
   fillPct,
   netChartExtremes,
   stripScaleAnchor,
-  yearMarks,
   zeroPct,
 } from '../../core/stats/chart-scale';
+import { yearMarks } from '../../core/stats/chart-axis';
 
 const noRatesNeeded: RateOutcome = { kind: 'rates', rates: new Map() };
 const ratesPending: RateOutcome = { kind: 'pending' };
@@ -54,7 +55,7 @@ const emptySnapshot: CashBasisSnapshot = {
 
 @Component({
   selector: 'app-dashboard',
-  imports: [DismissibleAlertComponent, FitTextDirective, ScopeControlComponent],
+  imports: [DismissibleAlertComponent, FitTextDirective, NgTemplateOutlet, ScopeControlComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss',
 })
@@ -99,10 +100,12 @@ export class DashboardComponent implements OnInit {
   yearMarks = computed(() => yearMarks(this.report().netChart.periods));
 
   /* A chart longer than twelve Periods scrolls inside its card; each opens,
-     and reopens on every Scope change, scrolled to the To Period. */
+     and reopens on every Scope change, scrolled to the To Period. Only the
+     Scope triggers it: recording a movement or late rates leave a chart
+     where the reader scrolled it. */
   private chartScrolls = viewChildren<ElementRef<HTMLElement>>('chartScroll');
   private scrollChartsToToPeriod = afterRenderEffect(() => {
-    this.report();
+    this.scope();
     for (const { nativeElement } of this.chartScrolls()) {
       nativeElement.scrollLeft = nativeElement.scrollWidth;
     }
