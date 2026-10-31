@@ -8,26 +8,12 @@
 
     <div class="scope-control" role="group" [attr.aria-label]="language.t('scope.groupAria')">
       @if (isLoaded()) {
-        <div class="scope-selects">
-          <select
-            [ngModel]="scopePeriod()"
-            (ngModelChange)="onScopeMonthChange($event)"
-            [attr.aria-label]="language.t('scope.monthAria')"
-          >
-            @for (month of scopeMonths(); track month) {
-              <option [ngValue]="month">{{ language.monthName(month) }}</option>
-            }
-          </select>
-          <select
-            [ngModel]="scopeYearValue()"
-            (ngModelChange)="onScopeYearChange($event)"
-            [attr.aria-label]="language.t('scope.yearAria')"
-          >
-            @for (yr of scopeYears(); track yr) {
-              <option [ngValue]="yr">{{ yr }}</option>
-            }
-          </select>
-        </div>
+        <app-scope-control
+          [scope]="scope()"
+          [movements]="movements()"
+          defaultPreset="yearToDate"
+          (scopeChange)="onScopeChange($event)"
+        />
       }
     </div>
 
@@ -81,12 +67,12 @@
   </section>
 
   <section class="card year-overview-card">
-    <h2>{{ language.t('stats.yearOverview', { scope: scope().year }) }}</h2>
+    <h2>{{ language.t('stats.yearOverview', { period: toPeriodLabel() }) }}</h2>
     @if (stats.balanceStrip.hasMovements) {
       <div class="year-overview" aria-hidden="true" [style.--zero-pct]="yearOverviewZeroPct() + '%'">
         <div class="overview-tracks">
           @for (item of stats.yearOverview.periods; track item.period) {
-            <div class="overview-track" [class.current]="item.period === scope().period">
+            <div class="overview-track" [class.current]="item.inScope">
               <div class="overview-cell income">
                 @if (item.income > 0) {
                   <div class="cell-fill" [style.height.%]="barHeight(item.income)"></div>
@@ -109,7 +95,7 @@
         </div>
         <div class="overview-initials">
           @for (item of stats.yearOverview.periods; track item.period) {
-            <span class="overview-initial" [class.current]="item.period === scope().period">
+            <span class="overview-initial" [class.current]="item.inScope">
               {{ language.monthInitial(item.period) }}
             </span>
           }
@@ -117,9 +103,9 @@
       </div>
       <dl class="overview-caption">
         <dt class="label">
-          {{ language.t('stats.overviewCaption', { month: language.monthName(scope().period) }) }}
+          {{ language.t('stats.overviewCaption', { month: toPeriodLabel() }) }}
         </dt>
-        <dd class="value">{{ formatMoney(stats.yearOverview.selectedPeriodNet) }}</dd>
+        <dd class="value">{{ formatMoney(stats.yearOverview.toPeriodNet) }}</dd>
       </dl>
       <div class="overview-scale">
         <p class="scale-line">
@@ -135,13 +121,13 @@
       <ul class="overview-figures visually-hidden">
         @for (item of stats.yearOverview.periods; track item.period) {
           <li>
-            {{ language.monthName(item.period) }} {{ scope().year }}:
+            {{ language.monthName(item.period) }} {{ item.year }}:
             {{ overviewFigures(item) }}
           </li>
         }
       </ul>
     } @else {
-      <p class="overview-zero">{{ language.t('stats.yearOverviewZero', { year: scope().year }) }}</p>
+      <p class="overview-zero">{{ language.t('stats.yearOverviewZero', { period: toPeriodLabel() }) }}</p>
     }
   </section>
 
@@ -175,7 +161,7 @@
   </section>
 
   <section class="card total-balance-card">
-    <h2>{{ language.t('stats.totalBalance', { scope: scope().year }) }}</h2>
+    <h2>{{ language.t('stats.totalBalance', { scope: toPeriodLabel() }) }}</h2>
     @if (stats.balances.ratesPending) {
       <p class="empty-state rates-pending" role="status">{{ language.t('stats.ratesPending') }}</p>
     } @else {
@@ -207,33 +193,29 @@
       @if (stats.balanceStrip.hasMovements) {
         <div class="balance-strip" aria-hidden="true" [style.--zero-pct]="balanceZeroPct() + '%'">
           <div class="balance-tracks">
-            @for (balance of stats.balanceStrip.accumulated; track $index) {
-              <div
-                class="balance-track"
-                [class.current]="$index + 1 === scope().period"
-                [class.frozen]="$index + 1 > stats.balanceStrip.frozenFromPeriod"
-              >
-                @if (balance > 0) {
-                  <div class="balance-fill up" [style.height.%]="balanceFillHeight(balance)"></div>
-                } @else if (balance < 0) {
-                  <div class="balance-fill down" [style.height.%]="balanceFillHeight(balance)"></div>
+            @for (item of stats.balanceStrip.periods; track $index) {
+              <div class="balance-track" [class.current]="item.inScope" [class.frozen]="item.frozen">
+                @if (item.balance > 0) {
+                  <div class="balance-fill up" [style.height.%]="balanceFillHeight(item.balance)"></div>
+                } @else if (item.balance < 0) {
+                  <div class="balance-fill down" [style.height.%]="balanceFillHeight(item.balance)"></div>
                 }
               </div>
             }
           </div>
           <div class="balance-initials">
-            @for (balance of stats.balanceStrip.accumulated; track $index) {
-              <span class="balance-initial" [class.current]="$index + 1 === scope().period">
-                {{ language.monthInitial($index + 1) }}
+            @for (item of stats.balanceStrip.periods; track $index) {
+              <span class="balance-initial" [class.current]="item.inScope">
+                {{ language.monthInitial(item.month) }}
               </span>
             }
           </div>
         </div>
         <dl class="balance-caption">
           <dt class="label">
-            {{ language.t('stats.balanceCaption', { month: language.monthName(scope().period) }) }}
+            {{ language.t('stats.balanceCaption', { month: toPeriodLabel() }) }}
           </dt>
-          <dd class="value">{{ formatMoney(stats.balanceStrip.scopePeriodBalance) }}</dd>
+          <dd class="value">{{ formatMoney(stats.balanceStrip.toPeriodBalance) }}</dd>
         </dl>
         @let scaleAnchor = stripScaleAnchor();
         <div class="balance-scale">
@@ -244,8 +226,8 @@
         </div>
         <p class="balance-legend">{{ language.t('stats.balanceStripLegend') }}</p>
         <ul class="balance-figures visually-hidden">
-          @for (balance of stats.balanceStrip.accumulated; track $index) {
-            <li>{{ language.monthName($index + 1) }} {{ scope().year }}: {{ formatMoney(balance) }}</li>
+          @for (item of stats.balanceStrip.periods; track $index) {
+            <li>{{ language.monthName(item.month) }} {{ item.year }}: {{ formatMoney(item.balance) }}</li>
           }
         </ul>
       }
@@ -253,7 +235,7 @@
   </section>
 
   <section class="card">
-    <h2>{{ language.t('stats.accountBalances', { scope: scopeLabelText() }) }}</h2>
+    <h2>{{ language.t('stats.accountBalances', { scope: toPeriodLabel() }) }}</h2>
     @if (stats.balances.accounts.length > 0) {
       <ul class="balance-list">
         @for (item of stats.balances.accounts; track item.account.id) {

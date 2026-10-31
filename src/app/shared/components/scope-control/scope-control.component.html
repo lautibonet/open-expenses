@@ -1,0 +1,60 @@
+<div class="scope-selects">
+  <select
+    class="scope-preset"
+    [ngModel]="shownPreset()"
+    (ngModelChange)="onPresetChange($event)"
+    [attr.aria-label]="language.t('scope.presetAria')"
+  >
+    @for (preset of presets; track preset) {
+      <option [ngValue]="preset">{{ language.t('scope.preset.' + preset) }}</option>
+    }
+    <option [ngValue]="'custom'">{{ language.t('scope.preset.custom') }}</option>
+  </select>
+</div>
+
+@if (pickersShown()) {
+  <div class="scope-range">
+    <div class="scope-end">
+      <span class="scope-end-label" aria-hidden="true">{{ language.t('scope.from') }}</span>
+      <select
+        [ngModel]="scope().from.month"
+        (ngModelChange)="onFromMonthChange($event)"
+        [attr.aria-label]="language.t('scope.fromMonthAria')"
+      >
+        @for (month of months(); track month) {
+          <option [ngValue]="month">{{ language.monthName(month) }}</option>
+        }
+      </select>
+      <select
+        [ngModel]="scope().from.year"
+        (ngModelChange)="onFromYearChange($event)"
+        [attr.aria-label]="language.t('scope.fromYearAria')"
+      >
+        @for (year of years(); track year) {
+          <option [ngValue]="year">{{ year }}</option>
+        }
+      </select>
+    </div>
+    <div class="scope-end">
+      <span class="scope-end-label" aria-hidden="true">{{ language.t('scope.to') }}</span>
+      <select
+        [ngModel]="scope().to.month"
+        (ngModelChange)="onToMonthChange($event)"
+        [attr.aria-label]="language.t('scope.toMonthAria')"
+      >
+        @for (month of months(); track month) {
+          <option [ngValue]="month">{{ language.monthName(month) }}</option>
+        }
+      </select>
+      <select
+        [ngModel]="scope().to.year"
+        (ngModelChange)="onToYearChange($event)"
+        [attr.aria-label]="language.t('scope.toYearAria')"
+      >
+        @for (year of years(); track year) {
+          <option [ngValue]="year">{{ year }}</option>
+        }
+      </select>
+    </div>
+  </div>
+}

@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { LanguageService } from './language.service';
 import { db } from '../db/database';
+import { MonthNumber } from '../types/period.type';
 
 function seedProfile(language?: string): Promise<unknown> {
   const profile: Record<string, unknown> = {
@@ -266,6 +267,22 @@ describe('LanguageService', () => {
 
       await service.setLanguage('en');
       expect(service.periodLabel(3)).toBe('March');
+    });
+
+    it('names a Scope by its From and To Periods in the active language', async () => {
+      await seedProfile('en');
+      await service.init();
+      const scope = (fy: number, fm: MonthNumber, ty: number, tm: MonthNumber) => ({
+        from: { year: fy, month: fm },
+        to: { year: ty, month: tm },
+      });
+      expect(service.scopeLabel(scope(2026, 3, 2026, 3))).toBe('March 2026');
+      expect(service.scopeLabel(scope(2026, 1, 2026, 12))).toBe('2026');
+      expect(service.scopeLabel(scope(2026, 1, 2026, 3))).toBe('January – March 2026');
+      expect(service.scopeLabel(scope(2025, 11, 2026, 1))).toBe('November 2025 – January 2026');
+
+      await service.setLanguage('es');
+      expect(service.scopeLabel(scope(2025, 11, 2026, 1))).toBe('Noviembre 2025 – Enero 2026');
     });
 
     it('leaves unrecognized stored periods visible as raw values', async () => {

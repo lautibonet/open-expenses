@@ -1,4 +1,4 @@
-import type { MonthScope, PeriodScope } from '../scope/scope';
+import type { Scope } from '../scope/scope';
 
 export const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -62,45 +62,69 @@ export type ScopeAwareMovement = {
   date: Date;
 };
 
-/* Whether a (year, Period) bucket falls inside the Scope: its Period on a
-   month Scope, any Period of the year on a year Scope. */
-export function periodInScope(year: number, period: number | string, scope: PeriodScope): boolean {
-  if (!isMonthNumber(period) || year !== scope.year) {
+/* A Period as a value: a month together with its year (GLOSSARY.md). */
+export interface Period {
+  year: number;
+  month: MonthNumber;
+}
+
+/* A Period's position on one continuous count of months, so Periods compare
+   and step across year boundaries. */
+function periodIndex(period: Period): number {
+  return period.year * 12 + (period.month - 1);
+}
+
+function periodAtIndex(index: number): Period {
+  return { year: Math.floor(index / 12), month: ((index % 12) + 1) as MonthNumber };
+}
+
+/* Negative when `a` comes before `b`, zero when they are the same Period. */
+export function comparePeriods(a: Period, b: Period): number {
+  return periodIndex(a) - periodIndex(b);
+}
+
+export function samePeriod(a: Period, b: Period): boolean {
+  return comparePeriods(a, b) === 0;
+}
+
+/* The Period `months` after (or, negative, before) the given one. */
+export function shiftPeriod(period: Period, months: number): Period {
+  return periodAtIndex(periodIndex(period) + months);
+}
+
+/* The stored Period of a movement, or null when its period is not a month
+   number (ADR 0009). Reporting always uses the stored Period year. */
+export function movementPeriod(movement: ScopeAwareMovement): Period | null {
+  return isMonthNumber(movement.period)
+    ? { year: getPeriodYear(movement), month: movement.period }
+    : null;
+}
+
+/* Every Period of a Scope, From through To. */
+export function scopePeriods(scope: Scope): Period[] {
+  const first = periodIndex(scope.from);
+  const last = periodIndex(scope.to);
+  return Array.from({ length: Math.max(0, last - first + 1) }, (_, i) => periodAtIndex(first + i));
+}
+
+/* Whether a (year, Period) bucket falls inside the Scope's run of Periods. */
+export function periodInScope(year: number, period: number | string, scope: Scope): boolean {
+  if (!isMonthNumber(period)) {
     return false;
   }
-  return scope.kind === 'year' || period === scope.period;
+  const bucket = { year, month: period };
+  return comparePeriods(bucket, scope.from) >= 0 && comparePeriods(bucket, scope.to) <= 0;
 }
 
 /* Filtering by Scope always uses the stored Period year. A movement whose
    period is not a month number is in no Scope (ADR 0009). */
-export function movementInScope(movement: ScopeAwareMovement, scope: PeriodScope): boolean {
+export function movementInScope(movement: ScopeAwareMovement, scope: Scope): boolean {
   return periodInScope(getPeriodYear(movement), movement.period, scope);
 }
 
-/* Whether a (year, Period) bucket is year-to-period: January through the
-   Scope's Period of the Scope's year. */
-export function periodIsYearToPeriod(
-  year: number,
-  period: number | string,
-  scope: MonthScope,
-): boolean {
-  return isMonthNumber(period) && year === scope.year && period <= scope.period;
-}
-
-export function movementIsYearToPeriod(movement: ScopeAwareMovement, scope: MonthScope): boolean {
-  return periodIsYearToPeriod(getPeriodYear(movement), movement.period, scope);
-}
-
-export function movementIsAtOrBeforePeriod(
-  movement: ScopeAwareMovement,
-  scope: PeriodScope,
-): boolean {
-  if (!isMonthNumber(movement.period)) {
-    return false;
-  }
-  const year = getPeriodYear(movement);
-  if (scope.kind === 'year') {
-    return year <= scope.year;
-  }
-  return year < scope.year || (year === scope.year && movement.period <= scope.period);
+/* Whether a movement's stored Period is at or before the given Period — the
+   movements a balance as of the end of that Period accumulates (ADR 0013). */
+export function movementIsAtOrBeforePeriod(movement: ScopeAwareMovement, end: Period): boolean {
+  const period = movementPeriod(movement);
+  return period !== null && comparePeriods(period, end) <= 0;
 }

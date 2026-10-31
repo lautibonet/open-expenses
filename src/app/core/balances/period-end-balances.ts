@@ -1,5 +1,4 @@
-import { movementIsAtOrBeforePeriod } from '../types/period.type';
-import { PeriodScope } from '../scope/scope';
+import { Period, movementIsAtOrBeforePeriod } from '../types/period.type';
 import { Account, isBaseCurrencyAccount } from '../models/account.model';
 import { Transaction } from '../models/transaction.model';
 import { Transfer } from '../models/transfer.model';
@@ -17,7 +16,7 @@ export interface PeriodEndBaseInput extends PeriodEndBalanceInput {
 
 function periodEndAmount(
   input: PeriodEndBalanceInput,
-  scope: PeriodScope,
+  end: Period,
   initial: number,
   transactionAmount: (transaction: Transaction) => number,
   transferSourceAmount: (transfer: Transfer) => number,
@@ -27,12 +26,12 @@ function periodEndAmount(
 
   for (const t of input.transactions) {
     if (t.accountId !== input.account.id) continue;
-    if (!movementIsAtOrBeforePeriod(t, scope)) continue;
+    if (!movementIsAtOrBeforePeriod(t, end)) continue;
     amount += transactionAmount(t);
   }
 
   for (const tr of input.transfers) {
-    if (!movementIsAtOrBeforePeriod(tr, scope)) continue;
+    if (!movementIsAtOrBeforePeriod(tr, end)) continue;
     if (tr.sourceAccountId === input.account.id) amount -= transferSourceAmount(tr);
     if (tr.destinationAccountId === input.account.id) amount += transferDestinationAmount(tr);
   }
@@ -40,10 +39,10 @@ function periodEndAmount(
   return amount;
 }
 
-export function periodEndBalance(input: PeriodEndBalanceInput, scope: PeriodScope): number {
+export function periodEndBalance(input: PeriodEndBalanceInput, end: Period): number {
   return periodEndAmount(
     input,
-    scope,
+    end,
     input.account.initialBalance,
     t => (input.isIncome(t) ? t.amount : -t.amount),
     tr => tr.sourceAmount,
@@ -84,12 +83,12 @@ export function storedTransferBaseAmount(transfer: Transfer): number {
 
 export function periodEndBaseAmount(
   input: PeriodEndBaseInput,
-  scope: PeriodScope,
+  end: Period,
   initialInBase: number,
 ): number {
   const amount = periodEndAmount(
     input,
-    scope,
+    end,
     initialInBase,
     t => {
       const amount = transactionBaseAmount(t, input.account, input.baseCurrency);

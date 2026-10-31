@@ -20,19 +20,11 @@ import {
   movementList,
   movementOf,
 } from '../../core/movements/movement-list';
-import { MONTH_NUMBERS, MonthNumber, getCurrentYear } from '../../core/types/period.type';
-import {
-  PeriodScope,
-  ScopeOptions,
-  changeMonth,
-  changeYear,
-  defaultScope,
-  scopeFromQuery,
-  scopeOptions,
-  scopeQuery,
-} from '../../core/scope/scope';
+import { MONTH_NUMBERS, ScopeAwareMovement, getCurrentYear } from '../../core/types/period.type';
+import { Scope, defaultScope, scopeFromQuery, scopeQuery } from '../../core/scope/scope';
 import { LanguageService } from '../../core/services/language.service';
 import { BottomSheetComponent } from '../../shared/components/bottom-sheet/bottom-sheet.component';
+import { ScopeControlComponent } from '../../shared/components/scope-control/scope-control.component';
 import {
   TransactionFormComponent,
   TransactionFormDraft,
@@ -50,7 +42,7 @@ interface FilterChip {
 
 @Component({
   selector: 'app-movements',
-  imports: [FormsModule, DatePipe, NgTemplateOutlet, TransactionFormComponent, TransferFormComponent, NetFlowCardComponent, BottomSheetComponent],
+  imports: [FormsModule, DatePipe, NgTemplateOutlet, TransactionFormComponent, TransferFormComponent, NetFlowCardComponent, BottomSheetComponent, ScopeControlComponent],
   templateUrl: './movements.component.html',
   styleUrl: './movements.component.scss',
   host: { '(document:keydown)': 'onDocKeydown($event)' },
@@ -66,16 +58,12 @@ export class MovementsComponent implements OnInit, OnDestroy {
   private location = inject(Location);
   language = inject(LanguageService);
 
-  scope = signal<PeriodScope>(defaultScope());
-  /* The Ledger's movements across every Period. The list and the scope
-     options both derive from them, so a Scope change never refetches. */
+  scope = signal<Scope>(defaultScope());
+  /* The Ledger's movements across every Period. The list and the Scope
+     control both derive from them, so a Scope change never refetches. */
   transactions = signal<Transaction[]>([]);
   transfers = signal<Transfer[]>([]);
-  private availableScopes = computed<ScopeOptions>(() =>
-    scopeOptions([...this.transactions(), ...this.transfers()], this.scope()),
-  );
-  scopeYears = computed(() => this.availableScopes().years);
-  scopeMonths = computed(() => this.availableScopes().months);
+  movements = computed<ScopeAwareMovement[]>(() => [...this.transactions(), ...this.transfers()]);
   scopeAnnouncement = signal('');
   movementAnnouncement = signal('');
   months = MONTH_NUMBERS;
@@ -324,7 +312,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
   /* Issue #216: the Scope is chosen once the movements are in — the one
      named in the link, else the default Scope. Only a load picks it;
      refresh() never moves it. */
-  private async loadAll(linkedScope: PeriodScope | null = null): Promise<void> {
+  private async loadAll(linkedScope: Scope | null = null): Promise<void> {
     try {
       this.baseCurrency.set(await this.profileService.getBaseCurrency());
       this.accounts.set(await this.accountService.getActive());
@@ -338,12 +326,12 @@ export class MovementsComponent implements OnInit, OnDestroy {
     }
   }
 
-  private scopeFromUrl(): PeriodScope | null {
+  private scopeFromUrl(): Scope | null {
     const query = this.location.path(true).split('?')[1] ?? '';
     return scopeFromQuery(new URLSearchParams(query));
   }
 
-  private reflectScopeInUrl(scope: PeriodScope): void {
+  private reflectScopeInUrl(scope: Scope): void {
     const path = this.location.path().split('?')[0] || '/';
     this.location.replaceState(`${path}?${scopeQuery(scope)}`);
   }
@@ -353,17 +341,13 @@ export class MovementsComponent implements OnInit, OnDestroy {
     this.transfers.set(await this.transferService.getAll());
   }
 
-  onScopeYearChange(value: number): void {
-    this.setScope(changeYear(this.scope(), value));
-  }
-
-  onScopeMonthChange(value: MonthNumber | 'all' | null): void {
-    this.setScope(changeMonth(this.scope(), value, this.availableScopes()));
+  onScopeChange(scope: Scope): void {
+    this.setScope(scope);
   }
 
   /* The whole Ledger is already loaded, so the new Scope's rows and Net
      figures derive at once — there is no stale Scope to gate. */
-  private setScope(scope: PeriodScope): void {
+  private setScope(scope: Scope): void {
     this.scope.set(scope);
     this.reflectScopeInUrl(scope);
     this.scopeAnnouncement.set(this.language.scopeLabel(scope));
@@ -610,15 +594,6 @@ export class MovementsComponent implements OnInit, OnDestroy {
 
   periodLabel(period: number | string): string {
     return this.language.periodLabel(period);
-  }
-
-  scopeMonthSelectValue(): MonthNumber | 'all' {
-    const current = this.scope();
-    return current.kind === 'year' ? 'all' : current.period;
-  }
-
-  scopeYearValue(): number {
-    return this.scope().year;
   }
 
   /* ADR 0022 / #168: a Transaction on a Credit Card is announced as a Card

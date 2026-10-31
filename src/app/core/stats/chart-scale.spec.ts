@@ -11,7 +11,7 @@ import { PeriodCashFlow } from './cash-basis';
 import { CategorySpending } from './category-spending';
 
 function period(overrides: Partial<PeriodCashFlow>): PeriodCashFlow {
-  return { period: 1, income: 0, expenses: 0, net: 0, hasMovements: false, ...overrides };
+  return { year: 2026, period: 1, income: 0, expenses: 0, net: 0, hasMovements: false, ...overrides };
 }
 
 function spending(total: number): CategorySpending {

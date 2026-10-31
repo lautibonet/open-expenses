@@ -350,7 +350,7 @@ export class TransferFormComponent implements AfterViewInit {
     this.cardBalance.set(
       periodEndBalance(
         { account: card, transactions, transfers, isIncome },
-        defaultScope(),
+        defaultScope().to,
       ),
     );
   }

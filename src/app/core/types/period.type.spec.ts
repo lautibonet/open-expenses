@@ -11,8 +11,9 @@ import {
   monthNumberFromName,
   movementInScope,
   movementIsAtOrBeforePeriod,
-  movementIsYearToPeriod,
   periodYearFromDate,
+  scopePeriods,
+  shiftPeriod,
 } from './period.type';
 
 describe('period.type - scope helpers', () => {
@@ -117,68 +118,53 @@ describe('period.type - scope helpers', () => {
   });
 
   describe('movementIsAtOrBeforePeriod', () => {
-    const scope = { kind: 'month', period: 9, year: 2026 } as const;
+    const september2026 = { year: 2026, month: 9 } as const;
 
     it('should include a movement in its own period', () => {
-      expect(movementIsAtOrBeforePeriod({ period: 9, year: 2026, date: new Date(2026, 8, 5) }, scope)).toBe(true);
+      expect(movementIsAtOrBeforePeriod({ period: 9, year: 2026, date: new Date(2026, 8, 5) }, september2026)).toBe(true);
     });
 
     it('should include movements from earlier periods of the same year', () => {
-      expect(movementIsAtOrBeforePeriod({ period: 1, year: 2026, date: new Date(2026, 0, 5) }, scope)).toBe(true);
-      expect(movementIsAtOrBeforePeriod({ period: 8, year: 2026, date: new Date(2026, 7, 5) }, scope)).toBe(true);
+      expect(movementIsAtOrBeforePeriod({ period: 1, year: 2026, date: new Date(2026, 0, 5) }, september2026)).toBe(true);
+      expect(movementIsAtOrBeforePeriod({ period: 8, year: 2026, date: new Date(2026, 7, 5) }, september2026)).toBe(true);
     });
 
     it('should exclude movements from later periods of the same year', () => {
-      expect(movementIsAtOrBeforePeriod({ period: 10, year: 2026, date: new Date(2026, 9, 5) }, scope)).toBe(false);
-      expect(movementIsAtOrBeforePeriod({ period: 12, year: 2026, date: new Date(2026, 11, 5) }, scope)).toBe(false);
+      expect(movementIsAtOrBeforePeriod({ period: 10, year: 2026, date: new Date(2026, 9, 5) }, september2026)).toBe(false);
+      expect(movementIsAtOrBeforePeriod({ period: 12, year: 2026, date: new Date(2026, 11, 5) }, september2026)).toBe(false);
     });
 
     it('should include movements from earlier years regardless of month', () => {
-      expect(movementIsAtOrBeforePeriod({ period: 12, year: 2025, date: new Date(2025, 11, 5) }, scope)).toBe(true);
+      expect(movementIsAtOrBeforePeriod({ period: 12, year: 2025, date: new Date(2025, 11, 5) }, september2026)).toBe(true);
     });
 
     it('should exclude movements from later years regardless of month', () => {
-      expect(movementIsAtOrBeforePeriod({ period: 1, year: 2027, date: new Date(2027, 0, 5) }, scope)).toBe(false);
+      expect(movementIsAtOrBeforePeriod({ period: 1, year: 2027, date: new Date(2027, 0, 5) }, september2026)).toBe(false);
     });
 
     it('should compare against the stored year, not the date year', () => {
       const decDatedJanuaryPeriod = { period: 1, year: 2026, date: new Date(2025, 11, 22) };
-      expect(movementIsAtOrBeforePeriod(decDatedJanuaryPeriod, scope)).toBe(true);
-      expect(
-        movementIsAtOrBeforePeriod(decDatedJanuaryPeriod, { kind: 'month', period: 9, year: 2025 }),
-      ).toBe(false);
+      expect(movementIsAtOrBeforePeriod(decDatedJanuaryPeriod, september2026)).toBe(true);
+      expect(movementIsAtOrBeforePeriod(decDatedJanuaryPeriod, { year: 2025, month: 9 })).toBe(false);
     });
 
     it('should fall back to the date year when no year is stored', () => {
-      expect(movementIsAtOrBeforePeriod({ period: 3, date: new Date(2024, 2, 10) }, scope)).toBe(true);
-      expect(movementIsAtOrBeforePeriod({ period: 3, date: new Date(2027, 2, 10) }, scope)).toBe(false);
+      expect(movementIsAtOrBeforePeriod({ period: 3, date: new Date(2024, 2, 10) }, september2026)).toBe(true);
+      expect(movementIsAtOrBeforePeriod({ period: 3, date: new Date(2027, 2, 10) }, september2026)).toBe(false);
     });
 
     it('should exclude movements with an unrecognizable period', () => {
-      expect(movementIsAtOrBeforePeriod({ period: 'Enero', year: 2026, date: new Date(2026, 0, 5) }, scope)).toBe(false);
-      expect(movementIsAtOrBeforePeriod({ period: 13, year: 2026, date: new Date(2026, 0, 5) }, scope)).toBe(false);
-    });
-
-    describe('with a year scope', () => {
-      const yearScope = { kind: 'year', year: 2026 } as const;
-
-      it('should include every movement of the scope year', () => {
-        expect(movementIsAtOrBeforePeriod({ period: 1, year: 2026, date: new Date(2026, 0, 5) }, yearScope)).toBe(true);
-        expect(movementIsAtOrBeforePeriod({ period: 12, year: 2026, date: new Date(2026, 11, 5) }, yearScope)).toBe(true);
-      });
-
-      it('should include earlier years and exclude later years', () => {
-        expect(movementIsAtOrBeforePeriod({ period: 12, year: 2025, date: new Date(2025, 11, 5) }, yearScope)).toBe(true);
-        expect(movementIsAtOrBeforePeriod({ period: 1, year: 2027, date: new Date(2027, 0, 5) }, yearScope)).toBe(false);
-      });
+      expect(movementIsAtOrBeforePeriod({ period: 'Enero', year: 2026, date: new Date(2026, 0, 5) }, september2026)).toBe(false);
+      expect(movementIsAtOrBeforePeriod({ period: 13, year: 2026, date: new Date(2026, 0, 5) }, september2026)).toBe(false);
     });
   });
 
   describe('movementInScope', () => {
-    const march2026 = { kind: 'month', period: 3, year: 2026 } as const;
-    const year2026 = { kind: 'year', year: 2026 } as const;
+    const march2026 = { from: { year: 2026, month: 3 }, to: { year: 2026, month: 3 } } as const;
+    const year2026 = { from: { year: 2026, month: 1 }, to: { year: 2026, month: 12 } } as const;
+    const novemberToJanuary = { from: { year: 2025, month: 11 }, to: { year: 2026, month: 1 } } as const;
 
-    it('should include a movement of the Scope Period', () => {
+    it('should include a movement of a one-Period Scope', () => {
       expect(movementInScope({ period: 3, year: 2026, date: new Date(2026, 2, 10) }, march2026)).toBe(true);
     });
 
@@ -187,16 +173,29 @@ describe('period.type - scope helpers', () => {
       expect(movementInScope({ period: 3, year: 2025, date: new Date(2025, 2, 10) }, march2026)).toBe(false);
     });
 
-    it('should include every month of the year Scope and nothing from other years', () => {
+    it('should include every month of a January to December Scope and nothing from other years', () => {
       expect(movementInScope({ period: 1, year: 2026, date: new Date(2026, 0, 10) }, year2026)).toBe(true);
       expect(movementInScope({ period: 12, year: 2026, date: new Date(2026, 11, 10) }, year2026)).toBe(true);
       expect(movementInScope({ period: 12, year: 2025, date: new Date(2025, 11, 10) }, year2026)).toBe(false);
     });
 
+    it('should include the Periods of a Scope that crosses a year boundary', () => {
+      expect(movementInScope({ period: 11, year: 2025, date: new Date(2025, 10, 10) }, novemberToJanuary)).toBe(true);
+      expect(movementInScope({ period: 12, year: 2025, date: new Date(2025, 11, 10) }, novemberToJanuary)).toBe(true);
+      expect(movementInScope({ period: 1, year: 2026, date: new Date(2026, 0, 10) }, novemberToJanuary)).toBe(true);
+    });
+
+    it('should exclude the Periods just outside a Scope that crosses a year boundary', () => {
+      expect(movementInScope({ period: 10, year: 2025, date: new Date(2025, 9, 10) }, novemberToJanuary)).toBe(false);
+      expect(movementInScope({ period: 2, year: 2026, date: new Date(2026, 1, 10) }, novemberToJanuary)).toBe(false);
+      expect(movementInScope({ period: 11, year: 2026, date: new Date(2026, 10, 10) }, novemberToJanuary)).toBe(false);
+      expect(movementInScope({ period: 1, year: 2025, date: new Date(2025, 0, 10) }, novemberToJanuary)).toBe(false);
+    });
+
     it('should use the stored year, not the date year', () => {
       const decemberDatedJanuary = { period: 1, year: 2026, date: new Date(2025, 11, 22) };
-      expect(movementInScope(decemberDatedJanuary, { kind: 'month', period: 1, year: 2026 })).toBe(true);
-      expect(movementInScope(decemberDatedJanuary, { kind: 'year', year: 2025 })).toBe(false);
+      expect(movementInScope(decemberDatedJanuary, { from: { year: 2026, month: 1 }, to: { year: 2026, month: 1 } })).toBe(true);
+      expect(movementInScope(decemberDatedJanuary, { from: { year: 2025, month: 1 }, to: { year: 2025, month: 12 } })).toBe(false);
     });
 
     it('should fall back to the date year when no year is stored', () => {
@@ -210,28 +209,34 @@ describe('period.type - scope helpers', () => {
     });
   });
 
-  describe('movementIsYearToPeriod', () => {
-    const june2026 = { kind: 'month', period: 6, year: 2026 } as const;
-
-    it('should include January through the Scope Period of the Scope year', () => {
-      expect(movementIsYearToPeriod({ period: 1, year: 2026, date: new Date(2026, 0, 10) }, june2026)).toBe(true);
-      expect(movementIsYearToPeriod({ period: 6, year: 2026, date: new Date(2026, 5, 10) }, june2026)).toBe(true);
+  describe('scopePeriods', () => {
+    it('should list the Periods of a Scope in order, across a year boundary', () => {
+      expect(scopePeriods({ from: { year: 2025, month: 11 }, to: { year: 2026, month: 2 } })).toEqual([
+        { year: 2025, month: 11 },
+        { year: 2025, month: 12 },
+        { year: 2026, month: 1 },
+        { year: 2026, month: 2 },
+      ]);
     });
 
-    it('should exclude later months of the year and every other year', () => {
-      expect(movementIsYearToPeriod({ period: 7, year: 2026, date: new Date(2026, 6, 10) }, june2026)).toBe(false);
-      expect(movementIsYearToPeriod({ period: 3, year: 2025, date: new Date(2025, 2, 10) }, june2026)).toBe(false);
-      expect(movementIsYearToPeriod({ period: 3, year: 2027, date: new Date(2027, 2, 10) }, june2026)).toBe(false);
+    it('should list a single Period for a one-Period Scope', () => {
+      expect(scopePeriods({ from: { year: 2026, month: 4 }, to: { year: 2026, month: 4 } })).toEqual([
+        { year: 2026, month: 4 },
+      ]);
+    });
+  });
+
+  describe('shiftPeriod', () => {
+    it('should step back across a year boundary', () => {
+      expect(shiftPeriod({ year: 2026, month: 1 }, -2)).toEqual({ year: 2025, month: 11 });
     });
 
-    it('should use the stored year, not the date year', () => {
-      expect(
-        movementIsYearToPeriod({ period: 1, year: 2026, date: new Date(2025, 11, 22) }, june2026),
-      ).toBe(true);
+    it('should step forward across a year boundary', () => {
+      expect(shiftPeriod({ year: 2025, month: 12 }, 1)).toEqual({ year: 2026, month: 1 });
     });
 
-    it('should exclude a movement with an unrecognizable period', () => {
-      expect(movementIsYearToPeriod({ period: 'Enero', year: 2026, date: new Date(2026, 0, 5) }, june2026)).toBe(false);
+    it('should step back a whole year', () => {
+      expect(shiftPeriod({ year: 2026, month: 3 }, -12)).toEqual({ year: 2025, month: 3 });
     });
   });
 

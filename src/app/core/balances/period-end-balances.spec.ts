@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MonthNumber } from '../types/period.type';
-import { PeriodScope } from '../scope/scope';
+import { MonthNumber, Period } from '../types/period.type';
 import { Account } from '../models/account.model';
 import { Transaction } from '../models/transaction.model';
 import { Transfer } from '../models/transfer.model';
@@ -51,7 +50,8 @@ function transfer(overrides: Partial<Transfer> = {}): Transfer {
   } as Transfer;
 }
 
-const scope = (period: number, year: number): PeriodScope => ({ kind: 'month', period: period as MonthNumber, year });
+/* The end of a Period: balances accumulate every movement at or before it. */
+const scope = (period: number, year: number): Period => ({ year, month: period as MonthNumber });
 const isIncome = (t: Transaction) => t.categoryId === 1;
 
 describe('periodEndBalance', () => {

@@ -169,7 +169,7 @@ describe('NetFlowCardComponent', () => {
     });
     const period = getCurrentPeriod();
     await transferService.create(
-      eurAccountId, card.id!, 400, new Date(), period, '', 1, defaultScope().year,
+      eurAccountId, card.id!, 400, new Date(), period, '', 1, defaultScope().to.year,
     );
     await render();
 
@@ -182,7 +182,7 @@ describe('NetFlowCardComponent', () => {
     const card = await accountService.createCard({ name: 'Visa', currency: 'EUR' });
     const card2 = await accountService.createCard({ name: 'Master', currency: 'EUR' });
     const period = getCurrentPeriod();
-    const year = defaultScope().year;
+    const year = defaultScope().to.year;
     await transferService.create(card.id!, eurAccountId, 100, new Date(), period, '', 1, year);
     await transferService.create(card.id!, card2.id!, 100, new Date(), period, '', 1, year);
     await render();
@@ -246,15 +246,15 @@ describe('NetFlowCardComponent', () => {
 
   it('names the Scope Period in the heading', async () => {
     const period = getCurrentPeriod();
-    const year = defaultScope().year;
+    const year = defaultScope().to.year;
     await transactionService.create(eurAccountId, incomeCategoryId, 1000, new Date(), period);
-    fixture.componentRef.setInput('scope', { kind: 'month', period, year });
+    fixture.componentRef.setInput('scope', { from: { year, month: period }, to: { year, month: period } });
     await render();
 
     const language = TestBed.inject(LanguageService);
     const heading = fixture.nativeElement.querySelector('.net-flow-label').textContent;
     expect(heading).toContain('Net Flow');
-    expect(heading).toContain(language.scopeLabel({ kind: 'month', period, year }));
+    expect(heading).toContain(language.scopeLabel({ from: { year, month: period }, to: { year, month: period } }));
   });
 
   it('shows the conversion warning when an unconverted foreign transaction is included', async () => {
