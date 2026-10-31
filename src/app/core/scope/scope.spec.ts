@@ -53,8 +53,8 @@ describe('scope', () => {
     const movements = [movement(2025, 6), movement(2025, 11), movement(2026, 1)];
     const current = scope([2026, 1], [2026, 1]);
 
-    it('should cover the latest Period with movements for "This Period"', () => {
-      expect(presetScope('thisPeriod', current, movements)).toEqual(scope([2026, 1], [2026, 1]));
+    it('should cover the latest Period with movements for "Last period"', () => {
+      expect(presetScope('lastPeriod', current, movements)).toEqual(scope([2026, 1], [2026, 1]));
     });
 
     it('should count "Last 3" back across a year boundary', () => {
@@ -72,7 +72,7 @@ describe('scope', () => {
     });
 
     it('should count back from the current Period when nothing is recorded', () => {
-      expect(presetScope('thisPeriod', current, [])).toEqual(scope([2026, 1], [2026, 1]));
+      expect(presetScope('lastPeriod', current, [])).toEqual(scope([2026, 1], [2026, 1]));
       expect(presetScope('last6', current, [])).toEqual(scope([2025, 8], [2026, 1]));
     });
 
@@ -103,7 +103,7 @@ describe('scope', () => {
 
     it('should ignore an unrecognizable period when finding the latest Period', () => {
       const withUnknown = [...movements, movement(2026, 'Smarch')];
-      expect(presetScope('thisPeriod', current, withUnknown)).toEqual(scope([2026, 1], [2026, 1]));
+      expect(presetScope('lastPeriod', current, withUnknown)).toEqual(scope([2026, 1], [2026, 1]));
     });
   });
 
@@ -115,7 +115,7 @@ describe('scope', () => {
       expect(matchingPreset(scope([2025, 10], [2026, 3]), movements)).toBe('last6');
       expect(matchingPreset(scope([2025, 4], [2026, 3]), movements)).toBe('last12');
       expect(matchingPreset(scope([2025, 1], [2025, 12]), movements)).toBe('wholeYear');
-      expect(matchingPreset(scope([2026, 3], [2026, 3]), movements)).toBe('thisPeriod');
+      expect(matchingPreset(scope([2026, 3], [2026, 3]), movements)).toBe('lastPeriod');
     });
 
     it('should name Year to date over a rolling preset producing the same Scope', () => {

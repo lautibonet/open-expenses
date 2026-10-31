@@ -58,6 +58,10 @@ describe('ScopeControlComponent', () => {
     await settle();
   }
 
+  function summary(): string | null {
+    return fixture.nativeElement.querySelector('.scope-summary')?.textContent.trim() ?? null;
+  }
+
   function shownPreset(): string {
     const element = select('Scope preset')!;
     return element.options[element.selectedIndex].textContent!.trim();
@@ -68,26 +72,35 @@ describe('ScopeControlComponent', () => {
 
     const labels = Array.from(select('Scope preset')!.options).map(o => o.textContent?.trim());
     expect(labels).toEqual([
-      'This Period', 'Last 3', 'Last 6', 'Last 12', 'Year to date', 'Whole year', 'Custom',
+      'Last period', 'Last 3', 'Last 6', 'Last 12', 'Year to date', 'Whole year', 'Custom',
     ]);
   });
 
   it('hides the From and To pickers on a one-Period Scope that a preset names', async () => {
     await render(scope(2026, 1, 2026, 1));
 
-    expect(shownPreset()).toBe('This Period');
+    expect(shownPreset()).toBe('Last period');
     expect(select('From month')).toBeNull();
     expect(select('To month')).toBeNull();
   });
 
-  it('shows the From and To pickers whenever the Scope covers more than one Period', async () => {
+  it('shows the Scope a preset names as text beside the select, without pickers', async () => {
     await render(scope(2025, 11, 2026, 1));
 
     expect(shownPreset()).toBe('Last 3');
+    expect(select('From month')).toBeNull();
+    expect(summary()).toBe('November 2025 – January 2026');
+  });
+
+  it('shows the From and To pickers for a Scope no preset names', async () => {
+    await render(scope(2024, 11, 2025, 1));
+
+    expect(shownPreset()).toBe('Custom');
+    expect(summary()).toBeNull();
     expect(select('From month')!.options[select('From month')!.selectedIndex].textContent?.trim()).toBe('November');
-    expect(select('From year')!.options[select('From year')!.selectedIndex].textContent?.trim()).toBe('2025');
+    expect(select('From year')!.options[select('From year')!.selectedIndex].textContent?.trim()).toBe('2024');
     expect(select('To month')!.options[select('To month')!.selectedIndex].textContent?.trim()).toBe('January');
-    expect(select('To year')!.options[select('To year')!.selectedIndex].textContent?.trim()).toBe('2026');
+    expect(select('To year')!.options[select('To year')!.selectedIndex].textContent?.trim()).toBe('2025');
   });
 
   it('names the preset the screen opens on when several produce the same Scope', async () => {
@@ -133,6 +146,7 @@ describe('ScopeControlComponent', () => {
 
   it('names the matching preset after an edit, and Custom when none matches', async () => {
     await render(scope(2025, 11, 2026, 1));
+    await choose('Scope preset', 'Custom');
 
     await choose('From month', 'August');
     expect(emitted.at(-1)).toEqual(scope(2025, 8, 2026, 1));
@@ -177,7 +191,7 @@ describe('ScopeControlComponent', () => {
 
     await render(scope(2026, 1, 2026, 1));
 
-    expect(shownPreset()).toBe('This Period');
+    expect(shownPreset()).toBe('Last period');
     expect(select('From month')).toBeNull();
   });
 
@@ -202,6 +216,7 @@ describe('ScopeControlComponent', () => {
 
   it('moves the To Period to match a From picked after it', async () => {
     await render(scope(2025, 11, 2026, 1));
+    await choose('Scope preset', 'Custom');
 
     await choose('From year', '2026');
 
@@ -210,6 +225,7 @@ describe('ScopeControlComponent', () => {
 
   it('moves the From Period to match a To picked before it', async () => {
     await render(scope(2025, 11, 2026, 1));
+    await choose('Scope preset', 'Custom');
 
     await choose('To year', '2025');
     expect(emitted.at(-1)).toEqual(scope(2025, 1, 2025, 1));

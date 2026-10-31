@@ -880,7 +880,7 @@ describe('MovementsComponent - page header and scope control', () => {
       fixture.nativeElement.querySelector('button[aria-label="Previous month"]'),
     ).toBeNull();
     expect(fixture.nativeElement.querySelector('button[aria-label="Next month"]')).toBeNull();
-    expect(fixture.nativeElement.querySelector('.scope-selects select')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('app-scope-control select')).toBeTruthy();
   });
 
   it('leads the content with the Net Flow card', async () => {
@@ -1077,11 +1077,11 @@ describe('MovementsComponent - shared scope', () => {
     await transactionService.create(accountId, categoryId, 100, new Date(), 3, null, null, 2016);
 
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('.scope-selects')).toBeNull();
+    expect(fixture.nativeElement.querySelector('app-scope-control')).toBeNull();
 
     await vi.waitFor(() => expect(component.isLoaded()).toBe(true));
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('.scope-selects')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('app-scope-control')).not.toBeNull();
   });
 
   it('should offer every year from the earliest with data to the current year, with no gaps', async () => {
@@ -1250,14 +1250,14 @@ describe('MovementsComponent - shared scope', () => {
     expect(card.netTotal()).toBe(2000);
   });
 
-  it('opens the preset select on This Period', async () => {
+  it('opens the preset select on Last period', async () => {
     await component.ngOnInit();
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
 
     const preset = fixture.nativeElement.querySelector('select[aria-label="Scope preset"]') as HTMLSelectElement;
-    expect(preset.options[preset.selectedIndex].textContent?.trim()).toBe('This Period');
+    expect(preset.options[preset.selectedIndex].textContent?.trim()).toBe('Last period');
   });
 
   it('announces a whole-year Scope with the year label', async () => {
@@ -1978,7 +1978,7 @@ describe('MovementsComponent - translations', () => {
     const text = fixture.nativeElement.textContent;
     expect(text).toContain('+ Transferencia');
     expect(text).toContain('No hay movimientos de');
-    expect(text).toContain('Este período');
+    expect(text).toContain('Último período');
     expect(fixture.nativeElement.querySelector('[aria-label="Ámbito predefinido"]')).toBeTruthy();
   });
 

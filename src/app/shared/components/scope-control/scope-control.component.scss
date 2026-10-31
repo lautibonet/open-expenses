@@ -1,30 +1,33 @@
 @use '../../styles/patterns' as *;
 
-/* The preset select, then the From and To pickers beneath it: each end a
-   caps label and its month/year pair, wrapping on narrow screens. */
+/* One row: the preset select, then the preset's Scope as muted text or, on
+   Custom, From → To. On narrow screens the range wraps beneath as a unit,
+   and each end keeps its month and year together. */
 :host {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-xs);
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm) var(--space-md);
 }
 
-.scope-selects {
-  @extend %scope-selects;
+select {
+  @extend %field;
 }
 
 .scope-range {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-xs) var(--space-md);
+  align-items: center;
+  gap: var(--space-sm);
 }
 
 .scope-end {
-  @extend %scope-selects;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
 }
 
-.scope-end-label {
-  @extend %caps-label-muted;
-
-  min-width: 2.5rem;
+.scope-arrow,
+.scope-summary {
+  color: var(--on-surface-variant);
 }

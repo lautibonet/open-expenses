@@ -9,15 +9,14 @@ import {
   ScopePresetChoice,
   changeFrom,
   changeTo,
-  isMultiPeriod,
   matchingPreset,
   presetScope,
   scopeYears,
 } from '../../../core/scope/scope';
 
-/* The Scope control shared by Movements and Stats (ADR 0029): a preset
-   select, and the From and To pickers whenever the Scope covers more than
-   one Period or Custom is chosen. The screen owns the Scope; the control
+/* The Scope control shared by Movements and Stats (ADR 0029): one row
+   holding a preset select, then either the preset's Scope as text or, on
+   Custom, the From and To pickers. The screen owns the Scope; the control
    only proposes the next one. */
 @Component({
   selector: 'app-scope-control',
@@ -33,7 +32,7 @@ export class ScopeControlComponent {
      movements, and the year pickers start at the earliest. */
   movements = input<ScopeAwareMovement[]>([]);
   /* The preset the screen opens on, named when several produce its Scope. */
-  defaultPreset = input<ScopePreset>('thisPeriod');
+  defaultPreset = input<ScopePreset>('lastPeriod');
   scopeChange = output<Scope>();
 
   readonly presets = SCOPE_PRESETS;
@@ -63,9 +62,8 @@ export class ScopeControlComponent {
     return matchingPreset(this.scope(), this.movements(), chosen ?? this.defaultPreset());
   });
 
-  pickersShown = computed(
-    () => this.customOpen() || isMultiPeriod(this.scope()) || this.shownPreset() === 'custom',
-  );
+  /* The pickers belong to Custom; a preset shows its Scope as text instead. */
+  pickersShown = computed(() => this.customOpen() || this.shownPreset() === 'custom');
 
   onPresetChange(choice: ScopePresetChoice): void {
     this.chosen.set(choice);

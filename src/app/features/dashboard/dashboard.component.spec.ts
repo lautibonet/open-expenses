@@ -398,11 +398,11 @@ describe('DashboardComponent - shared scope', () => {
     component = fixture.componentInstance;
 
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('.scope-selects')).toBeNull();
+    expect(fixture.nativeElement.querySelector('app-scope-control')).toBeNull();
 
     await vi.waitFor(() => expect(component.scope().to.year).toBe(2016));
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('.scope-selects')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('app-scope-control')).not.toBeNull();
   });
 
   it('should offer every year from the earliest with data to the current year, with no gaps', async () => {
@@ -412,6 +412,10 @@ describe('DashboardComponent - shared scope', () => {
     await transactionService.create(acc.id!, incomeCat.id!, 5000, new Date('2016-03-15'), 3, null, null, 2016);
 
     await component.ngOnInit();
+    fixture.detectChanges();
+    const preset = fixture.nativeElement.querySelector('select[aria-label="Scope preset"]') as HTMLSelectElement;
+    preset.selectedIndex = preset.options.length - 1; /* Custom */
+    preset.dispatchEvent(new Event('change'));
     fixture.detectChanges();
 
     const yearSelect = fixture.nativeElement.querySelector('select[aria-label="To year"]') as HTMLSelectElement;
@@ -743,11 +747,12 @@ describe('DashboardComponent - page header, scope control and restyled cards', (
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('select[aria-label="Scope preset"]')).toBeTruthy();
-    if (getCurrentPeriod() > 1) {
-      /* Year to date covers more than one Period, so the pickers show. */
-      for (const label of ['From month', 'From year', 'To month', 'To year']) {
-        expect(fixture.nativeElement.querySelector(`select[aria-label="${label}"]`), label).toBeTruthy();
-      }
+    const preset = fixture.nativeElement.querySelector('select[aria-label="Scope preset"]') as HTMLSelectElement;
+    preset.selectedIndex = preset.options.length - 1; /* Custom */
+    preset.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    for (const label of ['From month', 'From year', 'To month', 'To year']) {
+      expect(fixture.nativeElement.querySelector(`select[aria-label="${label}"]`), label).toBeTruthy();
     }
   });
 
@@ -760,7 +765,7 @@ describe('DashboardComponent - page header, scope control and restyled cards', (
       fixture.nativeElement.querySelector('button[aria-label="Previous month"]'),
     ).toBeNull();
     expect(fixture.nativeElement.querySelector('button[aria-label="Next month"]')).toBeNull();
-    expect(fixture.nativeElement.querySelector('.scope-selects select')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('app-scope-control select')).toBeTruthy();
   });
 
   it('refreshes averages when the Scope changes, following the covered Periods', async () => {

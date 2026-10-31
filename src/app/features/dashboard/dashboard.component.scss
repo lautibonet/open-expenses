@@ -12,10 +12,6 @@
   @extend %scope-control;
 }
 
-.scope-selects {
-  @extend %scope-selects;
-}
-
 /* KPI ledger summary: one card, three striped lines — income, expenses, net —
    with the year totals right-aligned into a single tabular ledger column and
    the monthly average demoted beneath each figure. The card gives every figure

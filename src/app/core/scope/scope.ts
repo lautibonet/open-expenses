@@ -22,12 +22,12 @@ export interface Scope {
 }
 
 /* Presets only fill in a From/To pair; they are not a kind of Scope. */
-export type ScopePreset = 'thisPeriod' | 'last3' | 'last6' | 'last12' | 'yearToDate' | 'wholeYear';
+export type ScopePreset = 'lastPeriod' | 'last3' | 'last6' | 'last12' | 'yearToDate' | 'wholeYear';
 export type ScopePresetChoice = ScopePreset | 'custom';
 
 /* The presets in the order the select offers them. */
 export const SCOPE_PRESETS: ScopePreset[] = [
-  'thisPeriod',
+  'lastPeriod',
   'last3',
   'last6',
   'last12',
@@ -40,7 +40,7 @@ export const SCOPE_PRESETS: ScopePreset[] = [
    before "Year to date", which produces the same January → December run
    for a past year. */
 const MATCHING_ORDER: ScopePreset[] = [
-  'thisPeriod',
+  'lastPeriod',
   'wholeYear',
   'yearToDate',
   'last3',
@@ -49,7 +49,7 @@ const MATCHING_ORDER: ScopePreset[] = [
 ];
 
 const ROLLING_LENGTH: Partial<Record<ScopePreset, number>> = {
-  thisPeriod: 1,
+  lastPeriod: 1,
   last3: 3,
   last6: 6,
   last12: 12,
