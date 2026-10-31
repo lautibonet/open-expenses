@@ -96,11 +96,21 @@ describe('scope', () => {
     const movements = [movement(2025, 6), movement(2026, 3)];
 
     it('should name the preset an edited From and To matches', () => {
-      expect(matchingPreset(scope([2026, 1], [2026, 3]), movements)).toBe('last3');
+      expect(matchingPreset(scope([2026, 2], [2026, 3]), movements)).toBe('custom');
       expect(matchingPreset(scope([2025, 10], [2026, 3]), movements)).toBe('last6');
       expect(matchingPreset(scope([2025, 4], [2026, 3]), movements)).toBe('last12');
       expect(matchingPreset(scope([2025, 1], [2025, 12]), movements)).toBe('wholeYear');
       expect(matchingPreset(scope([2026, 3], [2026, 3]), movements)).toBe('thisPeriod');
+    });
+
+    it('should name Year to date over a rolling preset producing the same Scope', () => {
+      // Year to date of 2026 runs January to March, as does "Last 3".
+      expect(matchingPreset(scope([2026, 1], [2026, 3]), movements)).toBe('yearToDate');
+    });
+
+    it('should name Whole year over Year to date and Last 12 producing the same Scope', () => {
+      const december = [movement(2025, 12)];
+      expect(matchingPreset(scope([2025, 1], [2025, 12]), december)).toBe('wholeYear');
     });
 
     it('should name Custom when no preset produces the Scope', () => {

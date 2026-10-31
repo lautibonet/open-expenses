@@ -1,7 +1,7 @@
-import { Component, computed, inject, input, output, signal } from '@angular/core';
+import { Component, computed, inject, input, linkedSignal, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { LanguageService } from '../../../core/services/language.service';
-import { MonthNumber, ScopeAwareMovement } from '../../../core/types/period.type';
+import { MonthNumber, Period, ScopeAwareMovement } from '../../../core/types/period.type';
 import {
   SCOPE_PRESETS,
   Scope,
@@ -38,11 +38,21 @@ export class ScopeControlComponent {
 
   readonly presets = SCOPE_PRESETS;
 
+  /* The Scope this control last proposed. Any other Scope the screen applies
+     (a load or a Restore) starts the select afresh on its default preset. */
+  private proposed: Scope | null = null;
+
   /* The preset last picked from the select; null once an end is edited, so
      the select names whichever preset the edited Scope matches. */
-  private chosen = signal<ScopePresetChoice | null>(null);
+  private chosen = linkedSignal<Scope, ScopePresetChoice | null>({
+    source: this.scope,
+    computation: (scope, previous) => (this.isProposed(scope) ? (previous?.value ?? null) : null),
+  });
   /* Custom keeps the pickers open, even on a one-Period Scope. */
-  private customOpen = signal(false);
+  private customOpen = linkedSignal<Scope, boolean>({
+    source: this.scope,
+    computation: (scope, previous) => this.isProposed(scope) && (previous?.value ?? false),
+  });
 
   private options = computed(() => scopeOptions(this.movements(), this.scope()));
   years = computed(() => this.options().years);
@@ -65,7 +75,7 @@ export class ScopeControlComponent {
       return;
     }
     this.customOpen.set(false);
-    this.scopeChange.emit(presetScope(choice, this.scope(), this.movements()));
+    this.propose(presetScope(choice, this.scope(), this.movements()));
   }
 
   onFromMonthChange(month: MonthNumber): void {
@@ -84,13 +94,22 @@ export class ScopeControlComponent {
     this.editTo({ year, month: this.scope().to.month });
   }
 
-  private editFrom(from: Scope['from']): void {
+  private editFrom(from: Period): void {
     this.chosen.set(null);
-    this.scopeChange.emit(changeFrom(this.scope(), from));
+    this.propose(changeFrom(this.scope(), from));
   }
 
-  private editTo(to: Scope['to']): void {
+  private editTo(to: Period): void {
     this.chosen.set(null);
-    this.scopeChange.emit(changeTo(this.scope(), to));
+    this.propose(changeTo(this.scope(), to));
+  }
+
+  private propose(next: Scope): void {
+    this.proposed = next;
+    this.scopeChange.emit(next);
+  }
+
+  private isProposed(scope: Scope): boolean {
+    return scope === this.proposed;
   }
 }

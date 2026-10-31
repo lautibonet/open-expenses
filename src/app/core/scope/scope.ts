@@ -37,15 +37,16 @@ export const SCOPE_PRESETS: ScopePreset[] = [
 ];
 
 /* The order in which an edited Scope is matched against the presets: the
-   shorter rolling runs first, and "Whole year" before "Year to date", which
-   produces the same January → December run for a past year. */
+   calendar-year presets before the rolling "Last N" runs, and "Whole year"
+   before "Year to date", which produces the same January → December run
+   for a past year. */
 const MATCHING_ORDER: ScopePreset[] = [
   'thisPeriod',
+  'wholeYear',
+  'yearToDate',
   'last3',
   'last6',
   'last12',
-  'wholeYear',
-  'yearToDate',
 ];
 
 const ROLLING_LENGTH: Partial<Record<ScopePreset, number>> = {

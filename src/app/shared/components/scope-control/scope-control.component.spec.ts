@@ -142,6 +142,56 @@ describe('ScopeControlComponent', () => {
     expect(shownPreset()).toBe('Custom');
   });
 
+  it('names Year to date over a rolling preset when an edit matches both', async () => {
+    fixture.componentRef.setInput('movements', [movement(2026, 1), movement(2026, 3)]);
+    await render(scope(2026, 2, 2026, 3));
+
+    await choose('From month', 'January');
+
+    expect(emitted.at(-1)).toEqual(scope(2026, 1, 2026, 3));
+    expect(shownPreset()).toBe('Year to date');
+  });
+
+  it('names Whole year over Year to date when an edit matches both', async () => {
+    fixture.componentRef.setInput('movements', [movement(2025, 12)]);
+    await render(scope(2025, 2, 2025, 12));
+
+    await choose('From month', 'January');
+
+    expect(shownPreset()).toBe('Whole year');
+  });
+
+  it('keeps the preset the user picked when it matches the Scope', async () => {
+    fixture.componentRef.setInput('movements', [movement(2026, 1), movement(2026, 3)]);
+    fixture.componentRef.setInput('defaultPreset', 'yearToDate');
+    await render(scope(2026, 1, 2026, 3));
+
+    await choose('Scope preset', 'Last 3');
+
+    expect(shownPreset()).toBe('Last 3');
+  });
+
+  it('shows the default preset again when the screen applies a new Scope', async () => {
+    await render(scope(2026, 1, 2026, 1));
+    await choose('Scope preset', 'Last 6');
+
+    await render(scope(2026, 1, 2026, 1));
+
+    expect(shownPreset()).toBe('This Period');
+    expect(select('From month')).toBeNull();
+  });
+
+  it('closes Custom when the screen applies a new one-Period Scope', async () => {
+    fixture.componentRef.setInput('defaultPreset', 'yearToDate');
+    await render(scope(2026, 1, 2026, 1));
+    await choose('Scope preset', 'Custom');
+
+    await render(scope(2026, 1, 2026, 1));
+
+    expect(shownPreset()).toBe('Year to date');
+    expect(select('From month')).toBeNull();
+  });
+
   it('keeps the month when a year changes', async () => {
     await render(scope(2024, 11, 2025, 1));
 
