@@ -31,7 +31,8 @@ for (const viewport of [
       await page.goto('/stats');
 
       for (const trackSel of ['.balance-track.current', '.twelve-periods-track.current']) {
-        const track = page.locator(trackSel);
+        // Every Period in the Scope is marked (ADR 0029); the To Period holds the income.
+        const track = page.locator(trackSel).last();
         await expect(track).toBeVisible();
 
         const style = await track.evaluate((el) => {
@@ -60,7 +61,7 @@ for (const viewport of [
       // The emphasized month's label carries the mobile emphasis: bold ink
       // instead of the muted register, on both graphs.
       for (const labelSel of ['.balance-initial.current', '.twelve-periods-initial.current']) {
-        const label = page.locator(labelSel).first();
+        const label = page.locator(labelSel).last();
         await expect(label).toBeVisible();
         const style = await label.evaluate((el) => {
           const s = getComputedStyle(el);
@@ -80,13 +81,13 @@ for (const viewport of [
         ['.balance-track.current .balance-fill', '.balance-track.current'],
         ['.twelve-periods-track.current .cell-fill', '.twelve-periods-track.current .twelve-periods-cell'],
       ] as const) {
-        const fill = page.locator(fillSel).first();
+        const fill = page.locator(fillSel).last();
         await expect(fill).toBeVisible();
         const [fillBox, containerWidth] = await Promise.all([
           fill.boundingBox(),
           page
             .locator(containerSel)
-            .first()
+            .last()
             .evaluate((el) => el.clientWidth),
         ]);
         expect(fillBox).not.toBeNull();

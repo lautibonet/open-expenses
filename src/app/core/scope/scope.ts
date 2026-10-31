@@ -55,11 +55,11 @@ const ROLLING_LENGTH: Partial<Record<ScopePreset, number>> = {
   last12: 12,
 };
 
-export function singlePeriodScope(period: Period): Scope {
+function singlePeriodScope(period: Period): Scope {
   return { from: period, to: period };
 }
 
-export function sameScope(a: Scope, b: Scope): boolean {
+function sameScope(a: Scope, b: Scope): boolean {
   return samePeriod(a.from, b.from) && samePeriod(a.to, b.to);
 }
 

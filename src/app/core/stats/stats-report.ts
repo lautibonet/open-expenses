@@ -44,21 +44,21 @@ export interface AccountBalance {
 }
 
 /* One Period of the Net chart: its figures, and whether the Scope covers it. */
-export interface ChartPeriodFlow extends PeriodCashFlow {
+interface ChartPeriodFlow extends PeriodCashFlow {
   inScope: boolean;
 }
 
 /* One Period of the balance strip: the total balance at its end. `frozen`
    marks a Period after the last one in the chart carrying a Movement, which
    holds the last known balance rather than recorded data. */
-export interface StripPeriod extends Period {
+interface StripPeriod extends Period {
   balance: number;
   inScope: boolean;
   frozen: boolean;
 }
 
 /* ADR 0029: the Stats charts show the twelve Periods ending at the To Period. */
-export const CHART_LENGTH = 12;
+const CHART_LENGTH = 12;
 
 export interface StatsReport {
   balances: {
