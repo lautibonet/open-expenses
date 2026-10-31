@@ -28,24 +28,31 @@ export type PeriodScope = MonthScope | YearScope;
    ahead of the calendar, since a Period is the user's own convention — and
    on the current Period when nothing is recorded. */
 export function defaultScope(movements: ScopeAwareMovement[] = []): MonthScope {
-  let latest: MonthScope | null = null;
+  const latestByYear = latestMonthByYear(movements);
+  if (latestByYear.size === 0) {
+    return { kind: 'month', period: getCurrentPeriod(), year: getCurrentYear() };
+  }
+  const year = Math.max(...latestByYear.keys());
+  return { kind: 'month', period: latestByYear.get(year)!, year };
+}
+
+/* The latest Period with data in each stored Period year. */
+function latestMonthByYear(movements: ScopeAwareMovement[]): Map<number, MonthNumber> {
+  const latest = new Map<number, MonthNumber>();
   for (const movement of movements) {
     if (!isMonthNumber(movement.period)) continue;
     const year = getPeriodYear(movement);
-    if (
-      latest === null ||
-      year > latest.year ||
-      (year === latest.year && movement.period > latest.period)
-    ) {
-      latest = { kind: 'month', period: movement.period, year };
+    const known = latest.get(year);
+    if (known === undefined || movement.period > known) {
+      latest.set(year, movement.period);
     }
   }
-  return latest ?? { kind: 'month', period: getCurrentPeriod(), year: getCurrentYear() };
+  return latest;
 }
 
 /* Issue #194: a new year keeps the kind of Scope. A month Scope keeps its
    month within the same year and otherwise lands on the latest month with
-   data in that year (#216), else on the current month. */
+   data in that year, else on the current month (Issue #216). */
 export function changeYear(
   scope: MonthScope,
   year: number,
@@ -139,22 +146,16 @@ export function scopeOptions(movements: ScopeAwareMovement[], scope: PeriodScope
   if (scope.kind === 'month') {
     months.add(scope.period);
   }
-  const latestMonthByYear = new Map<number, MonthNumber>();
   for (const movement of movements) {
     const year = getPeriodYear(movement);
     years.add(year);
-    if (!isMonthNumber(movement.period)) continue;
-    if (year === scope.year) {
+    if (year === scope.year && isMonthNumber(movement.period)) {
       months.add(movement.period);
-    }
-    const known = latestMonthByYear.get(year);
-    if (known === undefined || movement.period > known) {
-      latestMonthByYear.set(year, movement.period);
     }
   }
   return {
     years: Array.from(years).sort((a, b) => a - b),
     months: MONTH_NUMBERS.filter(m => months.has(m)),
-    latestMonthByYear,
+    latestMonthByYear: latestMonthByYear(movements),
   };
 }

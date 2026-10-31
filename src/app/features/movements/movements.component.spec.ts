@@ -1040,7 +1040,7 @@ describe('MovementsComponent - shared scope', () => {
   it('should pick the default again when the data is replaced by a Restore', async () => {
     await transactionService.create(accountId, categoryId, 100, new Date(), 3, null, null, 2016);
     fixture.detectChanges();
-    await vi.waitFor(() => expect(component.dataLoaded()).toBe(true));
+    await vi.waitFor(() => expect(component.isLoaded()).toBe(true));
     component.onScopeMonthChange('all');
 
     await transactionService.create(accountId, categoryId, 100, new Date(), 9, null, null, 2017);
@@ -1058,7 +1058,7 @@ describe('MovementsComponent - shared scope', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.scope-selects')).toBeNull();
 
-    await vi.waitFor(() => expect(component.dataLoaded()).toBe(true));
+    await vi.waitFor(() => expect(component.isLoaded()).toBe(true));
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.scope-selects')).not.toBeNull();
   });
@@ -3539,6 +3539,17 @@ describe('MovementsComponent - scope URL state', () => {
     TestBed.inject(Location).replaceState('/movements?period=3&year=2025');
 
     await component.ngOnInit();
+
+    expect(component.scope()).toEqual({ kind: 'month', period: 3, year: 2025 });
+  });
+
+  it('keeps the Scope in the link when the data fails to load', async () => {
+    fixture.detectChanges();
+    await vi.waitFor(() => expect(component.isLoaded()).toBe(true));
+    vi.spyOn(TestBed.inject(TransactionService), 'getAll').mockRejectedValueOnce(new Error('boom'));
+    TestBed.inject(Location).replaceState('/movements?period=3&year=2025');
+
+    await expect(component.ngOnInit()).rejects.toThrow('boom');
 
     expect(component.scope()).toEqual({ kind: 'month', period: 3, year: 2025 });
   });

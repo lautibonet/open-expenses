@@ -97,7 +97,7 @@ export class MovementsComponent implements OnInit, OnDestroy {
     const excluded = paymentCategoryIds(this.allAccounts());
     return this.categories().filter((c) => c.id == null || !excluded.has(c.id));
   });
-  dataLoaded = signal(false);
+  isLoaded = signal(false);
   baseCurrency = signal('EUR');
 
   showForm = signal<'none' | 'transfer' | 'transaction'>('none');
@@ -199,11 +199,14 @@ export class MovementsComponent implements OnInit, OnDestroy {
     }
   });
 
-  /* A Restore replaces the data, so the screen opens afresh on its default
-     Scope. */
+  /* Issue #216: a Restore replaces the data, so the screen opens afresh on
+     its default Scope, reflected in the URL and announced. */
   private reloadDataOnVersionChange = this.dataVersion.reloadOnChange(async () => {
-    await this.loadAll();
-    this.reflectScopeInUrl(this.scope());
+    try {
+      await this.loadAll();
+    } finally {
+      this.setScope(this.scope());
+    }
   });
 
   private prefersReducedMotion(): boolean {
@@ -319,8 +322,8 @@ export class MovementsComponent implements OnInit, OnDestroy {
   }
 
   /* Issue #216: the Scope is chosen once the movements are in — the one
-     named in the link, else the default Scope. Later refreshes never move
-     it. */
+     named in the link, else the default Scope. Only a load picks it;
+     refresh() never moves it. */
   private async loadAll(linkedScope: PeriodScope | null = null): Promise<void> {
     try {
       this.baseCurrency.set(await this.profileService.getBaseCurrency());
@@ -329,9 +332,9 @@ export class MovementsComponent implements OnInit, OnDestroy {
       this.categories.set(await this.categoryService.getActive());
       this.allCategories.set(await this.categoryService.getAll());
       await this.refresh();
-      this.scope.set(linkedScope ?? defaultScope([...this.transactions(), ...this.transfers()]));
     } finally {
-      this.dataLoaded.set(true);
+      this.scope.set(linkedScope ?? defaultScope([...this.transactions(), ...this.transfers()]));
+      this.isLoaded.set(true);
     }
   }
 

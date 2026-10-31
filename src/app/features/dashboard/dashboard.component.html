@@ -7,7 +7,7 @@
     </div>
 
     <div class="scope-control" role="group" [attr.aria-label]="language.t('scope.groupAria')">
-      @if (dataLoaded()) {
+      @if (isLoaded()) {
         <div class="scope-selects">
           <select
             [ngModel]="scopePeriod()"
