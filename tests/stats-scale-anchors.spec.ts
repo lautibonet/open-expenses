@@ -4,7 +4,7 @@ import { expect, test } from '@playwright/test';
  * Issue #156 — Stats graphs: scale anchors + mirrored balance caption.
  *
  * Each graph card states its scale in the caps-label voice (figures in
- * JetBrains Mono tabular): the twelve-Period chart anchors its tallest column and its
+ * JetBrains Mono tabular): the Net chart anchors its tallest column and its
  * zero line, the strip anchors its track top (or, when the year's max
  * magnitude is an overdrawn balance, that cap). The strip gains the mirrored
  * "{month} Balance" caption under it, pairing both cards' footers.
@@ -29,18 +29,20 @@ for (const viewport of [
       await addExpense(page, '500');
 
       await page.goto('/stats');
+      // A one-Period Scope leaves the charts out (ADR 0030): chart the last three.
+      await page.getByLabel('Scope preset').selectOption({ label: 'Last 3' });
 
-      // Twelve-Period chart anchor: tallest column figure; both transactions land in
+      // Net chart anchor: tallest column figure; both transactions land in
       // the current Period, so nothing dips below the line and the floor
       // figure is 0.
-      const twelvePeriodsScale = page.locator('.twelve-periods-scale');
-      await expect(twelvePeriodsScale).toBeVisible();
-      await expect(twelvePeriodsScale).toContainText('Tallest column');
-      await expect(twelvePeriodsScale).toContainText('3,000.00');
-      await expect(twelvePeriodsScale).toContainText('Deepest overdrawn');
-      await expect(twelvePeriodsScale).toContainText('0.00');
+      const netChartScale = page.locator('.net-chart-scale');
+      await expect(netChartScale).toBeVisible();
+      await expect(netChartScale).toContainText('Tallest column');
+      await expect(netChartScale).toContainText('3,000.00');
+      await expect(netChartScale).toContainText('Deepest overdrawn');
+      await expect(netChartScale).toContainText('0.00');
 
-      // Strip caption mirrors the twelve-Period chart caption's grammar.
+      // Strip caption mirrors the Net chart caption's grammar.
       const balanceCaption = page.locator('.balance-caption');
       await expect(balanceCaption).toBeVisible();
       await expect(balanceCaption).toContainText('Balance');
@@ -53,13 +55,13 @@ for (const viewport of [
       await expect(balanceScale).toContainText('2,600.00');
 
       // Hidden figure lists untouched; legends still in place.
-      await expect(page.locator('.twelve-periods-figures.visually-hidden')).toHaveCount(1);
+      await expect(page.locator('.net-chart-figures.visually-hidden')).toHaveCount(1);
       await expect(page.locator('.balance-figures.visually-hidden')).toHaveCount(1);
-      await expect(page.locator('.twelve-periods-legend')).toBeVisible();
+      await expect(page.locator('.net-chart-legend')).toBeVisible();
       await expect(page.locator('.balance-legend')).toBeVisible();
 
       // The anchors' figures read in the mono data voice.
-      const mono = await twelvePeriodsScale.locator('.value').first().evaluate((el) => {
+      const mono = await netChartScale.locator('.value').first().evaluate((el) => {
         const s = getComputedStyle(el);
         return { family: s.fontFamily, numeric: s.fontVariantNumeric };
       });
@@ -82,22 +84,22 @@ for (const viewport of [
           return c.top - g.bottom;
         };
         return {
-          twelvePeriodsCaption: row('.twelve-periods-caption'),
-          twelvePeriodsScale: row('.twelve-periods-scale .scale-line'),
+          netChartCaption: row('.net-chart-caption'),
+          netChartScale: row('.net-chart-scale .scale-line'),
           balanceCaption: row('.balance-caption'),
           balanceScale: row('.balance-scale .scale-line'),
-          twelvePeriodsGap: gap('.twelve-periods', '.twelve-periods-caption'),
+          netChartGap: gap('.net-chart', '.net-chart-caption'),
           balanceGap: gap('.balance-strip', '.balance-caption'),
-          twelvePeriodsCaptionGap: gap('.twelve-periods-caption', '.twelve-periods-scale .scale-line'),
-          twelvePeriodsLegendGap: gap(
-            '.twelve-periods-scale .scale-line:nth-child(2)',
-            '.twelve-periods-legend',
+          netChartCaptionGap: gap('.net-chart-caption', '.net-chart-scale .scale-line'),
+          netChartLegendGap: gap(
+            '.net-chart-scale .scale-line:nth-child(2)',
+            '.net-chart-legend',
           ),
           balanceLegendGap: gap('.balance-scale .scale-line', '.balance-legend'),
         };
       });
       for (const [caption, scale] of [
-        [geo.twelvePeriodsCaption, geo.twelvePeriodsScale],
+        [geo.netChartCaption, geo.netChartScale],
         [geo.balanceCaption, geo.balanceScale],
       ]) {
         expect(Math.abs(scale.labelLeft - caption.labelLeft), 'labels share the left edge')
@@ -105,17 +107,17 @@ for (const viewport of [
         expect(Math.abs(scale.valueRight - caption.valueRight), 'figures share the right edge')
           .toBeLessThanOrEqual(2);
       }
-      expect(Math.abs(geo.twelvePeriodsGap - geo.balanceGap), 'one shared graph-to-caption gap')
+      expect(Math.abs(geo.netChartGap - geo.balanceGap), 'one shared graph-to-caption gap')
         .toBeLessThanOrEqual(2);
       // Footer rhythm: caption→scale rides the small step; the legends sit
       // one bigger shared step below, alike on both cards.
       expect(
-        Math.abs(geo.twelvePeriodsCaptionGap - geo.balanceGap * 0.25),
-        `caption gap ${geo.twelvePeriodsCaptionGap} must be a quarter of the graph gap`,
+        Math.abs(geo.netChartCaptionGap - geo.balanceGap * 0.25),
+        `caption gap ${geo.netChartCaptionGap} must be a quarter of the graph gap`,
       ).toBeLessThanOrEqual(2);
       expect(
-        Math.abs(geo.twelvePeriodsLegendGap - geo.balanceGap * 0.5),
-        `twelve-Period legend gap ${geo.twelvePeriodsLegendGap} must be half the graph gap`,
+        Math.abs(geo.netChartLegendGap - geo.balanceGap * 0.5),
+        `Net chart legend gap ${geo.netChartLegendGap} must be half the graph gap`,
       ).toBeLessThanOrEqual(2);
       expect(
         Math.abs(geo.balanceLegendGap - geo.balanceGap * 0.5),

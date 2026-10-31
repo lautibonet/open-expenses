@@ -3,7 +3,7 @@ import {
   balanceExtremes,
   categoryBarWidth,
   fillPct,
-  twelvePeriodsExtremes,
+  netChartExtremes,
   stripScaleAnchor,
   zeroPct,
 } from './chart-scale';
@@ -51,18 +51,18 @@ describe('fill heights', () => {
   });
 });
 
-describe('twelve Periods extremes', () => {
+describe('Net chart extremes', () => {
   it('takes the largest Income, Expenses, or positive Net above the line, and the deepest Net below', () => {
     const periods = [
       period({ month: 1, income: 1000, expenses: 400, net: 600 }),
       period({ month: 2, income: 200, expenses: 1500, net: -1300 }),
     ];
 
-    expect(twelvePeriodsExtremes(periods)).toEqual({ up: 1500, down: 1300 });
+    expect(netChartExtremes(periods)).toEqual({ up: 1500, down: 1300 });
   });
 
   it('has no overdrawn side when every Net is positive', () => {
-    expect(twelvePeriodsExtremes([period({ income: 10, expenses: 5, net: 5 })])).toEqual({ up: 10, down: 0 });
+    expect(netChartExtremes([period({ income: 10, expenses: 5, net: 5 })])).toEqual({ up: 10, down: 0 });
   });
 });
 

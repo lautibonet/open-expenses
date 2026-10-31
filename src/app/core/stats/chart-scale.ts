@@ -1,4 +1,5 @@
 import { PeriodCashFlow } from './cash-basis';
+import { Period } from '../types/period.type';
 import { CategorySpending } from './category-spending';
 
 /* A graph track's two extremes around the zero line: the largest figure that
@@ -19,7 +20,7 @@ export interface ScaleAnchor {
 const round2 = (value: number) => Math.round(value * 100) / 100;
 
 /* The zero line both graphs share positions itself from the charted
-   Periods' data (the twelve ending at the To Period): its height in the
+   Periods' data (exactly the Scope's, ADR 0030): its height in the
    track equals their negative share of their extremes. All-positive data
    pins the line to the bottom edge and gives the fills the full height;
    overdrawn data raises it in proportion, so
@@ -43,10 +44,10 @@ export function fillPct(value: number, extremes: Extremes): number {
   return 0;
 }
 
-/* Twelve-Period chart extremes: up is the largest figure among Income, Expenses
+/* Net chart extremes: up is the largest figure among Income, Expenses
    and positive Net; down is the deepest overdrawn Net. Income and Expenses
    are magnitudes and never grow below the line — only a negative Net does. */
-export function twelvePeriodsExtremes(periods: PeriodCashFlow[]): Extremes {
+export function netChartExtremes(periods: PeriodCashFlow[]): Extremes {
   let up = 0;
   let down = 0;
   for (const p of periods) {
@@ -78,4 +79,22 @@ export function categoryBarWidth(total: number, breakdown: CategorySpending[]): 
   const max = breakdown.length > 0 ? Math.max(...breakdown.map(b => b.total)) : 0;
   if (max <= 0) return 0;
   return Math.round((total / max) * 10000) / 100;
+}
+
+/* A year label under a chart: the year of a charted January, its 1-based
+   column, and whether that January is the last column, where the label runs
+   left to stay inside the card. */
+export interface YearMark {
+  year: number;
+  column: number;
+  atEnd: boolean;
+}
+
+/* ADR 0030: a chart crossing a year boundary labels each January with its
+   year; one inside a single year needs no labels. */
+export function yearMarks(periods: Period[]): YearMark[] {
+  if (periods.length === 0 || periods[0].year === periods[periods.length - 1].year) return [];
+  return periods.flatMap((period, i) =>
+    period.month === 1 ? [{ year: period.year, column: i + 1, atEnd: i === periods.length - 1 }] : [],
+  );
 }

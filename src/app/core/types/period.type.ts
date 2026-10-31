@@ -108,7 +108,7 @@ export function scopePeriods(scope: Scope): Period[] {
 }
 
 /* Whether a (year, Period) bucket falls inside the Scope's run of Periods. */
-export function periodInScope(year: number, period: number | string, scope: Scope): boolean {
+function periodInScope(year: number, period: number | string, scope: Scope): boolean {
   if (!isMonthNumber(period)) {
     return false;
   }

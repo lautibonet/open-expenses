@@ -392,29 +392,35 @@ describe('statsReport Scope figures', () => {
     expect(kpis.hasData).toBe(false);
   });
 
-  it('charts the twelve Periods ending at the To Period, across a year boundary, and the To Period Net', () => {
-    const { twelvePeriods } = statsReport(ledger, scope(2), noRatesNeeded);
+  it('charts exactly the Scope Periods, across a year boundary, and the To Period Net', () => {
+    const { netChart, balanceStrip } = statsReport(ledger, fromTo(2025, 12, 2026, 2), noRatesNeeded);
 
-    expect(twelvePeriods.periods.map(p => [p.year, p.month])).toEqual([
-      [2025, 3], [2025, 4], [2025, 5], [2025, 6], [2025, 7], [2025, 8],
-      [2025, 9], [2025, 10], [2025, 11], [2025, 12], [2026, 1], [2026, 2],
-    ]);
-    expect(twelvePeriods.periods[10]).toMatchObject({ year: 2026, month: 1, income: 3000, expenses: 1000, net: 2000 });
-    expect(twelvePeriods.toPeriodNet).toBe(-500);
+    const expected = [[2025, 12], [2026, 1], [2026, 2]];
+    expect(netChart.periods.map(p => [p.year, p.month])).toEqual(expected);
+    expect(balanceStrip.periods.map(p => [p.year, p.month])).toEqual(expected);
+    expect(netChart.periods[1]).toMatchObject({ year: 2026, month: 1, income: 3000, expenses: 1000, net: 2000 });
+    expect(netChart.toPeriodNet).toBe(-500);
   });
 
-  it('marks the Scope Periods on both charts', () => {
-    const { twelvePeriods, balanceStrip } = statsReport(ledger, fromTo(2025, 12, 2026, 2), noRatesNeeded);
+  it('charts every Period of a Scope longer than twelve', () => {
+    const { netChart, balanceStrip } = statsReport(ledger, fromTo(2024, 1, 2026, 2), noRatesNeeded);
 
-    const marked = [false, false, false, false, false, false, false, false, false, true, true, true];
-    expect(twelvePeriods.periods.map(p => p.inScope)).toEqual(marked);
-    expect(balanceStrip.periods.map(p => p.inScope)).toEqual(marked);
+    expect(netChart.periods).toHaveLength(26);
+    expect(netChart.periods[0]).toMatchObject({ year: 2024, month: 1 });
+    expect(balanceStrip.periods).toHaveLength(26);
+  });
+
+  it('charts a one-Period Scope as that Period alone', () => {
+    const { netChart, balanceStrip } = statsReport(ledger, scope(2), noRatesNeeded);
+
+    expect(netChart.periods.map(p => [p.year, p.month])).toEqual([[2026, 2]]);
+    expect(balanceStrip.periods.map(p => [p.year, p.month])).toEqual([[2026, 2]]);
   });
 
   it('accumulates the total balance at the end of each charted Period', () => {
-    const { balanceStrip, balances } = statsReport(ledger, scope(2), noRatesNeeded);
+    const { balanceStrip, balances } = statsReport(ledger, fromTo(2025, 12, 2026, 2), noRatesNeeded);
 
-    expect(balanceStrip.accumulated).toEqual([1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 3000, 2300]);
+    expect(balanceStrip.accumulated).toEqual([1000, 3000, 2300]);
     expect(balanceStrip.periods.map(p => p.balance)).toEqual(balanceStrip.accumulated);
     expect(balanceStrip.toPeriodBalance).toBe(2300);
     expect(balanceStrip.toPeriodBalance).toBe(balances.total);
@@ -422,11 +428,9 @@ describe('statsReport Scope figures', () => {
   });
 
   it('freezes the charted Periods after the last one with movements', () => {
-    const { balanceStrip } = statsReport(ledger, scope(5), noRatesNeeded);
+    const { balanceStrip } = statsReport(ledger, fromTo(2026, 1, 2026, 5), noRatesNeeded);
 
-    expect(balanceStrip.periods.map(p => p.frozen)).toEqual([
-      false, false, false, false, false, false, false, false, false, false, true, true,
-    ]);
+    expect(balanceStrip.periods.map(p => p.frozen)).toEqual([false, false, false, true, true]);
   });
 
   it('shows the strip for a Scope whose only movement is a Card Purchase', () => {
@@ -501,14 +505,11 @@ describe('statsReport over a Scope that crosses a year boundary', () => {
     expect(balanceStrip.toPeriodBalance).toBe(11999);
   });
 
-  it('charts the twelve Periods ending at the To Period with its three Periods marked', () => {
-    const { twelvePeriods } = statsReport(ledger, novemberToJanuary, noRatesNeeded);
+  it('charts exactly its three Periods', () => {
+    const { netChart } = statsReport(ledger, novemberToJanuary, noRatesNeeded);
 
-    expect(twelvePeriods.periods[0]).toMatchObject({ year: 2025, month: 2 });
-    expect(twelvePeriods.periods[11]).toMatchObject({ year: 2026, month: 1, net: -700 });
-    expect(twelvePeriods.periods.filter(p => p.inScope).map(p => [p.year, p.month])).toEqual([
-      [2025, 11], [2025, 12], [2026, 1],
-    ]);
+    expect(netChart.periods.map(p => [p.year, p.month])).toEqual([[2025, 11], [2025, 12], [2026, 1]]);
+    expect(netChart.periods[2]).toMatchObject({ net: -700 });
   });
 });
 
@@ -522,16 +523,16 @@ describe('statsReport balance strip Exchange Rate paths', () => {
   });
 
   it('accumulates converted Accounts so the Scope Period equals the total balance', () => {
-    const report = statsReport(ledger, scope(2), usdRates);
+    const report = statsReport(ledger, fromTo(2026, 1, 2026, 2), usdRates);
 
-    expect(report.balanceStrip.accumulated.slice(10)).toEqual([160, 160]);
+    expect(report.balanceStrip.accumulated).toEqual([160, 160]);
     expect(report.balanceStrip.toPeriodBalance).toBe(report.balances.total);
   });
 
   it('accumulates only the Base Currency Accounts at face amounts when rates are unavailable', () => {
-    const report = statsReport(ledger, scope(2), unavailable);
+    const report = statsReport(ledger, fromTo(2026, 1, 2026, 2), unavailable);
 
-    expect(report.balanceStrip.accumulated.slice(10)).toEqual([100, 90]);
+    expect(report.balanceStrip.accumulated).toEqual([100, 90]);
     expect(report.balanceStrip.toPeriodBalance).toBe(report.balances.total);
   });
 });

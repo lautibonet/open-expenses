@@ -1,4 +1,13 @@
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  OnInit,
+  afterRenderEffect,
+  computed,
+  inject,
+  signal,
+  viewChildren,
+} from '@angular/core';
 import { TransactionService } from '../../core/services/transaction.service';
 import { TransferService } from '../../core/services/transfer.service';
 import { AccountService } from '../../core/services/account.service';
@@ -8,7 +17,7 @@ import { ExchangeRateService } from '../../core/services/exchange-rate.service';
 import { LanguageService } from '../../core/services/language.service';
 import { DataVersionService } from '../../core/services/data-version.service';
 import { ScopeAwareMovement } from '../../core/types/period.type';
-import { Scope, defaultStatsScope } from '../../core/scope/scope';
+import { Scope, defaultStatsScope, isMultiPeriod } from '../../core/scope/scope';
 import { DismissibleAlertComponent } from '../../shared/components/dismissible-alert/dismissible-alert.component';
 import { ScopeControlComponent } from '../../shared/components/scope-control/scope-control.component';
 import { FitTextDirective } from '../../shared/directives/fit-text.directive';
@@ -25,8 +34,9 @@ import {
   balanceExtremes,
   categoryBarWidth,
   fillPct,
-  twelvePeriodsExtremes,
+  netChartExtremes,
   stripScaleAnchor,
+  yearMarks,
   zeroPct,
 } from '../../core/stats/chart-scale';
 
@@ -79,8 +89,24 @@ export class DashboardComponent implements OnInit {
   /* Every figure the screen shows. */
   report = computed<StatsReport>(() => statsReport(this.snapshot(), this.scope(), this.rates()));
 
-  private twelvePeriodsExtremes = computed(() => twelvePeriodsExtremes(this.report().twelvePeriods.periods));
+  private netChartExtremes = computed(() => netChartExtremes(this.report().netChart.periods));
   private balanceExtremes = computed(() => balanceExtremes(this.report().balanceStrip.accumulated));
+
+  /* ADR 0030: the charts cover exactly the Scope's Periods, and a one-Period
+     Scope leaves them out — one column compares nothing. */
+  chartsShown = computed(() => isMultiPeriod(this.scope()));
+  /* Both charts share their Periods, so they share their year labels. */
+  yearMarks = computed(() => yearMarks(this.report().netChart.periods));
+
+  /* A chart longer than twelve Periods scrolls inside its card; each opens,
+     and reopens on every Scope change, scrolled to the To Period. */
+  private chartScrolls = viewChildren<ElementRef<HTMLElement>>('chartScroll');
+  private scrollChartsToToPeriod = afterRenderEffect(() => {
+    this.report();
+    for (const { nativeElement } of this.chartScrolls()) {
+      nativeElement.scrollLeft = nativeElement.scrollWidth;
+    }
+  });
 
   async ngOnInit(): Promise<void> {
     await this.loadAll();
@@ -132,7 +158,7 @@ export class DashboardComponent implements OnInit {
     return this.language.scopeLabel(this.scope());
   }
 
-  /* The balances and the charts end at the To Period. */
+  /* The balances and the chart captions are as of the To Period. */
   toPeriodLabel(): string {
     return this.language.periodName(this.scope().to);
   }
@@ -175,8 +201,8 @@ export class DashboardComponent implements OnInit {
     });
   }
 
-  twelvePeriodsZeroPct(): number {
-    return zeroPct(this.twelvePeriodsExtremes());
+  netChartZeroPct(): number {
+    return zeroPct(this.netChartExtremes());
   }
 
   balanceZeroPct(): number {
@@ -184,18 +210,18 @@ export class DashboardComponent implements OnInit {
   }
 
   barHeight(value: number): number {
-    return fillPct(value, this.twelvePeriodsExtremes());
+    return fillPct(value, this.netChartExtremes());
   }
 
-  /* Scale anchor: the figures the twelve-Period chart's scale edges are worth — the
+  /* Scale anchor: the figures the Net chart's scale edges are worth — the
      tallest column above the line and the deepest overdrawn Net below it,
      signed. Stated so the relative heights get absolute meaning. */
-  twelvePeriodsScalePeak(): number {
-    return this.twelvePeriodsExtremes().up;
+  netChartScalePeak(): number {
+    return this.netChartExtremes().up;
   }
 
-  twelvePeriodsScaleOverdrawn(): number {
-    return -this.twelvePeriodsExtremes().down;
+  netChartScaleOverdrawn(): number {
+    return -this.netChartExtremes().down;
   }
 
   stripScaleAnchor(): { label: string; amount: number } {
@@ -211,7 +237,7 @@ export class DashboardComponent implements OnInit {
   }
 
   /* The accessible figure list: Income, Expenses, and Net per Period. */
-  twelvePeriodsFigures(item: PeriodCashFlow): string {
+  netChartFigures(item: PeriodCashFlow): string {
     return [
       `${this.language.t('stats.income')} ${this.formatMoney(item.income)}`,
       `${this.language.t('stats.expenses')} ${this.formatMoney(item.expenses)}`,
