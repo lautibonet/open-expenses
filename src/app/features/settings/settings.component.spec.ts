@@ -128,7 +128,7 @@ describe('SettingsComponent - pencil edit state (component)', () => {
     component.startEditAccount(accountId);
     component.editAccountBalance(-100);
     await component.saveAccountEdit();
-    expect(component.editError()).toBe('El saldo inicial no puede ser negativo');
+    expect(component.editError()).toBe('El saldo de apertura no puede ser negativo');
   });
 
   it('clears the inline error when another edit is started or the edit is cancelled', async () => {
@@ -634,6 +634,46 @@ describe('SettingsComponent - edit-on-demand rows', () => {
     ) as HTMLButtonElement;
     expect(pencil).toBeTruthy();
     expect(document.activeElement).toBe(pencil);
+  });
+
+  it('keeps focus on the balance input while typing in it', async () => {
+    const row = rowFor('.account-row', 'Cash');
+    pencilFor(row).click();
+    fixture.detectChanges();
+    await flush();
+    fixture.detectChanges();
+
+    const balanceInput = row.querySelector('.edit-state input[type="number"]') as HTMLInputElement;
+    balanceInput.focus();
+    for (const value of ['1', '12', '123']) {
+      balanceInput.value = value;
+      balanceInput.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+      await flush();
+      fixture.detectChanges();
+      expect(document.activeElement).toBe(balanceInput);
+    }
+    expect(component.editingAccount()?.initialBalance).toBe(123);
+  });
+
+  it('keeps focus on a card field other than the name while typing in it', async () => {
+    await accountService.createCard({ name: 'Visa', currency: 'EUR' });
+    await component.ngOnInit();
+    fixture.detectChanges();
+    const row = rowFor('.account-row', 'Visa');
+    pencilFor(row).click();
+    fixture.detectChanges();
+    await flush();
+    fixture.detectChanges();
+
+    const limitInput = row.querySelectorAll('.edit-state input[type="number"]')[1] as HTMLInputElement;
+    limitInput.focus();
+    limitInput.value = '5';
+    limitInput.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    await flush();
+    fixture.detectChanges();
+    expect(document.activeElement).toBe(limitInput);
   });
 
   it('renders edit-state validation errors inline, announced, without a page-level alert', async () => {

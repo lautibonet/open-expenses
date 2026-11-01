@@ -37,7 +37,7 @@ async function completeOnboarding(page: import('@playwright/test').Page) {
   // 4. Accounts: one Cash Account
   await page.getByRole('button', { name: 'New account' }).click();
   await page.getByLabel('Account name').fill('Checking');
-  await page.getByLabel('Initial balance').fill('100');
+  await page.getByLabel('Opening balance').fill('100');
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('button', { name: 'Continue' }).click();
 
@@ -47,7 +47,7 @@ async function completeOnboarding(page: import('@playwright/test').Page) {
 }
 
 test.describe('Settings credit cards (#163)', () => {
-  test('creates a card with a starting debt, limit and payment category', async ({ page }) => {
+  test('creates a card with an opening debt, limit and payment category', async ({ page }) => {
     await completeOnboarding(page);
     await page.goto('/settings');
 
@@ -56,7 +56,7 @@ test.describe('Settings credit cards (#163)', () => {
 
     const form = cards.locator('.inline-form');
     await form.getByLabel('Name').fill('Visa');
-    await form.getByLabel('Starting debt').fill('-500');
+    await form.getByLabel('Opening debt').fill('-500');
     await form.getByLabel('Limit').fill('2000');
     await form.getByRole('button', { name: 'Add', exact: true }).click();
 
@@ -75,7 +75,7 @@ test.describe('Settings credit cards (#163)', () => {
     ).toHaveCount(0);
   });
 
-  test('edits a card name, starting debt and limit', async ({ page }) => {
+  test('edits a card name, opening debt and limit', async ({ page }) => {
     await completeOnboarding(page);
     await page.goto('/settings');
 
@@ -83,7 +83,7 @@ test.describe('Settings credit cards (#163)', () => {
     await cards.getByRole('button', { name: 'New card' }).click();
     const form = cards.locator('.inline-form');
     await form.getByLabel('Name').fill('Visa');
-    await form.getByLabel('Starting debt').fill('-500');
+    await form.getByLabel('Opening debt').fill('-500');
     await form.getByRole('button', { name: 'Add', exact: true }).click();
 
     const row = cardRow(page, 'Visa');
@@ -91,7 +91,7 @@ test.describe('Settings credit cards (#163)', () => {
 
     const edit = cards.locator('.edit-state');
     await edit.getByLabel('Name').fill('Mastercard');
-    await edit.getByLabel('Starting debt').fill('-750');
+    await edit.getByLabel('Opening debt').fill('-750');
     await edit.getByLabel('Limit').fill('3000');
     await edit.getByRole('button', { name: 'Save changes' }).click();
 
