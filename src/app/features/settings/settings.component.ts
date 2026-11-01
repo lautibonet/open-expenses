@@ -138,31 +138,33 @@ export class SettingsComponent implements OnInit {
   newCardNameInput = viewChild<ElementRef<HTMLInputElement>>('newCardNameInput');
   newCategoryNameInput = viewChild<ElementRef<HTMLInputElement>>('newCategoryNameInput');
 
+  /* Which item each edit state has open: a computed only notifies when its
+     value changes, so typing into an open edit state never re-runs the
+     focus effects below. */
+  private editingAccountId = computed(() => this.editingAccount()?.id ?? null);
+  private editingCardId = computed(() => this.editingCard()?.id ?? null);
+  private editingCategoryId = computed(() => this.editingCategory()?.id ?? null);
+
   /* On open, focus the first input of the expanded edit state or of the
-     New-button-revealed add form. */
-  private focusEditState = effect(() => {
-    if (this.editingAccount()) {
-      this.accountNameInput()?.nativeElement.focus();
-    }
-    if (this.editingCard()) {
-      this.cardNameInput()?.nativeElement.focus();
-    }
-    if (this.editingCategory()) {
-      this.categoryNameInput()?.nativeElement.focus();
-    }
-    if (this.editingBaseCurrency()) {
-      this.baseCurrencySelect()?.nativeElement.focus();
-    }
-    if (this.addingAccount()) {
-      this.newAccountNameInput()?.nativeElement.focus();
-    }
-    if (this.addingCard()) {
-      this.newCardNameInput()?.nativeElement.focus();
-    }
-    if (this.addingCategory()) {
-      this.newCategoryNameInput()?.nativeElement.focus();
-    }
-  });
+     New-button-revealed add form. One effect per surface, each tracking only
+     whether it is open, so editing one surface never steals focus for
+     another. The view query is tracked too: the input exists only once the
+     opened state has rendered, and the query changes only when it appears. */
+  private focusOnOpen(isOpen: () => unknown, target: () => ElementRef<HTMLElement> | undefined) {
+    return effect(() => {
+      if (isOpen() != null && isOpen() !== false) {
+        target()?.nativeElement.focus();
+      }
+    });
+  }
+
+  private focusAccountEdit = this.focusOnOpen(this.editingAccountId, this.accountNameInput);
+  private focusCardEdit = this.focusOnOpen(this.editingCardId, this.cardNameInput);
+  private focusCategoryEdit = this.focusOnOpen(this.editingCategoryId, this.categoryNameInput);
+  private focusBaseCurrencyEdit = this.focusOnOpen(this.editingBaseCurrency, this.baseCurrencySelect);
+  private focusNewAccount = this.focusOnOpen(this.addingAccount, this.newAccountNameInput);
+  private focusNewCard = this.focusOnOpen(this.addingCard, this.newCardNameInput);
+  private focusNewCategory = this.focusOnOpen(this.addingCategory, this.newCategoryNameInput);
 
   private reloadDataOnVersionChange = this.dataVersion.reloadOnChange(() => this.loadAll());
 
