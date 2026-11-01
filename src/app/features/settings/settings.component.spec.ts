@@ -128,7 +128,7 @@ describe('SettingsComponent - pencil edit state (component)', () => {
     component.startEditAccount(accountId);
     component.editAccountBalance(-100);
     await component.saveAccountEdit();
-    expect(component.editError()).toBe('El saldo inicial no puede ser negativo');
+    expect(component.editError()).toBe('El saldo de apertura no puede ser negativo');
   });
 
   it('clears the inline error when another edit is started or the edit is cancelled', async () => {
