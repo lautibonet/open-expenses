@@ -519,12 +519,12 @@ async function completeOnboarding(
   // 4. Accounts
   await page.getByRole('button', { name: 'New account' }).click();
   await page.getByLabel('Account name').fill('Checking');
-  await page.getByLabel('Initial balance').fill('100');
+  await page.getByLabel('Opening balance').fill('100');
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   if (opts.secondAccount) {
     // The add form stays open after a successful add.
     await page.getByLabel('Account name').fill('Savings');
-    await page.getByLabel('Initial balance').fill('50');
+    await page.getByLabel('Opening balance').fill('50');
     await page.getByRole('button', { name: 'Add', exact: true }).click();
   }
   await page.getByRole('button', { name: 'Continue' }).click();
