@@ -13,6 +13,7 @@ import { Transaction } from '../../core/models/transaction.model';
 import { Transfer } from '../../core/models/transfer.model';
 import { Account, paymentCategoryIds } from '../../core/models/account.model';
 import { Category } from '../../core/models/category.model';
+import { accountGroups, categoryGroups } from '../../core/models/display-order';
 import {
   DisplayAmount,
   MovementRow,
@@ -85,6 +86,13 @@ export class MovementsComponent implements OnInit, OnDestroy {
     const excluded = paymentCategoryIds(this.allAccounts());
     return this.categories().filter((c) => c.id == null || !excluded.has(c.id));
   });
+  /* GLOSSARY.md, Account and Category: the filter dropdowns list Cash
+     Accounts, then Credit Cards, and Expense, then Income, each
+     alphabetically. */
+  accountFilterGroups = computed(() => accountGroups(this.accounts(), this.language.activeLanguage()));
+  categoryFilterGroups = computed(() =>
+    categoryGroups(this.pickableCategories(), this.language.activeLanguage()),
+  );
   isLoaded = signal(false);
   baseCurrency = signal('EUR');
 

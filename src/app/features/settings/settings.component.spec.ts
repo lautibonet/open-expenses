@@ -2134,3 +2134,50 @@ describe('SettingsComponent - credit cards (ADR 0022)', () => {
     expect(component.cards().some((c) => c.name === 'Visa')).toBe(true);
   });
 });
+
+describe('SettingsComponent - alphabetical lists', () => {
+  let fixture: ComponentFixture<SettingsComponent>;
+
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    await TestBed.configureTestingModule({
+      imports: [SettingsComponent],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(SettingsComponent);
+    const accountService = TestBed.inject(AccountService);
+    const categoryService = TestBed.inject(CategoryService);
+
+    await accountService.create('Wallet', 'EUR', 0);
+    await accountService.create('bank', 'EUR', 0);
+    await accountService.createCard({ name: 'Visa', currency: 'EUR' });
+    await accountService.createCard({ name: 'Amex', currency: 'EUR' });
+    await categoryService.create('Payroll', 'income');
+    await categoryService.create('Transport', 'expense');
+    await categoryService.create('Bonus', 'income');
+    const food = await categoryService.create('Food', 'expense');
+    await categoryService.setActive(food.id!, false);
+
+    await fixture.componentInstance.ngOnInit();
+    fixture.detectChanges();
+  });
+
+  afterEach(async () => {
+    await db.delete();
+  });
+
+  function names(selector: string): string[] {
+    return Array.from(fixture.nativeElement.querySelectorAll(selector) as NodeListOf<HTMLElement>).map(
+      (el) => el.textContent!.trim(),
+    );
+  }
+
+  it('lists accounts and cards alphabetically, ignoring letter case', () => {
+    expect(names('.account-name')).toEqual(['bank', 'Wallet', 'Amex', 'Visa']);
+  });
+
+  it('lists Expense categories, then Income ones, each alphabetically, deactivated ones in place', () => {
+    expect(names('.category-name')).toEqual(['Food', 'Transport', 'Bonus', 'Payroll']);
+  });
+});

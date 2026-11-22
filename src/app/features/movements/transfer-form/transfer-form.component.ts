@@ -20,6 +20,7 @@ import { Transfer, needsBaseExchangeRate, transferBaseAmount } from '../../../co
 import { Transaction } from '../../../core/models/transaction.model';
 import { Account, isCreditCard } from '../../../core/models/account.model';
 import { Category, isIncomeCategory } from '../../../core/models/category.model';
+import { accountGroups, sortAccounts } from '../../../core/models/display-order';
 import { storedPaymentCategory } from '../../../core/payment-category/payment-category-rules';
 import { periodEndBalance } from '../../../core/balances/period-end-balances';
 import {
@@ -236,6 +237,13 @@ export class TransferFormComponent implements AfterViewInit {
     return this.accounts().filter((a) => a.id !== sourceId);
   });
 
+  /* GLOSSARY.md, Account: the pickers list Cash Accounts, then Credit Cards,
+     each alphabetically; a fresh form picks from that same order. */
+  sourceAccountGroups = computed(() => accountGroups(this.accounts(), this.language.activeLanguage()));
+  destinationAccountGroups = computed(() =>
+    accountGroups(this.filteredDestinationAccounts(), this.language.activeLanguage()),
+  );
+
   canSubmit = computed(() => {
     const f = this.form();
     if (!f.sourceAccountId || !f.destAccountId) return false;
@@ -287,7 +295,7 @@ export class TransferFormComponent implements AfterViewInit {
       void this.refreshCardBalance();
       return;
     }
-    this.form.set(defaultFormState(this.accounts()));
+    this.form.set(defaultFormState(sortAccounts(this.accounts(), this.language.activeLanguage())));
     void this.refreshCardBalance();
   }
 

@@ -14,6 +14,12 @@ import {
 import { FormsModule } from '@angular/forms';
 import { Account, isBaseCurrencyAccount, isCreditCard } from '../../../core/models/account.model';
 import { Category } from '../../../core/models/category.model';
+import {
+  accountGroups,
+  categoryGroups,
+  sortAccounts,
+  sortCategories,
+} from '../../../core/models/display-order';
 import { Transaction } from '../../../core/models/transaction.model';
 import {
   ExchangeRateWellComponent,
@@ -108,6 +114,13 @@ export class TransactionFormComponent implements OnInit, AfterViewInit {
   accounts = input<Account[]>([]);
   categories = input<Category[]>([]);
   baseCurrency = input('EUR');
+
+  /* GLOSSARY.md, Account and Category: the pickers list Cash Accounts, then
+     Credit Cards, and Expense, then Income, each alphabetically; a fresh
+     form picks from that same order. */
+  accountPickerGroups = computed(() => accountGroups(this.accounts(), this.language.activeLanguage()));
+  categoryPickerGroups = computed(() => categoryGroups(this.categories(), this.language.activeLanguage()));
+
   editTransaction = input<Transaction | null>(null);
   initialDraft = input<TransactionFormDraft | null>(null);
   /* Hosted inside the mobile capture bottom sheet (#103): the sheet already
@@ -307,8 +320,8 @@ export class TransactionFormComponent implements OnInit, AfterViewInit {
     if (this.selectionInitialized) return;
     this.selectionInitialized = true;
 
-    const accounts = this.accounts();
-    const categories = this.categories();
+    const accounts = sortAccounts(this.accounts(), this.language.activeLanguage());
+    const categories = sortCategories(this.categories(), this.language.activeLanguage());
 
     let accountId = accounts[0]?.id ?? 0;
     let categoryId = categories[0]?.id ?? 0;

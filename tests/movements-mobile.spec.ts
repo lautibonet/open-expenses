@@ -72,7 +72,7 @@ test.describe('movements on a phone (coarse pointer)', () => {
     await expect(form).toBeVisible();
 
     // Select the widest category and type a long note.
-    await form.locator('select[name="category"]').selectOption({ label: `${LONG_CATEGORY} (Expense)` });
+    await form.locator('select[name="category"]').selectOption({ label: `${LONG_CATEGORY}` });
     await form.locator('input[name="note"]').fill(LONG_NOTE);
 
     await expectNoHorizontalOverflow(page);

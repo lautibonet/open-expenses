@@ -57,7 +57,7 @@ test.describe('Spending by Category is split cash/credit (#167)', () => {
     await page.goto('/movements');
     await page.getByRole('button', { name: '+ Transaction' }).click();
     const cashForm = page.locator('app-transaction-form');
-    await cashForm.getByLabel('Category').selectOption({ label: 'Food (Expense)' });
+    await cashForm.getByLabel('Category').selectOption({ label: 'Food' });
     await cashForm.getByLabel('Amount').fill('100');
     await cashForm.getByRole('button', { name: 'Save' }).click();
     await expect(cashForm).toHaveCount(0);
@@ -66,7 +66,7 @@ test.describe('Spending by Category is split cash/credit (#167)', () => {
     await page.getByRole('button', { name: '+ Transaction' }).click();
     const cardForm2 = page.locator('app-transaction-form');
     await cardForm2.getByLabel('Account').selectOption({ label: 'Visa (EUR)' });
-    await cardForm2.getByLabel('Category').selectOption({ label: 'Food (Expense)' });
+    await cardForm2.getByLabel('Category').selectOption({ label: 'Food' });
     await cardForm2.getByLabel('Amount').fill('300');
     await cardForm2.getByRole('button', { name: 'Save' }).click();
     await expect(cardForm2).toHaveCount(0);

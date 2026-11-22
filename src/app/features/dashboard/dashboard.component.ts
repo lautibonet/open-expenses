@@ -8,6 +8,7 @@ import {
   signal,
   viewChildren,
 } from '@angular/core';
+import { sortAccounts } from '../../core/models/display-order';
 import { NgTemplateOutlet } from '@angular/common';
 import { TransactionService } from '../../core/services/transaction.service';
 import { TransferService } from '../../core/services/transfer.service';
@@ -87,8 +88,14 @@ export class DashboardComponent implements OnInit {
   isLoaded = signal(false);
 
   baseCurrency = computed(() => this.snapshot().baseCurrency);
-  /* Every figure the screen shows. */
-  report = computed<StatsReport>(() => statsReport(this.snapshot(), this.scope(), this.rates()));
+  /* Every figure the screen shows. The Accounts go in alphabetically
+     (GLOSSARY.md, Account), so the balance list keeps that order within its
+     Cash Accounts and Credit Cards groups. */
+  report = computed<StatsReport>(() => {
+    const snapshot = this.snapshot();
+    const accounts = sortAccounts(snapshot.accounts, this.language.activeLanguage());
+    return statsReport({ ...snapshot, accounts }, this.scope(), this.rates());
+  });
 
   private netChartExtremes = computed(() => netChartExtremes(this.report().netChart.periods));
   private balanceExtremes = computed(() => balanceExtremes(this.report().balanceStrip.accumulated));

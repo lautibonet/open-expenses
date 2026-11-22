@@ -144,7 +144,7 @@ async function addIncome(page: import('@playwright/test').Page, amount: string) 
   await page.getByRole('button', { name: '+ Transaction' }).click();
   const form = page.locator('.transaction-form-form');
   await expect(form).toBeVisible();
-  await form.locator('select[name="category"]').selectOption({ label: 'Payroll (Income)' });
+  await form.locator('select[name="category"]').selectOption({ label: 'Payroll' });
   await form.locator('input[name="amount"]').fill(amount);
   await form.getByRole('button', { name: 'Save' }).click();
   await expect(page.locator('.transaction-form-form')).toBeHidden();
@@ -154,7 +154,7 @@ async function addExpense(page: import('@playwright/test').Page, amount: string)
   await page.getByRole('button', { name: '+ Transaction' }).click();
   const form = page.locator('.transaction-form-form');
   await expect(form).toBeVisible();
-  await form.locator('select[name="category"]').selectOption({ label: 'Food (Expense)' });
+  await form.locator('select[name="category"]').selectOption({ label: 'Food' });
   await form.locator('input[name="amount"]').fill(amount);
   await form.getByRole('button', { name: 'Save' }).click();
   await expect(page.locator('.transaction-form-form')).toBeHidden();

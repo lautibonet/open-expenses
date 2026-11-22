@@ -13,7 +13,7 @@ A movement of money between two of the user's own accounts. Structurally separat
 _Avoid_: Movement, internal transfer
 
 **Account**:
-A named place where the user holds money — a Cash Account — or owes money — a Credit Card. Defined by a name, a currency, and an Opening Balance; a Credit Card additionally has an optional Limit, and its Opening Balance is its starting debt. Its name is unique among Accounts ignoring letter case — "Visa" and "visa" cannot both exist. Its currency is chosen at creation and can change only while it has no movements. Its balance is computed from the Opening Balance plus Transactions and Transfers up to a given point in time; on Stats it is reported as of the end of the Scope's To Period.
+A named place where the user holds money — a Cash Account — or owes money — a Credit Card. Defined by a name, a currency, and an Opening Balance; a Credit Card additionally has an optional Limit, and its Opening Balance is its starting debt. Its name is unique among Accounts ignoring letter case — "Visa" and "visa" cannot both exist. Its currency is chosen at creation and can change only while it has no movements. Its balance is computed from the Opening Balance plus Transactions and Transfers up to a given point in time; on Stats it is reported as of the end of the Scope's To Period. Wherever Accounts are listed, Cash Accounts come first, then Credit Cards, each alphabetically in the active Language.
 _Avoid_: Wallet, bank account, source
 
 **Opening Balance**:
@@ -37,7 +37,7 @@ The monthly summary a card's issuer produces: what was billed, what is due, and 
 _Avoid_: bill, invoice, cycle
 
 **Category**:
-A mandatory classification label applied to every Transaction and to every Card Payment, marked as either Income or Expense. Flat list, no hierarchy. Its name is unique among Categories ignoring letter case. Pre-populated with defaults during onboarding.
+A mandatory classification label applied to every Transaction and to every Card Payment, marked as either Income or Expense. Flat list, no hierarchy. Its name is unique among Categories ignoring letter case. Pre-populated with defaults during onboarding. Wherever Categories are listed for picking or managing, Expense comes first, then Income, each alphabetically in the active Language.
 _Avoid_: Type, group, classification
 
 **Period**:

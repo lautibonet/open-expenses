@@ -25,6 +25,7 @@ import { DataVersionService } from '../../core/services/data-version.service';
 import { SUPPORTED_CURRENCIES } from '../../core/constants/currencies';
 import { Account, paymentCategoryIds } from '../../core/models/account.model';
 import { Category, CategoryType } from '../../core/models/category.model';
+import { sortAccounts, sortCategories } from '../../core/models/display-order';
 import { errorCopy } from '../../core/models/translation-error';
 import { DeletionPlan } from '../../core/models/deletion-plan';
 import { BackupCardComponent } from './backup-card/backup-card.component';
@@ -92,6 +93,12 @@ export class SettingsComponent implements OnInit {
   /* Every category, including system ones — the paired-deletion copies read
      the payment category's name from here. */
   allCategories = signal<Category[]>([]);
+  /* GLOSSARY.md, Account and Category: the lists show each group
+     alphabetically, Expense categories before Income ones; deactivated items
+     keep their alphabetical place. */
+  sortedAccounts = computed(() => sortAccounts(this.accounts(), this.language.activeLanguage()));
+  sortedCards = computed(() => sortAccounts(this.cards(), this.language.activeLanguage()));
+  sortedCategories = computed(() => sortCategories(this.categories(), this.language.activeLanguage()));
   baseCurrency = signal('EUR');
 
   newAccountName = signal('');
