@@ -59,7 +59,7 @@ test.describe('Credit card full journey (#168)', () => {
     await page.goto('/movements');
     await page.getByRole('button', { name: '+ Transaction' }).click();
     const cashForm = page.locator('app-transaction-form');
-    await cashForm.getByLabel('Category').selectOption({ label: 'Food (Expense)' });
+    await cashForm.getByLabel('Category').selectOption({ label: 'Food' });
     await cashForm.getByLabel('Amount').fill('100');
     await cashForm.getByRole('button', { name: 'Save' }).click();
     await expect(cashForm).toHaveCount(0);
@@ -71,7 +71,7 @@ test.describe('Credit card full journey (#168)', () => {
     await expect(purchaseForm.locator('.card-hint')).toContainText(
       'counted when the Statement is paid',
     );
-    await purchaseForm.getByLabel('Category').selectOption({ label: 'Food (Expense)' });
+    await purchaseForm.getByLabel('Category').selectOption({ label: 'Food' });
     await purchaseForm.getByLabel('Amount').fill('300');
     await purchaseForm.getByRole('button', { name: 'Save' }).click();
     await expect(purchaseForm).toHaveCount(0);

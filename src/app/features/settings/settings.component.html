@@ -185,7 +185,7 @@
     }
 
     <ul class="account-list">
-      @for (acc of accounts(); track acc.id) {
+      @for (acc of sortedAccounts(); track acc.id) {
         <li class="account-row" [class.inactive]="!acc.active">
           @if (editingAccount()?.id === acc.id) {
             <div class="edit-state">
@@ -420,7 +420,7 @@
     }
 
     <ul class="account-list">
-      @for (card of cards(); track card.id) {
+      @for (card of sortedCards(); track card.id) {
         <li class="account-row" [class.inactive]="!card.active">
           @if (editingCard()?.id === card.id) {
             <div class="edit-state">
@@ -661,7 +661,7 @@
     }
 
     <ul class="category-list">
-      @for (cat of categories(); track cat.id) {
+      @for (cat of sortedCategories(); track cat.id) {
         <li
           class="category-row"
           [class.inactive]="!cat.active"

@@ -20,8 +20,18 @@
         name="sourceAccount"
         [attr.aria-label]="language.t('movements.from')"
       >
-        @for (acc of accounts(); track acc.id) {
-          <option [value]="acc.id">{{ acc.name }}</option>
+        @for (group of sourceAccountGroups(); track group.labelKey) {
+          @if (sourceAccountGroups().length > 1) {
+            <optgroup [label]="language.t(group.labelKey)">
+              @for (acc of group.items; track acc.id) {
+                <option [value]="acc.id">{{ acc.name }}</option>
+              }
+            </optgroup>
+          } @else {
+            @for (acc of group.items; track acc.id) {
+              <option [value]="acc.id">{{ acc.name }}</option>
+            }
+          }
         }
       </select>
     </label>
@@ -33,8 +43,18 @@
         name="destAccount"
         [attr.aria-label]="language.t('movements.to')"
       >
-        @for (acc of filteredDestinationAccounts(); track acc.id) {
-          <option [value]="acc.id">{{ acc.name }}</option>
+        @for (group of destinationAccountGroups(); track group.labelKey) {
+          @if (destinationAccountGroups().length > 1) {
+            <optgroup [label]="language.t(group.labelKey)">
+              @for (acc of group.items; track acc.id) {
+                <option [value]="acc.id">{{ acc.name }}</option>
+              }
+            </optgroup>
+          } @else {
+            @for (acc of group.items; track acc.id) {
+              <option [value]="acc.id">{{ acc.name }}</option>
+            }
+          }
         }
       </select>
     </label>

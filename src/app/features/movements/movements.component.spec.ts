@@ -256,9 +256,50 @@ describe('MovementsComponent - payment categories vanish from ordinary pickers (
       'select[name="category"]',
     ) as HTMLSelectElement;
     const names = Array.from(select.options).map((o) => o.textContent!.trim());
-    expect(names).toContain('Food (Expense)');
-    expect(names).toContain('Payroll (Income)');
+    expect(names).toContain('Food');
+    expect(names).toContain('Payroll');
     expect(names.some((n) => n.startsWith('Visa payment'))).toBe(false);
+  });
+
+  it('groups the transaction form pickers under headings, each group alphabetically', async () => {
+    await categoryService.create('Bonus', 'income');
+    await categoryService.create('Coffee', 'expense');
+    await accountService.create('Bank', 'EUR', 0);
+    await component.ngOnInit();
+    component.toggleTransactionForm();
+    fixture.detectChanges();
+
+    const groups = (name: string) =>
+      Array.from(
+        fixture.nativeElement.querySelectorAll(`select[name="${name}"] optgroup`) as NodeListOf<HTMLOptGroupElement>,
+      ).map((g) => [g.label, ...Array.from(g.querySelectorAll('option')).map((o) => o.textContent!.trim())]);
+
+    expect(groups('category')).toEqual([
+      ['Expense', 'Coffee', 'Food'],
+      ['Income', 'Bonus', 'Payroll'],
+    ]);
+    expect(groups('account')).toEqual([
+      ['Accounts', 'Bank (EUR)', 'Cash (EUR)'],
+      ['Credit Cards', 'Visa (EUR)'],
+    ]);
+  });
+
+  it('groups the movements filter dropdowns, keeping the All option above the headings', async () => {
+    await component.ngOnInit();
+    component.toggleFilters();
+    fixture.detectChanges();
+
+    const [categorySelect, accountSelect] = Array.from(
+      fixture.nativeElement.querySelectorAll('.filter-panel select') as NodeListOf<HTMLSelectElement>,
+    );
+    const firstChild = (select: HTMLSelectElement) => select.firstElementChild!.textContent!.trim();
+    const labels = (select: HTMLSelectElement) =>
+      Array.from(select.querySelectorAll('optgroup')).map((g) => g.label);
+
+    expect(firstChild(categorySelect)).toBe('All categories');
+    expect(labels(categorySelect)).toEqual(['Expense', 'Income']);
+    expect(firstChild(accountSelect)).toBe('All accounts');
+    expect(labels(accountSelect)).toEqual(['Accounts', 'Credit Cards']);
   });
 
   it('keeps the Payment Category available to the transfer form and the Movement list', async () => {
@@ -3380,7 +3421,7 @@ describe('MovementsComponent - capture-form consistency', () => {
     fixture.detectChanges();
     // Changing the source to the current destination zeroes the destination,
     // leaving the route incomplete.
-    component.transferFormCard()!.onSourceChange(eurAccountId2);
+    component.transferFormCard()!.onSourceChange(eurAccountId);
     fixture.detectChanges();
 
     expect(saveHint()?.textContent).toContain('Choose two accounts.');

@@ -2302,7 +2302,7 @@ describe('DashboardComponent - conditional debt total and card rows', () => {
     expect(text).toContain(component.formatMoney(75000));
   });
 
-  it('groups cards after cash accounts in the balance list', async () => {
+  it('groups cards after cash accounts in the balance list, each alphabetically', async () => {
     const cash = await accountService.create('Checking', 'EUR', 1000);
     await accountService.createCard({ name: 'Visa', currency: 'EUR' });
     await accountService.create('Savings', 'EUR', 2000);
@@ -2312,7 +2312,7 @@ describe('DashboardComponent - conditional debt total and card rows', () => {
     fixture.detectChanges();
 
     const order = component.report().balances.accounts.map(b => b.account.name);
-    expect(order).toEqual(['Checking', 'Savings', 'Visa', 'Master']);
+    expect(order).toEqual(['Checking', 'Savings', 'Master', 'Visa']);
 
     const rendered = Array.from(
       fixture.nativeElement.querySelectorAll('.balance-row .account-name') as NodeListOf<HTMLElement>,

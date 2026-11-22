@@ -23,8 +23,18 @@
               name="account"
               [attr.aria-label]="language.t('transactionForm.account')"
             >
-              @for (acc of accounts(); track acc.id) {
-                <option [value]="acc.id">{{ acc.name }} ({{ acc.currency }})</option>
+              @for (group of accountPickerGroups(); track group.labelKey) {
+                @if (accountPickerGroups().length > 1) {
+                  <optgroup [label]="language.t(group.labelKey)">
+                    @for (acc of group.items; track acc.id) {
+                      <option [value]="acc.id">{{ acc.name }} ({{ acc.currency }})</option>
+                    }
+                  </optgroup>
+                } @else {
+                  @for (acc of group.items; track acc.id) {
+                    <option [value]="acc.id">{{ acc.name }} ({{ acc.currency }})</option>
+                  }
+                }
               }
             </select>
           </label>
@@ -40,10 +50,18 @@
             name="category"
             [attr.aria-label]="language.t('transactionForm.category')"
           >
-            @for (cat of categories(); track cat.id) {
-              <option [value]="cat.id">
-                {{ cat.name }} ({{ language.categoryTypeLabel(cat.type) }})
-              </option>
+            @for (group of categoryPickerGroups(); track group.labelKey) {
+              @if (categoryPickerGroups().length > 1) {
+                <optgroup [label]="language.t(group.labelKey)">
+                  @for (cat of group.items; track cat.id) {
+                    <option [value]="cat.id">{{ cat.name }}</option>
+                  }
+                </optgroup>
+              } @else {
+                @for (cat of group.items; track cat.id) {
+                  <option [value]="cat.id">{{ cat.name }}</option>
+                }
+              }
             }
           </select>
         </label>

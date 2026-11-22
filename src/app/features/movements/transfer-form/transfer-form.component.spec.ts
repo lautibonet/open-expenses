@@ -99,12 +99,22 @@ describe('TransferFormComponent', () => {
       expect(el.querySelectorAll('select').length).toBe(4);
     });
 
-    it('defaults the route to the first two accounts and today as period', async () => {
+    it('lists the accounts alphabetically without a heading when there are no Credit Cards', async () => {
+      await component.ngOnInit();
+      fixture.detectChanges();
+
+      const select = fixture.nativeElement.querySelector('select[name="sourceAccount"]') as HTMLSelectElement;
+      expect(select.querySelector('optgroup')).toBeNull();
+      expect(Array.from(select.options).map((o) => o.textContent!.trim())).toEqual(['Card', 'Cash', 'Dollars']);
+    });
+
+    it('defaults the route to the first two accounts alphabetically and today as period', async () => {
       await component.ngOnInit();
 
+      // "Card" sorts before "Cash", whatever their creation order.
       const f = component.form();
-      expect(f.sourceAccountId).toBe(eurAccountId);
-      expect(f.destAccountId).toBe(eur2AccountId);
+      expect(f.sourceAccountId).toBe(eur2AccountId);
+      expect(f.destAccountId).toBe(eurAccountId);
       expect(f.date).toBe(todayLocalISO());
       expect(f.period).toBe(getCurrentPeriod());
       expect(f.year).toBe(getCurrentYear());
@@ -536,13 +546,13 @@ describe('TransferFormComponent', () => {
 
       // Changing the source to the current destination zeroes the
       // destination, leaving the route incomplete.
-      component.onSourceChange(eur2AccountId);
+      component.onSourceChange(eurAccountId);
       expect(component.disabledReason()).toBe('Choose two accounts.');
 
-      component.form.update((f) => ({ ...f, destAccountId: eur2AccountId }));
+      component.form.update((f) => ({ ...f, destAccountId: eurAccountId }));
       expect(component.disabledReason()).toBe('Choose two different accounts.');
 
-      component.form.update((f) => ({ ...f, destAccountId: eurAccountId }));
+      component.form.update((f) => ({ ...f, destAccountId: eur2AccountId }));
       expect(component.disabledReason()).toBe('Enter an amount greater than zero.');
 
       component.form.update((f) => ({ ...f, sourceAmount: 100 }));

@@ -91,7 +91,7 @@ async function addIncome(page: Page, amount: string, date?: string) {
   await page.getByRole('button', { name: '+ Transaction' }).click();
   const form = page.locator('.transaction-form-form');
   await expect(form).toBeVisible();
-  await form.locator('select[name="category"]').selectOption({ label: 'Payroll (Income)' });
+  await form.locator('select[name="category"]').selectOption({ label: 'Payroll' });
   await form.locator('input[name="amount"]').fill(amount);
   if (date) await form.locator('input[name="date"]').fill(date);
   await form.getByRole('button', { name: 'Save' }).click();

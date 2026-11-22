@@ -151,8 +151,18 @@
           {{ language.t('movements.category') }}
           <select [ngModel]="filterCategory() ?? 0" (ngModelChange)="filterCategory.set(+$event || null)">
             <option [value]="0">{{ language.t('movements.allCategories') }}</option>
-            @for (cat of pickableCategories(); track cat.id) {
-              <option [value]="cat.id">{{ cat.name }}</option>
+            @for (group of categoryFilterGroups(); track group.labelKey) {
+              @if (categoryFilterGroups().length > 1) {
+                <optgroup [label]="language.t(group.labelKey)">
+                  @for (cat of group.items; track cat.id) {
+                    <option [value]="cat.id">{{ cat.name }}</option>
+                  }
+                </optgroup>
+              } @else {
+                @for (cat of group.items; track cat.id) {
+                  <option [value]="cat.id">{{ cat.name }}</option>
+                }
+              }
             }
           </select>
         </label>
@@ -160,8 +170,18 @@
           {{ language.t('movements.account') }}
           <select [ngModel]="filterAccount() ?? 0" (ngModelChange)="filterAccount.set(+$event || null)">
             <option [value]="0">{{ language.t('movements.allAccounts') }}</option>
-            @for (acc of accounts(); track acc.id) {
-              <option [value]="acc.id">{{ acc.name }}</option>
+            @for (group of accountFilterGroups(); track group.labelKey) {
+              @if (accountFilterGroups().length > 1) {
+                <optgroup [label]="language.t(group.labelKey)">
+                  @for (acc of group.items; track acc.id) {
+                    <option [value]="acc.id">{{ acc.name }}</option>
+                  }
+                </optgroup>
+              } @else {
+                @for (acc of group.items; track acc.id) {
+                  <option [value]="acc.id">{{ acc.name }}</option>
+                }
+              }
             }
           </select>
         </label>
